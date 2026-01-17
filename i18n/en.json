@@ -1,0 +1,98 @@
+{
+  "app": {
+    "name": "Travel Organizer"
+  },
+  "nav": {
+    "home": "Home"
+  },
+  "footer": {
+    "changelog": "Changelog"
+  },
+  "home": {
+    "title": "My Trips",
+    "subtitle": "All your trips in one place",
+    "noTrips": "No trips yet",
+    "noTripsText": "Your trips will appear here",
+    "pastTrips": "Past trips"
+  },
+  "trip": {
+    "new": "New Trip",
+    "createTitle": "Create new trip",
+    "uploadHint": "Drop PDF files here or click to select",
+    "processing": "Processing...",
+    "success": "Trip created successfully!",
+    "error": "Error processing files",
+    "viewTrip": "Go to trip",
+    "flights": "Flights",
+    "hotels": "Hotels",
+    "noFlights": "No flights",
+    "noHotels": "No hotels",
+    "loadError": "Could not load trip data",
+    "rename": "Rename",
+    "delete": "Delete",
+    "renameTitle": "Rename trip",
+    "newName": "New name",
+    "renameError": "Error renaming trip",
+    "deleteConfirm": "Are you sure you want to delete this trip?",
+    "deleteError": "Error deleting trip",
+    "addFlight": "Add flight",
+    "addHotel": "Add hotel",
+    "addFlightTitle": "Add flight",
+    "addHotelTitle": "Add hotel",
+    "addError": "Error adding document"
+  },
+  "modal": {
+    "cancel": "Cancel",
+    "create": "Create Trip",
+    "retry": "Try again",
+    "save": "Save",
+    "add": "Add"
+  },
+  "flight": {
+    "showDetails": "Show details",
+    "hideDetails": "Hide details",
+    "bookingRef": "Booking Reference",
+    "ticketNumber": "Ticket Number",
+    "seat": "Seat",
+    "class": "Class",
+    "departureTerminal": "Departure Terminal",
+    "arrivalTerminal": "Arrival Terminal",
+    "duration": "Flight Duration",
+    "frequentFlyer": "Frequent Flyer"
+  },
+  "hotel": {
+    "showDetails": "Show details",
+    "hideDetails": "Hide details",
+    "checkIn": "Check-in",
+    "checkOut": "Check-out",
+    "nights": "nights",
+    "night": "night",
+    "confirmation": "Confirmation",
+    "address": "Address",
+    "openInMaps": "Open in Google Maps",
+    "roomType": "Room type",
+    "guests": "Guests",
+    "guestName": "Guest name",
+    "phone": "Phone",
+    "pin": "PIN code",
+    "price": "Total price",
+    "payment": "Payment",
+    "payAtProperty": "Pay at property",
+    "cancellation": "Cancellation",
+    "freeCancellationUntil": "Free cancellation until",
+    "penaltyAfter": "Penalty after",
+    "amenities": "Amenities",
+    "notes": "Notes",
+    "source": "Booked on"
+  },
+  "changelog": {
+    "title": "Changelog",
+    "backToHome": "← Back to Home"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "from": "from",
+    "until": "until"
+  }
+}

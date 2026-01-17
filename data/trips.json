@@ -1,0 +1,30 @@
+{
+  "trips": [
+    {
+      "id": "2026-04-milan",
+      "folder": "2026-04-milan",
+      "title": {
+        "it": "Eccolo",
+        "en": "Eccolo"
+      },
+      "destination": "MILAN",
+      "startDate": "2026-04-15",
+      "endDate": "2026-04-19",
+      "route": "REG → LIN → REG",
+      "color": "#0066cc"
+    },
+    {
+      "id": "2026-01-nyc",
+      "folder": "2026-01-nyc",
+      "destination": "New York",
+      "title": {
+        "it": "Viaggio a New York",
+        "en": "New York Trip"
+      },
+      "startDate": "2026-01-24",
+      "endDate": "2026-01-30",
+      "route": "REG → FCO → JFK → FCO → REG",
+      "color": "#0066cc"
+    }
+  ]
+}

@@ -1,0 +1,234 @@
+{
+  "id": "2026-01-nyc",
+  "title": {
+    "it": "Viaggio a New York",
+    "en": "New York Trip"
+  },
+  "destination": "New York",
+  "startDate": "2026-01-24",
+  "endDate": "2026-01-30",
+  "route": "REG → FCO → JFK → FCO → REG",
+  "passenger": {
+    "name": "Francesco Stagno D'Alcontres",
+    "type": "ADT"
+  },
+  "flights": [
+    {
+      "id": "flight-1",
+      "date": "2026-01-24",
+      "flightNumber": "AZ1154",
+      "airline": "ITA Airways",
+      "operatedBy": "ITA Airways",
+      "departure": {
+        "code": "REG",
+        "city": "Reggio di Calabria",
+        "airport": "Reggio di Calabria Airport",
+        "terminal": null
+      },
+      "arrival": {
+        "code": "FCO",
+        "city": "Rome Fiumicino",
+        "airport": "Rome Fiumicino Airport",
+        "terminal": "1"
+      },
+      "departureTime": "06:10",
+      "arrivalTime": "07:25",
+      "arrivalNextDay": false,
+      "duration": "01:15",
+      "class": "L",
+      "fareClass": "STWWM1NNLG",
+      "fareBasis": "LPVQIXLQ",
+      "bookingReference": "ZXMKNW",
+      "ticketNumber": "055 2113534270",
+      "seat": null,
+      "baggage": "0PC",
+      "frequentFlyer": null,
+      "status": "OK"
+    },
+    {
+      "id": "flight-2",
+      "date": "2026-01-24",
+      "flightNumber": "AZ608",
+      "airline": "ITA Airways",
+      "operatedBy": "ITA Airways",
+      "departure": {
+        "code": "FCO",
+        "city": "Rome Fiumicino",
+        "airport": "Rome Fiumicino Airport",
+        "terminal": "1"
+      },
+      "arrival": {
+        "code": "JFK",
+        "city": "New York",
+        "airport": "John F. Kennedy International",
+        "terminal": "1"
+      },
+      "departureTime": "10:15",
+      "arrivalTime": "14:15",
+      "arrivalNextDay": false,
+      "duration": "10:00",
+      "class": "L",
+      "fareClass": "STWWM1NNLG",
+      "fareBasis": "LPVQIXLQ",
+      "bookingReference": "ZXMKNW",
+      "ticketNumber": "055 2113534270",
+      "seat": null,
+      "baggage": "0PC",
+      "frequentFlyer": null,
+      "status": "OK"
+    },
+    {
+      "id": "flight-3",
+      "date": "2026-01-29",
+      "flightNumber": "AZ609",
+      "airline": "ITA Airways",
+      "operatedBy": "ITA Airways",
+      "departure": {
+        "code": "JFK",
+        "city": "New York",
+        "airport": "John F. Kennedy International",
+        "terminal": "1"
+      },
+      "arrival": {
+        "code": "FCO",
+        "city": "Rome Fiumicino",
+        "airport": "Rome Fiumicino Airport",
+        "terminal": "3"
+      },
+      "departureTime": "16:45",
+      "arrivalTime": "07:05",
+      "arrivalNextDay": true,
+      "duration": "08:20",
+      "class": "L",
+      "fareClass": "STWWM1NNLG",
+      "fareBasis": "LPVQIXLQ",
+      "bookingReference": "ZXMKNW",
+      "ticketNumber": "055 2113534270",
+      "seat": null,
+      "baggage": "0PC",
+      "frequentFlyer": null,
+      "status": "OK"
+    },
+    {
+      "id": "flight-4",
+      "date": "2026-01-30",
+      "flightNumber": "AZ1157",
+      "airline": "ITA Airways",
+      "operatedBy": "ITA Airways",
+      "departure": {
+        "code": "FCO",
+        "city": "Rome Fiumicino",
+        "airport": "Rome Fiumicino Airport",
+        "terminal": "1"
+      },
+      "arrival": {
+        "code": "REG",
+        "city": "Reggio di Calabria",
+        "airport": "Reggio di Calabria Airport",
+        "terminal": null
+      },
+      "departureTime": "13:15",
+      "arrivalTime": "14:30",
+      "arrivalNextDay": false,
+      "duration": "01:15",
+      "class": "L",
+      "fareClass": "STWWM1NNLG",
+      "fareBasis": "LPVQIXLQ",
+      "bookingReference": "ZXMKNW",
+      "ticketNumber": "055 2113534270",
+      "seat": null,
+      "baggage": "0PC",
+      "frequentFlyer": null,
+      "status": "OK"
+    }
+  ],
+  "booking": {
+    "reference": "ZXMKNW",
+    "ticketNumber": "055 2113534270",
+    "issueDate": "2026-01-03",
+    "totalAmount": {
+      "value": 447.48,
+      "currency": "EUR"
+    },
+    "fare": {
+      "value": 140.00,
+      "currency": "EUR"
+    },
+    "taxes": {
+      "value": 97.48,
+      "currency": "EUR"
+    },
+    "carrierFees": {
+      "value": 210.00,
+      "currency": "EUR"
+    }
+  },
+  "hotels": [
+    {
+      "id": "hotel-1",
+      "name": "Club Quarters Hotel World Trade Center",
+      "address": {
+        "street": "140 Washington Street",
+        "city": "New York",
+        "state": "NY",
+        "postalCode": "10006",
+        "country": "Stati Uniti",
+        "fullAddress": "140 Washington Street, New York, NY 10006, Stati Uniti"
+      },
+      "coordinates": {
+        "lat": 40.7098,
+        "lng": -74.0138
+      },
+      "phone": "+1 646 746 3108",
+      "checkIn": {
+        "date": "2026-01-24",
+        "time": "15:00"
+      },
+      "checkOut": {
+        "date": "2026-01-29",
+        "time": "12:00"
+      },
+      "nights": 5,
+      "rooms": 1,
+      "roomType": {
+        "it": "Camera Superior Doppia con Letti Singoli",
+        "en": "Superior Double Room with Twin Beds"
+      },
+      "guests": 2,
+      "guestName": "Francesco Stagno d'Alcontres",
+      "confirmationNumber": "5125.124.567",
+      "pinCode": "2804",
+      "price": {
+        "room": { "value": 722, "currency": "EUR" },
+        "tax": { "value": 122, "currency": "EUR" },
+        "serviceFee": { "value": 108, "currency": "EUR" },
+        "cityTax": { "value": 16, "currency": "EUR" },
+        "total": { "value": 968, "currency": "EUR" },
+        "totalUSD": { "value": 1122.20, "currency": "USD" }
+      },
+      "payment": {
+        "method": "Pay at property",
+        "prepayment": false
+      },
+      "cancellation": {
+        "freeCancellationUntil": "2026-01-21T23:59:00",
+        "penaltyAfter": { "value": 192.36, "currency": "USD" }
+      },
+      "amenities": [
+        "WiFi gratuito",
+        "Aria condizionata",
+        "TV a schermo piatto",
+        "Macchina da caffè",
+        "Ferro da stiro",
+        "Asciugacapelli",
+        "Cassaforte",
+        "Servizio streaming"
+      ],
+      "notes": {
+        "it": "Arrivo previsto tra le 17:00 e le 18:00",
+        "en": "Approximate time of arrival: between 17:00 and 18:00"
+      },
+      "source": "Booking.com"
+    }
+  ]
+}

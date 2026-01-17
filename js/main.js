@@ -1,0 +1,1187 @@
+/**
+ * Main - Application entry point
+ */
+
+(async function() {
+  'use strict';
+
+  // Store trip data globally for tab switching
+  let currentTripData = null;
+
+  /**
+   * Initialize the application
+   */
+  async function init() {
+    try {
+      // Initialize i18n first
+      await i18n.init();
+
+      // Initialize navigation (header, footer)
+      await navigation.init();
+
+      // Re-apply translations after navigation is loaded
+      i18n.apply();
+
+      // Initialize trip creator (modal for new trips)
+      if (typeof tripCreator !== 'undefined') {
+        tripCreator.init();
+      }
+
+      // Initialize page-specific functionality
+      initPageSpecific();
+
+    } catch (error) {
+      console.error('Error initializing application:', error);
+    }
+  }
+
+  /**
+   * Initialize page-specific functionality
+   */
+  function initPageSpecific() {
+    const path = window.location.pathname;
+
+    if (path.includes('changelog.html')) {
+      initChangelogPage();
+    } else if (path.includes('/trips/')) {
+      initTripPage();
+    } else if (path.endsWith('/') || path.endsWith('index.html')) {
+      initHomePage();
+    }
+  }
+
+  /**
+   * Initialize homepage
+   */
+  async function initHomePage() {
+    const tripsContainer = document.getElementById('trips-container');
+    if (!tripsContainer) return;
+
+    try {
+      // Add cache-busting to avoid stale data
+      const tripsIndex = await utils.loadJSON(`./data/trips.json?t=${Date.now()}`);
+      renderTrips(tripsContainer, tripsIndex.trips);
+    } catch (error) {
+      console.error('Error loading trips:', error);
+      tripsContainer.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">✈️</div>
+          <h3 class="empty-state-title" data-i18n="home.noTrips">No trips yet</h3>
+          <p class="empty-state-text" data-i18n="home.noTripsText">Your trips will appear here</p>
+        </div>
+      `;
+      i18n.apply();
+    }
+  }
+
+  /**
+   * Check if a trip is in the past
+   * @param {object} trip
+   * @returns {boolean}
+   */
+  function isTripPast(trip) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const endDate = new Date(trip.endDate);
+    endDate.setHours(0, 0, 0, 0);
+    return endDate < today;
+  }
+
+  /**
+   * Render a single trip card
+   * @param {object} trip
+   * @param {string} lang
+   * @param {boolean} isPast
+   * @returns {string}
+   */
+  function renderTripCard(trip, lang, isPast) {
+    const title = trip.title[lang] || trip.title.en || trip.title.it;
+    const startDate = utils.formatDate(trip.startDate, lang, { month: 'short', day: 'numeric' });
+    const endDate = utils.formatDate(trip.endDate, lang, { month: 'short', day: 'numeric', year: 'numeric' });
+    const cardClass = isPast ? 'trip-card trip-card--past' : 'trip-card';
+    const bgColor = isPast ? 'var(--color-gray-400)' : (trip.color || 'var(--color-primary)');
+
+    return `
+      <div class="trip-card-wrapper">
+        <a href="trips/${trip.folder}/index.html" class="${cardClass}">
+          <div class="trip-card-image" style="background-color: ${bgColor}">
+            <span class="trip-card-destination">${title}</span>
+          </div>
+          <div class="trip-card-body">
+            <div class="trip-card-dates">${startDate} - ${endDate}</div>
+          </div>
+        </a>
+        <div class="trip-card-menu">
+          <button class="trip-card-menu-btn" data-trip-id="${trip.id}">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="5" r="1"></circle>
+              <circle cx="12" cy="12" r="1"></circle>
+              <circle cx="12" cy="19" r="1"></circle>
+            </svg>
+          </button>
+          <div class="trip-card-dropdown" data-trip-id="${trip.id}">
+            <button class="trip-card-dropdown-item" data-action="rename" data-trip-id="${trip.id}" data-trip-name="${title}">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+              <span data-i18n="trip.rename">Rinomina</span>
+            </button>
+            <button class="trip-card-dropdown-item trip-card-dropdown-item--danger" data-action="delete" data-trip-id="${trip.id}">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                <line x1="10" y1="11" x2="10" y2="17"></line>
+                <line x1="14" y1="11" x2="14" y2="17"></line>
+              </svg>
+              <span data-i18n="trip.delete">Elimina</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Render trips list
+   * @param {HTMLElement} container
+   * @param {Array} trips
+   */
+  function renderTrips(container, trips) {
+    if (!trips || trips.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">✈️</div>
+          <h3 class="empty-state-title" data-i18n="home.noTrips">No trips yet</h3>
+          <p class="empty-state-text" data-i18n="home.noTripsText">Your trips will appear here</p>
+        </div>
+      `;
+      i18n.apply();
+      return;
+    }
+
+    const lang = i18n.getLang();
+
+    // Separate upcoming and past trips
+    const upcomingTrips = trips.filter(t => !isTripPast(t));
+    const pastTrips = trips.filter(t => isTripPast(t));
+
+    // Sort upcoming by start date (closest first)
+    upcomingTrips.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+    // Sort past by start date (most recent first)
+    pastTrips.sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
+
+    let html = '';
+
+    // Render upcoming trips
+    if (upcomingTrips.length > 0) {
+      const upcomingHtml = upcomingTrips.map(trip => renderTripCard(trip, lang, false)).join('');
+      html += `<div class="grid md:grid-cols-2 lg:grid-cols-3">${upcomingHtml}</div>`;
+    }
+
+    // Render past trips
+    if (pastTrips.length > 0) {
+      const pastHtml = pastTrips.map(trip => renderTripCard(trip, lang, true)).join('');
+      html += `
+        <div class="past-trips-section">
+          <h3 class="past-trips-title" data-i18n="home.pastTrips">Viaggi passati</h3>
+          <div class="grid md:grid-cols-2 lg:grid-cols-3">${pastHtml}</div>
+        </div>
+      `;
+    }
+
+    // If only past trips exist
+    if (upcomingTrips.length === 0 && pastTrips.length > 0) {
+      const pastHtml = pastTrips.map(trip => renderTripCard(trip, lang, true)).join('');
+      html = `
+        <div class="past-trips-section past-trips-section--only">
+          <h3 class="past-trips-title" data-i18n="home.pastTrips">Viaggi passati</h3>
+          <div class="grid md:grid-cols-2 lg:grid-cols-3">${pastHtml}</div>
+        </div>
+      `;
+    }
+
+    container.innerHTML = html;
+
+    // Initialize dropdown menus
+    initTripCardMenus();
+
+    // Apply translations
+    i18n.apply();
+  }
+
+  /**
+   * Initialize trip card dropdown menus
+   */
+  function initTripCardMenus() {
+    const menuBtns = document.querySelectorAll('.trip-card-menu-btn');
+
+    menuBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const tripId = btn.dataset.tripId;
+        const dropdown = document.querySelector(`.trip-card-dropdown[data-trip-id="${tripId}"]`);
+
+        // Close all other dropdowns
+        document.querySelectorAll('.trip-card-dropdown.active').forEach(d => {
+          if (d !== dropdown) d.classList.remove('active');
+        });
+
+        dropdown.classList.toggle('active');
+      });
+    });
+
+    // Handle dropdown actions
+    document.querySelectorAll('.trip-card-dropdown-item').forEach(item => {
+      item.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const action = item.dataset.action;
+        const tripId = item.dataset.tripId;
+        const tripName = item.dataset.tripName;
+
+        // Close dropdown
+        item.closest('.trip-card-dropdown').classList.remove('active');
+
+        if (action === 'rename') {
+          renameTrip(tripId, tripName);
+        } else if (action === 'delete') {
+          deleteTrip(tripId);
+        }
+      });
+    });
+
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', () => {
+      document.querySelectorAll('.trip-card-dropdown.active').forEach(d => {
+        d.classList.remove('active');
+      });
+    });
+  }
+
+  /**
+   * Show rename modal
+   * @param {string} tripId
+   * @param {string} currentName
+   */
+  function showRenameModal(tripId, currentName) {
+    // Remove existing modal if any
+    const existingModal = document.getElementById('rename-modal');
+    if (existingModal) existingModal.remove();
+
+    const modalHTML = `
+      <div class="modal-overlay active" id="rename-modal">
+        <div class="modal">
+          <div class="modal-header">
+            <h2 data-i18n="trip.renameTitle">Rinomina viaggio</h2>
+            <button class="modal-close" id="rename-modal-close">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label for="rename-input" data-i18n="trip.newName">Nuovo nome</label>
+              <input type="text" id="rename-input" class="form-input" value="${currentName}" autofocus>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" id="rename-cancel" data-i18n="modal.cancel">Annulla</button>
+            <button class="btn btn-primary" id="rename-submit" data-i18n="modal.save">Salva</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    document.body.style.overflow = 'hidden';
+
+    const modal = document.getElementById('rename-modal');
+    const input = document.getElementById('rename-input');
+    const closeBtn = document.getElementById('rename-modal-close');
+    const cancelBtn = document.getElementById('rename-cancel');
+    const submitBtn = document.getElementById('rename-submit');
+
+    // Select all text in input
+    input.select();
+
+    // Close modal function
+    const closeModal = () => {
+      modal.remove();
+      document.body.style.overflow = '';
+    };
+
+    // Submit function
+    const submitRename = async () => {
+      const newName = input.value.trim();
+      if (!newName) return;
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="spinner spinner-sm"></span>';
+
+      try {
+        const response = await fetch(`/api/trips/${tripId}/rename`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: newName })
+        });
+
+        if (!response.ok) throw new Error('Failed to rename trip');
+
+        closeModal();
+        initHomePage();
+      } catch (error) {
+        console.error('Error renaming trip:', error);
+        alert(i18n.t('trip.renameError') || 'Errore durante la rinomina');
+        submitBtn.disabled = false;
+        submitBtn.textContent = i18n.t('modal.save') || 'Salva';
+      }
+    };
+
+    // Event listeners
+    closeBtn.addEventListener('click', closeModal);
+    cancelBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+    document.addEventListener('keydown', function escHandler(e) {
+      if (e.key === 'Escape') {
+        closeModal();
+        document.removeEventListener('keydown', escHandler);
+      }
+    });
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') submitRename();
+    });
+    submitBtn.addEventListener('click', submitRename);
+
+    // Apply translations
+    i18n.apply();
+  }
+
+  /**
+   * Rename a trip (opens modal)
+   * @param {string} tripId
+   * @param {string} currentName
+   */
+  function renameTrip(tripId, currentName) {
+    showRenameModal(tripId, currentName);
+  }
+
+  /**
+   * Delete a trip
+   * @param {string} tripId
+   */
+  async function deleteTrip(tripId) {
+    const confirmText = i18n.t('trip.deleteConfirm') || 'Sei sicuro di voler eliminare questo viaggio?';
+    if (!confirm(confirmText)) return;
+
+    try {
+      const response = await fetch(`/api/trips/${tripId}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) throw new Error('Failed to delete trip');
+
+      // Reload trips
+      initHomePage();
+    } catch (error) {
+      console.error('Error deleting trip:', error);
+      alert(i18n.t('trip.deleteError') || 'Errore durante l\'eliminazione');
+    }
+  }
+
+  /**
+   * Initialize changelog page
+   */
+  async function initChangelogPage() {
+    const changelogList = document.getElementById('changelog-list');
+    if (!changelogList) return;
+
+    try {
+      changelogList.innerHTML = `<div class="changelog-loading"><span class="spinner"></span></div>`;
+
+      const pathPrefix = i18n.getPathPrefix();
+      const changelog = await utils.loadJSON(`${pathPrefix}data/changelog.json`);
+
+      renderChangelog(changelogList, changelog.versions);
+    } catch (error) {
+      console.error('Error loading changelog:', error);
+      changelogList.innerHTML = `
+        <div class="changelog-error" data-i18n="common.error">An error occurred</div>
+      `;
+      i18n.apply();
+    }
+  }
+
+  /**
+   * Render changelog entries
+   * @param {HTMLElement} container
+   * @param {Array} versions
+   */
+  function renderChangelog(container, versions) {
+    const lang = i18n.getLang();
+
+    const html = versions.map(version => {
+      const changes = version.changes[lang] || version.changes.en || version.changes;
+      const changesList = Array.isArray(changes) ? changes : [changes];
+
+      return `
+        <article class="changelog-card">
+          <header class="changelog-card-header">
+            <span class="changelog-version">v${version.version}</span>
+            <span class="changelog-date">${utils.formatDate(version.date, lang)}</span>
+          </header>
+          <ul class="changelog-changes">
+            ${changesList.map(change => `<li>${change}</li>`).join('')}
+          </ul>
+        </article>
+      `;
+    }).join('');
+
+    container.innerHTML = html;
+  }
+
+  /**
+   * Initialize trip page
+   */
+  async function initTripPage() {
+    const contentContainer = document.getElementById('trip-content');
+    if (!contentContainer) return;
+
+    try {
+      const tripData = await utils.loadJSON(`./trip.json`);
+      currentTripData = tripData;
+
+      // Update page title
+      const lang = i18n.getLang();
+      const title = tripData.title[lang] || tripData.title.en;
+      document.title = `${title} - Travel Organizer`;
+
+      // Update trip header
+      updateTripHeader(tripData);
+
+      // Render segmented control and content
+      renderTripContent(contentContainer, tripData);
+
+    } catch (error) {
+      console.error('Error loading trip data:', error);
+      contentContainer.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">❌</div>
+          <h3 class="empty-state-title" data-i18n="common.error">Error</h3>
+          <p class="empty-state-text" data-i18n="trip.loadError">Could not load trip data</p>
+        </div>
+      `;
+      i18n.apply();
+    }
+  }
+
+  /**
+   * Update trip header with trip data
+   * @param {object} tripData
+   */
+  function updateTripHeader(tripData) {
+    const lang = i18n.getLang();
+
+    const titleEl = document.querySelector('.trip-header h1');
+    if (titleEl) {
+      titleEl.textContent = tripData.title[lang] || tripData.title.en;
+    }
+
+    const dateEl = document.querySelector('.trip-meta-date');
+    if (dateEl && tripData.startDate && tripData.endDate) {
+      const start = utils.formatDate(tripData.startDate, lang, { month: 'short', day: 'numeric' });
+      const end = utils.formatDate(tripData.endDate, lang, { month: 'short', day: 'numeric', year: 'numeric' });
+      dateEl.textContent = `${start} - ${end}`;
+    }
+
+    const routeEl = document.querySelector('.trip-meta-route');
+    if (routeEl && tripData.route) {
+      routeEl.textContent = tripData.route;
+    }
+  }
+
+  /**
+   * Render trip content with segmented control
+   * @param {HTMLElement} container
+   * @param {object} tripData
+   */
+  function renderTripContent(container, tripData) {
+    const hasFlights = tripData.flights && tripData.flights.length > 0;
+    const hasHotels = tripData.hotels && tripData.hotels.length > 0;
+
+    const html = `
+      <div class="trip-content-header mb-6">
+        <div class="segmented-control">
+          <button class="segmented-control-btn active" data-tab="flights">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.4-.1.9.3 1.1l4.8 3.2-2.1 2.1-2.4-.6c-.4-.1-.8 0-1 .3l-.2.3c-.2.3-.1.7.1 1l2.2 2.2 2.2 2.2c.3.3.7.3 1 .1l.3-.2c.3-.2.4-.6.3-1l-.6-2.4 2.1-2.1 3.2 4.8c.2.4.7.5 1.1.3l.5-.3c.4-.2.6-.6.5-1.1z"/>
+            </svg>
+            <span data-i18n="trip.flights">Flights</span>
+          </button>
+          <button class="segmented-control-btn" data-tab="hotels">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 21h18"></path>
+              <path d="M5 21V7l8-4v18"></path>
+              <path d="M19 21V11l-6-4"></path>
+              <path d="M9 9v.01"></path>
+              <path d="M9 12v.01"></path>
+              <path d="M9 15v.01"></path>
+              <path d="M9 18v.01"></path>
+            </svg>
+            <span data-i18n="trip.hotels">Hotels</span>
+          </button>
+        </div>
+        <div class="section-menu" id="content-menu">
+          <button class="section-menu-btn" id="content-menu-btn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="5" r="1"></circle>
+              <circle cx="12" cy="12" r="1"></circle>
+              <circle cx="12" cy="19" r="1"></circle>
+            </svg>
+          </button>
+          <div class="section-dropdown" id="content-dropdown">
+            <button class="section-dropdown-item" data-action="add-flight">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              <span data-i18n="trip.addFlight">Aggiungi volo</span>
+            </button>
+            <button class="section-dropdown-item" data-action="add-hotel">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              <span data-i18n="trip.addHotel">Aggiungi hotel</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div id="flights-tab" class="tab-content active">
+        <div id="flights-container"></div>
+      </div>
+
+      <div id="hotels-tab" class="tab-content">
+        <div id="hotels-container"></div>
+      </div>
+    `;
+
+    container.innerHTML = html;
+
+    // Render content
+    renderFlights(document.getElementById('flights-container'), tripData.flights);
+    renderHotels(document.getElementById('hotels-container'), tripData.hotels);
+
+    // Initialize tab switching
+    initTabSwitching();
+
+    // Initialize section menus
+    initSectionMenus(tripData.id);
+
+    // Apply translations
+    i18n.apply();
+  }
+
+  /**
+   * Initialize tab switching
+   */
+  function initTabSwitching() {
+    const tabs = document.querySelectorAll('.segmented-control-btn');
+
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        const targetTab = tab.dataset.tab;
+
+        // Update button states
+        tabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+
+        // Update content visibility
+        document.querySelectorAll('.tab-content').forEach(content => {
+          content.classList.remove('active');
+        });
+        document.getElementById(`${targetTab}-tab`).classList.add('active');
+      });
+    });
+  }
+
+  /**
+   * Initialize section menus (add flight/hotel)
+   * @param {string} tripId
+   */
+  function initSectionMenus(tripId) {
+    // Content menu (unified)
+    const contentMenuBtn = document.getElementById('content-menu-btn');
+    const contentDropdown = document.getElementById('content-dropdown');
+
+    if (contentMenuBtn && contentDropdown) {
+      contentMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        contentDropdown.classList.toggle('active');
+      });
+    }
+
+    // Handle dropdown actions
+    document.querySelectorAll('.section-dropdown-item').forEach(item => {
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const action = item.dataset.action;
+
+        // Close dropdown
+        contentDropdown?.classList.remove('active');
+
+        if (action === 'add-flight') {
+          showAddDocumentModal(tripId, 'flight');
+        } else if (action === 'add-hotel') {
+          showAddDocumentModal(tripId, 'hotel');
+        }
+      });
+    });
+
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', () => {
+      contentDropdown?.classList.remove('active');
+    });
+  }
+
+  /**
+   * Show modal to add flight/hotel document
+   * @param {string} tripId
+   * @param {string} type - 'flight' or 'hotel'
+   */
+  function showAddDocumentModal(tripId, type) {
+    // Remove existing modal if any
+    const existingModal = document.getElementById('add-document-modal');
+    if (existingModal) existingModal.remove();
+
+    const titleKey = type === 'flight' ? 'trip.addFlightTitle' : 'trip.addHotelTitle';
+    const titleDefault = type === 'flight' ? 'Aggiungi volo' : 'Aggiungi hotel';
+
+    const modalHTML = `
+      <div class="modal-overlay active" id="add-document-modal">
+        <div class="modal">
+          <div class="modal-header">
+            <h2 data-i18n="${titleKey}">${titleDefault}</h2>
+            <button class="modal-close" id="add-doc-modal-close">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <div class="modal-body" id="add-doc-modal-body">
+            <div class="upload-zone" id="add-doc-upload-zone">
+              <input type="file" id="add-doc-file-input" accept=".pdf" multiple hidden>
+              <svg class="upload-zone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              <div class="upload-zone-text" data-i18n="trip.uploadHint">Trascina qui i PDF o clicca per selezionare</div>
+              <div class="upload-zone-hint">PDF</div>
+            </div>
+            <div class="file-list" id="add-doc-file-list"></div>
+          </div>
+          <div class="modal-footer" id="add-doc-modal-footer">
+            <button class="btn btn-secondary" id="add-doc-cancel" data-i18n="modal.cancel">Annulla</button>
+            <button class="btn btn-primary" id="add-doc-submit" disabled data-i18n="modal.add">Aggiungi</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    document.body.style.overflow = 'hidden';
+
+    const modal = document.getElementById('add-document-modal');
+    const closeBtn = document.getElementById('add-doc-modal-close');
+    const cancelBtn = document.getElementById('add-doc-cancel');
+    const submitBtn = document.getElementById('add-doc-submit');
+    const uploadZone = document.getElementById('add-doc-upload-zone');
+    const fileInput = document.getElementById('add-doc-file-input');
+    const fileList = document.getElementById('add-doc-file-list');
+
+    let files = [];
+
+    // Close modal function
+    const closeModal = () => {
+      modal.remove();
+      document.body.style.overflow = '';
+    };
+
+    // Render file list
+    const renderFileList = () => {
+      if (files.length === 0) {
+        fileList.innerHTML = '';
+        submitBtn.disabled = true;
+        return;
+      }
+
+      fileList.innerHTML = files.map((file, index) => `
+        <div class="file-item">
+          <div class="file-item-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+            </svg>
+          </div>
+          <div class="file-item-info">
+            <div class="file-item-name">${file.name}</div>
+          </div>
+          <button class="file-item-remove" data-index="${index}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+      `).join('');
+
+      submitBtn.disabled = false;
+
+      // Bind remove buttons
+      fileList.querySelectorAll('.file-item-remove').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const index = parseInt(btn.dataset.index);
+          files.splice(index, 1);
+          renderFileList();
+        });
+      });
+    };
+
+    // Add files
+    const addFiles = (fileListInput) => {
+      const pdfFiles = Array.from(fileListInput).filter(f => f.type === 'application/pdf');
+      files.push(...pdfFiles);
+      renderFileList();
+    };
+
+    // Upload zone events
+    uploadZone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', (e) => {
+      addFiles(e.target.files);
+      fileInput.value = '';
+    });
+    uploadZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadZone.classList.add('dragover');
+    });
+    uploadZone.addEventListener('dragleave', () => {
+      uploadZone.classList.remove('dragover');
+    });
+    uploadZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadZone.classList.remove('dragover');
+      addFiles(e.dataTransfer.files);
+    });
+
+    // Submit function
+    const submitDocuments = async () => {
+      if (files.length === 0) return;
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="spinner spinner-sm"></span>';
+
+      try {
+        const formData = new FormData();
+        files.forEach(file => {
+          formData.append('pdfs', file);
+        });
+        formData.append('tripId', tripId);
+        formData.append('type', type);
+
+        const response = await fetch('/api/trips/add-documents', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!response.ok) throw new Error('Failed to add documents');
+
+        closeModal();
+        // Reload trip page
+        initTripPage();
+      } catch (error) {
+        console.error('Error adding documents:', error);
+        alert(i18n.t('trip.addError') || 'Errore durante l\'aggiunta');
+        submitBtn.disabled = false;
+        submitBtn.textContent = i18n.t('modal.add') || 'Aggiungi';
+      }
+    };
+
+    // Event listeners
+    closeBtn.addEventListener('click', closeModal);
+    cancelBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+    document.addEventListener('keydown', function escHandler(e) {
+      if (e.key === 'Escape') {
+        closeModal();
+        document.removeEventListener('keydown', escHandler);
+      }
+    });
+    submitBtn.addEventListener('click', submitDocuments);
+
+    // Apply translations
+    i18n.apply();
+  }
+
+  /**
+   * Check if a flight is in the past
+   * @param {object} flight
+   * @returns {boolean}
+   */
+  function isFlightPast(flight) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const flightDate = new Date(flight.date);
+    flightDate.setHours(0, 0, 0, 0);
+    return flightDate < today;
+  }
+
+  /**
+   * Render flight cards
+   * @param {HTMLElement} container
+   * @param {Array} flights
+   */
+  function renderFlights(container, flights) {
+    if (!flights || flights.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">✈️</div>
+          <h3 class="empty-state-title" data-i18n="trip.noFlights">No flights</h3>
+        </div>
+      `;
+      i18n.apply();
+      return;
+    }
+
+    const lang = i18n.getLang();
+
+    // Sort flights: upcoming first (by date), then past flights (by date)
+    const sortedFlights = [...flights].sort((a, b) => {
+      const aPast = isFlightPast(a);
+      const bPast = isFlightPast(b);
+
+      // If one is past and one is not, upcoming comes first
+      if (aPast !== bPast) {
+        return aPast ? 1 : -1;
+      }
+
+      // Both are in the same category, sort by date
+      return new Date(a.date) - new Date(b.date);
+    });
+
+    const html = sortedFlights.map((flight, index) => {
+      const trackingUrl = utils.getFlightTrackingUrl(flight.flightNumber);
+      const formattedDate = utils.formatFlightDate(flight.date, lang);
+      const duration = utils.formatDuration(flight.duration, lang);
+      const isPast = isFlightPast(flight);
+
+      return `
+        <div class="flight-card${isPast ? ' past' : ''}">
+          <div class="flight-card-header">
+            <span class="flight-date">${formattedDate}</span>
+            <a href="${trackingUrl}" target="_blank" rel="noopener" class="flight-number-link">
+              ${flight.airline} ${flight.flightNumber}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                <polyline points="15 3 21 3 21 9"></polyline>
+                <line x1="10" y1="14" x2="21" y2="3"></line>
+              </svg>
+            </a>
+          </div>
+
+          <div class="flight-card-body">
+            <div class="flight-route">
+              <div class="flight-endpoint">
+                <div class="flight-time">${flight.departureTime}</div>
+                <div class="flight-airport">
+                  <span class="flight-airport-code">${flight.departure.code}</span>
+                </div>
+                <div class="flight-airport">${flight.departure.city}</div>
+              </div>
+
+              <div class="flight-arrow">
+                <div class="flight-duration">${duration}</div>
+                <div class="flight-arrow-line"></div>
+              </div>
+
+              <div class="flight-endpoint">
+                <div class="flight-time">${flight.arrivalTime}${flight.arrivalNextDay ? ' +1' : ''}</div>
+                <div class="flight-airport">
+                  <span class="flight-airport-code">${flight.arrival.code}</span>
+                </div>
+                <div class="flight-airport">${flight.arrival.city}</div>
+              </div>
+            </div>
+
+          </div>
+
+          <button class="flight-toggle-details" data-flight-index="${index}">
+            <span data-i18n="flight.showDetails">Show details</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+
+          <div class="flight-details" id="flight-details-${index}">
+            <div class="flight-details-grid">
+              <div class="flight-detail-item">
+                <span class="flight-detail-label" data-i18n="flight.bookingRef">Booking Reference</span>
+                <span class="flight-detail-value">${flight.bookingReference || '-'}</span>
+              </div>
+              <div class="flight-detail-item">
+                <span class="flight-detail-label" data-i18n="flight.ticketNumber">Ticket Number</span>
+                <span class="flight-detail-value">${flight.ticketNumber || '-'}</span>
+              </div>
+              <div class="flight-detail-item">
+                <span class="flight-detail-label" data-i18n="flight.seat">Seat</span>
+                <span class="flight-detail-value">${flight.seat || '-'}</span>
+              </div>
+              <div class="flight-detail-item">
+                <span class="flight-detail-label" data-i18n="flight.class">Class</span>
+                <span class="flight-detail-value">${flight.class || '-'}</span>
+              </div>
+              <div class="flight-detail-item">
+                <span class="flight-detail-label" data-i18n="flight.departureTerminal">Departure Terminal</span>
+                <span class="flight-detail-value">${flight.departure.terminal || '-'}</span>
+              </div>
+              <div class="flight-detail-item">
+                <span class="flight-detail-label" data-i18n="flight.arrivalTerminal">Arrival Terminal</span>
+                <span class="flight-detail-value">${flight.arrival.terminal || '-'}</span>
+              </div>
+              <div class="flight-detail-item">
+                <span class="flight-detail-label" data-i18n="flight.duration">Flight Duration</span>
+                <span class="flight-detail-value">${duration}</span>
+              </div>
+              <div class="flight-detail-item">
+                <span class="flight-detail-label" data-i18n="flight.frequentFlyer">Frequent Flyer</span>
+                <span class="flight-detail-value">${flight.frequentFlyer || '-'}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    container.innerHTML = html;
+
+    // Apply translations
+    i18n.apply();
+
+    // Initialize toggle buttons
+    initFlightToggleButtons();
+  }
+
+  /**
+   * Render hotel cards
+   * @param {HTMLElement} container
+   * @param {Array} hotels
+   */
+  function renderHotels(container, hotels) {
+    if (!hotels || hotels.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">🏨</div>
+          <h3 class="empty-state-title" data-i18n="trip.noHotels">No hotels</h3>
+        </div>
+      `;
+      i18n.apply();
+      return;
+    }
+
+    const lang = i18n.getLang();
+
+    const html = hotels.map((hotel, index) => {
+      const checkInDate = new Date(hotel.checkIn.date);
+      const checkOutDate = new Date(hotel.checkOut.date);
+      const checkInDay = checkInDate.getDate();
+      const checkOutDay = checkOutDate.getDate();
+      const checkInMonth = checkInDate.toLocaleDateString(lang, { month: 'short' });
+      const checkOutMonth = checkOutDate.toLocaleDateString(lang, { month: 'short' });
+
+      const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(hotel.address.fullAddress)}`;
+      const nightsLabel = hotel.nights === 1 ? i18n.t('hotel.night') : i18n.t('hotel.nights');
+      const roomType = hotel.roomType[lang] || hotel.roomType.en;
+      const notes = hotel.notes ? (hotel.notes[lang] || hotel.notes.en) : null;
+
+      const freeCancellationDate = hotel.cancellation?.freeCancellationUntil
+        ? utils.formatDate(hotel.cancellation.freeCancellationUntil.split('T')[0], lang, { month: 'short', day: 'numeric' })
+        : null;
+
+      return `
+        <div class="hotel-card">
+          <div class="hotel-card-header">
+            <h3>${hotel.name}</h3>
+            <div class="hotel-confirmation">
+              <span class="hotel-confirmation-label" data-i18n="hotel.confirmation">Confirmation</span>
+              <span class="hotel-confirmation-number">${hotel.confirmationNumber}</span>
+            </div>
+          </div>
+
+          <div class="hotel-card-body">
+            <div class="hotel-dates">
+              <div class="hotel-date-block">
+                <div class="hotel-date-label" data-i18n="hotel.checkIn">Check-in</div>
+                <div class="hotel-date-day">${checkInDay}</div>
+                <div class="hotel-date-month">${checkInMonth}</div>
+                <div class="hotel-date-time">${i18n.t('common.from')} ${hotel.checkIn.time}</div>
+              </div>
+
+              <div class="hotel-nights">
+                <div class="hotel-nights-count">${hotel.nights}</div>
+                <div class="hotel-nights-label">${nightsLabel}</div>
+              </div>
+
+              <div class="hotel-date-block">
+                <div class="hotel-date-label" data-i18n="hotel.checkOut">Check-out</div>
+                <div class="hotel-date-day">${checkOutDay}</div>
+                <div class="hotel-date-month">${checkOutMonth}</div>
+                <div class="hotel-date-time">${i18n.t('common.until')} ${hotel.checkOut.time}</div>
+              </div>
+            </div>
+
+            <div class="hotel-address">
+              <a href="${mapsUrl}" target="_blank" rel="noopener" class="hotel-address-link">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                  <circle cx="12" cy="10" r="3"></circle>
+                </svg>
+                <span class="hotel-address-text">${hotel.address.fullAddress}</span>
+              </a>
+            </div>
+          </div>
+
+          <button class="hotel-toggle-details" data-hotel-index="${index}">
+            <span data-i18n="hotel.showDetails">Show details</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+
+          <div class="hotel-details" id="hotel-details-${index}">
+            <div class="hotel-details-grid">
+              <div class="hotel-detail-item">
+                <span class="hotel-detail-label" data-i18n="hotel.roomType">Room type</span>
+                <span class="hotel-detail-value">${roomType}</span>
+              </div>
+              <div class="hotel-detail-item">
+                <span class="hotel-detail-label" data-i18n="hotel.guests">Guests</span>
+                <span class="hotel-detail-value">${hotel.guests}</span>
+              </div>
+              <div class="hotel-detail-item">
+                <span class="hotel-detail-label" data-i18n="hotel.guestName">Guest name</span>
+                <span class="hotel-detail-value">${hotel.guestName}</span>
+              </div>
+              <div class="hotel-detail-item">
+                <span class="hotel-detail-label" data-i18n="hotel.phone">Phone</span>
+                <span class="hotel-detail-value"><a href="tel:${hotel.phone}">${hotel.phone}</a></span>
+              </div>
+              <div class="hotel-detail-item">
+                <span class="hotel-detail-label" data-i18n="hotel.pin">PIN code</span>
+                <span class="hotel-detail-value">${hotel.pinCode || '-'}</span>
+              </div>
+              <div class="hotel-detail-item">
+                <span class="hotel-detail-label" data-i18n="hotel.price">Total price</span>
+                <span class="hotel-detail-value">~${hotel.price.total.currency} ${hotel.price.total.value}</span>
+              </div>
+              <div class="hotel-detail-item">
+                <span class="hotel-detail-label" data-i18n="hotel.payment">Payment</span>
+                <span class="hotel-detail-value">${hotel.payment.prepayment ? '' : i18n.t('hotel.payAtProperty')}</span>
+              </div>
+              ${freeCancellationDate ? `
+              <div class="hotel-detail-item">
+                <span class="hotel-detail-label" data-i18n="hotel.cancellation">Cancellation</span>
+                <span class="hotel-detail-value">${i18n.t('hotel.freeCancellationUntil')} ${freeCancellationDate}</span>
+              </div>
+              ` : ''}
+              ${notes ? `
+              <div class="hotel-detail-item">
+                <span class="hotel-detail-label" data-i18n="hotel.notes">Notes</span>
+                <span class="hotel-detail-value">${notes}</span>
+              </div>
+              ` : ''}
+              <div class="hotel-detail-item">
+                <span class="hotel-detail-label" data-i18n="hotel.source">Booked on</span>
+                <span class="hotel-detail-value">${hotel.source}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    container.innerHTML = html;
+
+    // Apply translations
+    i18n.apply();
+
+    // Initialize toggle buttons
+    initHotelToggleButtons();
+  }
+
+  /**
+   * Initialize flight detail toggle buttons
+   */
+  function initFlightToggleButtons() {
+    const toggleButtons = document.querySelectorAll('.flight-toggle-details');
+
+    toggleButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const index = btn.dataset.flightIndex;
+        const details = document.getElementById(`flight-details-${index}`);
+        const isActive = details.classList.toggle('active');
+        btn.classList.toggle('active', isActive);
+
+        const textSpan = btn.querySelector('span[data-i18n]');
+        if (textSpan) {
+          textSpan.dataset.i18n = isActive ? 'flight.hideDetails' : 'flight.showDetails';
+          textSpan.textContent = i18n.t(textSpan.dataset.i18n);
+        }
+      });
+    });
+  }
+
+  /**
+   * Initialize hotel detail toggle buttons
+   */
+  function initHotelToggleButtons() {
+    const toggleButtons = document.querySelectorAll('.hotel-toggle-details');
+
+    toggleButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const index = btn.dataset.hotelIndex;
+        const details = document.getElementById(`hotel-details-${index}`);
+        const isActive = details.classList.toggle('active');
+        btn.classList.toggle('active', isActive);
+
+        const textSpan = btn.querySelector('span[data-i18n]');
+        if (textSpan) {
+          textSpan.dataset.i18n = isActive ? 'hotel.hideDetails' : 'hotel.showDetails';
+          textSpan.textContent = i18n.t(textSpan.dataset.i18n);
+        }
+      });
+    });
+  }
+
+  // Listen for language changes to re-render dynamic content
+  window.addEventListener('languageChanged', () => {
+    initPageSpecific();
+  });
+
+  // Initialize when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();

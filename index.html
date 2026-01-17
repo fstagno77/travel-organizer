@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Travel Organizer</title>
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="css/reset.css">
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/utilities.css">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="page-wrapper">
+    <div id="header-placeholder"></div>
+
+    <main>
+      <div class="container">
+        <section class="section">
+          <header class="section-header">
+            <h1 class="section-title" data-i18n="home.title">My Trips</h1>
+            <p class="section-subtitle" data-i18n="home.subtitle">All your trips in one place</p>
+          </header>
+
+          <div id="trips-container">
+            <!-- Trips will be loaded dynamically -->
+            <div class="text-center py-6">
+              <span class="spinner"></span>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <div id="footer-placeholder"></div>
+  </div>
+
+  <!-- JS -->
+  <script src="js/utils.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/navigation.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/tripCreator.js"></script>
+</body>
+</html>

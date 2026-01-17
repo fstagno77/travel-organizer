@@ -1,0 +1,98 @@
+{
+  "app": {
+    "name": "Travel Organizer"
+  },
+  "nav": {
+    "home": "Home"
+  },
+  "footer": {
+    "changelog": "Changelog"
+  },
+  "home": {
+    "title": "I Miei Viaggi",
+    "subtitle": "Tutti i tuoi viaggi in un unico posto",
+    "noTrips": "Nessun viaggio",
+    "noTripsText": "I tuoi viaggi appariranno qui",
+    "pastTrips": "Viaggi passati"
+  },
+  "trip": {
+    "new": "Nuovo Viaggio",
+    "createTitle": "Crea nuovo viaggio",
+    "uploadHint": "Trascina qui i PDF o clicca per selezionare",
+    "processing": "Elaborazione in corso...",
+    "success": "Viaggio creato con successo!",
+    "error": "Errore durante l'elaborazione",
+    "viewTrip": "Vai al viaggio",
+    "flights": "Voli",
+    "hotels": "Hotel",
+    "noFlights": "Nessun volo",
+    "noHotels": "Nessun hotel",
+    "loadError": "Impossibile caricare i dati del viaggio",
+    "rename": "Rinomina",
+    "delete": "Elimina",
+    "renameTitle": "Rinomina viaggio",
+    "newName": "Nuovo nome",
+    "renameError": "Errore durante la rinomina",
+    "deleteConfirm": "Sei sicuro di voler eliminare questo viaggio?",
+    "deleteError": "Errore durante l'eliminazione",
+    "addFlight": "Aggiungi volo",
+    "addHotel": "Aggiungi hotel",
+    "addFlightTitle": "Aggiungi volo",
+    "addHotelTitle": "Aggiungi hotel",
+    "addError": "Errore durante l'aggiunta"
+  },
+  "modal": {
+    "cancel": "Annulla",
+    "create": "Crea Viaggio",
+    "retry": "Riprova",
+    "save": "Salva",
+    "add": "Aggiungi"
+  },
+  "flight": {
+    "showDetails": "Mostra dettagli",
+    "hideDetails": "Nascondi dettagli",
+    "bookingRef": "Riferimento prenotazione",
+    "ticketNumber": "Numero biglietto",
+    "seat": "Posto",
+    "class": "Classe",
+    "departureTerminal": "Terminal partenza",
+    "arrivalTerminal": "Terminal arrivo",
+    "duration": "Durata volo",
+    "frequentFlyer": "Frequent Flyer"
+  },
+  "hotel": {
+    "showDetails": "Mostra dettagli",
+    "hideDetails": "Nascondi dettagli",
+    "checkIn": "Check-in",
+    "checkOut": "Check-out",
+    "nights": "notti",
+    "night": "notte",
+    "confirmation": "Conferma",
+    "address": "Indirizzo",
+    "openInMaps": "Apri in Google Maps",
+    "roomType": "Tipo camera",
+    "guests": "Ospiti",
+    "guestName": "Nome ospite",
+    "phone": "Telefono",
+    "pin": "Codice PIN",
+    "price": "Prezzo totale",
+    "payment": "Pagamento",
+    "payAtProperty": "Pagamento in struttura",
+    "cancellation": "Cancellazione",
+    "freeCancellationUntil": "Cancellazione gratuita fino al",
+    "penaltyAfter": "Penale dopo",
+    "amenities": "Servizi",
+    "notes": "Note",
+    "source": "Prenotato su"
+  },
+  "changelog": {
+    "title": "Changelog",
+    "backToHome": "← Torna alla Home"
+  },
+  "common": {
+    "loading": "Caricamento...",
+    "error": "Si è verificato un errore",
+    "from": "dalle",
+    "until": "fino alle"
+  }
+}
