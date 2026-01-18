@@ -26,7 +26,9 @@
     "flights": "Voli",
     "hotels": "Hotel",
     "noFlights": "Nessun volo",
+    "noFlightsText": "Aggiungi una prenotazione per visualizzare i tuoi voli",
     "noHotels": "Nessun hotel",
+    "noHotelsText": "Aggiungi una prenotazione per visualizzare i tuoi hotel",
     "loadError": "Impossibile caricare i dati del viaggio",
     "rename": "Rinomina",
     "delete": "Elimina",
@@ -35,11 +37,14 @@
     "renameError": "Errore durante la rinomina",
     "deleteConfirm": "Sei sicuro di voler eliminare questo viaggio?",
     "deleteError": "Errore durante l'eliminazione",
-    "addFlight": "Aggiungi volo",
-    "addHotel": "Aggiungi hotel",
-    "addFlightTitle": "Aggiungi volo",
-    "addHotelTitle": "Aggiungi hotel",
-    "addError": "Errore durante l'aggiunta"
+    "addBooking": "Aggiungi prenotazione",
+    "addBookingTitle": "Aggiungi prenotazione",
+    "addError": "Errore durante l'aggiunta",
+    "share": "Condividi",
+    "shareTitle": "Condividi viaggio",
+    "shareDescription": "Copia questo link per condividere il viaggio con altri. Chi riceve il link potrà visualizzare solo questo viaggio.",
+    "copyLink": "Copia",
+    "linkCopied": "Link copiato!"
   },
   "modal": {
     "cancel": "Annulla",
@@ -87,7 +92,7 @@
   },
   "changelog": {
     "title": "Changelog",
-    "backToHome": "← Torna alla Home"
+    "backToHome": "Torna alla Home"
   },
   "common": {
     "loading": "Caricamento...",

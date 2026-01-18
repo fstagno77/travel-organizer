@@ -23,9 +23,21 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
-<body>
+<body class="shared-view">
   <div class="page-wrapper">
-    <div id="header-placeholder"></div>
+    <!-- Minimal header for shared view -->
+    <header class="header header-shared">
+      <div class="container">
+        <div class="header-inner">
+          <div class="header-logo header-logo-static">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.4-.1.9.3 1.1l4.8 3.2-2.1 2.1-2.4-.6c-.4-.1-.8 0-1 .3l-.2.3c-.2.3-.1.7.1 1l2.2 2.2 2.2 2.2c.3.3.7.3 1 .1l.3-.2c.3-.2.4-.6.3-1l-.6-2.4 2.1-2.1 3.2 4.8c.2.4.7.5 1.1.3l.5-.3c.4-.2.6-.6.5-1.1z"/>
+            </svg>
+            <span data-i18n="app.name">Travel Organizer</span>
+          </div>
+        </div>
+      </div>
+    </header>
 
     <div class="trip-header">
       <div class="container">
@@ -55,14 +67,42 @@
       </div>
     </main>
 
-    <div id="footer-placeholder"></div>
+    <!-- Minimal footer for shared view -->
+    <footer class="footer">
+      <div class="container">
+        <div class="footer-inner">
+          <div class="footer-left">
+            <div class="footer-copyright">
+              Travel Organizer
+            </div>
+          </div>
+          <div class="lang-selector">
+            <button class="lang-selector-btn" aria-expanded="false" aria-haspopup="true">
+              <span class="lang-flag"></span>
+              <span class="lang-current"></span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+            <div class="lang-dropdown lang-dropdown-up" role="menu">
+              <button class="lang-option" data-lang="it" role="menuitem">
+                <span>🇮🇹</span>
+                <span>Italiano</span>
+              </button>
+              <button class="lang-option" data-lang="en" role="menuitem">
+                <span>🇬🇧</span>
+                <span>English</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </footer>
   </div>
 
   <!-- JS -->
   <script src="../../js/utils.js"></script>
   <script src="../../js/i18n.js"></script>
-  <script src="../../js/navigation.js"></script>
-  <script src="../../js/main.js"></script>
-  <script src="../../js/tripCreator.js"></script>
+  <script src="../../js/share.js"></script>
 </body>
 </html>

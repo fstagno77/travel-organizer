@@ -26,7 +26,9 @@
     "flights": "Flights",
     "hotels": "Hotels",
     "noFlights": "No flights",
+    "noFlightsText": "Add a booking to see your flights here",
     "noHotels": "No hotels",
+    "noHotelsText": "Add a booking to see your hotels here",
     "loadError": "Could not load trip data",
     "rename": "Rename",
     "delete": "Delete",
@@ -35,11 +37,14 @@
     "renameError": "Error renaming trip",
     "deleteConfirm": "Are you sure you want to delete this trip?",
     "deleteError": "Error deleting trip",
-    "addFlight": "Add flight",
-    "addHotel": "Add hotel",
-    "addFlightTitle": "Add flight",
-    "addHotelTitle": "Add hotel",
-    "addError": "Error adding document"
+    "addBooking": "Add booking",
+    "addBookingTitle": "Add booking",
+    "addError": "Error adding booking",
+    "share": "Share",
+    "shareTitle": "Share trip",
+    "shareDescription": "Copy this link to share the trip with others. Anyone with this link will only be able to view this trip.",
+    "copyLink": "Copy",
+    "linkCopied": "Link copied!"
   },
   "modal": {
     "cancel": "Cancel",
@@ -87,7 +92,7 @@
   },
   "changelog": {
     "title": "Changelog",
-    "backToHome": "← Back to Home"
+    "backToHome": "Back to Home"
   },
   "common": {
     "loading": "Loading...",

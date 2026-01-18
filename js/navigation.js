@@ -100,29 +100,31 @@ const navigation = {
               <div class="footer-copyright">
                 © ${currentYear} Travel Organizer
               </div>
-              <div class="footer-version">
-                <span>v${version}</span>
-                <span>|</span>
-                <a href="${prefix}changelog.html" data-i18n="footer.changelog">Changelog</a>
-              </div>
             </div>
-            <div class="lang-selector">
-              <button class="lang-selector-btn" aria-expanded="false" aria-haspopup="true">
-                <span class="lang-flag"></span>
-                <span class="lang-current"></span>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="6 9 12 15 18 9"></polyline>
-                </svg>
-              </button>
-              <div class="lang-dropdown lang-dropdown-up" role="menu">
-                <button class="lang-option" data-lang="it" role="menuitem">
-                  <span>🇮🇹</span>
-                  <span>Italiano</span>
+            <div class="footer-center">
+              <span class="footer-version">v${version}</span>
+              <span class="footer-separator">|</span>
+              <a href="${prefix}changelog.html" class="footer-changelog-link" data-i18n="footer.changelog">Changelog</a>
+            </div>
+            <div class="footer-right">
+              <div class="lang-selector">
+                <button class="lang-selector-btn" aria-expanded="false" aria-haspopup="true">
+                  <span class="lang-flag"></span>
+                  <span class="lang-current"></span>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
                 </button>
-                <button class="lang-option" data-lang="en" role="menuitem">
-                  <span>🇬🇧</span>
-                  <span>English</span>
-                </button>
+                <div class="lang-dropdown lang-dropdown-up" role="menu">
+                  <button class="lang-option" data-lang="it" role="menuitem">
+                    <span>🇮🇹</span>
+                    <span>Italiano</span>
+                  </button>
+                  <button class="lang-option" data-lang="en" role="menuitem">
+                    <span>🇬🇧</span>
+                    <span>English</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>

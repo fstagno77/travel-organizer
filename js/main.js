@@ -334,7 +334,12 @@
         if (!response.ok) throw new Error('Failed to rename trip');
 
         closeModal();
-        initHomePage();
+        // Refresh appropriate page based on context
+        if (window.location.pathname.includes('/trips/')) {
+          initTripPage();
+        } else {
+          initHomePage();
+        }
       } catch (error) {
         console.error('Error renaming trip:', error);
         alert(i18n.t('trip.renameError') || 'Errore durante la rinomina');
@@ -547,19 +552,29 @@
             </svg>
           </button>
           <div class="section-dropdown" id="content-dropdown">
-            <button class="section-dropdown-item" data-action="add-flight">
+            <button class="section-dropdown-item" data-action="add-booking">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
               </svg>
-              <span data-i18n="trip.addFlight">Aggiungi volo</span>
+              <span data-i18n="trip.addBooking">Aggiungi prenotazione</span>
             </button>
-            <button class="section-dropdown-item" data-action="add-hotel">
+            <button class="section-dropdown-item" data-action="rename">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
               </svg>
-              <span data-i18n="trip.addHotel">Aggiungi hotel</span>
+              <span data-i18n="trip.rename">Rinomina</span>
+            </button>
+            <button class="section-dropdown-item" data-action="share">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="18" cy="5" r="3"></circle>
+                <circle cx="6" cy="12" r="3"></circle>
+                <circle cx="18" cy="19" r="3"></circle>
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+              </svg>
+              <span data-i18n="trip.share">Condividi</span>
             </button>
           </div>
         </div>
@@ -638,10 +653,14 @@
         // Close dropdown
         contentDropdown?.classList.remove('active');
 
-        if (action === 'add-flight') {
-          showAddDocumentModal(tripId, 'flight');
-        } else if (action === 'add-hotel') {
-          showAddDocumentModal(tripId, 'hotel');
+        if (action === 'share') {
+          showShareModal(tripId);
+        } else if (action === 'add-booking') {
+          showAddBookingModal(tripId);
+        } else if (action === 'rename') {
+          const lang = i18n.getLang();
+          const currentName = currentTripData?.title[lang] || currentTripData?.title.en || '';
+          showRenameModal(tripId, currentName);
         }
       });
     });
@@ -653,33 +672,29 @@
   }
 
   /**
-   * Show modal to add flight/hotel document
+   * Show modal to add booking (flight or hotel - AI will determine type)
    * @param {string} tripId
-   * @param {string} type - 'flight' or 'hotel'
    */
-  function showAddDocumentModal(tripId, type) {
+  function showAddBookingModal(tripId) {
     // Remove existing modal if any
-    const existingModal = document.getElementById('add-document-modal');
+    const existingModal = document.getElementById('add-booking-modal');
     if (existingModal) existingModal.remove();
 
-    const titleKey = type === 'flight' ? 'trip.addFlightTitle' : 'trip.addHotelTitle';
-    const titleDefault = type === 'flight' ? 'Aggiungi volo' : 'Aggiungi hotel';
-
     const modalHTML = `
-      <div class="modal-overlay active" id="add-document-modal">
+      <div class="modal-overlay active" id="add-booking-modal">
         <div class="modal">
           <div class="modal-header">
-            <h2 data-i18n="${titleKey}">${titleDefault}</h2>
-            <button class="modal-close" id="add-doc-modal-close">
+            <h2 data-i18n="trip.addBookingTitle">Aggiungi prenotazione</h2>
+            <button class="modal-close" id="add-booking-modal-close">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="18" y1="6" x2="6" y2="18"></line>
                 <line x1="6" y1="6" x2="18" y2="18"></line>
               </svg>
             </button>
           </div>
-          <div class="modal-body" id="add-doc-modal-body">
-            <div class="upload-zone" id="add-doc-upload-zone">
-              <input type="file" id="add-doc-file-input" accept=".pdf" multiple hidden>
+          <div class="modal-body" id="add-booking-modal-body">
+            <div class="upload-zone" id="add-booking-upload-zone">
+              <input type="file" id="add-booking-file-input" accept=".pdf" multiple hidden>
               <svg class="upload-zone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                 <polyline points="17 8 12 3 7 8"></polyline>
@@ -688,11 +703,11 @@
               <div class="upload-zone-text" data-i18n="trip.uploadHint">Trascina qui i PDF o clicca per selezionare</div>
               <div class="upload-zone-hint">PDF</div>
             </div>
-            <div class="file-list" id="add-doc-file-list"></div>
+            <div class="file-list" id="add-booking-file-list"></div>
           </div>
-          <div class="modal-footer" id="add-doc-modal-footer">
-            <button class="btn btn-secondary" id="add-doc-cancel" data-i18n="modal.cancel">Annulla</button>
-            <button class="btn btn-primary" id="add-doc-submit" disabled data-i18n="modal.add">Aggiungi</button>
+          <div class="modal-footer" id="add-booking-modal-footer">
+            <button class="btn btn-secondary" id="add-booking-cancel" data-i18n="modal.cancel">Annulla</button>
+            <button class="btn btn-primary" id="add-booking-submit" disabled data-i18n="modal.add">Aggiungi</button>
           </div>
         </div>
       </div>
@@ -701,13 +716,13 @@
     document.body.insertAdjacentHTML('beforeend', modalHTML);
     document.body.style.overflow = 'hidden';
 
-    const modal = document.getElementById('add-document-modal');
-    const closeBtn = document.getElementById('add-doc-modal-close');
-    const cancelBtn = document.getElementById('add-doc-cancel');
-    const submitBtn = document.getElementById('add-doc-submit');
-    const uploadZone = document.getElementById('add-doc-upload-zone');
-    const fileInput = document.getElementById('add-doc-file-input');
-    const fileList = document.getElementById('add-doc-file-list');
+    const modal = document.getElementById('add-booking-modal');
+    const closeBtn = document.getElementById('add-booking-modal-close');
+    const cancelBtn = document.getElementById('add-booking-cancel');
+    const submitBtn = document.getElementById('add-booking-submit');
+    const uploadZone = document.getElementById('add-booking-upload-zone');
+    const fileInput = document.getElementById('add-booking-file-input');
+    const fileList = document.getElementById('add-booking-file-list');
 
     let files = [];
 
@@ -784,7 +799,7 @@
     });
 
     // Submit function
-    const submitDocuments = async () => {
+    const submitBooking = async () => {
       if (files.length === 0) return;
 
       submitBtn.disabled = true;
@@ -796,20 +811,19 @@
           formData.append('pdfs', file);
         });
         formData.append('tripId', tripId);
-        formData.append('type', type);
 
-        const response = await fetch('/api/trips/add-documents', {
+        const response = await fetch('/api/trips/add-booking', {
           method: 'POST',
           body: formData
         });
 
-        if (!response.ok) throw new Error('Failed to add documents');
+        if (!response.ok) throw new Error('Failed to add booking');
 
         closeModal();
         // Reload trip page
         initTripPage();
       } catch (error) {
-        console.error('Error adding documents:', error);
+        console.error('Error adding booking:', error);
         alert(i18n.t('trip.addError') || 'Errore durante l\'aggiunta');
         submitBtn.disabled = false;
         submitBtn.textContent = i18n.t('modal.add') || 'Aggiungi';
@@ -828,7 +842,104 @@
         document.removeEventListener('keydown', escHandler);
       }
     });
-    submitBtn.addEventListener('click', submitDocuments);
+    submitBtn.addEventListener('click', submitBooking);
+
+    // Apply translations
+    i18n.apply();
+  }
+
+  /**
+   * Show share modal with shareable link
+   * @param {string} tripId
+   */
+  function showShareModal(tripId) {
+    // Remove existing modal if any
+    const existingModal = document.getElementById('share-modal');
+    if (existingModal) existingModal.remove();
+
+    // Generate share URL
+    const baseUrl = window.location.origin;
+    const shareUrl = `${baseUrl}/trips/${tripId}/share.html`;
+
+    const modalHTML = `
+      <div class="modal-overlay active" id="share-modal">
+        <div class="modal">
+          <div class="modal-header">
+            <h2 data-i18n="trip.shareTitle">Condividi viaggio</h2>
+            <button class="modal-close" id="share-modal-close">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <p class="share-description" data-i18n="trip.shareDescription">Copia questo link per condividere il viaggio con altri. Chi riceve il link potrà visualizzare solo questo viaggio.</p>
+            <div class="share-link-container">
+              <input type="text" id="share-link-input" class="form-input share-link-input" value="${shareUrl}" readonly>
+              <button class="btn btn-primary share-copy-btn" id="share-copy-btn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+                <span data-i18n="trip.copyLink">Copia</span>
+              </button>
+            </div>
+            <div class="share-copied-message" id="share-copied-message" data-i18n="trip.linkCopied">Link copiato!</div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    document.body.style.overflow = 'hidden';
+
+    const modal = document.getElementById('share-modal');
+    const closeBtn = document.getElementById('share-modal-close');
+    const copyBtn = document.getElementById('share-copy-btn');
+    const linkInput = document.getElementById('share-link-input');
+    const copiedMessage = document.getElementById('share-copied-message');
+
+    // Close modal function
+    const closeModal = () => {
+      modal.remove();
+      document.body.style.overflow = '';
+    };
+
+    // Copy link function
+    const copyLink = async () => {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        copiedMessage.classList.add('visible');
+        setTimeout(() => {
+          copiedMessage.classList.remove('visible');
+        }, 2000);
+      } catch (err) {
+        // Fallback for older browsers
+        linkInput.select();
+        document.execCommand('copy');
+        copiedMessage.classList.add('visible');
+        setTimeout(() => {
+          copiedMessage.classList.remove('visible');
+        }, 2000);
+      }
+    };
+
+    // Event listeners
+    closeBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+    document.addEventListener('keydown', function escHandler(e) {
+      if (e.key === 'Escape') {
+        closeModal();
+        document.removeEventListener('keydown', escHandler);
+      }
+    });
+    copyBtn.addEventListener('click', copyLink);
+
+    // Select all text when input is focused
+    linkInput.addEventListener('focus', () => linkInput.select());
 
     // Apply translations
     i18n.apply();
@@ -856,11 +967,23 @@
     if (!flights || flights.length === 0) {
       container.innerHTML = `
         <div class="empty-state">
-          <div class="empty-state-icon">✈️</div>
           <h3 class="empty-state-title" data-i18n="trip.noFlights">No flights</h3>
+          <p class="empty-state-text" data-i18n="trip.noFlightsText">Add a booking to see your flights here</p>
+          <button class="btn btn-primary empty-state-cta" id="add-flight-cta">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            <span data-i18n="trip.addBooking">Add booking</span>
+          </button>
         </div>
       `;
       i18n.apply();
+      // Add click handler for CTA
+      document.getElementById('add-flight-cta')?.addEventListener('click', () => {
+        const tripId = window.location.pathname.split('/trips/')[1]?.split('/')[0];
+        if (tripId) showAddBookingModal(tripId);
+      });
       return;
     }
 
@@ -991,11 +1114,23 @@
     if (!hotels || hotels.length === 0) {
       container.innerHTML = `
         <div class="empty-state">
-          <div class="empty-state-icon">🏨</div>
           <h3 class="empty-state-title" data-i18n="trip.noHotels">No hotels</h3>
+          <p class="empty-state-text" data-i18n="trip.noHotelsText">Add a booking to see your hotels here</p>
+          <button class="btn btn-primary empty-state-cta" id="add-hotel-cta">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            <span data-i18n="trip.addBooking">Add booking</span>
+          </button>
         </div>
       `;
       i18n.apply();
+      // Add click handler for CTA
+      document.getElementById('add-hotel-cta')?.addEventListener('click', () => {
+        const tripId = window.location.pathname.split('/trips/')[1]?.split('/')[0];
+        if (tripId) showAddBookingModal(tripId);
+      });
       return;
     }
 
