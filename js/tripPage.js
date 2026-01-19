@@ -912,10 +912,6 @@
         <div class="hotel-card">
           <div class="hotel-card-header">
             <h3>${hotel.name}</h3>
-            <div class="hotel-confirmation">
-              <span class="hotel-confirmation-label" data-i18n="hotel.confirmation">Confirmation</span>
-              <span class="hotel-confirmation-number">${hotel.confirmationNumber || '-'}</span>
-            </div>
           </div>
 
           <div class="hotel-card-body">
@@ -984,6 +980,12 @@
               <div class="hotel-detail-item">
                 <span class="hotel-detail-label" data-i18n="hotel.price">Total price</span>
                 <span class="hotel-detail-value">~${hotel.price.total.currency} ${hotel.price.total.value}</span>
+              </div>
+              ` : ''}
+              ${hotel.confirmationNumber ? `
+              <div class="hotel-detail-item">
+                <span class="hotel-detail-label" data-i18n="hotel.confirmation">Confirmation</span>
+                <span class="hotel-detail-value">${hotel.confirmationNumber}</span>
               </div>
               ` : ''}
             </div>

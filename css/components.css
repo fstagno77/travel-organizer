@@ -879,27 +879,6 @@
   margin: 0;
 }
 
-.hotel-confirmation {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-2);
-  color: var(--color-white);
-  font-weight: var(--font-weight-medium);
-  padding: var(--spacing-2) var(--spacing-3);
-  background-color: rgba(255, 255, 255, 0.15);
-  border-radius: var(--radius-md);
-}
-
-.hotel-confirmation-label {
-  font-size: var(--font-size-sm);
-  opacity: 0.8;
-}
-
-.hotel-confirmation-number {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-}
-
 .hotel-card-body {
   padding: var(--spacing-5);
 }
