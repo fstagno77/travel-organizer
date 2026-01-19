@@ -257,6 +257,24 @@ const tripCreator = {
   },
 
   /**
+   * Convert file to base64
+   * @param {File} file
+   * @returns {Promise<string>}
+   */
+  fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        // Remove data:application/pdf;base64, prefix
+        const base64 = reader.result.split(',')[1];
+        resolve(base64);
+      };
+      reader.onerror = error => reject(error);
+    });
+  },
+
+  /**
    * Submit files for processing
    */
   async submit() {
@@ -267,14 +285,20 @@ const tripCreator = {
     this.showFooter(false);
 
     try {
-      const formData = new FormData();
-      this.files.forEach(file => {
-        formData.append('pdfs', file);
-      });
+      // Convert files to base64
+      const pdfs = await Promise.all(
+        this.files.map(async file => ({
+          filename: file.name,
+          content: await this.fileToBase64(file)
+        }))
+      );
 
-      const response = await fetch('/api/trips/process-pdf', {
+      const response = await fetch('/.netlify/functions/process-pdf', {
         method: 'POST',
-        body: formData
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ pdfs })
       });
 
       if (!response.ok) {
@@ -285,7 +309,10 @@ const tripCreator = {
 
       if (result.success) {
         this.state = 'success';
-        this.renderSuccessState(result.tripUrl);
+        // Store trip data in localStorage and redirect
+        const tripData = result.tripData;
+        this.saveTripLocally(tripData);
+        this.renderSuccessState(`trips/${tripData.id}/index.html`);
       } else {
         throw new Error(result.error || 'Unknown error');
       }
@@ -294,6 +321,28 @@ const tripCreator = {
       this.state = 'error';
       this.renderErrorState(error.message);
     }
+  },
+
+  /**
+   * Save trip data to localStorage (for static hosting)
+   * @param {Object} tripData
+   */
+  saveTripLocally(tripData) {
+    // Get existing trips from localStorage
+    let trips = JSON.parse(localStorage.getItem('travel-organizer-trips') || '[]');
+
+    // Check if trip already exists
+    const existingIndex = trips.findIndex(t => t.id === tripData.id);
+    if (existingIndex >= 0) {
+      trips[existingIndex] = tripData;
+    } else {
+      trips.push(tripData);
+    }
+
+    // Sort by start date (newest first)
+    trips.sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
+
+    localStorage.setItem('travel-organizer-trips', JSON.stringify(trips));
   },
 
   /**
