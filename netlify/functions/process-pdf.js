@@ -1,11 +1,17 @@
 /**
  * Netlify Function: Process PDF
  * Extracts travel data from PDF documents using Claude API
+ * Saves to Supabase database
  */
 
 const Anthropic = require('@anthropic-ai/sdk');
+const { createClient } = require('@supabase/supabase-js');
 
 const client = new Anthropic();
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_ANON_KEY
+);
 
 exports.handler = async (event, context) => {
   // CORS headers
@@ -85,6 +91,27 @@ exports.handler = async (event, context) => {
       hotels: allHotels,
       metadata
     });
+
+    // Save to Supabase
+    const { error: dbError } = await supabase
+      .from('trips')
+      .upsert({
+        id: tripData.id,
+        data: tripData,
+        updated_at: new Date().toISOString()
+      });
+
+    if (dbError) {
+      console.error('Supabase error:', dbError);
+      return {
+        statusCode: 500,
+        headers,
+        body: JSON.stringify({
+          success: false,
+          error: 'Failed to save trip to database'
+        })
+      };
+    }
 
     return {
       statusCode: 200,

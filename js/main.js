@@ -58,9 +58,34 @@
     if (!tripsContainer) return;
 
     try {
-      // Add cache-busting to avoid stale data
-      const tripsIndex = await utils.loadJSON(`./data/trips.json?t=${Date.now()}`);
-      renderTrips(tripsContainer, tripsIndex.trips);
+      // Load trips from both static file and Supabase
+      let allTrips = [];
+
+      // Load static trips (existing ones)
+      try {
+        const tripsIndex = await utils.loadJSON(`./data/trips.json?t=${Date.now()}`);
+        if (tripsIndex.trips) {
+          // Mark static trips with isStatic flag for routing
+          allTrips = tripsIndex.trips.map(t => ({ ...t, isStatic: true }));
+        }
+      } catch (e) {
+        console.log('No static trips found');
+      }
+
+      // Load trips from Supabase
+      try {
+        const response = await fetch('/.netlify/functions/get-trips');
+        const result = await response.json();
+        if (result.success && result.trips) {
+          // Mark Supabase trips with isStatic: false
+          const supabaseTrips = result.trips.map(t => ({ ...t, isStatic: false }));
+          allTrips = [...allTrips, ...supabaseTrips];
+        }
+      } catch (e) {
+        console.log('Could not load trips from database');
+      }
+
+      renderTrips(tripsContainer, allTrips);
     } catch (error) {
       console.error('Error loading trips:', error);
       tripsContainer.innerHTML = `
@@ -101,9 +126,12 @@
     const cardClass = isPast ? 'trip-card trip-card--past' : 'trip-card';
     const bgColor = isPast ? 'var(--color-gray-400)' : (trip.color || 'var(--color-primary)');
 
+    // Use different URL for static vs database trips
+    const tripUrl = trip.isStatic ? `trips/${trip.folder}/index.html` : `trip.html?id=${trip.id}`;
+
     return `
       <div class="trip-card-wrapper">
-        <a href="trips/${trip.folder}/index.html" class="${cardClass}">
+        <a href="${tripUrl}" class="${cardClass}">
           <div class="trip-card-image" style="background-color: ${bgColor}">
             <span class="trip-card-destination">${title}</span>
           </div>

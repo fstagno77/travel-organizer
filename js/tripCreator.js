@@ -309,10 +309,9 @@ const tripCreator = {
 
       if (result.success) {
         this.state = 'success';
-        // Store trip data in localStorage and redirect
         const tripData = result.tripData;
-        this.saveTripLocally(tripData);
-        this.renderSuccessState(`trips/${tripData.id}/index.html`);
+        // Redirect to dynamic trip page
+        this.renderSuccessState(`trip.html?id=${tripData.id}`);
       } else {
         throw new Error(result.error || 'Unknown error');
       }
@@ -321,28 +320,6 @@ const tripCreator = {
       this.state = 'error';
       this.renderErrorState(error.message);
     }
-  },
-
-  /**
-   * Save trip data to localStorage (for static hosting)
-   * @param {Object} tripData
-   */
-  saveTripLocally(tripData) {
-    // Get existing trips from localStorage
-    let trips = JSON.parse(localStorage.getItem('travel-organizer-trips') || '[]');
-
-    // Check if trip already exists
-    const existingIndex = trips.findIndex(t => t.id === tripData.id);
-    if (existingIndex >= 0) {
-      trips[existingIndex] = tripData;
-    } else {
-      trips.push(tripData);
-    }
-
-    // Sort by start date (newest first)
-    trips.sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
-
-    localStorage.setItem('travel-organizer-trips', JSON.stringify(trips));
   },
 
   /**
