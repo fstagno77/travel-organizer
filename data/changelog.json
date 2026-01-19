@@ -1,6 +1,26 @@
 {
   "versions": [
     {
+      "version": "0.3.0",
+      "date": "2026-01-19",
+      "changes": {
+        "it": [
+          "Pubblicazione online su Netlify",
+          "Integrazione Supabase per salvataggio viaggi nel cloud",
+          "Elaborazione PDF con AI Claude tramite Netlify Functions",
+          "Creazione nuovi viaggi da conferme volo/hotel",
+          "Sincronizzazione viaggi tra dispositivi"
+        ],
+        "en": [
+          "Published online on Netlify",
+          "Supabase integration for cloud trip storage",
+          "PDF processing with Claude AI via Netlify Functions",
+          "Create new trips from flight/hotel confirmations",
+          "Trip synchronization across devices"
+        ]
+      }
+    },
+    {
       "version": "0.2.0",
       "date": "2026-01-18",
       "changes": {
