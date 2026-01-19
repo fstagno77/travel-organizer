@@ -1,6 +1,26 @@
 {
   "versions": [
     {
+      "version": "0.5.0",
+      "date": "2026-01-19",
+      "changes": {
+        "it": [
+          "Server locale unificato con Supabase (stesso database di produzione)",
+          "Calcolo automatico durata voli quando non specificata nel PDF",
+          "Supporto stanze multiple nella stessa prenotazione hotel (roomTypes array)",
+          "Proxy locale per tutte le Netlify Functions",
+          "Miglioramento prompt AI per estrazione dati più accurata"
+        ],
+        "en": [
+          "Local server unified with Supabase (same production database)",
+          "Automatic flight duration calculation when not specified in PDF",
+          "Multiple rooms support in same hotel booking (roomTypes array)",
+          "Local proxy for all Netlify Functions",
+          "Improved AI prompts for more accurate data extraction"
+        ]
+      }
+    },
+    {
       "version": "0.4.0",
       "date": "2026-01-19",
       "changes": {

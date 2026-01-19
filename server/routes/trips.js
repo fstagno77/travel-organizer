@@ -8,6 +8,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs').promises;
 const pdfProcessor = require('../services/pdfProcessor');
+const supabaseService = require('../services/supabase');
 
 // Configure multer for PDF uploads
 const upload = multer({
@@ -21,6 +22,35 @@ const upload = multer({
     } else {
       cb(new Error('Only PDF files are allowed'));
     }
+  }
+});
+
+/**
+ * GET /api/trips
+ * Get all trips from Supabase
+ */
+router.get('/', async (req, res) => {
+  try {
+    const trips = await supabaseService.getAllTrips();
+    res.json({ success: true, trips });
+  } catch (error) {
+    console.error('Error getting trips:', error);
+    res.json({ success: true, trips: [] });
+  }
+});
+
+/**
+ * GET /api/trips/:id
+ * Get a single trip by ID from Supabase
+ */
+router.get('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const tripData = await supabaseService.getTripById(id);
+    res.json({ success: true, tripData });
+  } catch (error) {
+    console.error('Error getting trip:', error);
+    res.status(404).json({ success: false, error: 'Trip not found' });
   }
 });
 
@@ -52,12 +82,12 @@ router.post('/process-pdf', upload.array('pdfs', 10), async (req, res) => {
     // Generate trip ID and create trip data
     const tripData = await createTripFromExtractedData(extractedData);
 
-    // Save trip to filesystem
-    const tripUrl = await saveTrip(tripData);
+    // Save trip to Supabase
+    await supabaseService.saveTrip(tripData);
 
     res.json({
       success: true,
-      tripUrl,
+      tripData,
       tripId: tripData.id,
       summary: {
         flights: tripData.flights.length,
@@ -101,13 +131,11 @@ router.post('/add-documents', upload.array('pdfs', 10), async (req, res) => {
     // Process PDFs
     const extractedData = await pdfProcessor.processMultiplePdfs(req.files);
 
-    // Load existing trip data
-    const tripJsonPath = path.join(__dirname, '..', '..', 'trips', tripId, 'trip.json');
+    // Load existing trip data from Supabase
     let tripData;
 
     try {
-      const tripContent = await fs.readFile(tripJsonPath, 'utf-8');
-      tripData = JSON.parse(tripContent);
+      tripData = await supabaseService.getTripById(tripId);
     } catch (e) {
       return res.status(404).json({
         success: false,
@@ -164,23 +192,8 @@ router.post('/add-documents', upload.array('pdfs', 10), async (req, res) => {
       tripData.endDate = tripData.flights[tripData.flights.length - 1].date;
     }
 
-    // Save updated trip data
-    await fs.writeFile(tripJsonPath, JSON.stringify(tripData, null, 2));
-
-    // Update trips index with new dates
-    const tripsIndexPath = path.join(__dirname, '..', '..', 'data', 'trips.json');
-    try {
-      const indexContent = await fs.readFile(tripsIndexPath, 'utf-8');
-      const tripsIndex = JSON.parse(indexContent);
-      const tripIndex = tripsIndex.trips.findIndex(t => t.id === tripId);
-      if (tripIndex !== -1) {
-        tripsIndex.trips[tripIndex].startDate = tripData.startDate;
-        tripsIndex.trips[tripIndex].endDate = tripData.endDate;
-        await fs.writeFile(tripsIndexPath, JSON.stringify(tripsIndex, null, 2));
-      }
-    } catch (e) {
-      // Index update failed, but trip was saved
-    }
+    // Save updated trip data to Supabase
+    await supabaseService.saveTrip(tripData);
 
     res.json({
       success: true,
@@ -224,13 +237,11 @@ router.post('/add-booking', upload.array('pdfs', 10), async (req, res) => {
     // Process PDFs - AI will extract both flights and hotels
     const extractedData = await pdfProcessor.processMultiplePdfs(req.files);
 
-    // Load existing trip data
-    const tripJsonPath = path.join(__dirname, '..', '..', 'trips', tripId, 'trip.json');
+    // Load existing trip data from Supabase
     let tripData;
 
     try {
-      const tripContent = await fs.readFile(tripJsonPath, 'utf-8');
-      tripData = JSON.parse(tripContent);
+      tripData = await supabaseService.getTripById(tripId);
     } catch (e) {
       return res.status(404).json({
         success: false,
@@ -286,23 +297,8 @@ router.post('/add-booking', upload.array('pdfs', 10), async (req, res) => {
       tripData.endDate = tripData.flights[tripData.flights.length - 1].date;
     }
 
-    // Save updated trip data
-    await fs.writeFile(tripJsonPath, JSON.stringify(tripData, null, 2));
-
-    // Update trips index with new dates
-    const tripsIndexPath = path.join(__dirname, '..', '..', 'data', 'trips.json');
-    try {
-      const indexContent = await fs.readFile(tripsIndexPath, 'utf-8');
-      const tripsIndex = JSON.parse(indexContent);
-      const tripIndex = tripsIndex.trips.findIndex(t => t.id === tripId);
-      if (tripIndex !== -1) {
-        tripsIndex.trips[tripIndex].startDate = tripData.startDate;
-        tripsIndex.trips[tripIndex].endDate = tripData.endDate;
-        await fs.writeFile(tripsIndexPath, JSON.stringify(tripsIndex, null, 2));
-      }
-    } catch (e) {
-      // Index update failed, but trip was saved
-    }
+    // Save updated trip data to Supabase
+    await supabaseService.saveTrip(tripData);
 
     res.json({
       success: true,
@@ -684,41 +680,7 @@ router.put('/:id/rename', async (req, res) => {
       });
     }
 
-    const tripsIndexPath = path.join(__dirname, '..', '..', 'data', 'trips.json');
-    const tripJsonPath = path.join(__dirname, '..', '..', 'trips', id, 'trip.json');
-
-    // Update trips index
-    const tripsIndexContent = await fs.readFile(tripsIndexPath, 'utf-8');
-    const tripsIndex = JSON.parse(tripsIndexContent);
-
-    const tripIndex = tripsIndex.trips.findIndex(t => t.id === id);
-    if (tripIndex === -1) {
-      return res.status(404).json({
-        success: false,
-        error: 'Trip not found'
-      });
-    }
-
-    // Update title in both languages
-    tripsIndex.trips[tripIndex].title = {
-      it: name.trim(),
-      en: name.trim()
-    };
-
-    await fs.writeFile(tripsIndexPath, JSON.stringify(tripsIndex, null, 2));
-
-    // Update trip.json
-    try {
-      const tripContent = await fs.readFile(tripJsonPath, 'utf-8');
-      const tripData = JSON.parse(tripContent);
-      tripData.title = {
-        it: name.trim(),
-        en: name.trim()
-      };
-      await fs.writeFile(tripJsonPath, JSON.stringify(tripData, null, 2));
-    } catch (e) {
-      // trip.json might not exist for manually created trips
-    }
+    await supabaseService.renameTrip(id, name.trim());
 
     res.json({
       success: true,
@@ -742,31 +704,7 @@ router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
-    const tripsIndexPath = path.join(__dirname, '..', '..', 'data', 'trips.json');
-    const tripDir = path.join(__dirname, '..', '..', 'trips', id);
-
-    // Update trips index
-    const tripsIndexContent = await fs.readFile(tripsIndexPath, 'utf-8');
-    const tripsIndex = JSON.parse(tripsIndexContent);
-
-    const tripIndex = tripsIndex.trips.findIndex(t => t.id === id);
-    if (tripIndex === -1) {
-      return res.status(404).json({
-        success: false,
-        error: 'Trip not found'
-      });
-    }
-
-    // Remove from index
-    tripsIndex.trips.splice(tripIndex, 1);
-    await fs.writeFile(tripsIndexPath, JSON.stringify(tripsIndex, null, 2));
-
-    // Delete trip directory
-    try {
-      await fs.rm(tripDir, { recursive: true, force: true });
-    } catch (e) {
-      // Directory might not exist
-    }
+    await supabaseService.deleteTrip(id);
 
     res.json({
       success: true,

@@ -125,7 +125,9 @@ async function extractDataWithClaude(pdfText, docType) {
   let userPrompt;
 
   if (docType === 'flight') {
-    userPrompt = `Extract flight information from this document. Return a JSON object with this exact structure:
+    userPrompt = `Extract flight information from this document. Return a JSON object with this exact structure.
+
+IMPORTANT: If the flight duration is not explicitly stated in the document, calculate it from the departure and arrival times. Consider the arrivalNextDay flag if the arrival is on the next day. The duration should always be provided in HH:MM format.
 
 {
   "flights": [
@@ -174,7 +176,9 @@ Document text:
 ${pdfText}`;
 
   } else if (docType === 'hotel') {
-    userPrompt = `Extract hotel booking information from this document. Return a JSON object with this exact structure:
+    userPrompt = `Extract hotel booking information from this document. Return a JSON object with this exact structure.
+
+IMPORTANT: If the booking contains multiple rooms with the same confirmation number and dates, keep them as a SINGLE hotel entry with "rooms" set to the number of rooms and "roomTypes" as an array listing each room type. Do NOT create separate hotel entries for rooms in the same booking.
 
 {
   "hotels": [
@@ -202,12 +206,18 @@ ${pdfText}`;
         "time": "HH:MM"
       },
       "nights": 3,
-      "rooms": 1,
-      "roomType": {
-        "it": "Tipo camera in italiano",
-        "en": "Room type in English"
-      },
-      "guests": 2,
+      "rooms": 2,
+      "roomTypes": [
+        {
+          "it": "Tipo camera 1 in italiano",
+          "en": "Room type 1 in English"
+        },
+        {
+          "it": "Tipo camera 2 in italiano",
+          "en": "Room type 2 in English"
+        }
+      ],
+      "guests": 4,
       "guestName": "Guest Name",
       "confirmationNumber": "123456789",
       "pinCode": "1234 or null",

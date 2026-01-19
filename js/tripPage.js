@@ -906,7 +906,13 @@
         ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(hotel.address.fullAddress)}`
         : '#';
       const nightsLabel = hotel.nights === 1 ? i18n.t('hotel.night') : i18n.t('hotel.nights');
-      const roomType = hotel.roomType ? (hotel.roomType[lang] || hotel.roomType.en || hotel.roomType) : '-';
+      // Support both roomType (single) and roomTypes (array) formats
+      let roomType = '-';
+      if (hotel.roomTypes && Array.isArray(hotel.roomTypes)) {
+        roomType = hotel.roomTypes.map(rt => rt[lang] || rt.en || rt).join(', ');
+      } else if (hotel.roomType) {
+        roomType = hotel.roomType[lang] || hotel.roomType.en || hotel.roomType;
+      }
 
       return `
         <div class="hotel-card">
