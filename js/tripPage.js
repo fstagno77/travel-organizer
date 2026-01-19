@@ -22,7 +22,7 @@
       i18n.apply();
 
       // Load trip data from URL parameter
-      loadTripFromUrl();
+      await loadTripFromUrl();
 
     } catch (error) {
       console.error('Error initializing trip page:', error);
@@ -44,8 +44,11 @@
 
     try {
       // Load trip from Supabase via Netlify Function
+      console.log('Fetching trip:', tripId);
       const response = await fetch(`/.netlify/functions/get-trip?id=${encodeURIComponent(tripId)}`);
+      console.log('Response status:', response.status);
       const result = await response.json();
+      console.log('Result:', result);
 
       if (!result.success || !result.tripData) {
         showError('Trip not found');
@@ -53,9 +56,12 @@
       }
 
       currentTripData = result.tripData;
+      console.log('Rendering trip...');
       renderTrip(result.tripData);
+      console.log('Trip rendered successfully');
     } catch (error) {
       console.error('Error loading trip:', error);
+      console.error('Error stack:', error.stack);
       showError('Could not load trip data');
     }
   }
@@ -295,7 +301,7 @@
     const html = sortedFlights.map((flight, index) => {
       const trackingUrl = utils.getFlightTrackingUrl(flight.flightNumber);
       const formattedDate = utils.formatFlightDate(flight.date, lang);
-      const duration = utils.formatDuration(flight.duration, lang);
+      const duration = flight.duration ? utils.formatDuration(flight.duration, lang) : '';
       const isPast = isFlightPast(flight);
 
       return `
