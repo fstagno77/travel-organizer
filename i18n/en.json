@@ -32,6 +32,7 @@
     "loadError": "Could not load trip data",
     "rename": "Rename",
     "delete": "Delete",
+    "deleteTitle": "Delete trip",
     "renameTitle": "Rename trip",
     "newName": "New name",
     "renameError": "Error renaming trip",
@@ -63,7 +64,10 @@
     "departureTerminal": "Departure Terminal",
     "arrivalTerminal": "Arrival Terminal",
     "duration": "Flight Duration",
-    "frequentFlyer": "Frequent Flyer"
+    "frequentFlyer": "Frequent Flyer",
+    "delete": "Delete flight",
+    "deleteTitle": "Delete flight",
+    "deleteConfirm": "Are you sure you want to delete this flight?"
   },
   "hotel": {
     "showDetails": "Show details",
@@ -88,7 +92,10 @@
     "penaltyAfter": "Penalty after",
     "amenities": "Amenities",
     "notes": "Notes",
-    "source": "Booked on"
+    "source": "Booked on",
+    "delete": "Delete hotel",
+    "deleteTitle": "Delete hotel",
+    "deleteConfirm": "Are you sure you want to delete this hotel?"
   },
   "changelog": {
     "title": "Changelog",

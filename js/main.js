@@ -58,28 +58,14 @@
     if (!tripsContainer) return;
 
     try {
-      // Load trips from both static file and Supabase
+      // Load trips from Supabase only
       let allTrips = [];
 
-      // Load static trips (existing ones)
-      try {
-        const tripsIndex = await utils.loadJSON(`./data/trips.json?t=${Date.now()}`);
-        if (tripsIndex.trips) {
-          // Mark static trips with isStatic flag for routing
-          allTrips = tripsIndex.trips.map(t => ({ ...t, isStatic: true }));
-        }
-      } catch (e) {
-        console.log('No static trips found');
-      }
-
-      // Load trips from Supabase
       try {
         const response = await fetch('/.netlify/functions/get-trips');
         const result = await response.json();
         if (result.success && result.trips) {
-          // Mark Supabase trips with isStatic: false
-          const supabaseTrips = result.trips.map(t => ({ ...t, isStatic: false }));
-          allTrips = [...allTrips, ...supabaseTrips];
+          allTrips = result.trips;
         }
       } catch (e) {
         console.log('Could not load trips from database');
@@ -126,8 +112,8 @@
     const cardClass = isPast ? 'trip-card trip-card--past' : 'trip-card';
     const bgColor = isPast ? 'var(--color-gray-400)' : (trip.color || 'var(--color-primary)');
 
-    // Use different URL for static vs database trips
-    const tripUrl = trip.isStatic ? `trips/${trip.folder}/index.html` : `trip.html?id=${trip.id}`;
+    // All trips now use dynamic page
+    const tripUrl = `trip.html?id=${trip.id}`;
 
     return `
       <div class="trip-card-wrapper">
@@ -155,7 +141,7 @@
               </svg>
               <span data-i18n="trip.rename">Rinomina</span>
             </button>
-            <button class="trip-card-dropdown-item trip-card-dropdown-item--danger" data-action="delete" data-trip-id="${trip.id}">
+            <button class="trip-card-dropdown-item trip-card-dropdown-item--danger" data-action="delete" data-trip-id="${trip.id}" data-trip-name="${title}">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="3 6 5 6 21 6"></polyline>
                 <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -277,7 +263,7 @@
         if (action === 'rename') {
           renameTrip(tripId, tripName);
         } else if (action === 'delete') {
-          deleteTrip(tripId);
+          deleteTrip(tripId, tripName);
         }
       });
     });
@@ -353,21 +339,20 @@
       submitBtn.innerHTML = '<span class="spinner spinner-sm"></span>';
 
       try {
-        const response = await fetch(`/api/trips/${tripId}/rename`, {
-          method: 'PUT',
+        const response = await fetch('/.netlify/functions/rename-trip', {
+          method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: newName })
+          body: JSON.stringify({ tripId, title: newName })
         });
 
-        if (!response.ok) throw new Error('Failed to rename trip');
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Failed to rename trip');
+        }
 
         closeModal();
-        // Refresh appropriate page based on context
-        if (window.location.pathname.includes('/trips/')) {
-          initTripPage();
-        } else {
-          initHomePage();
-        }
+        // Refresh homepage
+        initHomePage();
       } catch (error) {
         console.error('Error renaming trip:', error);
         alert(i18n.t('trip.renameError') || 'Errore durante la rinomina');
@@ -407,26 +392,100 @@
   }
 
   /**
-   * Delete a trip
+   * Delete a trip - shows confirmation modal
    * @param {string} tripId
+   * @param {string} tripName
    */
-  async function deleteTrip(tripId) {
-    const confirmText = i18n.t('trip.deleteConfirm') || 'Sei sicuro di voler eliminare questo viaggio?';
-    if (!confirm(confirmText)) return;
+  function deleteTrip(tripId, tripName) {
+    showDeleteModal(tripId, tripName);
+  }
 
-    try {
-      const response = await fetch(`/api/trips/${tripId}`, {
-        method: 'DELETE'
-      });
+  /**
+   * Show delete confirmation modal
+   * @param {string} tripId
+   * @param {string} tripName
+   */
+  function showDeleteModal(tripId, tripName) {
+    const existingModal = document.getElementById('delete-modal');
+    if (existingModal) existingModal.remove();
 
-      if (!response.ok) throw new Error('Failed to delete trip');
+    const modalHTML = `
+      <div class="modal-overlay active" id="delete-modal">
+        <div class="modal">
+          <div class="modal-header">
+            <h2 data-i18n="trip.deleteTitle">Elimina viaggio</h2>
+            <button class="modal-close" id="delete-modal-close">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <p data-i18n="trip.deleteConfirm">Sei sicuro di voler eliminare questo viaggio?</p>
+            <p class="text-muted mt-2"><strong>${tripName || ''}</strong></p>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" id="delete-cancel" data-i18n="modal.cancel">Annulla</button>
+            <button class="btn btn-danger" id="delete-confirm" data-i18n="trip.delete">Elimina</button>
+          </div>
+        </div>
+      </div>
+    `;
 
-      // Reload trips
-      initHomePage();
-    } catch (error) {
-      console.error('Error deleting trip:', error);
-      alert(i18n.t('trip.deleteError') || 'Errore durante l\'eliminazione');
-    }
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    document.body.style.overflow = 'hidden';
+
+    const modal = document.getElementById('delete-modal');
+    const closeBtn = document.getElementById('delete-modal-close');
+    const cancelBtn = document.getElementById('delete-cancel');
+    const confirmBtn = document.getElementById('delete-confirm');
+
+    const closeModal = () => {
+      modal.remove();
+      document.body.style.overflow = '';
+    };
+
+    const performDelete = async () => {
+      confirmBtn.disabled = true;
+      confirmBtn.innerHTML = '<span class="spinner spinner-sm"></span>';
+
+      try {
+        const response = await fetch(`/.netlify/functions/delete-trip?id=${encodeURIComponent(tripId)}`, {
+          method: 'DELETE'
+        });
+
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Failed to delete trip');
+        }
+
+        closeModal();
+        // Reload trips
+        initHomePage();
+      } catch (error) {
+        console.error('Error deleting trip:', error);
+        alert(i18n.t('trip.deleteError') || 'Errore durante l\'eliminazione');
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = i18n.t('trip.delete') || 'Elimina';
+      }
+    };
+
+    closeBtn.addEventListener('click', closeModal);
+    cancelBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+    document.addEventListener('keydown', function escHandler(e) {
+      if (e.key === 'Escape') {
+        closeModal();
+        document.removeEventListener('keydown', escHandler);
+      }
+    });
+    confirmBtn.addEventListener('click', performDelete);
+
+    // Apply translations
+    i18n.apply();
   }
 
   /**
@@ -826,6 +885,19 @@
       addFiles(e.dataTransfer.files);
     });
 
+    // Convert file to base64
+    const fileToBase64 = (file) => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => {
+          const base64 = reader.result.split(',')[1];
+          resolve(base64);
+        };
+        reader.onerror = error => reject(error);
+      });
+    };
+
     // Submit function
     const submitBooking = async () => {
       if (files.length === 0) return;
@@ -834,15 +906,20 @@
       submitBtn.innerHTML = '<span class="spinner spinner-sm"></span>';
 
       try {
-        const formData = new FormData();
-        files.forEach(file => {
-          formData.append('pdfs', file);
-        });
-        formData.append('tripId', tripId);
+        // Convert files to base64
+        const pdfs = await Promise.all(
+          files.map(async file => ({
+            filename: file.name,
+            content: await fileToBase64(file)
+          }))
+        );
 
-        const response = await fetch('/api/trips/add-booking', {
+        const response = await fetch('/.netlify/functions/add-booking', {
           method: 'POST',
-          body: formData
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ pdfs, tripId })
         });
 
         if (!response.ok) throw new Error('Failed to add booking');

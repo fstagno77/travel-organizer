@@ -1,7 +1,6 @@
 /**
- * Netlify Function: Process PDF
- * Extracts travel data from PDF documents using Claude API
- * Saves to Supabase database
+ * Netlify Function: Add Booking to existing trip
+ * Processes PDF and adds flight/hotel to existing trip in Supabase
  */
 
 const Anthropic = require('@anthropic-ai/sdk');
@@ -36,7 +35,7 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    const { pdfs } = JSON.parse(event.body);
+    const { pdfs, tripId } = JSON.parse(event.body);
 
     if (!pdfs || pdfs.length === 0) {
       return {
@@ -46,38 +45,55 @@ exports.handler = async (event, context) => {
       };
     }
 
-    console.log(`Processing ${pdfs.length} PDF file(s)...`);
+    if (!tripId) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ success: false, error: 'Trip ID is required' })
+      };
+    }
+
+    console.log(`Adding booking to trip ${tripId}, processing ${pdfs.length} PDF file(s)...`);
+
+    // Get existing trip from Supabase
+    const { data: tripRecord, error: fetchError } = await supabase
+      .from('trips')
+      .select('*')
+      .eq('id', tripId)
+      .single();
+
+    if (fetchError || !tripRecord) {
+      return {
+        statusCode: 404,
+        headers,
+        body: JSON.stringify({ success: false, error: 'Trip not found' })
+      };
+    }
+
+    const tripData = tripRecord.data;
 
     // Process all PDFs
-    const allFlights = [];
-    const allHotels = [];
-    let metadata = {};
+    const newFlights = [];
+    const newHotels = [];
 
     for (const pdf of pdfs) {
       try {
         console.log(`Processing file: ${pdf.filename}`);
         const result = await processPdfWithClaude(pdf.content, pdf.filename);
-        console.log(`Claude result for ${pdf.filename}:`, JSON.stringify(result, null, 2));
+        console.log(`Claude result:`, JSON.stringify(result, null, 2));
 
         if (result.flights) {
-          allFlights.push(...result.flights);
+          newFlights.push(...result.flights);
         }
         if (result.hotels) {
-          allHotels.push(...result.hotels);
-        }
-        if (result.passenger) {
-          metadata.passenger = result.passenger;
-        }
-        if (result.booking) {
-          metadata.booking = result.booking;
+          newHotels.push(...result.hotels);
         }
       } catch (error) {
         console.error(`Error processing ${pdf.filename}:`, error.message);
-        console.error(`Full error:`, error);
       }
     }
 
-    if (!allFlights.length && !allHotels.length) {
+    if (!newFlights.length && !newHotels.length) {
       return {
         statusCode: 400,
         headers,
@@ -88,21 +104,34 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Generate trip data
-    const tripData = createTripFromExtractedData({
-      flights: allFlights,
-      hotels: allHotels,
-      metadata
-    });
+    // Add new bookings to trip
+    const existingFlightCount = tripData.flights?.length || 0;
+    const existingHotelCount = tripData.hotels?.length || 0;
 
-    // Save to Supabase
+    const flightsWithIds = newFlights.map((f, i) => ({
+      ...f,
+      id: `flight-${existingFlightCount + i + 1}`
+    }));
+
+    const hotelsWithIds = newHotels.map((h, i) => ({
+      ...h,
+      id: `hotel-${existingHotelCount + i + 1}`
+    }));
+
+    tripData.flights = [...(tripData.flights || []), ...flightsWithIds];
+    tripData.hotels = [...(tripData.hotels || []), ...hotelsWithIds];
+
+    // Update dates if needed
+    updateTripDates(tripData);
+
+    // Save updated trip to Supabase
     const { error: dbError } = await supabase
       .from('trips')
-      .upsert({
-        id: tripData.id,
+      .update({
         data: tripData,
         updated_at: new Date().toISOString()
-      });
+      })
+      .eq('id', tripId);
 
     if (dbError) {
       console.error('Supabase error:', dbError);
@@ -111,7 +140,7 @@ exports.handler = async (event, context) => {
         headers,
         body: JSON.stringify({
           success: false,
-          error: 'Failed to save trip to database'
+          error: 'Failed to update trip in database'
         })
       };
     }
@@ -122,26 +151,51 @@ exports.handler = async (event, context) => {
       body: JSON.stringify({
         success: true,
         tripData,
-        summary: {
-          flights: allFlights.length,
-          hotels: allHotels.length
+        added: {
+          flights: newFlights.length,
+          hotels: newHotels.length
         }
       })
     };
 
   } catch (error) {
-    console.error('Error processing PDFs:', error);
+    console.error('Error adding booking:', error);
     return {
       statusCode: 500,
       headers,
       body: JSON.stringify({
         success: false,
-        error: error.message || 'Failed to process PDF documents',
-        details: error.stack
+        error: error.message || 'Failed to process PDF documents'
       })
     };
   }
 };
+
+/**
+ * Update trip dates based on all flights and hotels
+ */
+function updateTripDates(tripData) {
+  const dates = [];
+
+  if (tripData.flights) {
+    tripData.flights.forEach(f => {
+      if (f.date) dates.push(new Date(f.date));
+    });
+  }
+
+  if (tripData.hotels) {
+    tripData.hotels.forEach(h => {
+      if (h.checkIn?.date) dates.push(new Date(h.checkIn.date));
+      if (h.checkOut?.date) dates.push(new Date(h.checkOut.date));
+    });
+  }
+
+  if (dates.length > 0) {
+    dates.sort((a, b) => a - b);
+    tripData.startDate = dates[0].toISOString().split('T')[0];
+    tripData.endDate = dates[dates.length - 1].toISOString().split('T')[0];
+  }
+}
 
 /**
  * Process PDF with Claude API using vision
@@ -198,7 +252,7 @@ function detectDocumentType(filename) {
   const filenameLower = filename.toLowerCase();
 
   const flightIndicators = ['flight', 'volo', 'boarding', 'itinerary', 'ticket', 'eticket'];
-  const hotelIndicators = ['hotel', 'booking', 'reservation', 'accommodation'];
+  const hotelIndicators = ['hotel', 'booking', 'reservation', 'accommodation', 'conferma', 'prenotazione'];
 
   for (const indicator of flightIndicators) {
     if (filenameLower.includes(indicator)) return 'flight';
@@ -326,72 +380,4 @@ For flights include: date, flightNumber, airline, departure (code, city, airport
 
 For hotels include: name, address (street, city, country, fullAddress), checkIn (date, time), checkOut (date, time), nights, confirmationNumber, guestName.`;
   }
-}
-
-/**
- * Create trip data structure from extracted data
- */
-function createTripFromExtractedData(data) {
-  const { flights, hotels, metadata } = data;
-
-  let startDate = null;
-  let endDate = null;
-  let destination = '';
-
-  if (flights.length > 0) {
-    flights.sort((a, b) => new Date(a.date) - new Date(b.date));
-    startDate = flights[0].date;
-    endDate = flights[flights.length - 1].date;
-
-    const departureCode = flights[0].departure.code;
-    const arrivalFlight = flights.find(f => f.arrival.code !== departureCode);
-    if (arrivalFlight) {
-      destination = arrivalFlight.arrival.city;
-    }
-  }
-
-  if (hotels.length > 0) {
-    if (!startDate) {
-      startDate = hotels[0].checkIn.date;
-    }
-    if (!endDate) {
-      endDate = hotels[hotels.length - 1].checkOut.date;
-    }
-    if (!destination) {
-      destination = hotels[0].address.city;
-    }
-  }
-
-  const date = new Date(startDate);
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const year = date.getFullYear();
-  const destSlug = destination.toLowerCase().replace(/[^a-z0-9]+/g, '-').substring(0, 20);
-  const tripId = `${year}-${month}-${destSlug}`;
-
-  let route = '';
-  if (flights.length > 0) {
-    const codes = [flights[0].departure.code];
-    flights.forEach(f => {
-      if (codes[codes.length - 1] !== f.arrival.code) {
-        codes.push(f.arrival.code);
-      }
-    });
-    route = codes.join(' → ');
-  }
-
-  return {
-    id: tripId,
-    title: {
-      it: `Viaggio a ${destination}`,
-      en: `${destination} Trip`
-    },
-    destination,
-    startDate,
-    endDate,
-    route,
-    passenger: metadata.passenger || { name: '', type: 'ADT' },
-    flights: flights.map((f, i) => ({ ...f, id: `flight-${i + 1}` })),
-    hotels: hotels.map((h, i) => ({ ...h, id: `hotel-${i + 1}` })),
-    booking: metadata.booking || null
-  };
 }

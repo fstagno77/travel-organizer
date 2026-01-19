@@ -1,6 +1,26 @@
 {
   "versions": [
     {
+      "version": "0.4.0",
+      "date": "2026-01-19",
+      "changes": {
+        "it": [
+          "Modali personalizzate per conferma eliminazione (viaggi, voli, hotel)",
+          "Possibilità di eliminare singoli voli o hotel dalla sezione dettagli",
+          "Pulsante 'Aggiungi prenotazione' nelle sezioni vuote voli/hotel",
+          "Cambio automatico tab dopo aggiunta prenotazione",
+          "Aggiornamento automatico date viaggio quando si aggiungono/rimuovono hotel"
+        ],
+        "en": [
+          "Custom modals for delete confirmation (trips, flights, hotels)",
+          "Ability to delete individual flights or hotels from details section",
+          "Add booking button in empty flights/hotels sections",
+          "Automatic tab switch after adding booking",
+          "Automatic trip date update when adding/removing hotels"
+        ]
+      }
+    },
+    {
       "version": "0.3.0",
       "date": "2026-01-19",
       "changes": {

@@ -143,6 +143,30 @@
             </svg>
           </button>
           <div class="section-dropdown" id="content-dropdown">
+            <button class="section-dropdown-item" data-action="add-booking">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              <span data-i18n="trip.addBooking">Add booking</span>
+            </button>
+            <button class="section-dropdown-item" data-action="share">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="18" cy="5" r="3"></circle>
+                <circle cx="6" cy="12" r="3"></circle>
+                <circle cx="18" cy="19" r="3"></circle>
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+              </svg>
+              <span data-i18n="trip.share">Share</span>
+            </button>
+            <button class="section-dropdown-item" data-action="rename">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+              <span data-i18n="trip.rename">Rename</span>
+            </button>
             <button class="section-dropdown-item section-dropdown-item--danger" data-action="delete">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="3 6 5 6 21 6"></polyline>
@@ -190,16 +214,27 @@
     tabs.forEach(tab => {
       tab.addEventListener('click', () => {
         const targetTab = tab.dataset.tab;
-
-        tabs.forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
-
-        document.querySelectorAll('.tab-content').forEach(content => {
-          content.classList.remove('active');
-        });
-        document.getElementById(`${targetTab}-tab`).classList.add('active');
+        switchToTab(targetTab);
       });
     });
+  }
+
+  /**
+   * Switch to a specific tab
+   * @param {string} tabName - 'flights' or 'hotels'
+   */
+  function switchToTab(tabName) {
+    const tabs = document.querySelectorAll('.segmented-control-btn');
+
+    tabs.forEach(t => t.classList.remove('active'));
+    const targetBtn = document.querySelector(`.segmented-control-btn[data-tab="${tabName}"]`);
+    if (targetBtn) targetBtn.classList.add('active');
+
+    document.querySelectorAll('.tab-content').forEach(content => {
+      content.classList.remove('active');
+    });
+    const targetContent = document.getElementById(`${tabName}-tab`);
+    if (targetContent) targetContent.classList.add('active');
   }
 
   /**
@@ -225,6 +260,12 @@
 
         if (action === 'delete') {
           deleteTrip(tripId);
+        } else if (action === 'add-booking') {
+          showAddBookingModal(tripId);
+        } else if (action === 'share') {
+          showShareModal(tripId);
+        } else if (action === 'rename') {
+          showRenameModal(tripId);
         }
       });
     });
@@ -235,28 +276,455 @@
   }
 
   /**
-   * Delete trip from Supabase
+   * Show modal to add booking
    * @param {string} tripId
    */
-  async function deleteTrip(tripId) {
-    const confirmText = i18n.t('trip.deleteConfirm') || 'Are you sure you want to delete this trip?';
-    if (!confirm(confirmText)) return;
+  function showAddBookingModal(tripId) {
+    const existingModal = document.getElementById('add-booking-modal');
+    if (existingModal) existingModal.remove();
 
-    try {
-      const response = await fetch(`/.netlify/functions/delete-trip?id=${encodeURIComponent(tripId)}`, {
-        method: 'DELETE'
-      });
+    const modalHTML = `
+      <div class="modal-overlay" id="add-booking-modal">
+        <div class="modal">
+          <div class="modal-header">
+            <h2 data-i18n="trip.addBooking">Add booking</h2>
+            <button class="modal-close" id="add-booking-close">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div class="upload-zone" id="add-booking-upload-zone">
+              <input type="file" id="add-booking-file-input" accept=".pdf" multiple hidden>
+              <svg class="upload-zone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              <div class="upload-zone-text" data-i18n="trip.uploadHint">Drag PDFs here or click to select</div>
+              <div class="upload-zone-hint">PDF</div>
+            </div>
+            <div class="file-list" id="add-booking-file-list"></div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" id="add-booking-cancel" data-i18n="modal.cancel">Cancel</button>
+            <button class="btn btn-primary" id="add-booking-submit" disabled data-i18n="modal.add">Add</button>
+          </div>
+        </div>
+      </div>
+    `;
 
-      if (!response.ok) {
-        throw new Error('Failed to delete trip');
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    const modal = document.getElementById('add-booking-modal');
+    const closeBtn = document.getElementById('add-booking-close');
+    const cancelBtn = document.getElementById('add-booking-cancel');
+    const submitBtn = document.getElementById('add-booking-submit');
+    const uploadZone = document.getElementById('add-booking-upload-zone');
+    const fileInput = document.getElementById('add-booking-file-input');
+    const fileList = document.getElementById('add-booking-file-list');
+
+    let files = [];
+
+    const closeModal = () => {
+      modal.remove();
+      document.body.style.overflow = '';
+    };
+
+    const renderFileList = () => {
+      if (files.length === 0) {
+        fileList.innerHTML = '';
+        submitBtn.disabled = true;
+        return;
       }
 
-      // Redirect to home
-      window.location.href = './';
-    } catch (error) {
-      console.error('Error deleting trip:', error);
-      alert(i18n.t('trip.deleteError') || 'Error deleting trip');
-    }
+      fileList.innerHTML = files.map((file, index) => `
+        <div class="file-item">
+          <div class="file-item-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+            </svg>
+          </div>
+          <div class="file-item-info">
+            <div class="file-item-name">${file.name}</div>
+          </div>
+          <button class="file-item-remove" data-index="${index}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+      `).join('');
+
+      submitBtn.disabled = false;
+
+      fileList.querySelectorAll('.file-item-remove').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const index = parseInt(btn.dataset.index);
+          files.splice(index, 1);
+          renderFileList();
+        });
+      });
+    };
+
+    const addFiles = (fileListInput) => {
+      const pdfFiles = Array.from(fileListInput).filter(f => f.type === 'application/pdf');
+      files.push(...pdfFiles);
+      renderFileList();
+    };
+
+    const fileToBase64 = (file) => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => {
+          const base64 = reader.result.split(',')[1];
+          resolve(base64);
+        };
+        reader.onerror = error => reject(error);
+      });
+    };
+
+    const submitBooking = async () => {
+      if (files.length === 0) return;
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="spinner spinner-sm"></span>';
+
+      try {
+        const pdfs = await Promise.all(
+          files.map(async file => ({
+            filename: file.name,
+            content: await fileToBase64(file)
+          }))
+        );
+
+        const response = await fetch('/.netlify/functions/add-booking', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ pdfs, tripId })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Failed to add booking');
+        }
+
+        closeModal();
+        // Reload trip data
+        await loadTripFromUrl();
+
+        // Switch to the appropriate tab based on what was added
+        if (result.added) {
+          if (result.added.hotels > 0) {
+            switchToTab('hotels');
+          } else if (result.added.flights > 0) {
+            switchToTab('flights');
+          }
+        }
+      } catch (error) {
+        console.error('Error adding booking:', error);
+        alert(i18n.t('trip.addError') || 'Error adding booking');
+        submitBtn.disabled = false;
+        submitBtn.textContent = i18n.t('modal.add') || 'Add';
+      }
+    };
+
+    // Upload zone events
+    uploadZone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', (e) => {
+      addFiles(e.target.files);
+      fileInput.value = '';
+    });
+    uploadZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadZone.classList.add('dragover');
+    });
+    uploadZone.addEventListener('dragleave', () => {
+      uploadZone.classList.remove('dragover');
+    });
+    uploadZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadZone.classList.remove('dragover');
+      addFiles(e.dataTransfer.files);
+    });
+
+    // Modal events
+    closeBtn.addEventListener('click', closeModal);
+    cancelBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+    submitBtn.addEventListener('click', submitBooking);
+
+    // Show modal
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    i18n.apply();
+  }
+
+  /**
+   * Delete trip - shows confirmation modal
+   * @param {string} tripId
+   */
+  function deleteTrip(tripId) {
+    showDeleteModal(tripId);
+  }
+
+  /**
+   * Show delete confirmation modal
+   * @param {string} tripId
+   */
+  function showDeleteModal(tripId) {
+    const existingModal = document.getElementById('delete-modal');
+    if (existingModal) existingModal.remove();
+
+    const lang = i18n.getLang();
+    const tripTitle = currentTripData?.title?.[lang] || currentTripData?.title?.en || currentTripData?.title?.it || '';
+
+    const modalHTML = `
+      <div class="modal-overlay" id="delete-modal">
+        <div class="modal">
+          <div class="modal-header">
+            <h2 data-i18n="trip.deleteTitle">Delete trip</h2>
+            <button class="modal-close" id="delete-close">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <p data-i18n="trip.deleteConfirm">Are you sure you want to delete this trip?</p>
+            <p class="text-muted mt-2"><strong>${tripTitle}</strong></p>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" id="delete-cancel" data-i18n="modal.cancel">Cancel</button>
+            <button class="btn btn-danger" id="delete-confirm" data-i18n="trip.delete">Delete</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    const modal = document.getElementById('delete-modal');
+    const closeBtn = document.getElementById('delete-close');
+    const cancelBtn = document.getElementById('delete-cancel');
+    const confirmBtn = document.getElementById('delete-confirm');
+
+    const closeModal = () => {
+      modal.remove();
+      document.body.style.overflow = '';
+    };
+
+    const performDelete = async () => {
+      confirmBtn.disabled = true;
+      confirmBtn.innerHTML = '<span class="spinner spinner-sm"></span>';
+
+      try {
+        const response = await fetch(`/.netlify/functions/delete-trip?id=${encodeURIComponent(tripId)}`, {
+          method: 'DELETE'
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to delete trip');
+        }
+
+        closeModal();
+        // Redirect to home
+        window.location.href = './';
+      } catch (error) {
+        console.error('Error deleting trip:', error);
+        alert(i18n.t('trip.deleteError') || 'Error deleting trip');
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = i18n.t('trip.delete') || 'Delete';
+      }
+    };
+
+    closeBtn.addEventListener('click', closeModal);
+    cancelBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+    confirmBtn.addEventListener('click', performDelete);
+
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    i18n.apply();
+  }
+
+  /**
+   * Show share modal
+   * @param {string} tripId
+   */
+  function showShareModal(tripId) {
+    const existingModal = document.getElementById('share-modal');
+    if (existingModal) existingModal.remove();
+
+    const shareUrl = `${window.location.origin}/trip.html?id=${encodeURIComponent(tripId)}`;
+
+    const modalHTML = `
+      <div class="modal-overlay" id="share-modal">
+        <div class="modal">
+          <div class="modal-header">
+            <h2 data-i18n="trip.share">Share</h2>
+            <button class="modal-close" id="share-close">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <p class="mb-4" data-i18n="trip.shareDescription">Share this trip with others using the link below:</p>
+            <div class="share-url-container">
+              <input type="text" class="share-url-input" id="share-url-input" value="${shareUrl}" readonly>
+              <button class="btn btn-primary" id="copy-url-btn" data-i18n="trip.copyLink">Copy link</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    const modal = document.getElementById('share-modal');
+    const closeBtn = document.getElementById('share-close');
+    const copyBtn = document.getElementById('copy-url-btn');
+    const urlInput = document.getElementById('share-url-input');
+
+    const closeModal = () => {
+      modal.remove();
+      document.body.style.overflow = '';
+    };
+
+    closeBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+
+    copyBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        copyBtn.textContent = i18n.t('trip.copied') || 'Copied!';
+        setTimeout(() => {
+          copyBtn.textContent = i18n.t('trip.copyLink') || 'Copy link';
+        }, 2000);
+      } catch (err) {
+        urlInput.select();
+        document.execCommand('copy');
+      }
+    });
+
+    urlInput.addEventListener('click', () => urlInput.select());
+
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    i18n.apply();
+  }
+
+  /**
+   * Show rename modal
+   * @param {string} tripId
+   */
+  function showRenameModal(tripId) {
+    const existingModal = document.getElementById('rename-modal');
+    if (existingModal) existingModal.remove();
+
+    const lang = i18n.getLang();
+    const currentTitle = currentTripData?.title?.[lang] || currentTripData?.title?.en || currentTripData?.title?.it || '';
+
+    const modalHTML = `
+      <div class="modal-overlay" id="rename-modal">
+        <div class="modal">
+          <div class="modal-header">
+            <h2 data-i18n="trip.rename">Rename</h2>
+            <button class="modal-close" id="rename-close">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <label class="form-label" data-i18n="trip.newName">New name</label>
+            <input type="text" class="form-input" id="rename-input" value="${currentTitle}">
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" id="rename-cancel" data-i18n="modal.cancel">Cancel</button>
+            <button class="btn btn-primary" id="rename-submit" data-i18n="modal.save">Save</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    const modal = document.getElementById('rename-modal');
+    const closeBtn = document.getElementById('rename-close');
+    const cancelBtn = document.getElementById('rename-cancel');
+    const submitBtn = document.getElementById('rename-submit');
+    const input = document.getElementById('rename-input');
+
+    const closeModal = () => {
+      modal.remove();
+      document.body.style.overflow = '';
+    };
+
+    const submitRename = async () => {
+      const newName = input.value.trim();
+      if (!newName) return;
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="spinner spinner-sm"></span>';
+
+      try {
+        const response = await fetch('/.netlify/functions/rename-trip', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tripId, title: newName })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Failed to rename trip');
+        }
+
+        closeModal();
+        // Reload trip data
+        await loadTripFromUrl();
+      } catch (error) {
+        console.error('Error renaming trip:', error);
+        alert(i18n.t('trip.renameError') || 'Error renaming trip');
+        submitBtn.disabled = false;
+        submitBtn.textContent = i18n.t('modal.save') || 'Save';
+      }
+    };
+
+    closeBtn.addEventListener('click', closeModal);
+    cancelBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+    submitBtn.addEventListener('click', submitRename);
+    input.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') submitRename();
+    });
+
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    input.focus();
+    input.select();
+    i18n.apply();
   }
 
   /**
@@ -283,9 +751,19 @@
         <div class="empty-state">
           <h3 class="empty-state-title" data-i18n="trip.noFlights">No flights</h3>
           <p class="empty-state-text" data-i18n="trip.noFlightsText">No flight information available</p>
+          <button class="btn btn-primary mt-4" id="add-flight-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            <span data-i18n="trip.addBooking">Add booking</span>
+          </button>
         </div>
       `;
       i18n.apply();
+      document.getElementById('add-flight-btn')?.addEventListener('click', () => {
+        showAddBookingModal(currentTripData.id);
+      });
       return;
     }
 
@@ -369,6 +847,13 @@
                 <span class="flight-detail-value">${flight.class || '-'}</span>
               </div>
             </div>
+            <button class="btn-delete-item" data-type="flight" data-id="${flight.id}">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+              <span data-i18n="flight.delete">Delete flight</span>
+            </button>
           </div>
         </div>
       `;
@@ -377,6 +862,7 @@
     container.innerHTML = html;
     i18n.apply();
     initFlightToggleButtons();
+    initDeleteItemButtons();
   }
 
   /**
@@ -390,9 +876,19 @@
         <div class="empty-state">
           <h3 class="empty-state-title" data-i18n="trip.noHotels">No hotels</h3>
           <p class="empty-state-text" data-i18n="trip.noHotelsText">No hotel information available</p>
+          <button class="btn btn-primary mt-4" id="add-hotel-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            <span data-i18n="trip.addBooking">Add booking</span>
+          </button>
         </div>
       `;
       i18n.apply();
+      document.getElementById('add-hotel-btn')?.addEventListener('click', () => {
+        showAddBookingModal(currentTripData.id);
+      });
       return;
     }
 
@@ -491,6 +987,13 @@
               </div>
               ` : ''}
             </div>
+            <button class="btn-delete-item" data-type="hotel" data-id="${hotel.id}">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+              <span data-i18n="hotel.delete">Delete hotel</span>
+            </button>
           </div>
         </div>
       `;
@@ -499,6 +1002,134 @@
     container.innerHTML = html;
     i18n.apply();
     initHotelToggleButtons();
+    initDeleteItemButtons();
+  }
+
+  /**
+   * Initialize delete item buttons
+   */
+  function initDeleteItemButtons() {
+    document.querySelectorAll('.btn-delete-item').forEach(btn => {
+      // Remove existing listeners by cloning
+      const newBtn = btn.cloneNode(true);
+      btn.parentNode.replaceChild(newBtn, btn);
+
+      newBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const type = newBtn.dataset.type;
+        const id = newBtn.dataset.id;
+        showDeleteItemModal(type, id);
+      });
+    });
+  }
+
+  /**
+   * Show delete item confirmation modal
+   * @param {string} type - 'flight' or 'hotel'
+   * @param {string} itemId
+   */
+  function showDeleteItemModal(type, itemId) {
+    const existingModal = document.getElementById('delete-item-modal');
+    if (existingModal) existingModal.remove();
+
+    const lang = i18n.getLang();
+    let itemDescription = '';
+
+    if (type === 'flight') {
+      const flight = currentTripData?.flights?.find(f => f.id === itemId);
+      if (flight) {
+        const date = utils.formatFlightDate(flight.date, lang);
+        itemDescription = `${flight.flightNumber} - ${flight.departure?.code} → ${flight.arrival?.code} (${date})`;
+      }
+    } else if (type === 'hotel') {
+      const hotel = currentTripData?.hotels?.find(h => h.id === itemId);
+      if (hotel) {
+        itemDescription = hotel.name;
+      }
+    }
+
+    const titleKey = type === 'flight' ? 'flight.deleteTitle' : 'hotel.deleteTitle';
+    const confirmKey = type === 'flight' ? 'flight.deleteConfirm' : 'hotel.deleteConfirm';
+    const deleteKey = type === 'flight' ? 'flight.delete' : 'hotel.delete';
+
+    const modalHTML = `
+      <div class="modal-overlay" id="delete-item-modal">
+        <div class="modal">
+          <div class="modal-header">
+            <h2 data-i18n="${titleKey}">${type === 'flight' ? 'Delete flight' : 'Delete hotel'}</h2>
+            <button class="modal-close" id="delete-item-close">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <p data-i18n="${confirmKey}">${type === 'flight' ? 'Are you sure you want to delete this flight?' : 'Are you sure you want to delete this hotel?'}</p>
+            <p class="text-muted mt-2"><strong>${itemDescription}</strong></p>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" id="delete-item-cancel" data-i18n="modal.cancel">Cancel</button>
+            <button class="btn btn-danger" id="delete-item-confirm" data-i18n="${deleteKey}">${type === 'flight' ? 'Delete flight' : 'Delete hotel'}</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    const modal = document.getElementById('delete-item-modal');
+    const closeBtn = document.getElementById('delete-item-close');
+    const cancelBtn = document.getElementById('delete-item-cancel');
+    const confirmBtn = document.getElementById('delete-item-confirm');
+
+    const closeModal = () => {
+      modal.remove();
+      document.body.style.overflow = '';
+    };
+
+    const performDelete = async () => {
+      confirmBtn.disabled = true;
+      confirmBtn.innerHTML = '<span class="spinner spinner-sm"></span>';
+
+      try {
+        const response = await fetch('/.netlify/functions/delete-booking', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tripId: currentTripData.id,
+            type: type,
+            itemId: itemId
+          })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Failed to delete');
+        }
+
+        closeModal();
+        // Reload trip data
+        await loadTripFromUrl();
+      } catch (error) {
+        console.error('Error deleting item:', error);
+        alert(i18n.t('common.deleteError') || 'Error deleting');
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = i18n.t(deleteKey) || 'Delete';
+      }
+    };
+
+    closeBtn.addEventListener('click', closeModal);
+    cancelBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+    confirmBtn.addEventListener('click', performDelete);
+
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    i18n.apply();
   }
 
   /**

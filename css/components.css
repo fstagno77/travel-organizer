@@ -47,6 +47,16 @@
   color: var(--color-white);
 }
 
+.btn-danger {
+  background-color: var(--color-danger, #dc2626);
+  color: var(--color-white);
+}
+
+.btn-danger:hover {
+  background-color: #b91c1c;
+  color: var(--color-white);
+}
+
 .btn-sm {
   padding: var(--spacing-2) var(--spacing-3);
   font-size: var(--font-size-xs);
@@ -321,6 +331,34 @@
 
 .flight-toggle-details.active svg {
   transform: rotate(180deg);
+}
+
+/* Delete item button (inside details) */
+.btn-delete-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-2);
+  width: 100%;
+  margin-top: var(--spacing-4);
+  padding: var(--spacing-3);
+  color: var(--color-danger, #dc2626);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  background-color: transparent;
+  border: 1px solid var(--color-danger, #dc2626);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-delete-item:hover {
+  background-color: var(--color-danger, #dc2626);
+  color: var(--color-white);
+}
+
+.btn-delete-item svg {
+  flex-shrink: 0;
 }
 
 /* Trip Header */

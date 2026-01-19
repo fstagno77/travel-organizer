@@ -32,6 +32,7 @@
     "loadError": "Impossibile caricare i dati del viaggio",
     "rename": "Rinomina",
     "delete": "Elimina",
+    "deleteTitle": "Elimina viaggio",
     "renameTitle": "Rinomina viaggio",
     "newName": "Nuovo nome",
     "renameError": "Errore durante la rinomina",
@@ -63,7 +64,10 @@
     "departureTerminal": "Terminal partenza",
     "arrivalTerminal": "Terminal arrivo",
     "duration": "Durata volo",
-    "frequentFlyer": "Frequent Flyer"
+    "frequentFlyer": "Frequent Flyer",
+    "delete": "Elimina volo",
+    "deleteTitle": "Elimina volo",
+    "deleteConfirm": "Sei sicuro di voler eliminare questo volo?"
   },
   "hotel": {
     "showDetails": "Mostra dettagli",
@@ -88,7 +92,10 @@
     "penaltyAfter": "Penale dopo",
     "amenities": "Servizi",
     "notes": "Note",
-    "source": "Prenotato su"
+    "source": "Prenotato su",
+    "delete": "Elimina hotel",
+    "deleteTitle": "Elimina hotel",
+    "deleteConfirm": "Sei sicuro di voler eliminare questo hotel?"
   },
   "changelog": {
     "title": "Changelog",
