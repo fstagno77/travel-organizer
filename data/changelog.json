@@ -1,6 +1,18 @@
 {
   "versions": [
     {
+      "version": "0.5.1",
+      "date": "2026-01-20",
+      "changes": {
+        "it": [
+          "Passaggio a Claude Haiku 4 per estrazione dati (più veloce e economico)"
+        ],
+        "en": [
+          "Switched to Claude Haiku 4 for data extraction (faster and cheaper)"
+        ]
+      }
+    },
+    {
       "version": "0.5.0",
       "date": "2026-01-19",
       "changes": {
