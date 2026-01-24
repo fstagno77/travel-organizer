@@ -54,7 +54,8 @@ exports.handler = async (event, context) => {
       startDate: row.data.startDate,
       endDate: row.data.endDate,
       route: row.data.route,
-      color: '#0066cc'
+      color: '#0066cc',
+      data: row.data // Include full data for today's flight feature
     }));
 
     return {

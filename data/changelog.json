@@ -1,6 +1,26 @@
 {
   "versions": [
     {
+      "version": "0.6.0",
+      "date": "2026-01-24",
+      "changes": {
+        "it": [
+          "Nuova card 'Volo di Oggi' nella homepage",
+          "Mostra data odierna e prossimo volo programmato",
+          "Icone Material Design per decollo e atterraggio",
+          "La card scompare automaticamente dopo l'atterraggio",
+          "Link diretto al tracking del volo e ai dettagli del viaggio"
+        ],
+        "en": [
+          "New 'Today's Flight' card on homepage",
+          "Shows today's date and next scheduled flight",
+          "Material Design icons for takeoff and landing",
+          "Card automatically hides after landing",
+          "Direct links to flight tracking and trip details"
+        ]
+      }
+    },
+    {
       "version": "0.5.1",
       "date": "2026-01-20",
       "changes": {

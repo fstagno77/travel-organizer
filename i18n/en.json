@@ -13,7 +13,10 @@
     "subtitle": "All your trips in one place",
     "noTrips": "No trips yet",
     "noTripsText": "Your trips will appear here",
-    "pastTrips": "Past trips"
+    "pastTrips": "Past trips",
+    "noFlightToday": "No trip scheduled",
+    "flightDetails": "Details",
+    "toDestination": "To"
   },
   "trip": {
     "new": "New Trip",
@@ -55,6 +58,7 @@
     "add": "Add"
   },
   "flight": {
+    "terminal": "Terminal",
     "showDetails": "Show details",
     "hideDetails": "Hide details",
     "bookingRef": "Booking Reference",

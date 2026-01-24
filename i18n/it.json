@@ -13,7 +13,10 @@
     "subtitle": "Tutti i tuoi viaggi in un unico posto",
     "noTrips": "Nessun viaggio",
     "noTripsText": "I tuoi viaggi appariranno qui",
-    "pastTrips": "Viaggi passati"
+    "pastTrips": "Viaggi passati",
+    "noFlightToday": "Nessun viaggio programmato",
+    "flightDetails": "Dettagli",
+    "toDestination": "A"
   },
   "trip": {
     "new": "Nuovo Viaggio",
@@ -55,6 +58,7 @@
     "add": "Aggiungi"
   },
   "flight": {
+    "terminal": "Terminal",
     "showDetails": "Mostra dettagli",
     "hideDetails": "Nascondi dettagli",
     "bookingRef": "Riferimento prenotazione",

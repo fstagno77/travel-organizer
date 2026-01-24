@@ -54,6 +54,7 @@
    * Initialize homepage
    */
   async function initHomePage() {
+    const todayContainer = document.getElementById('today-container');
     const tripsContainer = document.getElementById('trips-container');
     if (!tripsContainer) return;
 
@@ -71,6 +72,12 @@
         console.log('Could not load trips from database');
       }
 
+      // Render today section
+      if (todayContainer) {
+        renderTodaySection(todayContainer, allTrips);
+      }
+
+      // Render trips
       renderTrips(tripsContainer, allTrips);
     } catch (error) {
       console.error('Error loading trips:', error);
@@ -83,6 +90,185 @@
       `;
       i18n.apply();
     }
+  }
+
+  /**
+   * Format today's date in long format
+   * @param {string} lang
+   * @returns {string}
+   */
+  function formatTodayDate(lang) {
+    const date = new Date();
+    const formatted = date.toLocaleDateString(lang === 'it' ? 'it-IT' : 'en-US', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+    // Capitalize first letter
+    return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+  }
+
+  /**
+   * Get the next day date string
+   * @param {string} dateStr - Date in YYYY-MM-DD format
+   * @returns {string}
+   */
+  function getNextDay(dateStr) {
+    const date = new Date(dateStr);
+    date.setDate(date.getDate() + 1);
+    return date.toISOString().split('T')[0];
+  }
+
+  /**
+   * Get the current flight for today
+   * @param {Array} trips - All trips
+   * @returns {object|null} - Flight data with trip info or null
+   */
+  function getTodayFlight(trips) {
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+
+    // Collect all flights from all trips that are relevant for today
+    let todayFlights = [];
+
+    for (const trip of trips) {
+      const flights = trip.data?.flights || [];
+
+      for (const flight of flights) {
+        const flightDate = flight.date;
+        const isToday = flightDate === today;
+        const arrivesToday = flight.arrivalNextDay && getNextDay(flightDate) === today;
+
+        if (isToday || arrivesToday) {
+          todayFlights.push({
+            flight,
+            tripId: trip.id,
+            tripTitle: trip.title,
+            tripColor: trip.color
+          });
+        }
+      }
+    }
+
+    if (todayFlights.length === 0) return null;
+
+    // Filter out flights that have already landed (current time > arrival time)
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+    todayFlights = todayFlights.filter(({ flight }) => {
+      const [arrH, arrM] = flight.arrivalTime.split(':').map(Number);
+      const arrivalMinutes = arrH * 60 + arrM;
+
+      // If flight departs today and arrives tomorrow, it's active all day today
+      if (flight.arrivalNextDay && flight.date === today) {
+        return true;
+      }
+
+      // If flight departed yesterday and arrives today, check arrival time
+      if (flight.arrivalNextDay && getNextDay(flight.date) === today) {
+        return currentMinutes <= arrivalMinutes;
+      }
+
+      // Normal same-day flight: active until arrival
+      return currentMinutes <= arrivalMinutes;
+    });
+
+    if (todayFlights.length === 0) return null;
+
+    // Sort by departure time and get the first active one
+    todayFlights.sort((a, b) => {
+      const [aH, aM] = a.flight.departureTime.split(':').map(Number);
+      const [bH, bM] = b.flight.departureTime.split(':').map(Number);
+      return (aH * 60 + aM) - (bH * 60 + bM);
+    });
+
+    return todayFlights[0];
+  }
+
+  /**
+   * Render today's flight card
+   * @param {object} flightData
+   * @param {string} lang
+   * @returns {string}
+   */
+  function renderTodayFlightCard({ flight, tripId, tripTitle, tripColor }, lang) {
+    const trackingUrl = utils.getFlightTrackingUrl(flight.flightNumber);
+    const detailsUrl = `trip.html?id=${tripId}`;
+
+    // Main info
+    const depCity = flight.departure?.city || '-';
+    const depAirport = flight.departure?.airport || '';
+    const terminal = flight.departure?.terminal || '-';
+    const depTime = flight.departureTime;
+
+    // Secondary info
+    const arrCity = flight.arrival?.city || '-';
+    const arrTime = flight.arrivalTime;
+    const nextDayIndicator = flight.arrivalNextDay ? ' +1' : '';
+
+    return `
+      <div class="today-flight-card">
+        <div class="today-flight-header">
+          <div class="today-flight-departure">
+            <span class="material-icons-outlined today-flight-icon">flight_takeoff</span>
+            <span class="today-flight-time">${depTime}</span>
+          </div>
+          <a href="${trackingUrl}" target="_blank" rel="noopener" class="today-flight-number">
+            ${flight.flightNumber}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+              <polyline points="15 3 21 3 21 9"></polyline>
+              <line x1="10" y1="14" x2="21" y2="3"></line>
+            </svg>
+          </a>
+        </div>
+        <div class="today-flight-main">
+          <div class="today-flight-location">
+            <span class="today-flight-city">${depCity}</span>
+            <span class="today-flight-airport">${depAirport}</span>
+          </div>
+          <div class="today-flight-terminal">
+            <span class="today-flight-label" data-i18n="flight.terminal">Terminal</span>
+            <span class="today-flight-value">${terminal}</span>
+          </div>
+        </div>
+        <div class="today-flight-secondary">
+          <span class="material-icons-outlined today-flight-landing-icon">flight_land</span>
+          <span class="today-flight-dest">${arrCity}</span>
+          <span class="today-flight-arr-time">${arrTime}${nextDayIndicator}</span>
+        </div>
+        <a href="${detailsUrl}" class="today-flight-details-link">
+          <span data-i18n="home.flightDetails">Details</span>
+        </a>
+      </div>
+    `;
+  }
+
+  /**
+   * Render today section
+   * @param {HTMLElement} container
+   * @param {Array} trips
+   */
+  function renderTodaySection(container, trips) {
+    const lang = i18n.getLang();
+    const todayStr = formatTodayDate(lang);
+
+    const todayFlight = getTodayFlight(trips);
+
+    let flightHtml;
+    if (todayFlight) {
+      flightHtml = renderTodayFlightCard(todayFlight, lang);
+    } else {
+      flightHtml = `<p class="today-no-flight" data-i18n="home.noFlightToday">No trip scheduled</p>`;
+    }
+
+    container.innerHTML = `
+      <div class="today-date">${todayStr}</div>
+      ${flightHtml}
+    `;
+
+    i18n.apply();
   }
 
   /**
