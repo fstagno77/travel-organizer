@@ -728,16 +728,40 @@
   }
 
   /**
-   * Check if a flight is in the past
+   * Check if a flight is in the past (based on arrival time)
    * @param {Object} flight
    * @returns {boolean}
    */
   function isFlightPast(flight) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const flightDate = new Date(flight.date);
-    flightDate.setHours(0, 0, 0, 0);
-    return flightDate < today;
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    const flightDate = flight.date;
+
+    // Calculate arrival date (might be next day if arrivalNextDay)
+    let arrivalDate = flightDate;
+    if (flight.arrivalNextDay) {
+      const d = new Date(flightDate);
+      d.setDate(d.getDate() + 1);
+      arrivalDate = d.toISOString().split('T')[0];
+    }
+
+    // If arrival date is before today, it's definitely past
+    if (arrivalDate < today) {
+      return true;
+    }
+
+    // If arrival date is today, check the arrival time
+    if (arrivalDate === today) {
+      const [arrH, arrM] = flight.arrivalTime.split(':').map(Number);
+      const arrivalMinutes = arrH * 60 + arrM;
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+      // If arrival time has passed, flight is past
+      return currentMinutes > arrivalMinutes;
+    }
+
+    // If arrival date is in the future, not past
+    return false;
   }
 
   /**
@@ -799,11 +823,15 @@
           <div class="flight-card-body">
             <div class="flight-route">
               <div class="flight-endpoint">
-                <div class="flight-time">${flight.departureTime}</div>
+                <div class="flight-time">
+                  <span class="material-icons-outlined flight-time-icon">flight_takeoff</span>
+                  ${flight.departureTime}
+                </div>
                 <div class="flight-airport">
                   <span class="flight-airport-code">${flight.departure?.code || ''}</span>
                 </div>
                 <div class="flight-airport">${flight.departure?.city || ''}</div>
+                ${flight.departure?.terminal ? `<div class="flight-terminal">Terminal ${flight.departure.terminal}</div>` : ''}
               </div>
 
               <div class="flight-arrow">
@@ -812,11 +840,15 @@
               </div>
 
               <div class="flight-endpoint">
-                <div class="flight-time">${flight.arrivalTime}${flight.arrivalNextDay ? ' +1' : ''}</div>
+                <div class="flight-time">
+                  <span class="material-icons-outlined flight-time-icon">flight_land</span>
+                  ${flight.arrivalTime}${flight.arrivalNextDay ? ' +1' : ''}
+                </div>
                 <div class="flight-airport">
                   <span class="flight-airport-code">${flight.arrival?.code || ''}</span>
                 </div>
                 <div class="flight-airport">${flight.arrival?.city || ''}</div>
+                ${flight.arrival?.terminal ? `<div class="flight-terminal">Terminal ${flight.arrival.terminal}</div>` : ''}
               </div>
             </div>
           </div>

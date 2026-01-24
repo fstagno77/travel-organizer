@@ -187,6 +187,40 @@
   }
 
   /**
+   * Get the current hotel for today
+   * @param {Array} trips - All trips
+   * @returns {object|null} - Hotel data with trip info or null
+   */
+  function getTodayHotel(trips) {
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+
+    for (const trip of trips) {
+      const hotels = trip.data?.hotels || [];
+
+      for (const hotel of hotels) {
+        const checkInDate = hotel.checkIn?.date;
+        const checkOutDate = hotel.checkOut?.date;
+
+        if (!checkInDate || !checkOutDate) continue;
+
+        // Hotel visible from check-in until day after check-out
+        const checkOutPlusOne = getNextDay(checkOutDate);
+
+        if (today >= checkInDate && today <= checkOutPlusOne) {
+          return {
+            hotel,
+            tripId: trip.id,
+            tripTitle: trip.title
+          };
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /**
    * Render today's flight card
    * @param {object} flightData
    * @param {string} lang
@@ -246,6 +280,78 @@
   }
 
   /**
+   * Render today's hotel card
+   * @param {object} hotelData
+   * @param {string} lang
+   * @returns {string}
+   */
+  function renderTodayHotelCard({ hotel, tripId, tripTitle }, lang) {
+    const detailsUrl = `trip.html?id=${tripId}`;
+    const today = new Date().toISOString().split('T')[0];
+
+    // Determine if check-in day, during stay, or check-out day
+    const isCheckIn = hotel.checkIn?.date === today;
+    const isCheckOut = hotel.checkOut?.date === today;
+    const isCheckOutPlusOne = getNextDay(hotel.checkOut?.date) === today;
+
+    // Hotel info
+    const hotelName = hotel.name || '-';
+    const checkInTime = hotel.checkIn?.time || '15:00';
+    const checkOutTime = hotel.checkOut?.time || '12:00';
+    const address = hotel.address?.city || '';
+    const confirmation = hotel.confirmationNumber || '-';
+
+    // Determine status and icon
+    let statusIcon, statusText, statusTime;
+    if (isCheckIn) {
+      statusIcon = 'login';
+      statusText = i18n.t('hotel.checkIn');
+      statusTime = checkInTime;
+    } else if (isCheckOut || isCheckOutPlusOne) {
+      statusIcon = 'logout';
+      statusText = i18n.t('hotel.checkOut');
+      statusTime = checkOutTime;
+    } else {
+      statusIcon = 'bed';
+      statusText = i18n.t('hotel.stay');
+      statusTime = '';
+    }
+
+    // Only show confirmation on check-in/check-out days
+    const showConfirmation = isCheckIn || isCheckOut || isCheckOutPlusOne;
+
+    // Google Maps link
+    const mapsUrl = hotel.address?.fullAddress
+      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(hotel.address.fullAddress)}`
+      : '#';
+
+    return `
+      <div class="today-hotel-card">
+        <div class="today-hotel-header">
+          <div class="today-hotel-status">
+            <span class="material-icons-outlined today-hotel-icon">${statusIcon}</span>
+            <span class="today-hotel-time">${statusTime || statusText}</span>
+          </div>
+          ${showConfirmation ? `<span class="today-hotel-confirmation">${confirmation}</span>` : ''}
+        </div>
+        <div class="today-hotel-main">
+          <div class="today-hotel-name">${hotelName}</div>
+          <div class="today-hotel-city">${address}</div>
+        </div>
+        <div class="today-hotel-secondary">
+          <a href="${mapsUrl}" target="_blank" rel="noopener" class="today-hotel-maps-link">
+            <span class="material-icons-outlined">location_on</span>
+            <span class="today-hotel-address">${hotel.address?.fullAddress || address}</span>
+          </a>
+        </div>
+        <a href="${detailsUrl}" class="today-hotel-details-link">
+          <span data-i18n="home.flightDetails">Details</span>
+        </a>
+      </div>
+    `;
+  }
+
+  /**
    * Render today section
    * @param {HTMLElement} container
    * @param {Array} trips
@@ -255,17 +361,25 @@
     const todayStr = formatTodayDate(lang);
 
     const todayFlight = getTodayFlight(trips);
+    const todayHotel = getTodayHotel(trips);
 
-    let flightHtml;
+    let cardsHtml = '';
+
     if (todayFlight) {
-      flightHtml = renderTodayFlightCard(todayFlight, lang);
-    } else {
-      flightHtml = `<p class="today-no-flight" data-i18n="home.noFlightToday">No trip scheduled</p>`;
+      cardsHtml += renderTodayFlightCard(todayFlight, lang);
+    }
+
+    if (todayHotel) {
+      cardsHtml += renderTodayHotelCard(todayHotel, lang);
+    }
+
+    if (!todayFlight && !todayHotel) {
+      cardsHtml = `<p class="today-no-flight" data-i18n="home.noFlightToday">No trip scheduled</p>`;
     }
 
     container.innerHTML = `
       <div class="today-date">${todayStr}</div>
-      ${flightHtml}
+      <div class="today-cards">${cardsHtml}</div>
     `;
 
     i18n.apply();

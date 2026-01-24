@@ -1,6 +1,26 @@
 {
   "versions": [
     {
+      "version": "0.6.1",
+      "date": "2026-01-24",
+      "changes": {
+        "it": [
+          "Card 'Hotel di Oggi' accanto alla card volo",
+          "Mostra hotel dal check-in al giorno dopo il check-out",
+          "Indirizzo cliccabile con link a Google Maps",
+          "Allineamento perfetto delle card volo e hotel",
+          "Icone Material Design nella pagina viaggio"
+        ],
+        "en": [
+          "Today's Hotel card next to flight card",
+          "Shows hotel from check-in to day after check-out",
+          "Clickable address with Google Maps link",
+          "Perfect alignment of flight and hotel cards",
+          "Material Design icons on trip page"
+        ]
+      }
+    },
+    {
       "version": "0.6.0",
       "date": "2026-01-24",
       "changes": {
