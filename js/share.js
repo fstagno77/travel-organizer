@@ -91,7 +91,40 @@
     if (!contentContainer) return;
 
     try {
-      const tripData = await utils.loadJSON(`./trip.json`);
+      // Get trip ID from URL parameter or from path (for legacy static pages)
+      let tripId = new URLSearchParams(window.location.search).get('id');
+
+      // If no ID in params, try to get from path (legacy: /trips/{id}/share.html)
+      if (!tripId && window.location.pathname.includes('/trips/')) {
+        tripId = window.location.pathname.split('/trips/')[1]?.split('/')[0];
+      }
+
+      if (!tripId) {
+        throw new Error('No trip ID provided');
+      }
+
+      // Load trip data from API
+      let tripData;
+
+      // First try to load from local trip.json (for legacy static pages)
+      if (window.location.pathname.includes('/trips/')) {
+        try {
+          tripData = await utils.loadJSON(`./trip.json`);
+        } catch (e) {
+          // Fall back to API
+        }
+      }
+
+      // If not loaded from local file, fetch from API
+      if (!tripData) {
+        const response = await fetch(`/.netlify/functions/get-trip?id=${tripId}`);
+        const result = await response.json();
+        if (result.success && result.tripData) {
+          tripData = result.tripData;
+        } else {
+          throw new Error('Trip not found');
+        }
+      }
 
       // Update page title
       const lang = i18n.getLang();

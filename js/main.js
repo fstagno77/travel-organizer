@@ -1264,7 +1264,7 @@
 
     // Generate share URL
     const baseUrl = window.location.origin;
-    const shareUrl = `${baseUrl}/trips/${tripId}/share.html`;
+    const shareUrl = `${baseUrl}/share.html?id=${tripId}`;
 
     const modalHTML = `
       <div class="modal-overlay active" id="share-modal">
