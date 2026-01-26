@@ -660,13 +660,13 @@
 }
 
 .today-hotel-maps-link {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: var(--spacing-1);
   color: var(--color-gray-600);
   font-size: var(--font-size-xs);
   text-decoration: none;
-  max-width: 100%;
+  width: 100%;
   overflow: hidden;
 }
 
@@ -674,7 +674,8 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 240px;
+  flex: 1;
+  min-width: 0;
 }
 
 .today-hotel-maps-link:hover {
