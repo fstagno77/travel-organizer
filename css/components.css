@@ -405,11 +405,7 @@
   width: 100%;
 }
 
-@media (min-width: 576px) {
-  .today-no-flight {
-    max-width: 320px;
-  }
-}
+/* Removed max-width - fills grid cell like trip cards */
 
 /* Today Flight Card - Compact style like trip cards */
 .today-flight-card {
@@ -422,13 +418,7 @@
   flex-direction: column;
 }
 
-@media (min-width: 576px) {
-  .today-flight-card {
-    max-width: 320px;
-    min-width: 280px;
-    flex: 1;
-  }
-}
+/* Removed max-width - card fills grid cell like trip cards */
 
 .today-flight-header {
   background: var(--color-primary);
@@ -577,12 +567,23 @@
   background: var(--color-gray-50);
 }
 
-/* Today Cards Container */
+/* Today Cards Container - same grid as trip cards */
 .today-cards {
-  display: flex;
+  display: grid;
   gap: var(--spacing-4);
-  flex-wrap: wrap;
-  align-items: stretch;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+  .today-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 992px) {
+  .today-cards {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
 /* Today Hotel Card */
@@ -596,13 +597,7 @@
   flex-direction: column;
 }
 
-@media (min-width: 576px) {
-  .today-hotel-card {
-    max-width: 320px;
-    min-width: 280px;
-    flex: 1;
-  }
-}
+/* Removed max-width - card fills grid cell like trip cards */
 
 .today-hotel-header {
   background: var(--color-success);
