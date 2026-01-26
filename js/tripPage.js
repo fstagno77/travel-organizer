@@ -576,7 +576,7 @@
     const existingModal = document.getElementById('share-modal');
     if (existingModal) existingModal.remove();
 
-    const shareUrl = `${window.location.origin}/trip.html?id=${encodeURIComponent(tripId)}`;
+    const shareUrl = `${window.location.origin}/share.html?id=${encodeURIComponent(tripId)}`;
 
     const modalHTML = `
       <div class="modal-overlay" id="share-modal">
