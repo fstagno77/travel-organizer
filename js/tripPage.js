@@ -198,6 +198,13 @@
     // Initialize tab switching
     initTabSwitching();
 
+    // Determine initial tab: show hotels if no flights, otherwise flights
+    const hasFlights = tripData.flights && tripData.flights.length > 0;
+    const hasHotels = tripData.hotels && tripData.hotels.length > 0;
+    if (!hasFlights && hasHotels) {
+      switchToTab('hotels');
+    }
+
     // Initialize menu
     initMenu(tripData.id);
 

@@ -1,6 +1,28 @@
 {
   "versions": [
     {
+      "version": "0.6.2",
+      "date": "2026-01-26",
+      "changes": {
+        "it": [
+          "Fix modello Claude API (corretto nome modello)",
+          "Card 'Oggi' responsive: larghezza piena su mobile",
+          "Tab Hotels mostrata di default se non ci sono voli",
+          "Fix visualizzazione hotel nella homepage",
+          "Pagina condivisione: verificata e ottimizzata",
+          "Pulizia progetto: rimossi file e cartelle inutilizzati"
+        ],
+        "en": [
+          "Fix Claude API model (corrected model name)",
+          "Today cards responsive: full width on mobile",
+          "Hotels tab shown by default if no flights",
+          "Fix hotel display on homepage",
+          "Share page: verified and optimized",
+          "Project cleanup: removed unused files and folders"
+        ]
+      }
+    },
+    {
       "version": "0.6.1",
       "date": "2026-01-24",
       "changes": {

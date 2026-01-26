@@ -402,7 +402,13 @@
   background: var(--color-white);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
-  max-width: 320px;
+  width: 100%;
+}
+
+@media (min-width: 576px) {
+  .today-no-flight {
+    max-width: 320px;
+  }
 }
 
 /* Today Flight Card - Compact style like trip cards */
@@ -411,11 +417,17 @@
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
   overflow: hidden;
-  max-width: 320px;
-  flex: 1;
-  min-width: 280px;
+  width: 100%;
   display: flex;
   flex-direction: column;
+}
+
+@media (min-width: 576px) {
+  .today-flight-card {
+    max-width: 320px;
+    min-width: 280px;
+    flex: 1;
+  }
 }
 
 .today-flight-header {
@@ -579,11 +591,17 @@
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
   overflow: hidden;
-  max-width: 320px;
-  flex: 1;
-  min-width: 280px;
+  width: 100%;
   display: flex;
   flex-direction: column;
+}
+
+@media (min-width: 576px) {
+  .today-hotel-card {
+    max-width: 320px;
+    min-width: 280px;
+    flex: 1;
+  }
 }
 
 .today-hotel-header {

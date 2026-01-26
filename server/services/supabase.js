@@ -34,7 +34,11 @@ async function getAllTrips() {
     startDate: row.data.startDate,
     endDate: row.data.endDate,
     route: row.data.route,
-    color: '#0066cc'
+    color: '#0066cc',
+    data: {
+      flights: row.data.flights || [],
+      hotels: row.data.hotels || []
+    }
   }));
 }
 

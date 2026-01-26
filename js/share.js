@@ -194,6 +194,13 @@
     // Initialize tab switching
     initTabSwitching();
 
+    // Determine initial tab: show hotels if no flights, otherwise flights
+    const hasFlights = tripData.flights && tripData.flights.length > 0;
+    const hasHotels = tripData.hotels && tripData.hotels.length > 0;
+    if (!hasFlights && hasHotels) {
+      switchToTab('hotels');
+    }
+
     // Initialize share button
     initShareButton();
 
@@ -209,19 +216,29 @@
 
     tabs.forEach(tab => {
       tab.addEventListener('click', () => {
-        const targetTab = tab.dataset.tab;
-
-        // Update button states
-        tabs.forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
-
-        // Update content visibility
-        document.querySelectorAll('.tab-content').forEach(content => {
-          content.classList.remove('active');
-        });
-        document.getElementById(`${targetTab}-tab`).classList.add('active');
+        switchToTab(tab.dataset.tab);
       });
     });
+  }
+
+  /**
+   * Switch to a specific tab
+   * @param {string} tabName - 'flights' or 'hotels'
+   */
+  function switchToTab(tabName) {
+    const tabs = document.querySelectorAll('.segmented-control-btn');
+
+    // Update button states
+    tabs.forEach(t => t.classList.remove('active'));
+    const targetBtn = document.querySelector(`.segmented-control-btn[data-tab="${tabName}"]`);
+    if (targetBtn) targetBtn.classList.add('active');
+
+    // Update content visibility
+    document.querySelectorAll('.tab-content').forEach(content => {
+      content.classList.remove('active');
+    });
+    const targetContent = document.getElementById(`${tabName}-tab`);
+    if (targetContent) targetContent.classList.add('active');
   }
 
   /**
