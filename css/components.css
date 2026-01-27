@@ -270,6 +270,31 @@
   color: var(--color-gray-500);
 }
 
+.flight-info {
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-500);
+  margin-top: var(--spacing-1);
+  white-space: nowrap;
+}
+
+.flight-track-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  color: var(--color-white);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-sm);
+  padding: var(--spacing-2) var(--spacing-3);
+  background-color: rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-md);
+  transition: background-color var(--transition-fast);
+}
+
+.flight-track-btn:hover {
+  background-color: rgba(255, 255, 255, 0.25);
+  color: var(--color-white);
+}
+
 .flight-airline {
   display: flex;
   align-items: center;
@@ -325,6 +350,34 @@
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   color: var(--color-gray-800);
+}
+
+.flight-detail-value-wrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.btn-copy-value {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-1);
+  color: var(--color-gray-400);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-copy-value:hover {
+  color: var(--color-primary);
+  background-color: var(--color-gray-100);
+}
+
+.btn-copy-value.copied {
+  color: var(--color-success, #22c55e);
 }
 
 .flight-toggle-details {

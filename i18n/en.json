@@ -75,6 +75,7 @@
     "terminal": "Terminal",
     "showDetails": "Show details",
     "hideDetails": "Hide details",
+    "track": "Flight Status",
     "bookingRef": "Booking Reference",
     "ticketNumber": "Ticket Number",
     "seat": "Seat",

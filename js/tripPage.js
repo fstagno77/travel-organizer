@@ -817,8 +817,8 @@
         <div class="flight-card${isPast ? ' past' : ''}">
           <div class="flight-card-header">
             <span class="flight-date">${formattedDate}</span>
-            <a href="${trackingUrl}" target="_blank" rel="noopener" class="flight-number-link">
-              ${flight.airline || ''} ${flight.flightNumber}
+            <a href="${trackingUrl}" target="_blank" rel="noopener" class="flight-track-btn">
+              <span data-i18n="flight.track">Track</span>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
                 <polyline points="15 3 21 3 21 9"></polyline>
@@ -844,6 +844,7 @@
               <div class="flight-arrow">
                 <div class="flight-duration">${duration}</div>
                 <div class="flight-arrow-line"></div>
+                <div class="flight-info">${flight.airline || ''} ${flight.flightNumber}</div>
               </div>
 
               <div class="flight-endpoint">
@@ -871,11 +872,27 @@
             <div class="flight-details-grid">
               <div class="flight-detail-item">
                 <span class="flight-detail-label" data-i18n="flight.bookingRef">Booking Reference</span>
-                <span class="flight-detail-value">${flight.bookingReference || '-'}</span>
+                <span class="flight-detail-value-wrapper">
+                  <span class="flight-detail-value">${flight.bookingReference || '-'}</span>
+                  ${flight.bookingReference ? `<button class="btn-copy-value" data-copy="${flight.bookingReference}" title="Copy">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                  </button>` : ''}
+                </span>
               </div>
               <div class="flight-detail-item">
                 <span class="flight-detail-label" data-i18n="flight.ticketNumber">Ticket Number</span>
-                <span class="flight-detail-value">${flight.ticketNumber || '-'}</span>
+                <span class="flight-detail-value-wrapper">
+                  <span class="flight-detail-value">${flight.ticketNumber || '-'}</span>
+                  ${flight.ticketNumber ? `<button class="btn-copy-value" data-copy="${flight.ticketNumber}" title="Copy">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                  </button>` : ''}
+                </span>
               </div>
               <div class="flight-detail-item">
                 <span class="flight-detail-label" data-i18n="flight.seat">Seat</span>
@@ -913,6 +930,7 @@
     initFlightToggleButtons();
     initDeleteItemButtons();
     initPdfDownloadButtons();
+    initCopyValueButtons();
   }
 
   /**
@@ -1256,6 +1274,36 @@
         if (textSpan) {
           textSpan.dataset.i18n = isActive ? 'flight.hideDetails' : 'flight.showDetails';
           textSpan.textContent = i18n.t(textSpan.dataset.i18n);
+        }
+      });
+    });
+  }
+
+  /**
+   * Initialize copy value buttons
+   */
+  function initCopyValueButtons() {
+    document.querySelectorAll('.btn-copy-value').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const value = btn.dataset.copy;
+        if (!value) return;
+
+        try {
+          await navigator.clipboard.writeText(value);
+          btn.classList.add('copied');
+          setTimeout(() => btn.classList.remove('copied'), 1500);
+        } catch (err) {
+          // Fallback for older browsers
+          const textArea = document.createElement('textarea');
+          textArea.value = value;
+          textArea.style.position = 'fixed';
+          textArea.style.opacity = '0';
+          document.body.appendChild(textArea);
+          textArea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textArea);
+          btn.classList.add('copied');
+          setTimeout(() => btn.classList.remove('copied'), 1500);
         }
       });
     });
