@@ -48,7 +48,21 @@
     "shareTitle": "Condividi viaggio",
     "shareDescription": "Copia questo link per condividere il viaggio con altri. Chi riceve il link potrà visualizzare solo questo viaggio.",
     "copyLink": "Copia",
-    "linkCopied": "Link copiato!"
+    "linkCopied": "Link copiato!",
+    "selectPhoto": "Scegli una foto per",
+    "loadingPhotos": "Caricamento foto...",
+    "savingPhoto": "Salvataggio foto...",
+    "skipPhoto": "Salta",
+    "photoAttribution": "Foto di",
+    "changePhoto": "Cambia foto",
+    "changePhotoTitle": "Cambia foto",
+    "uploadCustomPhoto": "Carica foto",
+    "loadMorePhotos": "Altre foto",
+    "uploadingPhoto": "Caricamento foto...",
+    "photoTooLarge": "File troppo grande. Dimensione massima 2MB",
+    "uploadError": "Errore durante il caricamento",
+    "noPhotosFound": "Nessuna foto trovata per questa destinazione",
+    "lastUsedPhoto": "Ultima usata"
   },
   "modal": {
     "cancel": "Annulla",

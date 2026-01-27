@@ -48,7 +48,21 @@
     "shareTitle": "Share trip",
     "shareDescription": "Copy this link to share the trip with others. Anyone with this link will only be able to view this trip.",
     "copyLink": "Copy",
-    "linkCopied": "Link copied!"
+    "linkCopied": "Link copied!",
+    "selectPhoto": "Choose a photo for",
+    "loadingPhotos": "Loading photos...",
+    "savingPhoto": "Saving photo...",
+    "skipPhoto": "Skip",
+    "photoAttribution": "Photo by",
+    "changePhoto": "Change photo",
+    "changePhotoTitle": "Change photo",
+    "uploadCustomPhoto": "Upload photo",
+    "loadMorePhotos": "More photos",
+    "uploadingPhoto": "Uploading photo...",
+    "photoTooLarge": "File too large. Maximum size is 2MB",
+    "uploadError": "Error uploading photo",
+    "noPhotosFound": "No photos found for this destination",
+    "lastUsedPhoto": "Last used"
   },
   "modal": {
     "cancel": "Cancel",

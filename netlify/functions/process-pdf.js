@@ -137,6 +137,10 @@ exports.handler = async (event, context) => {
     tripData.flights.forEach(f => delete f._pdfIndex);
     tripData.hotels.forEach(h => delete h._pdfIndex);
 
+    // Always show photo selection when there's a destination
+    // User can choose from cached, Unsplash, or upload custom photo
+    const needsPhotoSelection = !!tripData.destination;
+
     // Save to Supabase
     const { error: dbError } = await supabase
       .from('trips')
@@ -164,6 +168,8 @@ exports.handler = async (event, context) => {
       body: JSON.stringify({
         success: true,
         tripData,
+        needsPhotoSelection,
+        destination: tripData.destination,
         summary: {
           flights: allFlights.length,
           hotels: allHotels.length

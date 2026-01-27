@@ -55,6 +55,7 @@ exports.handler = async (event, context) => {
       endDate: row.data.endDate,
       route: row.data.route,
       color: '#0066cc',
+      coverPhoto: row.data.coverPhoto || null,
       data: row.data // Include full data for today's flight feature
     }));
 

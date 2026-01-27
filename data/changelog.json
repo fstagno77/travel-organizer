@@ -1,6 +1,30 @@
 {
   "versions": [
     {
+      "version": "0.8.0",
+      "date": "2026-01-27",
+      "changes": {
+        "it": [
+          "Foto di copertina per ogni viaggio da Unsplash API",
+          "Selezione foto (6 opzioni) durante la creazione del viaggio",
+          "Cache foto per città: riutilizza l'ultima foto scelta per la stessa destinazione",
+          "Badge 'Ultima usata' per foto già selezionate in precedenza",
+          "Possibilità di cambiare foto dal menu della trip card",
+          "Caricamento foto personalizzata (max 2MB)",
+          "Attribution fotografo Unsplash nelle card"
+        ],
+        "en": [
+          "Cover photo for each trip from Unsplash API",
+          "Photo selection (6 options) during trip creation",
+          "City photo cache: reuses last selected photo for same destination",
+          "'Last used' badge for previously selected photos",
+          "Change photo option from trip card menu",
+          "Custom photo upload (max 2MB)",
+          "Unsplash photographer attribution in cards"
+        ]
+      }
+    },
+    {
       "version": "0.7.0",
       "date": "2026-01-27",
       "changes": {

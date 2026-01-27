@@ -415,10 +415,17 @@
     // All trips now use dynamic page
     const tripUrl = `trip.html?id=${trip.id}`;
 
+    // Cover photo styling
+    const coverPhoto = trip.coverPhoto;
+    let imageStyle = `background-color: ${bgColor}`;
+    if (coverPhoto?.url && !isPast) {
+      imageStyle = `background-image: url('${coverPhoto.url}'); background-color: ${coverPhoto.color || bgColor}`;
+    }
+
     return `
       <div class="trip-card-wrapper">
         <a href="${tripUrl}" class="${cardClass}">
-          <div class="trip-card-image" style="background-color: ${bgColor}">
+          <div class="trip-card-image" style="${imageStyle}">
             <span class="trip-card-destination">${title}</span>
           </div>
           <div class="trip-card-body">
@@ -434,6 +441,14 @@
             </svg>
           </button>
           <div class="trip-card-dropdown" data-trip-id="${trip.id}">
+            <button class="trip-card-dropdown-item" data-action="changePhoto" data-trip-id="${trip.id}" data-trip-destination="${trip.destination || ''}">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                <polyline points="21 15 16 10 5 21"></polyline>
+              </svg>
+              <span data-i18n="trip.changePhoto">Cambia foto</span>
+            </button>
             <button class="trip-card-dropdown-item" data-action="share" data-trip-id="${trip.id}">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="18" cy="5" r="3"></circle>
@@ -566,11 +581,14 @@
         const action = item.dataset.action;
         const tripId = item.dataset.tripId;
         const tripName = item.dataset.tripName;
+        const tripDestination = item.dataset.tripDestination;
 
         // Close dropdown
         item.closest('.trip-card-dropdown').classList.remove('active');
 
-        if (action === 'share') {
+        if (action === 'changePhoto') {
+          changePhoto(tripId, tripDestination);
+        } else if (action === 'share') {
           showShareModal(tripId);
         } else if (action === 'rename') {
           renameTrip(tripId, tripName);
@@ -692,6 +710,35 @@
 
     // Apply translations
     i18n.apply();
+  }
+
+  /**
+   * Change trip photo - opens photo selection modal
+   * @param {string} tripId
+   * @param {string} destination
+   */
+  async function changePhoto(tripId, destination) {
+    if (!destination) {
+      console.error('No destination for trip');
+      return;
+    }
+
+    try {
+      // Fetch trip data
+      const response = await fetch(`/.netlify/functions/get-trip?id=${tripId}`);
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error('Failed to load trip data');
+      }
+
+      // Open photo selection modal
+      if (window.tripCreator) {
+        window.tripCreator.openPhotoSelection(tripId, destination, result.tripData);
+      }
+    } catch (error) {
+      console.error('Error loading trip for photo change:', error);
+    }
   }
 
   /**
