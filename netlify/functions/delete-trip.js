@@ -1,9 +1,11 @@
 /**
  * Netlify Function: Delete Trip
  * Deletes a trip from Supabase by ID
+ * Also deletes all associated PDFs from storage
  */
 
 const { createClient } = require('@supabase/supabase-js');
+const { deleteAllTripPdfs } = require('./utils/storage');
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -41,6 +43,11 @@ exports.handler = async (event, context) => {
       };
     }
 
+    // Delete all PDFs for this trip from storage
+    console.log(`Deleting all PDFs for trip: ${tripId}`);
+    await deleteAllTripPdfs(tripId);
+
+    // Delete trip from database
     const { error } = await supabase
       .from('trips')
       .delete()

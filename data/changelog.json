@@ -1,6 +1,24 @@
 {
   "versions": [
     {
+      "version": "0.7.0",
+      "date": "2026-01-27",
+      "changes": {
+        "it": [
+          "Salvataggio PDF originali su Supabase Storage",
+          "Pulsante 'Scarica PDF' nelle card dettaglio voli e hotel",
+          "Eliminazione automatica PDF quando si cancella un volo/hotel",
+          "Eliminazione automatica di tutti i PDF quando si cancella un viaggio"
+        ],
+        "en": [
+          "Original PDF storage on Supabase Storage",
+          "Download PDF button in flight and hotel detail cards",
+          "Automatic PDF deletion when deleting a flight/hotel",
+          "Automatic deletion of all PDFs when deleting a trip"
+        ]
+      }
+    },
+    {
       "version": "0.6.2",
       "date": "2026-01-26",
       "changes": {

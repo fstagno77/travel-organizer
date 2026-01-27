@@ -886,6 +886,16 @@
                 <span class="flight-detail-value">${flight.class || '-'}</span>
               </div>
             </div>
+            ${flight.pdfPath ? `
+            <button class="btn-download-pdf" data-pdf-path="${flight.pdfPath}">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              <span data-i18n="flight.downloadPdf">Download PDF</span>
+            </button>
+            ` : ''}
             <button class="btn-delete-item" data-type="flight" data-id="${flight.id}">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="3 6 5 6 21 6"></polyline>
@@ -902,6 +912,7 @@
     i18n.apply();
     initFlightToggleButtons();
     initDeleteItemButtons();
+    initPdfDownloadButtons();
   }
 
   /**
@@ -1034,6 +1045,16 @@
               </div>
               ` : ''}
             </div>
+            ${hotel.pdfPath ? `
+            <button class="btn-download-pdf" data-pdf-path="${hotel.pdfPath}">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              <span data-i18n="hotel.downloadPdf">Download PDF</span>
+            </button>
+            ` : ''}
             <button class="btn-delete-item" data-type="hotel" data-id="${hotel.id}">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="3 6 5 6 21 6"></polyline>
@@ -1050,6 +1071,7 @@
     i18n.apply();
     initHotelToggleButtons();
     initDeleteItemButtons();
+    initPdfDownloadButtons();
   }
 
   /**
@@ -1066,6 +1088,46 @@
         const type = newBtn.dataset.type;
         const id = newBtn.dataset.id;
         showDeleteItemModal(type, id);
+      });
+    });
+  }
+
+  /**
+   * Initialize PDF download buttons
+   */
+  function initPdfDownloadButtons() {
+    document.querySelectorAll('.btn-download-pdf').forEach(btn => {
+      // Remove existing listeners by cloning
+      const newBtn = btn.cloneNode(true);
+      btn.parentNode.replaceChild(newBtn, btn);
+
+      newBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const pdfPath = newBtn.dataset.pdfPath;
+
+        // Show loading state
+        const originalContent = newBtn.innerHTML;
+        newBtn.disabled = true;
+        newBtn.innerHTML = '<span class="spinner spinner-sm"></span>';
+
+        try {
+          const response = await fetch(`/.netlify/functions/get-pdf-url?path=${encodeURIComponent(pdfPath)}`);
+          const result = await response.json();
+
+          if (result.success && result.url) {
+            // Open PDF in new tab
+            window.open(result.url, '_blank');
+          } else {
+            throw new Error(result.error || 'Failed to get PDF URL');
+          }
+        } catch (error) {
+          console.error('Error downloading PDF:', error);
+          alert(i18n.t('common.downloadError') || 'Error downloading PDF');
+        } finally {
+          // Restore button state
+          newBtn.disabled = false;
+          newBtn.innerHTML = originalContent;
+        }
       });
     });
   }

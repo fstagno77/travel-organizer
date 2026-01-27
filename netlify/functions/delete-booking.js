@@ -1,9 +1,11 @@
 /**
  * Netlify Function: Delete Booking
  * Deletes a single flight or hotel from a trip in Supabase
+ * Also deletes the associated PDF from storage
  */
 
 const { createClient } = require('@supabase/supabase-js');
+const { deletePdf } = require('./utils/storage');
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -77,29 +79,41 @@ exports.handler = async (event, context) => {
     // Get trip data
     const tripData = tripRecord.data;
 
-    // Remove the item from the appropriate array
+    // Find the item and delete its PDF, then remove from array
     if (type === 'flight') {
-      const originalLength = tripData.flights?.length || 0;
-      tripData.flights = (tripData.flights || []).filter(f => f.id !== itemId);
-
-      if (tripData.flights.length === originalLength) {
+      const flightToDelete = (tripData.flights || []).find(f => f.id === itemId);
+      if (!flightToDelete) {
         return {
           statusCode: 404,
           headers,
           body: JSON.stringify({ success: false, error: 'Flight not found' })
         };
       }
-    } else if (type === 'hotel') {
-      const originalLength = tripData.hotels?.length || 0;
-      tripData.hotels = (tripData.hotels || []).filter(h => h.id !== itemId);
 
-      if (tripData.hotels.length === originalLength) {
+      // Delete associated PDF from storage
+      if (flightToDelete.pdfPath) {
+        console.log(`Deleting PDF: ${flightToDelete.pdfPath}`);
+        await deletePdf(flightToDelete.pdfPath);
+      }
+
+      tripData.flights = tripData.flights.filter(f => f.id !== itemId);
+    } else if (type === 'hotel') {
+      const hotelToDelete = (tripData.hotels || []).find(h => h.id === itemId);
+      if (!hotelToDelete) {
         return {
           statusCode: 404,
           headers,
           body: JSON.stringify({ success: false, error: 'Hotel not found' })
         };
       }
+
+      // Delete associated PDF from storage
+      if (hotelToDelete.pdfPath) {
+        console.log(`Deleting PDF: ${hotelToDelete.pdfPath}`);
+        await deletePdf(hotelToDelete.pdfPath);
+      }
+
+      tripData.hotels = tripData.hotels.filter(h => h.id !== itemId);
     }
 
     // Update trip dates based on remaining flights and hotels

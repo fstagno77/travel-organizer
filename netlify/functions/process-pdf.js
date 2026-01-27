@@ -1,11 +1,12 @@
 /**
  * Netlify Function: Process PDF
  * Extracts travel data from PDF documents using Claude API
- * Saves to Supabase database
+ * Saves to Supabase database and stores original PDFs
  */
 
 const Anthropic = require('@anthropic-ai/sdk');
 const { createClient } = require('@supabase/supabase-js');
+const { uploadPdf } = require('./utils/storage');
 
 const client = new Anthropic();
 const supabase = createClient(
@@ -48,22 +49,30 @@ exports.handler = async (event, context) => {
 
     console.log(`Processing ${pdfs.length} PDF file(s)...`);
 
-    // Process all PDFs
+    // Process all PDFs and track which items came from which PDF
     const allFlights = [];
     const allHotels = [];
     let metadata = {};
+    const pdfSourceMap = []; // Track PDF index for each flight/hotel
 
-    for (const pdf of pdfs) {
+    for (let pdfIndex = 0; pdfIndex < pdfs.length; pdfIndex++) {
+      const pdf = pdfs[pdfIndex];
       try {
         console.log(`Processing file: ${pdf.filename}`);
         const result = await processPdfWithClaude(pdf.content, pdf.filename);
         console.log(`Claude result for ${pdf.filename}:`, JSON.stringify(result, null, 2));
 
         if (result.flights) {
-          allFlights.push(...result.flights);
+          result.flights.forEach(flight => {
+            flight._pdfIndex = pdfIndex; // Temporary marker
+            allFlights.push(flight);
+          });
         }
         if (result.hotels) {
-          allHotels.push(...result.hotels);
+          result.hotels.forEach(hotel => {
+            hotel._pdfIndex = pdfIndex; // Temporary marker
+            allHotels.push(hotel);
+          });
         }
         if (result.passenger) {
           metadata.passenger = result.passenger;
@@ -94,6 +103,39 @@ exports.handler = async (event, context) => {
       hotels: allHotels,
       metadata
     });
+
+    // Upload PDFs and link to items
+    console.log('Uploading PDFs to storage...');
+    for (let pdfIndex = 0; pdfIndex < pdfs.length; pdfIndex++) {
+      const pdf = pdfs[pdfIndex];
+
+      // Find items that came from this PDF
+      const flightsFromPdf = tripData.flights.filter(f => f._pdfIndex === pdfIndex);
+      const hotelsFromPdf = tripData.hotels.filter(h => h._pdfIndex === pdfIndex);
+
+      if (flightsFromPdf.length > 0 || hotelsFromPdf.length > 0) {
+        try {
+          // Upload PDF for each item (each item gets its own copy for clean deletion)
+          for (const flight of flightsFromPdf) {
+            const pdfPath = await uploadPdf(pdf.content, tripData.id, flight.id);
+            flight.pdfPath = pdfPath;
+            console.log(`Uploaded PDF for ${flight.id}: ${pdfPath}`);
+          }
+          for (const hotel of hotelsFromPdf) {
+            const pdfPath = await uploadPdf(pdf.content, tripData.id, hotel.id);
+            hotel.pdfPath = pdfPath;
+            console.log(`Uploaded PDF for ${hotel.id}: ${pdfPath}`);
+          }
+        } catch (uploadError) {
+          console.error(`Error uploading PDF ${pdf.filename}:`, uploadError);
+          // Continue without PDF - not a critical failure
+        }
+      }
+    }
+
+    // Clean up temporary markers
+    tripData.flights.forEach(f => delete f._pdfIndex);
+    tripData.hotels.forEach(h => delete h._pdfIndex);
 
     // Save to Supabase
     const { error: dbError } = await supabase

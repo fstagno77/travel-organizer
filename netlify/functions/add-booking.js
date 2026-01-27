@@ -1,10 +1,12 @@
 /**
  * Netlify Function: Add Booking to existing trip
  * Processes PDF and adds flight/hotel to existing trip in Supabase
+ * Also stores original PDFs for download
  */
 
 const Anthropic = require('@anthropic-ai/sdk');
 const { createClient } = require('@supabase/supabase-js');
+const { uploadPdf } = require('./utils/storage');
 
 const client = new Anthropic();
 const supabase = createClient(
@@ -72,21 +74,28 @@ exports.handler = async (event, context) => {
 
     const tripData = tripRecord.data;
 
-    // Process all PDFs
+    // Process all PDFs and track which items came from which PDF
     const newFlights = [];
     const newHotels = [];
 
-    for (const pdf of pdfs) {
+    for (let pdfIndex = 0; pdfIndex < pdfs.length; pdfIndex++) {
+      const pdf = pdfs[pdfIndex];
       try {
         console.log(`Processing file: ${pdf.filename}`);
         const result = await processPdfWithClaude(pdf.content, pdf.filename);
         console.log(`Claude result:`, JSON.stringify(result, null, 2));
 
         if (result.flights) {
-          newFlights.push(...result.flights);
+          result.flights.forEach(flight => {
+            flight._pdfIndex = pdfIndex; // Temporary marker
+            newFlights.push(flight);
+          });
         }
         if (result.hotels) {
-          newHotels.push(...result.hotels);
+          result.hotels.forEach(hotel => {
+            hotel._pdfIndex = pdfIndex; // Temporary marker
+            newHotels.push(hotel);
+          });
         }
       } catch (error) {
         console.error(`Error processing ${pdf.filename}:`, error.message);
@@ -117,6 +126,39 @@ exports.handler = async (event, context) => {
       ...h,
       id: `hotel-${existingHotelCount + i + 1}`
     }));
+
+    // Upload PDFs and link to items
+    console.log('Uploading PDFs to storage...');
+    for (let pdfIndex = 0; pdfIndex < pdfs.length; pdfIndex++) {
+      const pdf = pdfs[pdfIndex];
+
+      // Find items that came from this PDF
+      const flightsFromPdf = flightsWithIds.filter(f => f._pdfIndex === pdfIndex);
+      const hotelsFromPdf = hotelsWithIds.filter(h => h._pdfIndex === pdfIndex);
+
+      if (flightsFromPdf.length > 0 || hotelsFromPdf.length > 0) {
+        try {
+          // Upload PDF for each item
+          for (const flight of flightsFromPdf) {
+            const pdfPath = await uploadPdf(pdf.content, tripId, flight.id);
+            flight.pdfPath = pdfPath;
+            console.log(`Uploaded PDF for ${flight.id}: ${pdfPath}`);
+          }
+          for (const hotel of hotelsFromPdf) {
+            const pdfPath = await uploadPdf(pdf.content, tripId, hotel.id);
+            hotel.pdfPath = pdfPath;
+            console.log(`Uploaded PDF for ${hotel.id}: ${pdfPath}`);
+          }
+        } catch (uploadError) {
+          console.error(`Error uploading PDF ${pdf.filename}:`, uploadError);
+          // Continue without PDF - not a critical failure
+        }
+      }
+    }
+
+    // Clean up temporary markers
+    flightsWithIds.forEach(f => delete f._pdfIndex);
+    hotelsWithIds.forEach(h => delete h._pdfIndex);
 
     tripData.flights = [...(tripData.flights || []), ...flightsWithIds];
     tripData.hotels = [...(tripData.hotels || []), ...hotelsWithIds];

@@ -71,7 +71,8 @@
     "frequentFlyer": "Frequent Flyer",
     "delete": "Elimina volo",
     "deleteTitle": "Elimina volo",
-    "deleteConfirm": "Sei sicuro di voler eliminare questo volo?"
+    "deleteConfirm": "Sei sicuro di voler eliminare questo volo?",
+    "downloadPdf": "Scarica PDF"
   },
   "hotel": {
     "showDetails": "Mostra dettagli",
@@ -100,7 +101,8 @@
     "source": "Prenotato su",
     "delete": "Elimina hotel",
     "deleteTitle": "Elimina hotel",
-    "deleteConfirm": "Sei sicuro di voler eliminare questo hotel?"
+    "deleteConfirm": "Sei sicuro di voler eliminare questo hotel?",
+    "downloadPdf": "Scarica PDF"
   },
   "changelog": {
     "title": "Changelog",
@@ -110,6 +112,7 @@
     "loading": "Caricamento...",
     "error": "Si è verificato un errore",
     "from": "dalle",
-    "until": "fino alle"
+    "until": "fino alle",
+    "downloadError": "Errore durante il download del PDF"
   }
 }

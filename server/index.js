@@ -45,7 +45,11 @@ app.put('/.netlify/functions/update-trip', express.json(), (req, res, next) => {
 app.delete('/.netlify/functions/delete-trip', async (req, res) => {
   const tripId = req.query.id;
   const supabaseService = require('./services/supabase');
+  const { deleteAllTripPdfs } = require('./services/storage');
   try {
+    // Delete all PDFs for this trip
+    await deleteAllTripPdfs(tripId);
+    // Delete trip from database
     await supabaseService.deleteTrip(tripId);
     res.json({ success: true, message: 'Trip deleted' });
   } catch (error) {
@@ -65,10 +69,113 @@ app.post('/.netlify/functions/rename-trip', async (req, res) => {
   }
 });
 
+// Get PDF download URL
+app.get('/.netlify/functions/get-pdf-url', async (req, res) => {
+  const { getPdfSignedUrl } = require('./services/storage');
+  const { path } = req.query;
+
+  if (!path) {
+    return res.status(400).json({ success: false, error: 'Path is required' });
+  }
+
+  // Validate path format
+  if (!path.match(/^trips\/[^/]+\/[^/]+\.pdf$/)) {
+    return res.status(400).json({ success: false, error: 'Invalid path format' });
+  }
+
+  try {
+    const signedUrl = await getPdfSignedUrl(path);
+    res.json({ success: true, url: signedUrl });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Delete booking (flight or hotel) from trip
+app.post('/.netlify/functions/delete-booking', async (req, res) => {
+  const supabaseService = require('./services/supabase');
+  const { deletePdf } = require('./services/storage');
+
+  try {
+    const { tripId, type, itemId } = req.body;
+
+    if (!tripId) {
+      return res.status(400).json({ success: false, error: 'Trip ID is required' });
+    }
+    if (!type || !['flight', 'hotel'].includes(type)) {
+      return res.status(400).json({ success: false, error: 'Type must be "flight" or "hotel"' });
+    }
+    if (!itemId) {
+      return res.status(400).json({ success: false, error: 'Item ID is required' });
+    }
+
+    // Get existing trip
+    let tripData;
+    try {
+      tripData = await supabaseService.getTripById(tripId);
+    } catch (e) {
+      return res.status(404).json({ success: false, error: 'Trip not found' });
+    }
+
+    // Find and delete the item
+    if (type === 'flight') {
+      const flightToDelete = (tripData.flights || []).find(f => f.id === itemId);
+      if (!flightToDelete) {
+        return res.status(404).json({ success: false, error: 'Flight not found' });
+      }
+      // Delete associated PDF
+      if (flightToDelete.pdfPath) {
+        await deletePdf(flightToDelete.pdfPath);
+      }
+      tripData.flights = tripData.flights.filter(f => f.id !== itemId);
+    } else {
+      const hotelToDelete = (tripData.hotels || []).find(h => h.id === itemId);
+      if (!hotelToDelete) {
+        return res.status(404).json({ success: false, error: 'Hotel not found' });
+      }
+      // Delete associated PDF
+      if (hotelToDelete.pdfPath) {
+        await deletePdf(hotelToDelete.pdfPath);
+      }
+      tripData.hotels = tripData.hotels.filter(h => h.id !== itemId);
+    }
+
+    // Update dates
+    const dates = [];
+    tripData.flights?.forEach(f => { if (f.date) dates.push(new Date(f.date)); });
+    tripData.hotels?.forEach(h => {
+      if (h.checkIn?.date) dates.push(new Date(h.checkIn.date));
+      if (h.checkOut?.date) dates.push(new Date(h.checkOut.date));
+    });
+    if (dates.length > 0) {
+      dates.sort((a, b) => a - b);
+      tripData.startDate = dates[0].toISOString().split('T')[0];
+      tripData.endDate = dates[dates.length - 1].toISOString().split('T')[0];
+    }
+
+    // Update route
+    if (tripData.flights && tripData.flights.length > 0) {
+      const sortedFlights = [...tripData.flights].sort((a, b) => new Date(a.date) - new Date(b.date));
+      const departures = sortedFlights.map(f => f.departure?.code).filter(Boolean);
+      const arrivals = sortedFlights.map(f => f.arrival?.code).filter(Boolean);
+      tripData.route = [departures[0], ...arrivals].join(' → ');
+    }
+
+    // Save updated trip
+    await supabaseService.saveTrip(tripData);
+    res.json({ success: true, tripData });
+
+  } catch (error) {
+    console.error('Error deleting booking:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Process PDF - accepts same format as Netlify function (JSON with base64 PDFs)
 app.post('/.netlify/functions/process-pdf', async (req, res) => {
   const pdfProcessor = require('./services/pdfProcessor');
   const supabaseService = require('./services/supabase');
+  const { uploadPdf } = require('./services/storage');
 
   try {
     const { pdfs } = req.body;
@@ -79,16 +186,41 @@ app.post('/.netlify/functions/process-pdf', async (req, res) => {
 
     console.log(`Processing ${pdfs.length} PDF file(s)...`);
 
-    // Convert base64 PDFs to buffer format for pdfProcessor
-    const files = pdfs.map(pdf => ({
-      originalname: pdf.filename,
-      buffer: Buffer.from(pdf.content, 'base64')
-    }));
+    // Process each PDF and track which items came from which PDF
+    const allFlights = [];
+    const allHotels = [];
+    let metadata = {};
 
-    // Process all PDFs
-    const extractedData = await pdfProcessor.processMultiplePdfs(files);
+    for (let pdfIndex = 0; pdfIndex < pdfs.length; pdfIndex++) {
+      const pdf = pdfs[pdfIndex];
+      const file = {
+        originalname: pdf.filename,
+        buffer: Buffer.from(pdf.content, 'base64')
+      };
 
-    if (!extractedData.flights.length && !extractedData.hotels.length) {
+      const extractedData = await pdfProcessor.processMultiplePdfs([file]);
+
+      if (extractedData.flights) {
+        extractedData.flights.forEach(f => {
+          f._pdfIndex = pdfIndex;
+          allFlights.push(f);
+        });
+      }
+      if (extractedData.hotels) {
+        extractedData.hotels.forEach(h => {
+          h._pdfIndex = pdfIndex;
+          allHotels.push(h);
+        });
+      }
+      if (extractedData.metadata?.passenger) {
+        metadata.passenger = extractedData.metadata.passenger;
+      }
+      if (extractedData.metadata?.booking) {
+        metadata.booking = extractedData.metadata.booking;
+      }
+    }
+
+    if (!allFlights.length && !allHotels.length) {
       return res.status(400).json({
         success: false,
         error: 'Could not extract any travel data from the uploaded PDFs'
@@ -96,7 +228,34 @@ app.post('/.netlify/functions/process-pdf', async (req, res) => {
     }
 
     // Create trip data
-    const tripData = createTripFromExtractedData(extractedData);
+    const tripData = createTripFromExtractedData({ flights: allFlights, hotels: allHotels, metadata });
+
+    // Upload PDFs and link to items
+    console.log('Uploading PDFs to storage...');
+    for (let pdfIndex = 0; pdfIndex < pdfs.length; pdfIndex++) {
+      const pdf = pdfs[pdfIndex];
+      const flightsFromPdf = tripData.flights.filter(f => f._pdfIndex === pdfIndex);
+      const hotelsFromPdf = tripData.hotels.filter(h => h._pdfIndex === pdfIndex);
+
+      if (flightsFromPdf.length > 0 || hotelsFromPdf.length > 0) {
+        try {
+          for (const flight of flightsFromPdf) {
+            const pdfPath = await uploadPdf(pdf.content, tripData.id, flight.id);
+            flight.pdfPath = pdfPath;
+          }
+          for (const hotel of hotelsFromPdf) {
+            const pdfPath = await uploadPdf(pdf.content, tripData.id, hotel.id);
+            hotel.pdfPath = pdfPath;
+          }
+        } catch (uploadError) {
+          console.error(`Error uploading PDF ${pdf.filename}:`, uploadError);
+        }
+      }
+    }
+
+    // Clean up temporary markers
+    tripData.flights.forEach(f => delete f._pdfIndex);
+    tripData.hotels.forEach(h => delete h._pdfIndex);
 
     // Save to Supabase
     await supabaseService.saveTrip(tripData);
@@ -183,6 +342,7 @@ function createTripFromExtractedData(data) {
 app.post('/.netlify/functions/add-booking', async (req, res) => {
   const pdfProcessor = require('./services/pdfProcessor');
   const supabaseService = require('./services/supabase');
+  const { uploadPdf } = require('./services/storage');
 
   try {
     const { pdfs, tripId } = req.body;
@@ -205,35 +365,80 @@ app.post('/.netlify/functions/add-booking', async (req, res) => {
       return res.status(404).json({ success: false, error: 'Trip not found' });
     }
 
-    // Convert base64 PDFs to buffer format for pdfProcessor
-    const files = pdfs.map(pdf => ({
-      originalname: pdf.filename,
-      buffer: Buffer.from(pdf.content, 'base64')
-    }));
+    // Process each PDF and track which items came from which PDF
+    const newFlights = [];
+    const newHotels = [];
 
-    // Process all PDFs
-    const extractedData = await pdfProcessor.processMultiplePdfs(files);
+    for (let pdfIndex = 0; pdfIndex < pdfs.length; pdfIndex++) {
+      const pdf = pdfs[pdfIndex];
+      const file = {
+        originalname: pdf.filename,
+        buffer: Buffer.from(pdf.content, 'base64')
+      };
 
-    if (!extractedData.flights.length && !extractedData.hotels.length) {
+      const extractedData = await pdfProcessor.processMultiplePdfs([file]);
+
+      if (extractedData.flights) {
+        extractedData.flights.forEach(f => {
+          f._pdfIndex = pdfIndex;
+          newFlights.push(f);
+        });
+      }
+      if (extractedData.hotels) {
+        extractedData.hotels.forEach(h => {
+          h._pdfIndex = pdfIndex;
+          newHotels.push(h);
+        });
+      }
+    }
+
+    if (!newFlights.length && !newHotels.length) {
       return res.status(400).json({
         success: false,
         error: 'Could not extract any travel data from the uploaded PDFs'
       });
     }
 
-    // Add new bookings to trip
+    // Add new bookings to trip with IDs
     const existingFlightCount = tripData.flights?.length || 0;
     const existingHotelCount = tripData.hotels?.length || 0;
 
-    const flightsWithIds = extractedData.flights.map((f, i) => ({
+    const flightsWithIds = newFlights.map((f, i) => ({
       ...f,
       id: `flight-${existingFlightCount + i + 1}`
     }));
 
-    const hotelsWithIds = extractedData.hotels.map((h, i) => ({
+    const hotelsWithIds = newHotels.map((h, i) => ({
       ...h,
       id: `hotel-${existingHotelCount + i + 1}`
     }));
+
+    // Upload PDFs and link to items
+    console.log('Uploading PDFs to storage...');
+    for (let pdfIndex = 0; pdfIndex < pdfs.length; pdfIndex++) {
+      const pdf = pdfs[pdfIndex];
+      const flightsFromPdf = flightsWithIds.filter(f => f._pdfIndex === pdfIndex);
+      const hotelsFromPdf = hotelsWithIds.filter(h => h._pdfIndex === pdfIndex);
+
+      if (flightsFromPdf.length > 0 || hotelsFromPdf.length > 0) {
+        try {
+          for (const flight of flightsFromPdf) {
+            const pdfPath = await uploadPdf(pdf.content, tripId, flight.id);
+            flight.pdfPath = pdfPath;
+          }
+          for (const hotel of hotelsFromPdf) {
+            const pdfPath = await uploadPdf(pdf.content, tripId, hotel.id);
+            hotel.pdfPath = pdfPath;
+          }
+        } catch (uploadError) {
+          console.error(`Error uploading PDF ${pdf.filename}:`, uploadError);
+        }
+      }
+    }
+
+    // Clean up temporary markers
+    flightsWithIds.forEach(f => delete f._pdfIndex);
+    hotelsWithIds.forEach(h => delete h._pdfIndex);
 
     tripData.flights = [...(tripData.flights || []), ...flightsWithIds];
     tripData.hotels = [...(tripData.hotels || []), ...hotelsWithIds];
@@ -258,8 +463,8 @@ app.post('/.netlify/functions/add-booking', async (req, res) => {
       success: true,
       tripData,
       added: {
-        flights: extractedData.flights.length,
-        hotels: extractedData.hotels.length
+        flights: newFlights.length,
+        hotels: newHotels.length
       }
     });
 
