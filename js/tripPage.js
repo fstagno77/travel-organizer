@@ -817,8 +817,8 @@
         <div class="flight-card${isPast ? ' past' : ''}">
           <div class="flight-card-header">
             <span class="flight-date">${formattedDate}</span>
-            <a href="${trackingUrl}" target="_blank" rel="noopener" class="flight-track-btn">
-              <span data-i18n="flight.track">Track</span>
+            <a href="${trackingUrl}" target="_blank" rel="noopener" class="flight-number-link">
+              ${flight.airline || ''} ${flight.flightNumber}
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
                 <polyline points="15 3 21 3 21 9"></polyline>
@@ -844,7 +844,6 @@
               <div class="flight-arrow">
                 <div class="flight-duration">${duration}</div>
                 <div class="flight-arrow-line"></div>
-                <div class="flight-info">${flight.airline || ''} ${flight.flightNumber}</div>
               </div>
 
               <div class="flight-endpoint">
