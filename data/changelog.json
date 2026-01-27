@@ -1,6 +1,22 @@
 {
   "versions": [
     {
+      "version": "0.8.1",
+      "date": "2026-01-27",
+      "changes": {
+        "it": [
+          "Icona copia per riferimento prenotazione e numero biglietto",
+          "Numero volo e compagnia spostati sotto la freccia",
+          "Pulsante 'Stato Volo' per il tracking"
+        ],
+        "en": [
+          "Copy icon for booking reference and ticket number",
+          "Flight number and airline moved under the arrow",
+          "'Flight Status' button for tracking"
+        ]
+      }
+    },
+    {
       "version": "0.8.0",
       "date": "2026-01-27",
       "changes": {
