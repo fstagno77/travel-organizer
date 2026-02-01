@@ -1,29 +1,22 @@
 /**
  * Netlify Function: Save Trip Photo
  * Downloads photo from Unsplash and saves to trip-specific storage
+ * Saves city photo to user's personal cache
  */
 
 const { createClient } = require('@supabase/supabase-js');
+const { authenticateRequest, unauthorizedResponse, getCorsHeaders, handleOptions } = require('./utils/auth');
 const { getPhotoById, triggerDownloadTracking, downloadPhoto } = require('./utils/unsplash');
-const { saveCityPhoto } = require('./utils/cityPhotos');
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY
-);
+const { saveCityPhotoForUser } = require('./utils/cityPhotos');
 
 const BUCKET_NAME = 'city-photos';
 
-const headers = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Content-Type': 'application/json'
-};
-
 exports.handler = async (event, context) => {
+  const headers = getCorsHeaders();
+
+  // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers, body: '' };
+    return handleOptions();
   }
 
   if (event.httpMethod !== 'POST') {
@@ -33,6 +26,14 @@ exports.handler = async (event, context) => {
       body: JSON.stringify({ success: false, error: 'Method not allowed' })
     };
   }
+
+  // Authenticate request
+  const authResult = await authenticateRequest(event);
+  if (!authResult) {
+    return unauthorizedResponse();
+  }
+
+  const { user, supabase } = authResult;
 
   try {
     const body = JSON.parse(event.body || '{}');
@@ -111,9 +112,9 @@ exports.handler = async (event, context) => {
 
     const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
 
-    // Also save to city cache (permanent "last used" storage)
+    // Also save to user's city photo cache (permanent "last used" storage)
     if (destination) {
-      await saveCityPhoto(destination, photoBuffer, unsplashPhotoId, photoData.attribution);
+      await saveCityPhotoForUser(user.id, destination, photoBuffer, unsplashPhotoId, photoData.attribution);
     }
 
     return {

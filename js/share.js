@@ -115,9 +115,9 @@
         }
       }
 
-      // If not loaded from local file, fetch from API
+      // If not loaded from local file, fetch from API (using get-shared-trip for public access)
       if (!tripData) {
-        const response = await fetch(`/.netlify/functions/get-trip?id=${tripId}`);
+        const response = await fetch(`/.netlify/functions/get-shared-trip?id=${tripId}`);
         const result = await response.json();
         if (result.success && result.tripData) {
           tripData = result.tripData;

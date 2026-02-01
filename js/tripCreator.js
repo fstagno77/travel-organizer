@@ -322,11 +322,8 @@ const tripCreator = {
         }))
       );
 
-      const response = await fetch('/.netlify/functions/process-pdf', {
+      const response = await utils.authFetch('/.netlify/functions/process-pdf', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify({ pdfs })
       });
 
@@ -478,9 +475,8 @@ const tripCreator = {
    */
   async loadPhotos(destination, page) {
     try {
-      const response = await fetch('/.netlify/functions/get-city-photos', {
+      const response = await utils.authFetch('/.netlify/functions/get-city-photos', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           city: destination,
           page,
@@ -658,9 +654,8 @@ const tripCreator = {
       });
 
       // Upload to server
-      const response = await fetch('/.netlify/functions/upload-trip-photo', {
+      const response = await utils.authFetch('/.netlify/functions/upload-trip-photo', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tripId: this.pendingTripData.id,
           imageData,
@@ -723,9 +718,8 @@ const tripCreator = {
     try {
       if (isLastUsed) {
         // Copy the last used photo to this trip's storage
-        const copyResponse = await fetch('/.netlify/functions/copy-trip-photo', {
+        const copyResponse = await utils.authFetch('/.netlify/functions/copy-trip-photo', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             tripId: this.pendingTripData.id,
             sourceUrl: photo.fullUrl || photo.previewUrl,
@@ -744,9 +738,8 @@ const tripCreator = {
         await this.updateTripWithPhoto(copyResult.photo);
       } else {
         // Download from Unsplash and save to trip storage
-        const saveResponse = await fetch('/.netlify/functions/save-city-photo', {
+        const saveResponse = await utils.authFetch('/.netlify/functions/save-city-photo', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             tripId: this.pendingTripData.id,
             unsplashPhotoId: photoId,
@@ -774,9 +767,8 @@ const tripCreator = {
    */
   async updateTripWithPhoto(photo) {
     try {
-      const response = await fetch('/.netlify/functions/update-trip-photo', {
+      const response = await utils.authFetch('/.netlify/functions/update-trip-photo', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tripId: this.pendingTripData.id,
           coverPhoto: {

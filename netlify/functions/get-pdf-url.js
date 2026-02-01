@@ -1,22 +1,17 @@
 /**
  * Netlify Function: Get PDF URL
- * Returns a signed URL for downloading a PDF from storage
+ * Returns a signed URL for downloading a PDF from storage for the authenticated user
  */
 
+const { authenticateRequest, unauthorizedResponse, getCorsHeaders, handleOptions } = require('./utils/auth');
 const { getPdfSignedUrl } = require('./utils/storage');
 
 exports.handler = async (event, context) => {
-  // CORS headers
-  const headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
-    'Content-Type': 'application/json'
-  };
+  const headers = getCorsHeaders();
 
-  // Handle preflight
+  // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers, body: '' };
+    return handleOptions();
   }
 
   if (event.httpMethod !== 'GET') {
@@ -25,6 +20,12 @@ exports.handler = async (event, context) => {
       headers,
       body: JSON.stringify({ success: false, error: 'Method not allowed' })
     };
+  }
+
+  // Authenticate request
+  const authResult = await authenticateRequest(event);
+  if (!authResult) {
+    return unauthorizedResponse();
   }
 
   try {

@@ -15,13 +15,26 @@
       // Initialize i18n first
       await i18n.init();
 
+      // Initialize auth
+      if (typeof auth !== 'undefined') {
+        await auth.init();
+
+        // Apply language preference from profile if available
+        if (auth.profile?.language_preference) {
+          await i18n.setLang(auth.profile.language_preference);
+        }
+      }
+
       // Initialize navigation (header, footer)
       await navigation.init();
 
       // Re-apply translations after navigation is loaded
       i18n.apply();
 
-      // Load trip data from URL parameter
+      // Load trip data from URL parameter (requires auth)
+      if (!auth?.requireAuth()) {
+        return;
+      }
       await loadTripFromUrl();
 
     } catch (error) {
@@ -43,9 +56,9 @@
     }
 
     try {
-      // Load trip from Supabase via Netlify Function
+      // Load trip from Supabase via Netlify Function (authenticated)
       console.log('Fetching trip:', tripId);
-      const response = await fetch(`/.netlify/functions/get-trip?id=${encodeURIComponent(tripId)}`);
+      const response = await utils.authFetch(`/.netlify/functions/get-trip?id=${encodeURIComponent(tripId)}`);
       console.log('Response status:', response.status);
       const result = await response.json();
       console.log('Result:', result);
@@ -410,11 +423,8 @@
           }))
         );
 
-        const response = await fetch('/.netlify/functions/add-booking', {
+        const response = await utils.authFetch('/.netlify/functions/add-booking', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
           body: JSON.stringify({ pdfs, tripId })
         });
 
@@ -694,9 +704,8 @@
       submitBtn.innerHTML = '<span class="spinner spinner-sm"></span>';
 
       try {
-        const response = await fetch('/.netlify/functions/rename-trip', {
+        const response = await utils.authFetch('/.netlify/functions/rename-trip', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ tripId, title: newName })
         });
 
@@ -1219,9 +1228,8 @@
       confirmBtn.innerHTML = '<span class="spinner spinner-sm"></span>';
 
       try {
-        const response = await fetch('/.netlify/functions/delete-booking', {
+        const response = await utils.authFetch('/.netlify/functions/delete-booking', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             tripId: currentTripData.id,
             type: type,

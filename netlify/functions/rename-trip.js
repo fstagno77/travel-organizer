@@ -1,27 +1,16 @@
 /**
  * Netlify Function: Rename Trip
- * Updates the title of a trip in Supabase
+ * Updates the title of a trip in Supabase for the authenticated user
  */
 
-const { createClient } = require('@supabase/supabase-js');
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY
-);
+const { authenticateRequest, unauthorizedResponse, getCorsHeaders, handleOptions } = require('./utils/auth');
 
 exports.handler = async (event, context) => {
-  // CORS headers
-  const headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Content-Type': 'application/json'
-  };
+  const headers = getCorsHeaders();
 
-  // Handle preflight
+  // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers, body: '' };
+    return handleOptions();
   }
 
   if (event.httpMethod !== 'POST') {
@@ -31,6 +20,14 @@ exports.handler = async (event, context) => {
       body: JSON.stringify({ success: false, error: 'Method not allowed' })
     };
   }
+
+  // Authenticate request
+  const authResult = await authenticateRequest(event);
+  if (!authResult) {
+    return unauthorizedResponse();
+  }
+
+  const { supabase } = authResult;
 
   try {
     const { tripId, title } = JSON.parse(event.body);
@@ -51,7 +48,7 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Get existing trip
+    // Get existing trip (RLS ensures user can only access own trips)
     const { data: tripRecord, error: fetchError } = await supabase
       .from('trips')
       .select('*')
@@ -73,7 +70,7 @@ exports.handler = async (event, context) => {
       en: title
     };
 
-    // Save updated trip
+    // Save updated trip (RLS ensures user can only update own trips)
     const { error: updateError } = await supabase
       .from('trips')
       .update({

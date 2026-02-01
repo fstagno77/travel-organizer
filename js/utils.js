@@ -137,6 +137,30 @@ const utils = {
    */
   isPage(pageName) {
     return window.location.pathname.includes(pageName);
+  },
+
+  /**
+   * Authenticated fetch - adds Authorization header with JWT token
+   * @param {string} url - API endpoint URL
+   * @param {object} options - Fetch options
+   * @returns {Promise<Response>} Fetch response
+   */
+  async authFetch(url, options = {}) {
+    const token = window.auth?.getAccessToken();
+
+    const headers = {
+      'Content-Type': 'application/json',
+      ...(options.headers || {})
+    };
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    return fetch(url, {
+      ...options,
+      headers
+    });
   }
 };
 

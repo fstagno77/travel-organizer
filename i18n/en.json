@@ -129,5 +129,32 @@
     "from": "from",
     "until": "until",
     "downloadError": "Error downloading PDF"
+  },
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "loginTitle": "Login to Travel Organizer",
+    "loginSubtitle": "Sign in to manage your trips",
+    "loginWithGoogle": "Continue with Google",
+    "createUsername": "Choose a username",
+    "usernameSubtitle": "This will be your unique identifier",
+    "usernameHint": "5-12 characters, alphanumeric only",
+    "usernameTaken": "Username already taken",
+    "usernameInvalid": "Invalid username format",
+    "continue": "Continue",
+    "welcomeTitle": "Welcome to Travel Organizer",
+    "welcomeText": "Login to manage your trips",
+    "notLoggedIn": "Not logged in"
+  },
+  "profile": {
+    "title": "Profile",
+    "settings": "Settings",
+    "language": "Language",
+    "username": "Username",
+    "changeUsername": "Change",
+    "usernameHint": "5-12 characters, alphanumeric only",
+    "usernameTaken": "Username already taken",
+    "usernameInvalid": "Invalid username format",
+    "logout": "Logout"
   }
 }

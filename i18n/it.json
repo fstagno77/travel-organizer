@@ -129,5 +129,23 @@
     "from": "dalle",
     "until": "fino alle",
     "downloadError": "Errore durante il download del PDF"
+  },
+  "auth": {
+    "login": "Accedi",
+    "logout": "Esci",
+    "welcomeTitle": "Benvenuto in Travel Organizer",
+    "welcomeText": "Accedi per gestire i tuoi viaggi",
+    "notLoggedIn": "Non hai effettuato l'accesso"
+  },
+  "profile": {
+    "title": "Profilo",
+    "settings": "Impostazioni",
+    "language": "Lingua",
+    "username": "Username",
+    "changeUsername": "Modifica",
+    "usernameHint": "5-12 caratteri, solo lettere e numeri",
+    "usernameTaken": "Username già in uso",
+    "usernameInvalid": "Username non valido",
+    "logout": "Esci"
   }
 }

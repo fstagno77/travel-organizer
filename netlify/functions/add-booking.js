@@ -2,30 +2,21 @@
  * Netlify Function: Add Booking to existing trip
  * Processes PDF and adds flight/hotel to existing trip in Supabase
  * Also stores original PDFs for download
+ * Authenticated endpoint
  */
 
 const Anthropic = require('@anthropic-ai/sdk');
-const { createClient } = require('@supabase/supabase-js');
+const { authenticateRequest, unauthorizedResponse, getCorsHeaders, handleOptions } = require('./utils/auth');
 const { uploadPdf } = require('./utils/storage');
 
 const client = new Anthropic();
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY
-);
 
 exports.handler = async (event, context) => {
-  // CORS headers
-  const headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Content-Type': 'application/json'
-  };
+  const headers = getCorsHeaders();
 
-  // Handle preflight
+  // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers, body: '' };
+    return handleOptions();
   }
 
   if (event.httpMethod !== 'POST') {
@@ -35,6 +26,14 @@ exports.handler = async (event, context) => {
       body: JSON.stringify({ success: false, error: 'Method not allowed' })
     };
   }
+
+  // Authenticate request
+  const authResult = await authenticateRequest(event);
+  if (!authResult) {
+    return unauthorizedResponse();
+  }
+
+  const { supabase } = authResult;
 
   try {
     const { pdfs, tripId } = JSON.parse(event.body);

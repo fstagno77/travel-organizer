@@ -41,6 +41,36 @@ const navigation = {
     if (!headerPlaceholder) return;
 
     const prefix = this.getPathPrefix();
+    const isAuthenticated = window.auth?.isAuthenticated();
+    const profile = window.auth?.profile;
+
+    // Build auth section based on state
+    let authSection = '';
+    if (isAuthenticated && profile) {
+      // Show profile avatar
+      const initial = profile.username.charAt(0).toUpperCase();
+      authSection = `
+        <a href="${prefix}profile.html" class="header-profile-btn" title="@${profile.username}">
+          <span class="header-profile-avatar">${initial}</span>
+        </a>
+      `;
+    } else {
+      // Show login button
+      authSection = `
+        <button class="btn btn-secondary btn-sm" id="login-btn" data-i18n="auth.login">Login</button>
+      `;
+    }
+
+    // Show "New Trip" button only if authenticated
+    const newTripBtn = isAuthenticated ? `
+      <button class="btn btn-primary btn-sm" id="new-trip-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        <span data-i18n="trip.new">Nuovo Viaggio</span>
+      </button>
+    ` : '';
 
     const headerHTML = `
       <header class="header">
@@ -54,13 +84,8 @@ const navigation = {
             </a>
 
             <div class="header-actions">
-              <button class="btn btn-primary btn-sm" id="new-trip-btn">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="12" y1="5" x2="12" y2="19"></line>
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
-                <span data-i18n="trip.new">Nuovo Viaggio</span>
-              </button>
+              ${newTripBtn}
+              ${authSection}
             </div>
           </div>
         </div>
@@ -68,6 +93,14 @@ const navigation = {
     `;
 
     headerPlaceholder.innerHTML = headerHTML;
+
+    // Bind login button click if present
+    const loginBtn = document.getElementById('login-btn');
+    if (loginBtn) {
+      loginBtn.addEventListener('click', () => {
+        window.auth?.showLoginModal();
+      });
+    }
   },
 
   /**

@@ -1,27 +1,18 @@
 /**
  * Netlify Function: Delete Trip
- * Deletes a trip from Supabase by ID
+ * Deletes a trip from Supabase by ID for the authenticated user
  * Also deletes all associated PDFs from storage
  */
 
-const { createClient } = require('@supabase/supabase-js');
+const { authenticateRequest, unauthorizedResponse, getCorsHeaders, handleOptions } = require('./utils/auth');
 const { deleteAllTripPdfs } = require('./utils/storage');
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY
-);
-
 exports.handler = async (event, context) => {
-  const headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'DELETE, OPTIONS',
-    'Content-Type': 'application/json'
-  };
+  const headers = getCorsHeaders();
 
+  // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers, body: '' };
+    return handleOptions();
   }
 
   if (event.httpMethod !== 'DELETE') {
@@ -31,6 +22,14 @@ exports.handler = async (event, context) => {
       body: JSON.stringify({ success: false, error: 'Method not allowed' })
     };
   }
+
+  // Authenticate request
+  const authResult = await authenticateRequest(event);
+  if (!authResult) {
+    return unauthorizedResponse();
+  }
+
+  const { supabase } = authResult;
 
   try {
     const tripId = event.queryStringParameters?.id;
@@ -47,7 +46,7 @@ exports.handler = async (event, context) => {
     console.log(`Deleting all PDFs for trip: ${tripId}`);
     await deleteAllTripPdfs(tripId);
 
-    // Delete trip from database
+    // Delete trip from database (RLS ensures user can only delete own trips)
     const { error } = await supabase
       .from('trips')
       .delete()

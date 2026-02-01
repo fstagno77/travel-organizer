@@ -1,25 +1,16 @@
 /**
  * Netlify Function: Get Trips
- * Retrieves all trips from Supabase
+ * Retrieves all trips from Supabase for the authenticated user
  */
 
-const { createClient } = require('@supabase/supabase-js');
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY
-);
+const { authenticateRequest, unauthorizedResponse, getCorsHeaders, handleOptions } = require('./utils/auth');
 
 exports.handler = async (event, context) => {
-  const headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
-    'Content-Type': 'application/json'
-  };
+  const headers = getCorsHeaders();
 
+  // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers, body: '' };
+    return handleOptions();
   }
 
   if (event.httpMethod !== 'GET') {
@@ -30,7 +21,16 @@ exports.handler = async (event, context) => {
     };
   }
 
+  // Authenticate request
+  const authResult = await authenticateRequest(event);
+  if (!authResult) {
+    return unauthorizedResponse();
+  }
+
+  const { supabase } = authResult;
+
   try {
+    // RLS will automatically filter to user's trips
     const { data, error } = await supabase
       .from('trips')
       .select('id, data, created_at')

@@ -16,6 +16,16 @@
       // Initialize i18n first
       await i18n.init();
 
+      // Initialize auth
+      if (typeof auth !== 'undefined') {
+        await auth.init();
+
+        // Apply language preference from profile if available
+        if (auth.profile?.language_preference) {
+          await i18n.setLang(auth.profile.language_preference);
+        }
+      }
+
       // Initialize navigation (header, footer)
       await navigation.init();
 
@@ -58,12 +68,35 @@
     const tripsContainer = document.getElementById('trips-container');
     if (!tripsContainer) return;
 
+    // Check if user is authenticated
+    if (!auth?.isAuthenticated()) {
+      // Show login prompt
+      tripsContainer.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.4-.1.9.3 1.1l4.8 3.2-2.1 2.1-2.4-.6c-.4-.1-.8 0-1 .3l-.2.3c-.2.3-.1.7.1 1l2.2 2.2 2.2 2.2c.3.3.7.3 1 .1l.3-.2c.3-.2.4-.6.3-1l-.6-2.4 2.1-2.1 3.2 4.8c.2.4.7.5 1.1.3l.5-.3c.4-.2.6-.6.5-1.1z"/>
+            </svg>
+          </div>
+          <h3 class="empty-state-title" data-i18n="auth.welcomeTitle">Welcome to Travel Organizer</h3>
+          <p class="empty-state-text" data-i18n="auth.welcomeText">Login to manage your trips</p>
+          <button class="btn btn-primary" id="home-login-btn" data-i18n="auth.login">Login</button>
+        </div>
+      `;
+      i18n.apply();
+
+      document.getElementById('home-login-btn')?.addEventListener('click', () => {
+        auth.showLoginModal();
+      });
+      return;
+    }
+
     try {
-      // Load trips from Supabase only
+      // Load trips from Supabase with authentication
       let allTrips = [];
 
       try {
-        const response = await fetch('/.netlify/functions/get-trips');
+        const response = await utils.authFetch('/.netlify/functions/get-trips');
         const result = await response.json();
         if (result.success && result.trips) {
           allTrips = result.trips;
@@ -669,9 +702,8 @@
       submitBtn.innerHTML = '<span class="spinner spinner-sm"></span>';
 
       try {
-        const response = await fetch('/.netlify/functions/rename-trip', {
+        const response = await utils.authFetch('/.netlify/functions/rename-trip', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ tripId, title: newName })
         });
 
@@ -1273,11 +1305,8 @@
           }))
         );
 
-        const response = await fetch('/.netlify/functions/add-booking', {
+        const response = await utils.authFetch('/.netlify/functions/add-booking', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
           body: JSON.stringify({ pdfs, tripId })
         });
 

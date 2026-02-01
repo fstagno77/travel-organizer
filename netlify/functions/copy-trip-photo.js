@@ -1,28 +1,20 @@
 /**
  * Netlify Function: Copy Trip Photo
  * Copies a photo from one URL to a new trip's storage
+ * Authenticated endpoint
  */
 
-const { createClient } = require('@supabase/supabase-js');
-const { saveCityPhoto } = require('./utils/cityPhotos');
+const { authenticateRequest, unauthorizedResponse, getCorsHeaders, handleOptions } = require('./utils/auth');
+const { saveCityPhotoForUser } = require('./utils/cityPhotos');
 
 const BUCKET_NAME = 'city-photos';
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY
-);
-
-const headers = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Content-Type': 'application/json'
-};
-
 exports.handler = async (event, context) => {
+  const headers = getCorsHeaders();
+
+  // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers, body: '' };
+    return handleOptions();
   }
 
   if (event.httpMethod !== 'POST') {
@@ -32,6 +24,14 @@ exports.handler = async (event, context) => {
       body: JSON.stringify({ success: false, error: 'Method not allowed' })
     };
   }
+
+  // Authenticate request
+  const authResult = await authenticateRequest(event);
+  if (!authResult) {
+    return unauthorizedResponse();
+  }
+
+  const { user, supabase } = authResult;
 
   try {
     const body = JSON.parse(event.body || '{}');
@@ -99,9 +99,9 @@ exports.handler = async (event, context) => {
 
     const publicUrl = `${urlData.publicUrl}?t=${timestamp}`;
 
-    // Also save to city cache (permanent "last used" storage)
+    // Also save to user's city cache (permanent "last used" storage)
     if (destination) {
-      await saveCityPhoto(destination, photoBuffer, null, attribution);
+      await saveCityPhotoForUser(user.id, destination, photoBuffer, null, attribution);
     }
 
     return {

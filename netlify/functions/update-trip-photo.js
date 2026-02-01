@@ -1,25 +1,16 @@
 /**
  * Netlify Function: Update Trip Photo
- * Updates a trip with the selected cover photo
+ * Updates a trip with the selected cover photo for the authenticated user
  */
 
-const { createClient } = require('@supabase/supabase-js');
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY
-);
-
-const headers = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Content-Type': 'application/json'
-};
+const { authenticateRequest, unauthorizedResponse, getCorsHeaders, handleOptions } = require('./utils/auth');
 
 exports.handler = async (event, context) => {
+  const headers = getCorsHeaders();
+
+  // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers, body: '' };
+    return handleOptions();
   }
 
   if (event.httpMethod !== 'POST') {
@@ -29,6 +20,14 @@ exports.handler = async (event, context) => {
       body: JSON.stringify({ success: false, error: 'Method not allowed' })
     };
   }
+
+  // Authenticate request
+  const authResult = await authenticateRequest(event);
+  if (!authResult) {
+    return unauthorizedResponse();
+  }
+
+  const { supabase } = authResult;
 
   try {
     const body = JSON.parse(event.body || '{}');
@@ -45,7 +44,7 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Get current trip data
+    // Get current trip data (RLS ensures user can only access own trips)
     const { data: tripRow, error: fetchError } = await supabase
       .from('trips')
       .select('data')
@@ -69,7 +68,7 @@ exports.handler = async (event, context) => {
       coverPhoto
     };
 
-    // Save updated trip
+    // Save updated trip (RLS ensures user can only update own trips)
     const { error: updateError } = await supabase
       .from('trips')
       .update({

@@ -1,38 +1,29 @@
 /**
  * Netlify Function: Get City Photos
  * Returns Unsplash options for a city, plus last used photo if available
+ * Filtered by authenticated user
  */
 
-const { createClient } = require('@supabase/supabase-js');
-const { normalizeCityName, getCachedCityPhoto } = require('./utils/cityPhotos');
+const { authenticateRequest, unauthorizedResponse, getCorsHeaders, handleOptions } = require('./utils/auth');
+const { normalizeCityName, getCachedCityPhotoForUser } = require('./utils/cityPhotos');
 const { searchDestinationPhotos } = require('./utils/unsplash');
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY
-);
-
-const headers = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Content-Type': 'application/json'
-};
-
 /**
- * Find last used photo for a destination
- * First checks city_photos table (permanent storage), then falls back to trips
+ * Find last used photo for a destination for a specific user
+ * First checks city_photos table (permanent storage), then falls back to user's trips
+ * @param {Object} supabase - Authenticated Supabase client
+ * @param {string} userId - User ID
  * @param {string} destination - Destination city name
  * @returns {Promise<Object|null>} Last used photo or null
  */
-async function getLastUsedPhoto(destination) {
+async function getLastUsedPhotoForUser(supabase, userId, destination) {
   if (!destination) return null;
 
   const normalizedDestination = normalizeCityName(destination);
 
   try {
     // First check the city_photos table (permanent "last used" storage)
-    const cachedPhoto = await getCachedCityPhoto(destination);
+    const cachedPhoto = await getCachedCityPhotoForUser(userId, destination);
     if (cachedPhoto && cachedPhoto.url) {
       return {
         url: cachedPhoto.url,
@@ -42,7 +33,7 @@ async function getLastUsedPhoto(destination) {
       };
     }
 
-    // Fall back to checking trips
+    // Fall back to checking user's trips (RLS filters automatically)
     const { data: trips, error } = await supabase
       .from('trips')
       .select('id, data, updated_at')
@@ -73,14 +64,17 @@ async function getLastUsedPhoto(destination) {
     return null;
 
   } catch (error) {
-    console.error('Error in getLastUsedPhoto:', error);
+    console.error('Error in getLastUsedPhotoForUser:', error);
     return null;
   }
 }
 
 exports.handler = async (event, context) => {
+  const headers = getCorsHeaders();
+
+  // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers, body: '' };
+    return handleOptions();
   }
 
   if (event.httpMethod !== 'POST') {
@@ -90,6 +84,14 @@ exports.handler = async (event, context) => {
       body: JSON.stringify({ success: false, error: 'Method not allowed' })
     };
   }
+
+  // Authenticate request
+  const authResult = await authenticateRequest(event);
+  if (!authResult) {
+    return unauthorizedResponse();
+  }
+
+  const { user, supabase } = authResult;
 
   try {
     const body = JSON.parse(event.body || '{}');
@@ -103,10 +105,10 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Get last used photo for this destination (only on first page)
+    // Get last used photo for this destination for this user (only on first page)
     let lastUsedPhoto = null;
     if (page === 1) {
-      lastUsedPhoto = await getLastUsedPhoto(city);
+      lastUsedPhoto = await getLastUsedPhotoForUser(supabase, user.id, city);
     }
 
     // Calculate how many Unsplash photos to fetch (6 total, minus 1 if last used exists)
