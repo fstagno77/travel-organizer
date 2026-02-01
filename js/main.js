@@ -391,6 +391,14 @@
     const todayFlight = getTodayFlight(trips);
     const todayHotel = getTodayHotel(trips);
 
+    // Hide section if no flight or hotel for today
+    if (!todayFlight && !todayHotel) {
+      container.innerHTML = '';
+      container.style.display = 'none';
+      return;
+    }
+
+    container.style.display = '';
     let cardsHtml = '';
 
     if (todayFlight) {
@@ -399,10 +407,6 @@
 
     if (todayHotel) {
       cardsHtml += renderTodayHotelCard(todayHotel, lang);
-    }
-
-    if (!todayFlight && !todayHotel) {
-      cardsHtml = `<p class="today-no-flight" data-i18n="home.noFlightToday">No trip scheduled</p>`;
     }
 
     container.innerHTML = `
@@ -566,22 +570,11 @@
       html += `<div class="grid md:grid-cols-2 lg:grid-cols-3">${upcomingHtml}</div>`;
     }
 
-    // Render past trips
+    // Render past trips (always with separator line if past trips exist)
     if (pastTrips.length > 0) {
       const pastHtml = pastTrips.map(trip => renderTripCard(trip, lang, true)).join('');
       html += `
         <div class="past-trips-section">
-          <h3 class="past-trips-title" data-i18n="home.pastTrips">Viaggi passati</h3>
-          <div class="grid md:grid-cols-2 lg:grid-cols-3">${pastHtml}</div>
-        </div>
-      `;
-    }
-
-    // If only past trips exist
-    if (upcomingTrips.length === 0 && pastTrips.length > 0) {
-      const pastHtml = pastTrips.map(trip => renderTripCard(trip, lang, true)).join('');
-      html = `
-        <div class="past-trips-section past-trips-section--only">
           <h3 class="past-trips-title" data-i18n="home.pastTrips">Viaggi passati</h3>
           <div class="grid md:grid-cols-2 lg:grid-cols-3">${pastHtml}</div>
         </div>
