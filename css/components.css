@@ -48,12 +48,12 @@
 }
 
 .btn-danger {
-  background-color: var(--color-danger, #dc2626);
+  background-color: var(--color-error);
   color: var(--color-white);
 }
 
 .btn-danger:hover {
-  background-color: #b91c1c;
+  background-color: #dc2626;
   color: var(--color-white);
 }
 
@@ -947,8 +947,8 @@
 }
 
 .empty-state-icon svg {
-  width: 48px;
-  height: 48px;
+  width: 64px;
+  height: 64px;
 }
 
 .empty-state-cta {
@@ -1177,6 +1177,14 @@
 
 .trip-card--past:hover {
   opacity: 1;
+}
+
+.trip-card--past .trip-card-image {
+  filter: grayscale(100%);
+}
+
+.trip-card--past:hover .trip-card-image {
+  filter: grayscale(50%);
 }
 
 .trip-card--past .trip-card-dates {

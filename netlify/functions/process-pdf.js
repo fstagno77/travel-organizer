@@ -245,8 +245,8 @@ async function processPdfWithClaude(base64Content, filename) {
 function detectDocumentType(filename) {
   const filenameLower = filename.toLowerCase();
 
-  const flightIndicators = ['flight', 'volo', 'boarding', 'itinerary', 'ticket', 'eticket'];
-  const hotelIndicators = ['hotel', 'booking', 'reservation', 'accommodation'];
+  const flightIndicators = ['flight', 'volo', 'boarding', 'itinerary', 'ticket', 'eticket', 'ricevut', 'viaggio', 'biglietto', 'airways', 'airline'];
+  const hotelIndicators = ['hotel', 'booking', 'reservation', 'accommodation', 'soggiorno', 'albergo'];
 
   for (const indicator of flightIndicators) {
     if (filenameLower.includes(indicator)) return 'flight';
@@ -401,10 +401,20 @@ function createTripFromExtractedData(data) {
     startDate = flights[0].date;
     endDate = flights[flights.length - 1].date;
 
-    const departureCode = flights[0].departure.code;
-    const arrivalFlight = flights.find(f => f.arrival.code !== departureCode);
-    if (arrivalFlight) {
-      destination = arrivalFlight.arrival.city;
+    // Find the real destination (not just a connection)
+    const originCode = flights[0].departure.code;
+    const finalArrivalCode = flights[flights.length - 1].arrival.code;
+    const isRoundTrip = originCode === finalArrivalCode;
+
+    if (isRoundTrip && flights.length >= 2) {
+      // For round trips (e.g., REG→FCO→JFK→FCO→REG), the destination is at the midpoint
+      // With 4 flights, outbound is flights 0-1, return is flights 2-3
+      // The destination is the arrival of the last outbound flight (index: n/2 - 1)
+      const lastOutboundIndex = Math.floor(flights.length / 2) - 1;
+      destination = flights[lastOutboundIndex >= 0 ? lastOutboundIndex : 0].arrival.city;
+    } else {
+      // One-way trip: destination is the final arrival
+      destination = flights[flights.length - 1].arrival.city;
     }
   }
 

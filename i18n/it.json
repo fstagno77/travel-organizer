@@ -13,6 +13,8 @@
     "subtitle": "Tutti i tuoi viaggi in un unico posto",
     "noTrips": "Nessun viaggio",
     "noTripsText": "I tuoi viaggi appariranno qui",
+    "emptyTitle": "Il tuo viaggio inizia da qui!",
+    "emptyText": "Raccogli le ricevute in PDF dei tuoi voli e hotel e crea il tuo primo viaggio.",
     "pastTrips": "Viaggi passati",
     "noFlightToday": "Nessun viaggio programmato",
     "flightDetails": "Dettagli",
@@ -124,6 +126,8 @@
     "backToHome": "Torna alla Home"
   },
   "common": {
+    "save": "Salva",
+    "cancel": "Annulla",
     "loading": "Caricamento...",
     "error": "Si è verificato un errore",
     "from": "dalle",
@@ -133,6 +137,19 @@
   "auth": {
     "login": "Accedi",
     "logout": "Esci",
+    "loginTitle": "Accedi a Travel Organizer",
+    "loginSubtitle": "Accedi per gestire i tuoi viaggi",
+    "loginWithGoogle": "Accedi con Google",
+    "createUsername": "Scegli un nome utente",
+    "usernameSubtitle": "Questo sarà il tuo identificativo univoco",
+    "usernameHint": "5-12 caratteri, solo lettere e numeri",
+    "usernameTaken": "Username già in uso",
+    "usernameInvalid": "Formato username non valido",
+    "usernameNoSpaces": "Gli spazi non sono ammessi",
+    "usernameOnlyAlphanumeric": "Solo lettere e numeri",
+    "usernameTooShort": "Almeno 5 caratteri",
+    "usernameTooLong": "Massimo 12 caratteri",
+    "continue": "Continua",
     "welcomeTitle": "Benvenuto in Travel Organizer",
     "welcomeText": "Accedi per gestire i tuoi viaggi",
     "notLoggedIn": "Non hai effettuato l'accesso"
@@ -146,6 +163,12 @@
     "usernameHint": "5-12 caratteri, solo lettere e numeri",
     "usernameTaken": "Username già in uso",
     "usernameInvalid": "Username non valido",
-    "logout": "Esci"
+    "logout": "Disconnetti"
+  },
+  "settings": {
+    "title": "Impostazioni",
+    "profile": "Profilo",
+    "preferences": "Preferenze",
+    "languageDesc": "Seleziona la lingua dell'interfaccia"
   }
 }

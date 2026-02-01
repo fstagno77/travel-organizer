@@ -12,11 +12,14 @@
    * Initialize the application
    */
   async function init() {
+    console.log('[main] init() started');
     try {
       // Initialize i18n first
+      console.log('[main] Initializing i18n...');
       await i18n.init();
 
       // Initialize auth
+      console.log('[main] Initializing auth...');
       if (typeof auth !== 'undefined') {
         await auth.init();
 
@@ -27,9 +30,11 @@
       }
 
       // Initialize navigation (header, footer)
+      console.log('[main] Initializing navigation...');
       await navigation.init();
 
       // Re-apply translations after navigation is loaded
+      console.log('[main] Applying translations...');
       i18n.apply();
 
       // Initialize trip creator (modal for new trips)
@@ -38,10 +43,12 @@
       }
 
       // Initialize page-specific functionality
+      console.log('[main] Initializing page-specific functionality...');
       initPageSpecific();
+      console.log('[main] init() completed');
 
     } catch (error) {
-      console.error('Error initializing application:', error);
+      console.error('[main] Error initializing application:', error);
     }
   }
 
@@ -64,30 +71,18 @@
    * Initialize homepage
    */
   async function initHomePage() {
+    console.log('[main] initHomePage() called');
     const todayContainer = document.getElementById('today-container');
     const tripsContainer = document.getElementById('trips-container');
     if (!tripsContainer) return;
 
-    // Check if user is authenticated
-    if (!auth?.isAuthenticated()) {
-      // Show login prompt
-      tripsContainer.innerHTML = `
-        <div class="empty-state">
-          <div class="empty-state-icon">
-            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.4-.1.9.3 1.1l4.8 3.2-2.1 2.1-2.4-.6c-.4-.1-.8 0-1 .3l-.2.3c-.2.3-.1.7.1 1l2.2 2.2 2.2 2.2c.3.3.7.3 1 .1l.3-.2c.3-.2.4-.6.3-1l-.6-2.4 2.1-2.1 3.2 4.8c.2.4.7.5 1.1.3l.5-.3c.4-.2.6-.6.5-1.1z"/>
-            </svg>
-          </div>
-          <h3 class="empty-state-title" data-i18n="auth.welcomeTitle">Welcome to Travel Organizer</h3>
-          <p class="empty-state-text" data-i18n="auth.welcomeText">Login to manage your trips</p>
-          <button class="btn btn-primary" id="home-login-btn" data-i18n="auth.login">Login</button>
-        </div>
-      `;
-      i18n.apply();
+    console.log('[main] auth object:', auth);
+    console.log('[main] isAuthenticated:', auth?.isAuthenticated());
 
-      document.getElementById('home-login-btn')?.addEventListener('click', () => {
-        auth.showLoginModal();
-      });
+    // Check if user is authenticated - redirect to login page if not
+    if (!auth?.isAuthenticated()) {
+      console.log('[main] User not authenticated, redirecting to login page');
+      window.location.href = './login.html';
       return;
     }
 
@@ -448,10 +443,10 @@
     // All trips now use dynamic page
     const tripUrl = `trip.html?id=${trip.id}`;
 
-    // Cover photo styling
+    // Cover photo styling (show for all trips, past trips will have grayscale via CSS)
     const coverPhoto = trip.coverPhoto;
     let imageStyle = `background-color: ${bgColor}`;
-    if (coverPhoto?.url && !isPast) {
+    if (coverPhoto?.url) {
       imageStyle = `background-image: url('${coverPhoto.url}'); background-color: ${coverPhoto.color || bgColor}`;
     }
 
@@ -520,17 +515,37 @@
    * @param {Array} trips
    */
   function renderTrips(container, trips) {
+    // Get the today section and trips header
+    const todaySection = document.querySelector('.today-section');
+    const tripsHeader = container.parentElement?.querySelector('.section-header');
+
     if (!trips || trips.length === 0) {
+      // Hide today section and trips header when no trips
+      if (todaySection) todaySection.style.display = 'none';
+      if (tripsHeader) tripsHeader.style.display = 'none';
+
       container.innerHTML = `
         <div class="empty-state">
-          <div class="empty-state-icon">✈️</div>
-          <h3 class="empty-state-title" data-i18n="home.noTrips">No trips yet</h3>
-          <p class="empty-state-text" data-i18n="home.noTripsText">Your trips will appear here</p>
+          <h3 class="empty-state-title" data-i18n="home.emptyTitle">Il tuo viaggio inizia da qui!</h3>
+          <p class="empty-state-text" data-i18n="home.emptyText">Raccogli le ricevute in PDF dei tuoi voli e hotel e crea il tuo primo viaggio.</p>
+          <button class="btn btn-primary empty-state-cta" id="empty-new-trip-btn" data-i18n="trip.new">Nuovo Viaggio</button>
         </div>
       `;
       i18n.apply();
+
+      // Bind click handler for the empty state button
+      const emptyBtn = document.getElementById('empty-new-trip-btn');
+      if (emptyBtn) {
+        emptyBtn.addEventListener('click', () => {
+          document.getElementById('new-trip-btn')?.click();
+        });
+      }
       return;
     }
+
+    // Show today section and trips header when there are trips
+    if (todaySection) todaySection.style.display = '';
+    if (tripsHeader) tripsHeader.style.display = '';
 
     const lang = i18n.getLang();
 
@@ -756,8 +771,8 @@
     }
 
     try {
-      // Fetch trip data
-      const response = await fetch(`/.netlify/functions/get-trip?id=${tripId}`);
+      // Fetch trip data with auth
+      const response = await utils.authFetch(`/.netlify/functions/get-trip?id=${tripId}`);
       const result = await response.json();
 
       if (!result.success) {
@@ -842,7 +857,7 @@
       confirmBtn.innerHTML = '<span class="spinner spinner-sm"></span>';
 
       try {
-        const response = await fetch(`/.netlify/functions/delete-trip?id=${encodeURIComponent(tripId)}`, {
+        const response = await utils.authFetch(`/.netlify/functions/delete-trip?id=${encodeURIComponent(tripId)}`, {
           method: 'DELETE'
         });
 
@@ -1855,8 +1870,11 @@
   }
 
   // Listen for language changes to re-render dynamic content
+  // Only re-render if auth is already initialized to avoid race conditions
   window.addEventListener('languageChanged', () => {
-    initPageSpecific();
+    if (auth?.initialized) {
+      initPageSpecific();
+    }
   });
 
   // Initialize when DOM is ready

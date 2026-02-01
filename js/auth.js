@@ -13,25 +13,96 @@ const auth = {
    * Initialize Supabase client and check session
    */
   async init() {
-    if (this.initialized) return this;
+    console.log('[auth] init() called');
+    if (this.initialized) {
+      console.log('[auth] already initialized');
+      return this;
+    }
+
+    // Check for OAuth callback parameters before creating client
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasCode = urlParams.has('code');
+    const hasError = urlParams.has('error');
+    console.log('[auth] URL has code:', hasCode, 'error:', hasError);
+
+    if (hasError) {
+      console.error('[auth] OAuth error in URL:', urlParams.get('error'), urlParams.get('error_description'));
+      window.history.replaceState(null, '', window.location.pathname);
+    }
 
     // Initialize Supabase client
-    // Note: These values should be configured in a config file or env
+    console.log('[auth] Creating Supabase client...');
     this.supabase = supabase.createClient(
       'https://ftivlqthgsziuljruiqo.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ0aXZscXRoZ3N6aXVsanJ1aXFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzc3MTkzMjYsImV4cCI6MjA1MzI5NTMyNn0.sb_publishable_dSUUZC21OaUAFD4az9DKQg_OMM8exnN'
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ0aXZscXRoZ3N6aXVsanJ1aXFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg4MzgxNzQsImV4cCI6MjA4NDQxNDE3NH0.t_BP1MLHocBYPOj278hZqOgBGU864j5SbbE3b5FxNGI',
+      {
+        auth: {
+          flowType: 'pkce',
+          detectSessionInUrl: false, // Handle manually
+          persistSession: true,
+          autoRefreshToken: true
+        }
+      }
     );
 
-    // Check for existing session
-    const { data: { session } } = await this.supabase.auth.getSession();
-    this.session = session;
+    // If we have an OAuth code, exchange it manually
+    if (hasCode) {
+      // Debug: show all supabase-related localStorage keys
+      console.log('[auth] LocalStorage keys with "sb-":',
+        Object.keys(localStorage).filter(k => k.includes('sb-')));
 
-    if (session) {
+      // Check if we have the PKCE code verifier stored
+      const codeVerifierKey = 'sb-ftivlqthgsziuljruiqo-auth-token-code-verifier';
+      const storedVerifier = localStorage.getItem(codeVerifierKey);
+      console.log('[auth] PKCE code verifier present:', !!storedVerifier);
+
+      if (!storedVerifier) {
+        console.error('[auth] No code verifier found - OAuth flow may have been interrupted');
+        window.history.replaceState(null, '', window.location.pathname);
+      } else {
+        console.log('[auth] Exchanging OAuth code for session...');
+        try {
+          const { data, error } = await this.supabase.auth.exchangeCodeForSession(urlParams.get('code'));
+          if (error) {
+            console.error('[auth] Code exchange error:', error.message, error);
+            // Clear the invalid code from URL
+            window.history.replaceState(null, '', window.location.pathname);
+          } else {
+            console.log('[auth] Code exchange successful, user:', data.session?.user?.email);
+            this.session = data.session;
+            // Clean URL after successful exchange
+            window.history.replaceState(null, '', window.location.pathname);
+          }
+        } catch (err) {
+          console.error('[auth] Code exchange exception:', err);
+          window.history.replaceState(null, '', window.location.pathname);
+        }
+      }
+    }
+
+    // Check for existing session (if not already set by code exchange)
+    if (!this.session) {
+      console.log('[auth] Checking for existing session...');
+      const { data: { session }, error: sessionError } = await this.supabase.auth.getSession();
+
+      if (sessionError) {
+        console.error('[auth] getSession error:', sessionError);
+      }
+
+      this.session = session;
+    }
+
+    console.log('[auth] Session:', this.session ? 'found' : 'none');
+
+    if (this.session) {
+      console.log('[auth] Loading profile...');
       await this.loadProfile();
+      console.log('[auth] Profile:', this.profile);
     }
 
     // Listen for auth changes
     this.supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('[auth] Auth state changed:', event);
       this.session = session;
 
       if (event === 'SIGNED_IN') {
@@ -45,6 +116,14 @@ const auth = {
     });
 
     this.initialized = true;
+    console.log('[auth] init() completed successfully');
+
+    // If user is logged in but needs username, show the modal
+    if (this.session && this.needsUsername) {
+      console.log('[auth] User logged in but needs username, showing modal');
+      this.showUsernameModal();
+    }
+
     return this;
   },
 
@@ -52,31 +131,40 @@ const auth = {
    * Load user profile from database
    */
   async loadProfile() {
-    if (!this.session) return null;
+    console.log('[auth] loadProfile called');
+    if (!this.session) {
+      console.log('[auth] loadProfile - no session');
+      return null;
+    }
 
     try {
+      console.log('[auth] loadProfile - fetching profile for user:', this.session.user.id);
       const { data, error } = await this.supabase
         .from('profiles')
         .select('*')
         .eq('id', this.session.user.id)
         .single();
 
+      console.log('[auth] loadProfile result:', { data, error });
+
       if (error && error.code === 'PGRST116') {
         // No profile - user needs to create username
+        console.log('[auth] No profile found, user needs username');
         this.needsUsername = true;
         return null;
       }
 
       if (error) {
-        console.error('Error loading profile:', error);
+        console.error('[auth] Error loading profile:', error);
         return null;
       }
 
       this.profile = data;
       this.needsUsername = false;
+      console.log('[auth] Profile loaded:', data);
       return data;
     } catch (error) {
-      console.error('Error in loadProfile:', error);
+      console.error('[auth] Error in loadProfile:', error);
       return null;
     }
   },
@@ -105,6 +193,7 @@ const auth = {
    * Check if username is available
    */
   async checkUsernameAvailable(username) {
+    console.log('[auth] checkUsernameAvailable:', username);
     try {
       const response = await fetch('/.netlify/functions/check-username', {
         method: 'POST',
@@ -112,9 +201,10 @@ const auth = {
         body: JSON.stringify({ username })
       });
       const result = await response.json();
+      console.log('[auth] checkUsernameAvailable result:', result);
       return result.available === true;
     } catch (error) {
-      console.error('Error checking username:', error);
+      console.error('[auth] Error checking username:', error);
       return false;
     }
   },
@@ -127,23 +217,52 @@ const auth = {
   },
 
   /**
+   * Validate username and return specific error message
+   * @returns {{ valid: boolean, errorKey: string | null }}
+   */
+  validateUsername(username, texts) {
+    if (!username || username.length === 0) {
+      return { valid: false, error: null };
+    }
+    if (username.includes(' ')) {
+      return { valid: false, error: texts.noSpaces };
+    }
+    if (!/^[a-zA-Z0-9]+$/.test(username)) {
+      return { valid: false, error: texts.onlyAlphanumeric };
+    }
+    if (username.length < 5) {
+      return { valid: false, error: texts.tooShort };
+    }
+    if (username.length > 12) {
+      return { valid: false, error: texts.tooLong };
+    }
+    return { valid: true, error: null };
+  },
+
+  /**
    * Create user profile with username
    */
   async createProfile(username) {
+    console.log('[auth] createProfile:', username);
     if (!this.session) throw new Error('Not authenticated');
 
-    const { error } = await this.supabase
+    console.log('[auth] Creating profile for user:', this.session.user.id);
+    const { data, error } = await this.supabase
       .from('profiles')
       .insert({
         id: this.session.user.id,
         email: this.session.user.email,
         username: username.toLowerCase()
-      });
+      })
+      .select();
+
+    console.log('[auth] createProfile result:', { data, error });
 
     if (error) throw error;
 
     this.needsUsername = false;
     await this.loadProfile();
+    console.log('[auth] Profile created successfully:', this.profile);
     return this.profile;
   },
 
@@ -169,9 +288,12 @@ const auth = {
    * Handle post-login flow
    */
   handlePostLogin() {
+    console.log('[auth] handlePostLogin - needsUsername:', this.needsUsername);
     if (this.needsUsername) {
+      console.log('[auth] Showing username modal');
       this.showUsernameModal();
     } else {
+      console.log('[auth] User has profile, reloading page');
       window.dispatchEvent(new CustomEvent('authStateChanged'));
       // Reload page to refresh data with authenticated user
       window.location.reload();
@@ -218,6 +340,7 @@ const auth = {
    * Show login modal
    */
   showLoginModal() {
+    console.log('[auth] showLoginModal() called');
     // Remove existing modal if any
     const existing = document.querySelector('.auth-modal-overlay');
     if (existing) existing.remove();
@@ -275,13 +398,17 @@ const auth = {
     `;
 
     document.body.insertAdjacentHTML('beforeend', modalHTML);
+    document.body.classList.add('modal-open');
 
     const overlay = document.querySelector('.auth-modal-overlay');
     const closeBtn = overlay.querySelector('.auth-modal-close');
     const googleBtn = document.getElementById('google-login-btn');
 
     // Close modal
-    const closeModal = () => overlay.remove();
+    const closeModal = () => {
+      document.body.classList.remove('modal-open');
+      overlay.remove();
+    };
 
     closeBtn.addEventListener('click', closeModal);
     overlay.addEventListener('click', (e) => {
@@ -314,13 +441,17 @@ const auth = {
     const lang = typeof i18n !== 'undefined' ? i18n.getLang() : 'it';
     const texts = {
       it: {
-        title: 'Scegli un username',
-        subtitle: 'Questo nome ti identificherà nell\'app',
+        title: 'Scegli un nome utente',
+        subtitle: 'Questo nome ti identificherà dentro il sito',
         hint: '5-12 caratteri, solo lettere e numeri',
         placeholder: 'Il tuo username',
         continue: 'Continua',
-        taken: 'Username già in uso',
-        invalid: 'Username non valido'
+        taken: 'Nome utente già in uso',
+        invalid: 'Nome utente non valido',
+        tooShort: 'Minimo 5 caratteri',
+        tooLong: 'Massimo 12 caratteri',
+        noSpaces: 'Gli spazi non sono ammessi',
+        onlyAlphanumeric: 'Solo lettere e numeri'
       },
       en: {
         title: 'Choose a username',
@@ -329,7 +460,11 @@ const auth = {
         placeholder: 'Your username',
         continue: 'Continue',
         taken: 'Username already taken',
-        invalid: 'Invalid username'
+        invalid: 'Invalid username',
+        tooShort: 'Minimum 5 characters',
+        tooLong: 'Maximum 12 characters',
+        noSpaces: 'Spaces are not allowed',
+        onlyAlphanumeric: 'Letters and numbers only'
       }
     };
     const t = texts[lang] || texts.it;
@@ -340,8 +475,7 @@ const auth = {
           <div class="auth-modal-header">
             <div class="auth-modal-logo">
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                <circle cx="12" cy="7" r="4"></circle>
+                <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.4-.1.9.3 1.1l4.8 3.2-2.1 2.1-2.4-.6c-.4-.1-.8 0-1 .3l-.2.3c-.2.3-.1.7.1 1l2.2 2.2 2.2 2.2c.3.3.7.3 1 .1l.3-.2c.3-.2.4-.6.3-1l-.6-2.4 2.1-2.1 3.2 4.8c.2.4.7.5 1.1.3l.5-.3c.4-.2.6-.6.5-1.1z"/>
               </svg>
             </div>
             <h2 class="auth-modal-title">${t.title}</h2>
@@ -358,7 +492,6 @@ const auth = {
                 maxlength="12"
                 autocomplete="off"
               >
-              <small class="form-hint">${t.hint}</small>
               <div class="form-error" id="username-error"></div>
             </div>
 
@@ -371,6 +504,7 @@ const auth = {
     `;
 
     document.body.insertAdjacentHTML('beforeend', modalHTML);
+    document.body.classList.add('modal-open');
 
     const overlay = document.querySelector('.auth-modal-overlay');
     const input = document.getElementById('username-input');
@@ -380,21 +514,18 @@ const auth = {
     // Validate on input
     input.addEventListener('input', () => {
       const username = input.value.trim();
-      const isValid = this.isValidUsername(username);
-      submitBtn.disabled = !isValid;
-      errorDiv.textContent = '';
-
-      if (username.length > 0 && !isValid) {
-        errorDiv.textContent = t.invalid;
-      }
+      const validation = this.validateUsername(username, t);
+      submitBtn.disabled = !validation.valid;
+      errorDiv.textContent = validation.error || '';
     });
 
     // Submit username
     submitBtn.addEventListener('click', async () => {
       const username = input.value.trim().toLowerCase();
+      const validation = this.validateUsername(username, t);
 
-      if (!this.isValidUsername(username)) {
-        errorDiv.textContent = t.invalid;
+      if (!validation.valid) {
+        errorDiv.textContent = validation.error || t.invalid;
         return;
       }
 
@@ -412,6 +543,7 @@ const auth = {
 
       try {
         await this.createProfile(username);
+        document.body.classList.remove('modal-open');
         overlay.remove();
         window.dispatchEvent(new CustomEvent('authStateChanged'));
         window.location.reload();

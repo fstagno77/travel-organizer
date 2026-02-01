@@ -13,6 +13,8 @@
     "subtitle": "All your trips in one place",
     "noTrips": "No trips yet",
     "noTripsText": "Your trips will appear here",
+    "emptyTitle": "Your journey starts here!",
+    "emptyText": "Collect your flight and hotel PDF receipts and create your first trip",
     "pastTrips": "Past trips",
     "noFlightToday": "No trip scheduled",
     "flightDetails": "Details",
@@ -124,6 +126,8 @@
     "backToHome": "Back to Home"
   },
   "common": {
+    "save": "Save",
+    "cancel": "Cancel",
     "loading": "Loading...",
     "error": "An error occurred",
     "from": "from",
@@ -141,6 +145,10 @@
     "usernameHint": "5-12 characters, alphanumeric only",
     "usernameTaken": "Username already taken",
     "usernameInvalid": "Invalid username format",
+    "usernameNoSpaces": "Spaces are not allowed",
+    "usernameOnlyAlphanumeric": "Only letters and numbers",
+    "usernameTooShort": "At least 5 characters",
+    "usernameTooLong": "Maximum 12 characters",
     "continue": "Continue",
     "welcomeTitle": "Welcome to Travel Organizer",
     "welcomeText": "Login to manage your trips",
@@ -155,6 +163,12 @@
     "usernameHint": "5-12 characters, alphanumeric only",
     "usernameTaken": "Username already taken",
     "usernameInvalid": "Invalid username format",
-    "logout": "Logout"
+    "logout": "Disconnect"
+  },
+  "settings": {
+    "title": "Settings",
+    "profile": "Profile",
+    "preferences": "Preferences",
+    "languageDesc": "Select the interface language"
   }
 }

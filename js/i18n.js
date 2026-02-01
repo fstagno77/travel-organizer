@@ -6,7 +6,7 @@ const i18n = {
   currentLang: 'it',
   translations: {},
   supportedLangs: ['it', 'en'],
-  defaultLang: 'it',
+  defaultLang: 'en', // Default to English for non-Italian browsers
 
   /**
    * Initialize i18n system
@@ -16,13 +16,16 @@ const i18n = {
     const storedLang = localStorage.getItem('lang');
     const browserLang = navigator.language.slice(0, 2);
 
-    // Determine which language to use
+    // Determine which language to use:
+    // 1. Use stored preference if valid
+    // 2. Use Italian if browser is Italian
+    // 3. Use English for all other cases
     if (storedLang && this.supportedLangs.includes(storedLang)) {
       this.currentLang = storedLang;
-    } else if (this.supportedLangs.includes(browserLang)) {
-      this.currentLang = browserLang;
+    } else if (browserLang === 'it') {
+      this.currentLang = 'it';
     } else {
-      this.currentLang = this.defaultLang;
+      this.currentLang = 'en';
     }
 
     // Load translations

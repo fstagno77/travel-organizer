@@ -163,7 +163,7 @@ main {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--spacing-4);
+  gap: var(--spacing-3);
   text-align: center;
 }
 
@@ -171,22 +171,15 @@ main {
   .footer-inner {
     flex-direction: row;
     justify-content: space-between;
+    gap: var(--spacing-4);
     text-align: left;
   }
 }
 
-.footer-left {
+.footer-right {
   display: flex;
-  flex-direction: column;
   align-items: center;
   gap: var(--spacing-2);
-}
-
-@media (min-width: 768px) {
-  .footer-left {
-    flex-direction: row;
-    gap: var(--spacing-4);
-  }
 }
 
 .footer-copyright {
