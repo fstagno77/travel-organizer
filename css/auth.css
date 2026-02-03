@@ -430,7 +430,13 @@
 }
 
 .settings-section-header {
-  margin-bottom: var(--spacing-4);
+  margin-bottom: var(--spacing-3);
+}
+
+@media (max-width: 768px) {
+  .settings-section-header {
+    margin-bottom: var(--spacing-2);
+  }
 }
 
 .settings-section-title {
