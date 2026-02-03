@@ -244,7 +244,7 @@
 
       // Show modal
       console.log('[pendingBookings] Showing modal...');
-      document.getElementById('associate-modal').style.display = 'flex';
+      document.getElementById('associate-modal').classList.add('active');
     } catch (error) {
       console.error('[pendingBookings] Error loading booking details:', error);
       alert(i18n.t('pendingBookings.loadError'));
@@ -301,7 +301,7 @@
    * Close modal
    */
   function closeModal() {
-    document.getElementById('associate-modal').style.display = 'none';
+    document.getElementById('associate-modal').classList.remove('active');
     currentBookingId = null;
   }
 
