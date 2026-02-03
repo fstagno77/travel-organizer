@@ -56,37 +56,44 @@
         <span data-i18n="auth.or">oppure</span>
       </div>
 
-      <!-- Magic Link Form -->
-      <div class="magic-link-form" id="magic-link-form">
+      <!-- Email Form (Step 1) -->
+      <div class="otp-form" id="otp-email-form">
         <input
           type="email"
-          class="form-input magic-link-input"
-          id="magic-link-email"
+          class="form-input otp-input"
+          id="otp-email"
           placeholder="La tua email"
           data-i18n-placeholder="auth.emailPlaceholder"
           autocomplete="email"
         >
-        <button class="btn-magic-link" id="magic-link-btn">
+        <button class="btn-otp" id="otp-send-btn">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
             <polyline points="22,6 12,13 2,6"/>
           </svg>
-          <span data-i18n="auth.sendMagicLink">Invia Magic Link</span>
+          <span data-i18n="auth.sendCode">Invia codice</span>
         </button>
-        <p class="magic-link-hint" data-i18n="auth.magicLinkHint">Riceverai un link per accedere via email</p>
+        <p class="otp-hint" data-i18n="auth.otpHint">Riceverai un codice a 6 cifre via email</p>
       </div>
 
-      <!-- Magic Link Success Message -->
-      <div class="magic-link-success" id="magic-link-success" style="display: none;">
-        <div class="magic-link-success-icon">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-            <polyline points="22 4 12 14.01 9 11.01"/>
-          </svg>
-        </div>
-        <h3 class="magic-link-success-title" data-i18n="auth.checkEmail">Controlla la tua email</h3>
-        <p class="magic-link-success-text" data-i18n="auth.magicLinkSent">Ti abbiamo inviato un link per accedere. Clicca sul link nell'email per continuare.</p>
-        <button class="btn-text" id="magic-link-retry" data-i18n="auth.tryAgain">Invia di nuovo</button>
+      <!-- Code Verification Form (Step 2) -->
+      <div class="otp-form otp-verify-form" id="otp-code-form" style="display: none;">
+        <p class="otp-sent-to" id="otp-sent-to"></p>
+        <input
+          type="text"
+          class="form-input otp-code-input"
+          id="otp-code"
+          placeholder="000000"
+          maxlength="6"
+          inputmode="numeric"
+          pattern="[0-9]*"
+          autocomplete="one-time-code"
+        >
+        <div class="otp-error" id="otp-error"></div>
+        <button class="btn-otp btn-verify" id="otp-verify-btn">
+          <span data-i18n="auth.verifyCode">Verifica</span>
+        </button>
+        <button class="btn-text" id="otp-back-btn" data-i18n="auth.changeEmail">Cambia email</button>
       </div>
     </div>
 
@@ -142,52 +149,103 @@
         }
       });
 
-      // Magic Link
-      const magicLinkForm = document.getElementById('magic-link-form');
-      const magicLinkEmail = document.getElementById('magic-link-email');
-      const magicLinkBtn = document.getElementById('magic-link-btn');
-      const magicLinkSuccess = document.getElementById('magic-link-success');
-      const magicLinkRetry = document.getElementById('magic-link-retry');
+      // OTP Email Form
+      const otpEmailForm = document.getElementById('otp-email-form');
+      const otpEmail = document.getElementById('otp-email');
+      const otpSendBtn = document.getElementById('otp-send-btn');
 
-      magicLinkBtn.addEventListener('click', async () => {
-        const email = magicLinkEmail.value.trim();
+      // OTP Code Form
+      const otpCodeForm = document.getElementById('otp-code-form');
+      const otpCode = document.getElementById('otp-code');
+      const otpVerifyBtn = document.getElementById('otp-verify-btn');
+      const otpBackBtn = document.getElementById('otp-back-btn');
+      const otpError = document.getElementById('otp-error');
+      const otpSentTo = document.getElementById('otp-sent-to');
+
+      let currentEmail = '';
+
+      // Send OTP
+      otpSendBtn.addEventListener('click', async () => {
+        const email = otpEmail.value.trim();
         if (!email || !email.includes('@')) {
-          magicLinkEmail.focus();
+          otpEmail.focus();
           return;
         }
 
-        magicLinkBtn.disabled = true;
-        magicLinkBtn.querySelector('span').textContent = '...';
+        otpSendBtn.disabled = true;
+        otpSendBtn.querySelector('span').textContent = '...';
 
         try {
-          await auth.signInWithMagicLink(email);
-          // Show success message
-          magicLinkForm.style.display = 'none';
+          await auth.sendOtp(email);
+          currentEmail = email;
+          // Show code input form
+          otpEmailForm.style.display = 'none';
           googleBtn.style.display = 'none';
           document.querySelector('.login-divider').style.display = 'none';
-          magicLinkSuccess.style.display = 'block';
+          otpCodeForm.style.display = 'block';
+          otpSentTo.textContent = (i18n.t('auth.codeSentTo') || 'Codice inviato a') + ' ' + email;
+          otpCode.focus();
         } catch (error) {
-          console.error('Magic link error:', error);
-          magicLinkBtn.disabled = false;
-          magicLinkBtn.querySelector('span').textContent = i18n.t('auth.sendMagicLink') || 'Invia Magic Link';
+          console.error('OTP send error:', error);
+          otpSendBtn.disabled = false;
+          otpSendBtn.querySelector('span').textContent = i18n.t('auth.sendCode') || 'Invia codice';
         }
       });
 
       // Allow Enter key in email input
-      magicLinkEmail.addEventListener('keydown', (e) => {
+      otpEmail.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
-          magicLinkBtn.click();
+          otpSendBtn.click();
         }
       });
 
-      // Retry button
-      magicLinkRetry.addEventListener('click', () => {
-        magicLinkForm.style.display = 'block';
+      // Verify OTP
+      otpVerifyBtn.addEventListener('click', async () => {
+        const code = otpCode.value.trim();
+        if (!code || code.length !== 6) {
+          otpCode.focus();
+          return;
+        }
+
+        otpVerifyBtn.disabled = true;
+        otpVerifyBtn.querySelector('span').textContent = '...';
+        otpError.textContent = '';
+
+        try {
+          await auth.verifyOtp(currentEmail, code);
+          // Auth state change will handle redirect
+        } catch (error) {
+          console.error('OTP verify error:', error);
+          otpError.textContent = i18n.t('auth.invalidCode') || 'Codice non valido';
+          otpVerifyBtn.disabled = false;
+          otpVerifyBtn.querySelector('span').textContent = i18n.t('auth.verifyCode') || 'Verifica';
+          otpCode.value = '';
+          otpCode.focus();
+        }
+      });
+
+      // Allow Enter key in code input
+      otpCode.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          otpVerifyBtn.click();
+        }
+      });
+
+      // Only allow numbers in code input
+      otpCode.addEventListener('input', (e) => {
+        e.target.value = e.target.value.replace(/[^0-9]/g, '');
+      });
+
+      // Back to email form
+      otpBackBtn.addEventListener('click', () => {
+        otpEmailForm.style.display = 'block';
         googleBtn.style.display = 'flex';
         document.querySelector('.login-divider').style.display = 'flex';
-        magicLinkSuccess.style.display = 'none';
-        magicLinkBtn.disabled = false;
-        magicLinkBtn.querySelector('span').textContent = i18n.t('auth.sendMagicLink') || 'Invia Magic Link';
+        otpCodeForm.style.display = 'none';
+        otpSendBtn.disabled = false;
+        otpSendBtn.querySelector('span').textContent = i18n.t('auth.sendCode') || 'Invia codice';
+        otpCode.value = '';
+        otpError.textContent = '';
       });
     })();
   </script>

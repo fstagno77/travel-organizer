@@ -183,16 +183,27 @@ const auth = {
   },
 
   /**
-   * Sign in with Magic Link (email OTP)
+   * Send OTP code to email
    */
-  async signInWithMagicLink(email) {
+  async sendOtp(email) {
     const { error } = await this.supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: window.location.origin
-      }
+      email
+      // No emailRedirectTo - this sends a numeric code instead of a link
     });
     if (error) throw error;
+  },
+
+  /**
+   * Verify OTP code
+   */
+  async verifyOtp(email, token) {
+    const { data, error } = await this.supabase.auth.verifyOtp({
+      email,
+      token,
+      type: 'email'
+    });
+    if (error) throw error;
+    return data;
   },
 
   /**
