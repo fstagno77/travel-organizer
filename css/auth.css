@@ -183,7 +183,7 @@
 }
 
 .header-profile-link:hover {
-  background: var(--color-gray-100);
+  background: transparent;
 }
 
 .header-profile-link:hover .header-profile-avatar {
@@ -208,7 +208,7 @@
 }
 
 .header-profile-btn:hover {
-  background: var(--color-gray-100);
+  background: transparent;
 }
 
 .header-profile-avatar {
