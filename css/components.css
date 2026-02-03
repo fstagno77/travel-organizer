@@ -471,7 +471,13 @@
 
 /* Today Section */
 .today-section {
-  margin-bottom: var(--spacing-6);
+  margin-bottom: var(--spacing-4);
+}
+
+/* Hide today section margin when empty */
+.today-section:empty,
+.today-section:has(#today-container:empty) {
+  margin-bottom: 0;
 }
 
 .today-date {
