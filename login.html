@@ -50,6 +50,44 @@
         </svg>
         <span data-i18n="auth.loginWithGoogle">Accedi con Google</span>
       </button>
+
+      <!-- Divider -->
+      <div class="login-divider">
+        <span data-i18n="auth.or">oppure</span>
+      </div>
+
+      <!-- Magic Link Form -->
+      <div class="magic-link-form" id="magic-link-form">
+        <input
+          type="email"
+          class="form-input magic-link-input"
+          id="magic-link-email"
+          placeholder="La tua email"
+          data-i18n-placeholder="auth.emailPlaceholder"
+          autocomplete="email"
+        >
+        <button class="btn-magic-link" id="magic-link-btn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+            <polyline points="22,6 12,13 2,6"/>
+          </svg>
+          <span data-i18n="auth.sendMagicLink">Invia Magic Link</span>
+        </button>
+        <p class="magic-link-hint" data-i18n="auth.magicLinkHint">Riceverai un link per accedere via email</p>
+      </div>
+
+      <!-- Magic Link Success Message -->
+      <div class="magic-link-success" id="magic-link-success" style="display: none;">
+        <div class="magic-link-success-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+            <polyline points="22 4 12 14.01 9 11.01"/>
+          </svg>
+        </div>
+        <h3 class="magic-link-success-title" data-i18n="auth.checkEmail">Controlla la tua email</h3>
+        <p class="magic-link-success-text" data-i18n="auth.magicLinkSent">Ti abbiamo inviato un link per accedere. Clicca sul link nell'email per continuare.</p>
+        <button class="btn-text" id="magic-link-retry" data-i18n="auth.tryAgain">Invia di nuovo</button>
+      </div>
     </div>
 
     <!-- Footer -->
@@ -102,6 +140,54 @@
           console.error('Login error:', error);
           googleBtn.disabled = false;
         }
+      });
+
+      // Magic Link
+      const magicLinkForm = document.getElementById('magic-link-form');
+      const magicLinkEmail = document.getElementById('magic-link-email');
+      const magicLinkBtn = document.getElementById('magic-link-btn');
+      const magicLinkSuccess = document.getElementById('magic-link-success');
+      const magicLinkRetry = document.getElementById('magic-link-retry');
+
+      magicLinkBtn.addEventListener('click', async () => {
+        const email = magicLinkEmail.value.trim();
+        if (!email || !email.includes('@')) {
+          magicLinkEmail.focus();
+          return;
+        }
+
+        magicLinkBtn.disabled = true;
+        magicLinkBtn.querySelector('span').textContent = '...';
+
+        try {
+          await auth.signInWithMagicLink(email);
+          // Show success message
+          magicLinkForm.style.display = 'none';
+          googleBtn.style.display = 'none';
+          document.querySelector('.login-divider').style.display = 'none';
+          magicLinkSuccess.style.display = 'block';
+        } catch (error) {
+          console.error('Magic link error:', error);
+          magicLinkBtn.disabled = false;
+          magicLinkBtn.querySelector('span').textContent = i18n.t('auth.sendMagicLink') || 'Invia Magic Link';
+        }
+      });
+
+      // Allow Enter key in email input
+      magicLinkEmail.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          magicLinkBtn.click();
+        }
+      });
+
+      // Retry button
+      magicLinkRetry.addEventListener('click', () => {
+        magicLinkForm.style.display = 'block';
+        googleBtn.style.display = 'flex';
+        document.querySelector('.login-divider').style.display = 'flex';
+        magicLinkSuccess.style.display = 'none';
+        magicLinkBtn.disabled = false;
+        magicLinkBtn.querySelector('span').textContent = i18n.t('auth.sendMagicLink') || 'Invia Magic Link';
       });
     })();
   </script>

@@ -183,6 +183,19 @@ const auth = {
   },
 
   /**
+   * Sign in with Magic Link (email OTP)
+   */
+  async signInWithMagicLink(email) {
+    const { error } = await this.supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: window.location.origin
+      }
+    });
+    if (error) throw error;
+  },
+
+  /**
    * Sign out
    */
   async signOut() {
