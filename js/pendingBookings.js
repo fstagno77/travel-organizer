@@ -7,6 +7,8 @@
   'use strict';
 
   let currentBookingId = null;
+  let currentBookingData = null;
+  let allBookings = [];
   let suggestedTrips = [];
 
   // Icons for booking types
@@ -71,10 +73,12 @@
       const data = await response.json();
 
       if (!data.success || !data.bookings?.length) {
+        allBookings = [];
         renderEmptyState(container);
         return;
       }
 
+      allBookings = data.bookings;
       renderPendingBookings(container, data.bookings);
     } catch (error) {
       console.error('Error loading pending bookings:', error);
@@ -115,6 +119,9 @@
             </div>
           </div>
           <div class="pending-booking-actions">
+            <button class="btn btn-secondary btn-sm" data-action="details" data-id="${booking.id}">
+              <span data-i18n="pendingBookings.details">Details</span>
+            </button>
             <button class="btn btn-primary btn-sm" data-action="associate" data-id="${booking.id}">
               <span data-i18n="pendingBookings.addToTrip">Add to trip</span>
             </button>
@@ -190,68 +197,293 @@
     // Create new trip button
     const createTripBtn = document.getElementById('create-trip-btn');
     if (createTripBtn) {
-      createTripBtn.addEventListener('click', () => {
-        if (currentBookingId) {
-          createNewTrip(currentBookingId);
+      createTripBtn.addEventListener('click', async () => {
+        if (currentBookingId && !createTripBtn.disabled) {
+          setButtonLoading(createTripBtn, true);
+          try {
+            await createNewTrip(currentBookingId);
+          } finally {
+            setButtonLoading(createTripBtn, false);
+          }
         }
       });
     }
 
     // Delegate events for booking cards
     const container = document.getElementById('pending-bookings-container');
-    console.log('[pendingBookings] Adding click listener to container:', container);
     container.addEventListener('click', handleBookingAction);
+  }
+
+  /**
+   * Set button loading state
+   */
+  function setButtonLoading(btn, loading) {
+    if (loading) {
+      btn.disabled = true;
+      btn.dataset.originalHtml = btn.innerHTML;
+      btn.innerHTML = '<span class="spinner spinner-sm"></span>';
+    } else {
+      btn.disabled = false;
+      if (btn.dataset.originalHtml) {
+        btn.innerHTML = btn.dataset.originalHtml;
+        delete btn.dataset.originalHtml;
+      }
+    }
   }
 
   /**
    * Handle booking card actions
    */
   async function handleBookingAction(e) {
-    console.log('[pendingBookings] Click detected on:', e.target);
     const btn = e.target.closest('[data-action]');
-    console.log('[pendingBookings] Found button with data-action:', btn);
-    if (!btn) return;
+    if (!btn || btn.disabled) return;
 
     const action = btn.dataset.action;
     const bookingId = btn.dataset.id;
-    console.log('[pendingBookings] Action:', action, 'BookingId:', bookingId);
 
     if (action === 'associate') {
-      console.log('[pendingBookings] Calling showAssociateModal...');
-      await showAssociateModal(bookingId);
+      setButtonLoading(btn, true);
+      try {
+        await showAssociateModal(bookingId);
+      } finally {
+        setButtonLoading(btn, false);
+      }
     } else if (action === 'dismiss') {
-      await dismissBooking(bookingId);
+      setButtonLoading(btn, true);
+      try {
+        await dismissBooking(bookingId);
+      } finally {
+        setButtonLoading(btn, false);
+      }
+    } else if (action === 'details') {
+      setButtonLoading(btn, true);
+      try {
+        await showDetailsModal(bookingId);
+      } finally {
+        setButtonLoading(btn, false);
+      }
     }
+  }
+
+  /**
+   * Show details modal for a booking
+   */
+  async function showDetailsModal(bookingId) {
+    // Fetch full booking details
+    try {
+      const response = await utils.authFetch(`/.netlify/functions/pending-bookings?id=${bookingId}`);
+      const data = await response.json();
+
+      if (!data.success || !data.booking) {
+        throw new Error('Failed to load booking details');
+      }
+
+      currentBookingId = bookingId;
+      currentBookingData = data.booking;
+
+      // Remove existing modal if any
+      const existingModal = document.getElementById('details-modal');
+      if (existingModal) existingModal.remove();
+
+      // Create details modal
+      const modalHTML = createDetailsModalHTML(data.booking);
+      document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+      // Bind modal events
+      const modal = document.getElementById('details-modal');
+      const closeBtn = document.getElementById('details-modal-close');
+      const closeBtnFooter = document.getElementById('details-close-btn');
+      const addBtn = document.getElementById('details-add-btn');
+      const deleteBtn = document.getElementById('details-delete-btn');
+
+      const closeDetailsModal = () => {
+        modal.remove();
+        document.body.style.overflow = '';
+      };
+
+      closeBtn.addEventListener('click', closeDetailsModal);
+      closeBtnFooter.addEventListener('click', closeDetailsModal);
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeDetailsModal();
+      });
+
+      addBtn.addEventListener('click', async () => {
+        if (addBtn.disabled) return;
+        setButtonLoading(addBtn, true);
+        closeDetailsModal();
+        await showAssociateModal(bookingId);
+      });
+
+      deleteBtn.addEventListener('click', async () => {
+        if (deleteBtn.disabled) return;
+        closeDetailsModal();
+        await dismissBooking(bookingId);
+      });
+
+      modal.classList.add('active');
+      document.body.style.overflow = 'hidden';
+      i18n.apply();
+
+    } catch (error) {
+      console.error('Error loading booking details:', error);
+      alert(i18n.t('pendingBookings.loadError'));
+    }
+  }
+
+  /**
+   * Create details modal HTML
+   */
+  function createDetailsModalHTML(booking) {
+    const lang = i18n.getLang();
+    const type = booking.booking_type;
+    const extracted = booking.extracted_data || {};
+
+    let detailsContent = '';
+
+    if (type === 'flight' && extracted.flights?.length) {
+      const flight = extracted.flights[0];
+      detailsContent = `
+        <div class="details-section">
+          <div class="details-row">
+            <span class="details-label">${lang === 'it' ? 'Volo' : 'Flight'}</span>
+            <span class="details-value">${flight.airline || ''} ${flight.flightNumber || ''}</span>
+          </div>
+          <div class="details-row">
+            <span class="details-label">${lang === 'it' ? 'Data' : 'Date'}</span>
+            <span class="details-value">${formatDateShort(flight.date)}</span>
+          </div>
+          <div class="details-row">
+            <span class="details-label">${lang === 'it' ? 'Partenza' : 'Departure'}</span>
+            <span class="details-value">${flight.departure?.city || flight.departure?.code || '—'} ${flight.departureTime ? `(${flight.departureTime})` : ''}</span>
+          </div>
+          <div class="details-row">
+            <span class="details-label">${lang === 'it' ? 'Arrivo' : 'Arrival'}</span>
+            <span class="details-value">${flight.arrival?.city || flight.arrival?.code || '—'} ${flight.arrivalTime ? `(${flight.arrivalTime})` : ''}</span>
+          </div>
+          ${flight.bookingReference ? `
+          <div class="details-row">
+            <span class="details-label">${lang === 'it' ? 'Riferimento' : 'Reference'}</span>
+            <span class="details-value">${flight.bookingReference}</span>
+          </div>` : ''}
+          ${flight.passenger ? `
+          <div class="details-row">
+            <span class="details-label">${lang === 'it' ? 'Passeggero' : 'Passenger'}</span>
+            <span class="details-value">${flight.passenger}</span>
+          </div>` : ''}
+        </div>
+      `;
+    } else if (type === 'hotel' && extracted.hotels?.length) {
+      const hotel = extracted.hotels[0];
+      detailsContent = `
+        <div class="details-section">
+          <div class="details-row">
+            <span class="details-label">${lang === 'it' ? 'Hotel' : 'Hotel'}</span>
+            <span class="details-value">${hotel.name || '—'}</span>
+          </div>
+          ${hotel.address?.fullAddress || hotel.address?.city ? `
+          <div class="details-row">
+            <span class="details-label">${lang === 'it' ? 'Indirizzo' : 'Address'}</span>
+            <span class="details-value">${hotel.address?.fullAddress || hotel.address?.city || '—'}</span>
+          </div>` : ''}
+          ${hotel.phone ? `
+          <div class="details-row">
+            <span class="details-label">${lang === 'it' ? 'Telefono' : 'Phone'}</span>
+            <span class="details-value">${hotel.phone}</span>
+          </div>` : ''}
+          <div class="details-row">
+            <span class="details-label">${lang === 'it' ? 'Check-in' : 'Check-in'}</span>
+            <span class="details-value">${formatDateShort(hotel.checkIn?.date)} ${hotel.checkIn?.time ? `(${hotel.checkIn.time})` : ''}</span>
+          </div>
+          <div class="details-row">
+            <span class="details-label">${lang === 'it' ? 'Check-out' : 'Check-out'}</span>
+            <span class="details-value">${formatDateShort(hotel.checkOut?.date)} ${hotel.checkOut?.time ? `(${hotel.checkOut.time})` : ''}</span>
+          </div>
+          ${hotel.nights ? `
+          <div class="details-row">
+            <span class="details-label">${lang === 'it' ? 'Notti' : 'Nights'}</span>
+            <span class="details-value">${hotel.nights}</span>
+          </div>` : ''}
+          ${hotel.rooms ? `
+          <div class="details-row">
+            <span class="details-label">${lang === 'it' ? 'Camere' : 'Rooms'}</span>
+            <span class="details-value">${hotel.rooms}</span>
+          </div>` : ''}
+          ${hotel.guests ? `
+          <div class="details-row">
+            <span class="details-label">${lang === 'it' ? 'Ospiti' : 'Guests'}</span>
+            <span class="details-value">${hotel.guests.adults || 0} ${lang === 'it' ? 'adulti' : 'adults'}${hotel.guests.children ? `, ${hotel.guests.children} ${lang === 'it' ? 'bambini' : 'children'}` : ''}</span>
+          </div>` : ''}
+          ${hotel.confirmationNumber ? `
+          <div class="details-row">
+            <span class="details-label">${lang === 'it' ? 'Conferma' : 'Confirmation'}</span>
+            <span class="details-value">${hotel.confirmationNumber}</span>
+          </div>` : ''}
+          ${hotel.guestName ? `
+          <div class="details-row">
+            <span class="details-label">${lang === 'it' ? 'Intestatario' : 'Guest'}</span>
+            <span class="details-value">${hotel.guestName}</span>
+          </div>` : ''}
+        </div>
+      `;
+    } else {
+      detailsContent = `
+        <div class="details-section">
+          <p class="text-muted">${lang === 'it' ? 'Nessun dettaglio disponibile' : 'No details available'}</p>
+        </div>
+      `;
+    }
+
+    const title = booking.summary_title || booking.email_subject || (lang === 'it' ? 'Prenotazione' : 'Booking');
+
+    return `
+      <div class="modal-overlay" id="details-modal">
+        <div class="modal modal-details">
+          <div class="modal-header">
+            <h3 class="modal-title">${escapeHtml(title)}</h3>
+            <button class="modal-close" id="details-modal-close">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            ${detailsContent}
+          </div>
+          <div class="modal-footer modal-footer-split">
+            <button class="btn btn-secondary" id="details-close-btn" data-i18n="pendingBookings.close">Close</button>
+            <div class="modal-footer-right">
+              <button class="btn-text btn-text-danger" id="details-delete-btn" data-i18n="pendingBookings.deleteBooking">Delete booking</button>
+              <button class="btn btn-primary" id="details-add-btn" data-i18n="pendingBookings.addToTrip">Add to trip</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
   }
 
   /**
    * Show associate modal with trip selection
    */
   async function showAssociateModal(bookingId) {
-    console.log('[pendingBookings] showAssociateModal called with:', bookingId);
     currentBookingId = bookingId;
 
     // Fetch booking details with suggested trips
     try {
-      console.log('[pendingBookings] Fetching booking details...');
       const response = await utils.authFetch(`/.netlify/functions/pending-bookings?id=${bookingId}`);
-      console.log('[pendingBookings] Response status:', response.status);
       const data = await response.json();
-      console.log('[pendingBookings] Response data:', data);
 
       if (!data.success) {
         throw new Error('Failed to load booking details');
       }
 
       suggestedTrips = data.suggestedTrips || [];
-      console.log('[pendingBookings] Suggested trips:', suggestedTrips);
       renderTripsSelection(suggestedTrips);
 
       // Show modal
-      console.log('[pendingBookings] Showing modal...');
       document.getElementById('associate-modal').classList.add('active');
     } catch (error) {
-      console.error('[pendingBookings] Error loading booking details:', error);
+      console.error('Error loading booking details:', error);
       alert(i18n.t('pendingBookings.loadError'));
     }
   }
@@ -292,9 +524,12 @@
 
     // Add click handlers
     container.querySelectorAll('.trip-selection-item').forEach(item => {
-      item.addEventListener('click', () => {
+      item.addEventListener('click', async () => {
+        if (item.classList.contains('loading')) return;
+        item.classList.add('loading');
         const tripId = item.dataset.tripId;
-        associateWithTrip(currentBookingId, tripId);
+        await associateWithTrip(currentBookingId, tripId);
+        item.classList.remove('loading');
       });
     });
   }
@@ -402,15 +637,23 @@
   }
 
   /**
-   * Format date as dd-mm-yy
+   * Format date as "dd mon yyyy" (e.g., "17 feb 2026")
    */
   function formatDateShort(dateString) {
     if (!dateString) return '';
+
+    const lang = i18n.getLang();
+    const monthsIt = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
+    const monthsEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = lang === 'it' ? monthsIt : monthsEn;
+
     const date = new Date(dateString);
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = String(date.getFullYear()).slice(-2);
-    return `${day}-${month}-${year}`;
+    if (isNaN(date.getTime())) return dateString;
+
+    const day = date.getDate();
+    const month = months[date.getMonth()];
+    const year = date.getFullYear();
+    return `${day} ${month} ${year}`;
   }
 
   /**

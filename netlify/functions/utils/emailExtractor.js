@@ -55,9 +55,12 @@ For flights, extract:
 For hotels, extract:
 - name
 - address: { street, city, country, fullAddress }
+- phone (hotel phone number)
 - checkIn: { date (YYYY-MM-DD), time (HH:MM) }
 - checkOut: { date (YYYY-MM-DD), time (HH:MM) }
 - nights (number)
+- rooms (number of rooms)
+- guests: { adults, children, childrenAges }
 - confirmationNumber
 - guestName
 - roomTypes (array of {it, en} if possible)
@@ -306,6 +309,29 @@ function determineBookingType(extractedData) {
 }
 
 /**
+ * Format a date string to "dd mon yyyy" format (e.g., "17 feb 2026")
+ * @param {string} dateString - Date in any format (YYYY-MM-DD, etc.)
+ * @returns {string} Formatted date or original if parsing fails
+ */
+function formatDateShort(dateString) {
+  if (!dateString) return '';
+
+  const monthsIt = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
+
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString; // Return original if invalid
+
+    const day = date.getDate();
+    const month = monthsIt[date.getMonth()];
+    const year = date.getFullYear();
+    return `${day} ${month} ${year}`;
+  } catch (e) {
+    return dateString; // Return original on error
+  }
+}
+
+/**
  * Generate summary fields for pending booking display
  * @param {string} bookingType - 'flight', 'hotel', or 'unknown'
  * @param {Object} extractedData - Extracted booking data
@@ -320,14 +346,14 @@ function generateSummary(bookingType, extractedData) {
     const depCode = flight.departure?.code || '???';
     const arrCode = flight.arrival?.code || '???';
     summaryTitle = `${flight.airline || 'Volo'} ${flight.flightNumber || ''} ${depCode}→${arrCode}`.trim();
-    summaryDates = flight.date || '';
+    summaryDates = formatDateShort(flight.date) || '';
   } else if (bookingType === 'hotel' && extractedData.hotels?.[0]) {
     const hotel = extractedData.hotels[0];
     summaryTitle = hotel.name || 'Hotel';
     if (hotel.checkIn?.date && hotel.checkOut?.date) {
-      summaryDates = `${hotel.checkIn.date} - ${hotel.checkOut.date}`;
+      summaryDates = `${formatDateShort(hotel.checkIn.date)} - ${formatDateShort(hotel.checkOut.date)}`;
     } else if (hotel.checkIn?.date) {
-      summaryDates = hotel.checkIn.date;
+      summaryDates = formatDateShort(hotel.checkIn.date);
     }
   }
 

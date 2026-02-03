@@ -1244,6 +1244,24 @@
         }
 
         closeModal();
+
+        // Check if this was the last booking
+        const remainingFlights = (currentTripData.flights || []).filter(f => f.id !== itemId);
+        const remainingHotels = (currentTripData.hotels || []).filter(h => h.id !== itemId);
+
+        if (remainingFlights.length === 0 && remainingHotels.length === 0) {
+          // No more bookings - delete the trip and redirect to home
+          try {
+            await utils.authFetch(`/.netlify/functions/delete-trip?id=${encodeURIComponent(currentTripData.id)}`, {
+              method: 'DELETE'
+            });
+          } catch (tripDeleteError) {
+            console.error('Error deleting empty trip:', tripDeleteError);
+          }
+          window.location.href = 'index.html';
+          return;
+        }
+
         // Reload trip data
         await loadTripFromUrl();
       } catch (error) {

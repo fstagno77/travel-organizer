@@ -54,9 +54,18 @@ exports.handler = async (event, context) => {
     // Extract key fields
     const senderEmail = extractSenderEmail(formData.from || '');
     const subject = formData.subject || '';
-    const htmlBody = formData.html || '';
-    const textBody = formData.text || '';
+    let htmlBody = formData.html || '';
+    let textBody = formData.text || '';
     const messageId = formData['message-id'] || extractMessageId(formData.headers) || crypto.randomUUID();
+
+    // If html/text are empty but we have raw MIME, extract body from MIME
+    if (!htmlBody && !textBody && formData.email) {
+      console.log('Extracting body content from raw MIME...');
+      const mimeBody = extractBodyFromMime(formData.email);
+      htmlBody = mimeBody.html || '';
+      textBody = mimeBody.text || '';
+      console.log(`Extracted from MIME - HTML length: ${htmlBody.length}, Text length: ${textBody.length}`);
+    }
 
     // Handle attachments from different SendGrid formats
     let attachments = [];
@@ -507,6 +516,146 @@ function extractAttachmentsFromMime(mimeMessage) {
   }
 
   return attachments;
+}
+
+/**
+ * Extract HTML and text body from raw MIME email message
+ * This handles the case when SendGrid sends the full MIME message in the 'email' field
+ * @param {string} mimeMessage - The MIME message content
+ * @param {number} depth - Current recursion depth (to prevent infinite loops)
+ * @param {Set} seenBoundaries - Boundaries already processed (to prevent loops)
+ */
+function extractBodyFromMime(mimeMessage, depth = 0, seenBoundaries = new Set()) {
+  const result = { html: '', text: '' };
+
+  // Prevent infinite recursion
+  if (depth > 10) {
+    console.log('Max MIME nesting depth reached, stopping recursion');
+    return result;
+  }
+
+  try {
+    // Find Content-Type boundary
+    const boundaryMatch = mimeMessage.match(/boundary="?([^"\s;]+)"?/i);
+    if (!boundaryMatch) {
+      console.log('No MIME boundary found for body extraction');
+      // If no boundary, try to extract body directly (single-part message)
+      const bodyStart = mimeMessage.indexOf('\r\n\r\n');
+      if (bodyStart !== -1) {
+        result.text = mimeMessage.substring(bodyStart + 4);
+      }
+      return result;
+    }
+
+    const boundary = boundaryMatch[1];
+
+    // Prevent processing the same boundary twice (loop detection)
+    if (seenBoundaries.has(boundary)) {
+      console.log(`Boundary already processed: ${boundary}, skipping to prevent loop`);
+      return result;
+    }
+    seenBoundaries.add(boundary);
+
+    console.log(`Processing MIME boundary (depth ${depth}): ${boundary}`);
+    const parts = mimeMessage.split('--' + boundary);
+
+    for (const part of parts) {
+      // Skip empty parts and closing boundary
+      if (!part.trim() || part.trim() === '--') continue;
+
+      const contentType = part.match(/Content-Type:\s*([^;\s\n]+)/i);
+      const contentTransferEncoding = part.match(/Content-Transfer-Encoding:\s*(\S+)/i);
+
+      if (!contentType) continue;
+
+      const mimeType = contentType[1].toLowerCase();
+
+      // Skip attachments
+      if (part.match(/Content-Disposition:\s*attachment/i)) continue;
+
+      // Check if this is a nested multipart (e.g., multipart/alternative inside multipart/mixed)
+      if (mimeType.startsWith('multipart/')) {
+        const nestedBoundaryMatch = part.match(/boundary="?([^"\s;]+)"?/i);
+        if (nestedBoundaryMatch && nestedBoundaryMatch[1] !== boundary) {
+          // Recursively extract from nested multipart
+          const nestedResult = extractBodyFromMime(part, depth + 1, seenBoundaries);
+          if (nestedResult.html && !result.html) result.html = nestedResult.html;
+          if (nestedResult.text && !result.text) result.text = nestedResult.text;
+        }
+        continue;
+      }
+
+      // Find the content (after the double newline)
+      let contentStartIndex = part.indexOf('\r\n\r\n');
+      if (contentStartIndex !== -1) {
+        contentStartIndex += 4;
+      } else {
+        contentStartIndex = part.indexOf('\n\n');
+        if (contentStartIndex !== -1) {
+          contentStartIndex += 2;
+        } else {
+          continue;
+        }
+      }
+
+      let content = part.substring(contentStartIndex);
+
+      // Remove any trailing boundary markers or whitespace at the end
+      // Be careful not to remove content that legitimately contains '--'
+      const lines = content.split(/\r?\n/);
+      const cleanLines = [];
+      for (const line of lines) {
+        // Stop if we hit a boundary marker (line that starts with --)
+        if (line.trim().startsWith('--')) break;
+        cleanLines.push(line);
+      }
+      content = cleanLines.join('\n');
+
+      // Decode content based on transfer encoding
+      const encoding = contentTransferEncoding ? contentTransferEncoding[1].toLowerCase() : '7bit';
+
+      if (encoding === 'base64') {
+        try {
+          const cleanBase64 = content.replace(/[\r\n\s]/g, '');
+          content = Buffer.from(cleanBase64, 'base64').toString('utf-8');
+        } catch (e) {
+          console.error('Failed to decode base64 content:', e.message);
+        }
+      } else if (encoding === 'quoted-printable') {
+        content = decodeQuotedPrintable(content);
+      }
+
+      // Store based on content type (prefer longer content if we already have some)
+      if (mimeType === 'text/html') {
+        if (!result.html || content.trim().length > result.html.length) {
+          result.html = content.trim();
+          console.log(`Found HTML body, length: ${result.html.length}`);
+        }
+      } else if (mimeType === 'text/plain') {
+        if (!result.text || content.trim().length > result.text.length) {
+          result.text = content.trim();
+          console.log(`Found text body, length: ${result.text.length}`);
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error extracting body from MIME:', error.message);
+  }
+
+  return result;
+}
+
+/**
+ * Decode quoted-printable encoded content
+ */
+function decodeQuotedPrintable(input) {
+  return input
+    // Handle soft line breaks (= at end of line)
+    .replace(/=\r?\n/g, '')
+    // Handle encoded characters (=XX where XX is hex)
+    .replace(/=([0-9A-Fa-f]{2})/g, (match, hex) => {
+      return String.fromCharCode(parseInt(hex, 16));
+    });
 }
 
 /**

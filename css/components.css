@@ -1269,6 +1269,18 @@
   color: var(--color-primary);
 }
 
+.section-dropdown-item--danger {
+  color: var(--color-error);
+}
+
+.section-dropdown-item--danger svg {
+  color: var(--color-error);
+}
+
+.section-dropdown-item--danger:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
 /* Segmented Control */
 .segmented-control {
   display: inline-flex;
