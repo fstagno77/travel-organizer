@@ -1,6 +1,24 @@
 {
   "versions": [
     {
+      "version": "0.10.1",
+      "date": "2026-02-03",
+      "changes": {
+        "it": [
+          "Supporto PWA completo per iOS: l'app si apre a schermo intero dalla Home",
+          "Login con codice OTP via email (funziona nella PWA senza uscire)",
+          "Manifest.json e meta tag per installazione su iPhone",
+          "Fix spaziatura titoli su mobile (Home, Profilo)"
+        ],
+        "en": [
+          "Full PWA support for iOS: app opens fullscreen from Home Screen",
+          "OTP code login via email (works in PWA without leaving)",
+          "Manifest.json and meta tags for iPhone installation",
+          "Fixed title spacing on mobile (Home, Profile)"
+        ]
+      }
+    },
+    {
       "version": "0.10.0",
       "date": "2026-02-03",
       "changes": {
