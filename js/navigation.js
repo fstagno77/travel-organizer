@@ -90,7 +90,7 @@ const navigation = {
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.4-.1.9.3 1.1l4.8 3.2-2.1 2.1-2.4-.6c-.4-.1-.8 0-1 .3l-.2.3c-.2.3-.1.7.1 1l2.2 2.2 2.2 2.2c.3.3.7.3 1 .1l.3-.2c.3-.2.4-.6.3-1l-.6-2.4 2.1-2.1 3.2 4.8c.2.4.7.5 1.1.3l.5-.3c.4-.2.6-.6.5-1.1z"/>
               </svg>
-              <span data-i18n="app.name">Travel Organizer</span>
+              <span data-i18n="app.name">Travel Flow</span>
             </a>
 
             <div class="header-actions">
@@ -141,7 +141,7 @@ const navigation = {
         <div class="container">
           <div class="footer-inner">
             <div class="footer-copyright">
-              © ${currentYear} Travel Organizer
+              © ${currentYear} Travel Flow
             </div>
             <div class="footer-right">
               <span class="footer-version">v${version}</span>

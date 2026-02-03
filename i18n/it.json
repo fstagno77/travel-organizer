@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "Travel Organizer"
+    "name": "Travel Flow"
   },
   "nav": {
     "home": "Home"
@@ -137,7 +137,7 @@
   "auth": {
     "login": "Accedi",
     "logout": "Esci",
-    "loginTitle": "Accedi a Travel Organizer",
+    "loginTitle": "Accedi a Travel Flow",
     "loginSubtitle": "Accedi per gestire i tuoi viaggi",
     "loginWithGoogle": "Accedi con Google",
     "createUsername": "Scegli un nome utente",
@@ -150,7 +150,7 @@
     "usernameTooShort": "Almeno 5 caratteri",
     "usernameTooLong": "Massimo 12 caratteri",
     "continue": "Continua",
-    "welcomeTitle": "Benvenuto in Travel Organizer",
+    "welcomeTitle": "Benvenuto in Travel Flow",
     "welcomeText": "Accedi per gestire i tuoi viaggi",
     "notLoggedIn": "Non hai effettuato l'accesso"
   },
@@ -173,8 +173,8 @@
   },
   "pendingBookings": {
     "title": "Prenotazioni in Attesa",
-    "subtitle": "Prenotazioni dalle email inoltrate",
-    "forwardInfo": "Inoltra le tue email di conferma prenotazione a:",
+    "subtitle": "Prenotazioni dalle email inoltrate a",
+    "forwardInfo": "",
     "noBookings": "Nessuna prenotazione in attesa",
     "noBookingsText": "Inoltra le email di conferma delle tue prenotazioni per vederle qui",
     "unknownBooking": "Prenotazione",

@@ -129,7 +129,7 @@
       // Update page title
       const lang = i18n.getLang();
       const title = tripData.title[lang] || tripData.title.en;
-      document.title = `${title} - Travel Organizer`;
+      document.title = `${title} - Travel Flow`;
 
       // Update trip header
       updateTripHeader(tripData);

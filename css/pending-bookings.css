@@ -2,7 +2,48 @@
  * Pending Bookings Page Styles
  */
 
-/* Info Card - Email forwarding instructions */
+/* Inline email in subtitle */
+.email-inline {
+  display: inline;
+  padding: var(--spacing-1) var(--spacing-3);
+  background-color: var(--color-white);
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-full);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-700);
+  font-weight: var(--font-weight-medium);
+  margin-left: var(--spacing-2);
+  box-shadow: var(--shadow-xs);
+}
+
+/* Small icon button for copy */
+.btn-icon-small {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-1);
+  background: none;
+  border: none;
+  color: var(--color-gray-400);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  vertical-align: middle;
+  margin-left: var(--spacing-1);
+}
+
+.btn-icon-small:hover {
+  background-color: var(--color-blue-100);
+  color: var(--color-blue-600);
+}
+
+.btn-icon-small.copied {
+  background-color: var(--color-green-100);
+  color: var(--color-green-600);
+}
+
+/* Info Card - Email forwarding instructions (legacy, hidden) */
 .info-card {
   display: flex;
   gap: var(--spacing-4);

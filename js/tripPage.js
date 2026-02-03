@@ -105,7 +105,7 @@
 
     // Update page title
     const title = tripData.title[lang] || tripData.title.en || tripData.title.it;
-    document.title = `${title} - Travel Organizer`;
+    document.title = `${title} - Travel Flow`;
     document.getElementById('trip-title').textContent = title;
 
     // Update dates
@@ -547,7 +547,7 @@
       confirmBtn.innerHTML = '<span class="spinner spinner-sm"></span>';
 
       try {
-        const response = await fetch(`/.netlify/functions/delete-trip?id=${encodeURIComponent(tripId)}`, {
+        const response = await utils.authFetch(`/.netlify/functions/delete-trip?id=${encodeURIComponent(tripId)}`, {
           method: 'DELETE'
         });
 
@@ -1137,7 +1137,7 @@
         newBtn.innerHTML = '<span class="spinner spinner-sm"></span>';
 
         try {
-          const response = await fetch(`/.netlify/functions/get-pdf-url?path=${encodeURIComponent(pdfPath)}`);
+          const response = await utils.authFetch(`/.netlify/functions/get-pdf-url?path=${encodeURIComponent(pdfPath)}`);
           const result = await response.json();
 
           if (result.success && result.url) {

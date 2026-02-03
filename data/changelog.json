@@ -1,6 +1,30 @@
 {
   "versions": [
     {
+      "version": "0.9.1",
+      "date": "2026-02-03",
+      "changes": {
+        "it": [
+          "Rebranding: Travel Organizer diventa Travel Flow",
+          "Funzionalità email forwarding: inoltra conferme prenotazioni per elaborazione automatica",
+          "Pagina prenotazioni in attesa con associazione a viaggi esistenti",
+          "Campanella notifiche nell'header con badge contatore",
+          "Selezione foto copertina quando si crea viaggio da prenotazione in attesa",
+          "Fix errori 401 per download PDF ed eliminazione viaggi",
+          "Miglioramenti UI: icone header uniformi, badge notifiche riposizionato"
+        ],
+        "en": [
+          "Rebranding: Travel Organizer becomes Travel Flow",
+          "Email forwarding feature: forward booking confirmations for automatic processing",
+          "Pending bookings page with association to existing trips",
+          "Notification bell in header with counter badge",
+          "Cover photo selection when creating trip from pending booking",
+          "Fix 401 errors for PDF download and trip deletion",
+          "UI improvements: uniform header icons, repositioned notification badge"
+        ]
+      }
+    },
+    {
       "version": "0.9.0",
       "date": "2026-02-01",
       "changes": {

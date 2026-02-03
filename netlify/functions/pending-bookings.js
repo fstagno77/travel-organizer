@@ -493,6 +493,9 @@ async function handleCreateTrip(supabase, user, body, headers) {
     body: JSON.stringify({
       success: true,
       tripId: tripData.id,
+      tripData: tripData,
+      destination: tripDestination,
+      needsPhotoSelection: tripDestination && tripDestination !== 'Unknown',
       message: `Nuovo viaggio creato: ${tripDestination}`
     })
   };

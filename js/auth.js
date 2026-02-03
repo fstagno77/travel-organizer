@@ -348,13 +348,13 @@ const auth = {
     const lang = typeof i18n !== 'undefined' ? i18n.getLang() : 'it';
     const texts = {
       it: {
-        title: 'Accedi a Travel Organizer',
+        title: 'Accedi a Travel Flow',
         subtitle: 'Gestisci i tuoi viaggi in un unico posto',
         google: 'Continua con Google',
         close: 'Chiudi'
       },
       en: {
-        title: 'Login to Travel Organizer',
+        title: 'Login to Travel Flow',
         subtitle: 'Manage your trips in one place',
         google: 'Continue with Google',
         close: 'Close'

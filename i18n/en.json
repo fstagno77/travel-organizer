@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "Travel Organizer"
+    "name": "Travel Flow"
   },
   "nav": {
     "home": "Home"
@@ -137,7 +137,7 @@
   "auth": {
     "login": "Login",
     "logout": "Logout",
-    "loginTitle": "Login to Travel Organizer",
+    "loginTitle": "Login to Travel Flow",
     "loginSubtitle": "Sign in to manage your trips",
     "loginWithGoogle": "Continue with Google",
     "createUsername": "Choose a username",
@@ -150,7 +150,7 @@
     "usernameTooShort": "At least 5 characters",
     "usernameTooLong": "Maximum 12 characters",
     "continue": "Continue",
-    "welcomeTitle": "Welcome to Travel Organizer",
+    "welcomeTitle": "Welcome to Travel Flow",
     "welcomeText": "Login to manage your trips",
     "notLoggedIn": "Not logged in"
   },
@@ -173,8 +173,8 @@
   },
   "pendingBookings": {
     "title": "Pending Bookings",
-    "subtitle": "Bookings from forwarded emails",
-    "forwardInfo": "Forward your booking confirmation emails to:",
+    "subtitle": "Bookings from emails forwarded to",
+    "forwardInfo": "",
     "noBookings": "No pending bookings",
     "noBookingsText": "Forward your booking confirmation emails to see them here",
     "unknownBooking": "Booking",

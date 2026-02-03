@@ -48,6 +48,11 @@
     // Require authentication
     if (!auth.requireAuth()) return;
 
+    // Initialize trip creator for photo selection
+    if (window.tripCreator) {
+      window.tripCreator.init();
+    }
+
     // Load pending bookings
     await loadPendingBookings();
 
@@ -275,10 +280,7 @@
         <div class="trip-selection-item" data-trip-id="${trip.id}">
           <div class="trip-selection-info">
             <div class="trip-selection-title">${escapeHtml(trip.title)}</div>
-            <div class="trip-selection-meta">
-              ${trip.destination ? `<span>${escapeHtml(trip.destination)}</span>` : ''}
-              ${trip.startDate ? `<span>${trip.startDate} - ${trip.endDate}</span>` : ''}
-            </div>
+            ${trip.startDate ? `<div class="trip-selection-meta">${formatDateShort(trip.startDate)} - ${formatDateShort(trip.endDate)}</div>` : ''}
           </div>
           ${matchBadge}
         </div>
@@ -352,10 +354,18 @@
         throw new Error(data.error || 'Failed to create trip');
       }
 
-      // Close modal and redirect to new trip
+      // Close pending bookings modal
       closeModal();
       await navigation.refreshPendingCount();
-      window.location.href = `trip.html?id=${data.tripId}`;
+
+      // Show photo selection if destination available and tripCreator is available
+      if (data.needsPhotoSelection && data.destination && window.tripCreator) {
+        // Use tripCreator to show photo selection
+        window.tripCreator.openPhotoSelection(data.tripId, data.destination, data.tripData);
+      } else {
+        // Redirect to new trip directly
+        window.location.href = `trip.html?id=${data.tripId}`;
+      }
     } catch (error) {
       console.error('Error creating trip:', error);
       alert(i18n.t('pendingBookings.createTripError'));
@@ -389,6 +399,18 @@
       console.error('Error dismissing booking:', error);
       alert(i18n.t('pendingBookings.dismissError'));
     }
+  }
+
+  /**
+   * Format date as dd-mm-yy
+   */
+  function formatDateShort(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = String(date.getFullYear()).slice(-2);
+    return `${day}-${month}-${year}`;
   }
 
   /**
