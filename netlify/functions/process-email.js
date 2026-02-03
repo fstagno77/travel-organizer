@@ -448,19 +448,49 @@ function extractAttachmentsFromMime(mimeMessage) {
           }
         }
 
-        // Find the content (after the double newline)
-        const contentStart = part.indexOf('\r\n\r\n');
-        if (contentStart === -1) {
-          const altStart = part.indexOf('\n\n');
-          if (altStart === -1) continue;
+        // Find the content (after the double newline - headers end with blank line)
+        let contentStartIndex = part.indexOf('\r\n\r\n');
+        if (contentStartIndex !== -1) {
+          contentStartIndex += 4; // Skip the \r\n\r\n
+        } else {
+          contentStartIndex = part.indexOf('\n\n');
+          if (contentStartIndex !== -1) {
+            contentStartIndex += 2; // Skip the \n\n
+          } else {
+            console.log('Could not find content start in MIME part');
+            continue;
+          }
         }
 
-        let content = part.substring(part.indexOf('\n\n') + 2).trim();
+        let content = part.substring(contentStartIndex);
 
-        // If base64 encoded, clean it up (remove newlines)
-        if (contentTransferEncoding && contentTransferEncoding[1].toLowerCase() === 'base64') {
-          content = content.replace(/[\r\n\s]/g, '');
+        // Clean up the base64 content
+        // Remove any trailing boundary markers or whitespace
+        const boundaryIndex = content.indexOf('--');
+        if (boundaryIndex !== -1) {
+          content = content.substring(0, boundaryIndex);
         }
+
+        // Remove all whitespace (newlines, spaces, tabs, carriage returns)
+        content = content.replace(/[\r\n\s\t]/g, '');
+
+        // Validate base64 - should only contain valid base64 characters
+        const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
+        if (!base64Regex.test(content)) {
+          console.log('Warning: Content does not appear to be valid base64, attempting to clean...');
+          // Remove any non-base64 characters
+          content = content.replace(/[^A-Za-z0-9+/=]/g, '');
+        }
+
+        // Ensure proper padding
+        const padding = content.length % 4;
+        if (padding > 0) {
+          content += '='.repeat(4 - padding);
+        }
+
+        console.log(`Base64 content length after cleaning: ${content.length}`);
+        console.log(`Base64 starts with: ${content.substring(0, 50)}`);
+        console.log(`Base64 ends with: ${content.substring(content.length - 50)}`);
 
         attachments.push({
           fieldname: 'mime-attachment',
