@@ -187,8 +187,10 @@ const auth = {
    */
   async sendOtp(email) {
     const { error } = await this.supabase.auth.signInWithOtp({
-      email
-      // No emailRedirectTo - this sends a numeric code instead of a link
+      email,
+      options: {
+        shouldCreateUser: true
+      }
     });
     if (error) throw error;
   },
