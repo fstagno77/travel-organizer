@@ -193,20 +193,26 @@
     }
 
     // Delegate events for booking cards
-    document.getElementById('pending-bookings-container').addEventListener('click', handleBookingAction);
+    const container = document.getElementById('pending-bookings-container');
+    console.log('[pendingBookings] Adding click listener to container:', container);
+    container.addEventListener('click', handleBookingAction);
   }
 
   /**
    * Handle booking card actions
    */
   async function handleBookingAction(e) {
+    console.log('[pendingBookings] Click detected on:', e.target);
     const btn = e.target.closest('[data-action]');
+    console.log('[pendingBookings] Found button with data-action:', btn);
     if (!btn) return;
 
     const action = btn.dataset.action;
     const bookingId = btn.dataset.id;
+    console.log('[pendingBookings] Action:', action, 'BookingId:', bookingId);
 
     if (action === 'associate') {
+      console.log('[pendingBookings] Calling showAssociateModal...');
       await showAssociateModal(bookingId);
     } else if (action === 'dismiss') {
       await dismissBooking(bookingId);
@@ -217,24 +223,30 @@
    * Show associate modal with trip selection
    */
   async function showAssociateModal(bookingId) {
+    console.log('[pendingBookings] showAssociateModal called with:', bookingId);
     currentBookingId = bookingId;
 
     // Fetch booking details with suggested trips
     try {
+      console.log('[pendingBookings] Fetching booking details...');
       const response = await utils.authFetch(`/.netlify/functions/pending-bookings?id=${bookingId}`);
+      console.log('[pendingBookings] Response status:', response.status);
       const data = await response.json();
+      console.log('[pendingBookings] Response data:', data);
 
       if (!data.success) {
         throw new Error('Failed to load booking details');
       }
 
       suggestedTrips = data.suggestedTrips || [];
+      console.log('[pendingBookings] Suggested trips:', suggestedTrips);
       renderTripsSelection(suggestedTrips);
 
       // Show modal
+      console.log('[pendingBookings] Showing modal...');
       document.getElementById('associate-modal').style.display = 'flex';
     } catch (error) {
-      console.error('Error loading booking details:', error);
+      console.error('[pendingBookings] Error loading booking details:', error);
       alert(i18n.t('pendingBookings.loadError'));
     }
   }
