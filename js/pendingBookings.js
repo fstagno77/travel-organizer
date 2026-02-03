@@ -119,17 +119,11 @@
             </div>
           </div>
           <div class="pending-booking-actions">
-            <button class="btn btn-secondary btn-sm" data-action="details" data-id="${booking.id}">
+            <button class="btn btn-outline btn-sm" data-action="details" data-id="${booking.id}">
               <span data-i18n="pendingBookings.details">Details</span>
             </button>
             <button class="btn btn-primary btn-sm" data-action="associate" data-id="${booking.id}">
               <span data-i18n="pendingBookings.addToTrip">Add to trip</span>
-            </button>
-            <button class="btn btn-ghost btn-sm" data-action="dismiss" data-id="${booking.id}" title="${i18n.t('pendingBookings.dismiss')}">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18"/>
-                <line x1="6" y1="6" x2="18" y2="18"/>
-              </svg>
             </button>
           </div>
         </div>
