@@ -45,13 +45,64 @@ exports.handler = async (event, context) => {
     console.log('Parsed form data fields:', Object.keys(formData));
     console.log('Form data keys count:', Object.keys(formData).length);
 
+    // Debug: log all field values (truncated)
+    console.log('Field "attachments":', typeof formData.attachments, formData.attachments?.substring?.(0, 500) || formData.attachments?.length);
+    console.log('Field "attachment-info":', formData['attachment-info']?.substring?.(0, 500));
+    console.log('Field "email" length:', formData.email?.length);
+    console.log('Has attachment1?', !!formData.attachment1);
+
     // Extract key fields
     const senderEmail = extractSenderEmail(formData.from || '');
     const subject = formData.subject || '';
     const htmlBody = formData.html || '';
     const textBody = formData.text || '';
     const messageId = formData['message-id'] || extractMessageId(formData.headers) || crypto.randomUUID();
-    const attachments = formData.attachments || [];
+
+    // Handle attachments from different SendGrid formats
+    let attachments = [];
+
+    // Format 1: Attachments from busboy file parsing (multipart files)
+    if (formData.attachments && Array.isArray(formData.attachments) && formData.attachments.length > 0) {
+      attachments = formData.attachments;
+      console.log('Using attachments from multipart files:', attachments.length);
+    }
+
+    // Format 2: SendGrid parsed mode - attachment-info JSON + attachment1, attachment2, etc.
+    if (attachments.length === 0 && formData['attachment-info']) {
+      try {
+        const attachmentInfo = JSON.parse(formData['attachment-info']);
+        console.log('Parsed attachment-info:', JSON.stringify(attachmentInfo));
+
+        // attachmentInfo is like: { "attachment1": { "filename": "...", "type": "...", ... } }
+        for (const [key, info] of Object.entries(attachmentInfo)) {
+          if (formData[key]) {
+            // formData[key] contains the file content (might be base64 or buffer)
+            const content = formData[key];
+            attachments.push({
+              fieldname: key,
+              filename: info.filename || info.name || 'attachment.pdf',
+              contentType: info.type || info['content-type'] || 'application/octet-stream',
+              content: typeof content === 'string' ? content : content.toString('base64')
+            });
+            console.log(`Added attachment from ${key}: ${info.filename}`);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to parse attachment-info:', e.message);
+      }
+    }
+
+    // Format 3: Raw MIME message - need to parse email field
+    if (attachments.length === 0 && formData.email) {
+      console.log('Attempting to extract attachments from raw MIME email...');
+      const mimeAttachments = extractAttachmentsFromMime(formData.email);
+      if (mimeAttachments.length > 0) {
+        attachments = mimeAttachments;
+        console.log('Extracted attachments from MIME:', attachments.length);
+      }
+    }
+
+    console.log('Final attachment count:', attachments.length);
 
     console.log(`Email from: ${senderEmail}, Subject: ${subject}, Attachments: ${attachments.length}`);
 
@@ -349,6 +400,83 @@ function extractMessageId(headers) {
   }
 
   return null;
+}
+
+/**
+ * Extract attachments from raw MIME email message
+ * This handles the case when SendGrid sends the full MIME message in the 'email' field
+ */
+function extractAttachmentsFromMime(mimeMessage) {
+  const attachments = [];
+
+  try {
+    // Find Content-Type boundary
+    const boundaryMatch = mimeMessage.match(/boundary="?([^"\s;]+)"?/i);
+    if (!boundaryMatch) {
+      console.log('No MIME boundary found');
+      return attachments;
+    }
+
+    const boundary = boundaryMatch[1];
+    console.log('MIME boundary:', boundary);
+
+    // Split by boundary
+    const parts = mimeMessage.split('--' + boundary);
+
+    for (const part of parts) {
+      // Skip empty parts and closing boundary
+      if (!part.trim() || part.trim() === '--') continue;
+
+      // Check if this part is an attachment (has Content-Disposition: attachment or is a PDF)
+      const contentDisposition = part.match(/Content-Disposition:\s*attachment[^;]*(?:;\s*filename="?([^"\n]+)"?)?/i);
+      const contentType = part.match(/Content-Type:\s*([^;\s\n]+)/i);
+      const contentTransferEncoding = part.match(/Content-Transfer-Encoding:\s*(\S+)/i);
+
+      const isPdf = contentType && contentType[1].toLowerCase() === 'application/pdf';
+      const isAttachment = contentDisposition || isPdf;
+
+      if (isAttachment && isPdf) {
+        // Extract filename
+        let filename = 'attachment.pdf';
+        if (contentDisposition && contentDisposition[1]) {
+          filename = contentDisposition[1].trim();
+        } else {
+          // Try to get filename from Content-Type
+          const filenameMatch = part.match(/name="?([^"\n]+)"?/i);
+          if (filenameMatch) {
+            filename = filenameMatch[1].trim();
+          }
+        }
+
+        // Find the content (after the double newline)
+        const contentStart = part.indexOf('\r\n\r\n');
+        if (contentStart === -1) {
+          const altStart = part.indexOf('\n\n');
+          if (altStart === -1) continue;
+        }
+
+        let content = part.substring(part.indexOf('\n\n') + 2).trim();
+
+        // If base64 encoded, clean it up (remove newlines)
+        if (contentTransferEncoding && contentTransferEncoding[1].toLowerCase() === 'base64') {
+          content = content.replace(/[\r\n\s]/g, '');
+        }
+
+        attachments.push({
+          fieldname: 'mime-attachment',
+          filename: filename,
+          contentType: 'application/pdf',
+          content: content
+        });
+
+        console.log(`Extracted PDF from MIME: ${filename}, content length: ${content.length}`);
+      }
+    }
+  } catch (error) {
+    console.error('Error parsing MIME message:', error.message);
+  }
+
+  return attachments;
 }
 
 /**
