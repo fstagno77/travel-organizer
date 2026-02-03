@@ -22,14 +22,14 @@
   .section-subtitle {
     display: flex;
     flex-wrap: wrap;
-    justify-content: center;
+    justify-content: flex-end;
     align-items: center;
     gap: var(--spacing-2);
   }
 
   .section-subtitle > span:first-child {
     flex-basis: 100%;
-    text-align: center;
+    text-align: left;
   }
 
   .email-inline {
