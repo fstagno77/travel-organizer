@@ -1,0 +1,391 @@
+/**
+ * Pending Bookings Page Styles
+ */
+
+/* Info Card - Email forwarding instructions */
+.info-card {
+  display: flex;
+  gap: var(--spacing-4);
+  padding: var(--spacing-4);
+  background-color: var(--color-blue-50);
+  border: 1px solid var(--color-blue-200);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--spacing-6);
+}
+
+.info-card-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background-color: var(--color-blue-100);
+  border-radius: var(--radius-full);
+  color: var(--color-blue-600);
+}
+
+.info-card-content {
+  flex: 1;
+}
+
+.info-card-content p {
+  margin: 0 0 var(--spacing-2);
+  color: var(--color-gray-600);
+  font-size: var(--font-size-sm);
+}
+
+.info-card-email {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.info-card-email code {
+  padding: var(--spacing-2) var(--spacing-3);
+  background-color: var(--color-white);
+  border: 1px solid var(--color-blue-200);
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--color-blue-700);
+  font-weight: var(--font-weight-medium);
+}
+
+/* Pending Bookings List */
+.pending-bookings-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+
+/* Pending Booking Card */
+.pending-booking-card {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-4);
+  padding: var(--spacing-4);
+  background-color: var(--color-white);
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-lg);
+  transition: all var(--transition-fast);
+}
+
+.pending-booking-card:hover {
+  border-color: var(--color-gray-300);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Booking Type Icon */
+.pending-booking-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-lg);
+  background-color: var(--color-gray-100);
+  color: var(--color-gray-600);
+}
+
+.pending-booking-icon.flight {
+  background-color: var(--color-blue-100);
+  color: var(--color-blue-600);
+}
+
+.pending-booking-icon.hotel {
+  background-color: var(--color-green-100);
+  color: var(--color-green-600);
+}
+
+/* Booking Content */
+.pending-booking-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.pending-booking-title {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-gray-900);
+  margin-bottom: var(--spacing-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pending-booking-dates {
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-600);
+  margin-bottom: var(--spacing-1);
+}
+
+.pending-booking-meta {
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-500);
+}
+
+/* Booking Actions */
+.pending-booking-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  flex-shrink: 0;
+}
+
+/* Ghost button for dismiss */
+.btn-ghost {
+  padding: var(--spacing-2);
+  background: none;
+  border: none;
+  color: var(--color-gray-400);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-ghost:hover {
+  background-color: var(--color-gray-100);
+  color: var(--color-gray-600);
+}
+
+/* Icon button (copy) */
+.btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-2);
+  background: none;
+  border: none;
+  color: var(--color-gray-500);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-icon:hover {
+  background-color: var(--color-blue-100);
+  color: var(--color-blue-600);
+}
+
+.btn-icon.copied {
+  background-color: var(--color-green-100);
+  color: var(--color-green-600);
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: var(--spacing-12) var(--spacing-4);
+}
+
+.empty-state-icon {
+  display: flex;
+  justify-content: center;
+  margin-bottom: var(--spacing-4);
+  color: var(--color-gray-300);
+}
+
+.empty-state-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-gray-700);
+  margin: 0 0 var(--spacing-2);
+}
+
+.empty-state-text {
+  color: var(--color-gray-500);
+  margin: 0;
+}
+
+/* Error State */
+.error-state {
+  text-align: center;
+  padding: var(--spacing-8) var(--spacing-4);
+  color: var(--color-gray-600);
+}
+
+.error-state .btn {
+  margin-top: var(--spacing-4);
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-4);
+  z-index: 1000;
+}
+
+.modal {
+  background-color: var(--color-white);
+  border-radius: var(--radius-xl);
+  width: 100%;
+  max-width: 480px;
+  max-height: 80vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-4) var(--spacing-5);
+  border-bottom: 1px solid var(--color-gray-200);
+}
+
+.modal-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-gray-900);
+  margin: 0;
+}
+
+.modal-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--color-gray-400);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.modal-close:hover {
+  background-color: var(--color-gray-100);
+  color: var(--color-gray-600);
+}
+
+.modal-body {
+  padding: var(--spacing-4) var(--spacing-5);
+  overflow-y: auto;
+}
+
+.modal-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  margin: var(--spacing-4) 0;
+  color: var(--color-gray-400);
+  font-size: var(--font-size-sm);
+}
+
+.modal-divider::before,
+.modal-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background-color: var(--color-gray-200);
+}
+
+/* Trips Selection List */
+.trips-selection-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.trip-selection-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3) var(--spacing-4);
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.trip-selection-item:hover {
+  border-color: var(--color-primary);
+  background-color: var(--color-blue-50);
+}
+
+.trip-selection-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.trip-selection-title {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-gray-900);
+  margin-bottom: var(--spacing-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.trip-selection-meta {
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-500);
+}
+
+.trip-selection-meta span:not(:last-child)::after {
+  content: ' · ';
+}
+
+/* Match Badge */
+.match-badge {
+  flex-shrink: 0;
+  padding: var(--spacing-1) var(--spacing-2);
+  background-color: var(--color-green-100);
+  color: var(--color-green-700);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  border-radius: var(--radius-full);
+}
+
+/* No trips message */
+.no-trips-message {
+  text-align: center;
+  padding: var(--spacing-4);
+  color: var(--color-gray-500);
+}
+
+/* Full width button */
+.btn-full {
+  width: 100%;
+  justify-content: center;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .info-card {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .info-card-icon {
+    margin: 0 auto;
+  }
+
+  .pending-booking-card {
+    flex-wrap: wrap;
+  }
+
+  .pending-booking-content {
+    order: 2;
+    width: 100%;
+  }
+
+  .pending-booking-actions {
+    order: 3;
+    width: 100%;
+    justify-content: flex-end;
+    margin-top: var(--spacing-2);
+    padding-top: var(--spacing-2);
+    border-top: 1px solid var(--color-gray-100);
+  }
+}

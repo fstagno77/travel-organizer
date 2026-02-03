@@ -3,6 +3,9 @@
  */
 
 const navigation = {
+  pendingCount: 0,
+  pollInterval: null,
+
   /**
    * Initialize navigation components
    */
@@ -10,6 +13,7 @@ const navigation = {
     await this.loadHeader();
     await this.loadFooter();
     this.setActiveNavLink();
+    this.startPendingBookingsPolling();
   },
 
   /**
@@ -67,6 +71,17 @@ const navigation = {
       </button>
     ` : '';
 
+    // Notification bell (only for authenticated users)
+    const notificationBell = isAuthenticated ? `
+      <a href="${prefix}pending-bookings.html" class="header-notification-btn" id="notification-bell" title="Pending Bookings">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
+        <span class="header-notification-badge" id="notification-badge" style="display: none;">0</span>
+      </a>
+    ` : '';
+
     const headerHTML = `
       <header class="header">
         <div class="container">
@@ -80,6 +95,7 @@ const navigation = {
 
             <div class="header-actions">
               ${newTripBtn}
+              ${notificationBell}
               ${authSection}
             </div>
           </div>
@@ -157,6 +173,67 @@ const navigation = {
 
       link.classList.toggle('active', isActive);
     });
+  },
+
+  /**
+   * Start polling for pending bookings count
+   */
+  startPendingBookingsPolling() {
+    if (!window.auth?.isAuthenticated()) return;
+
+    // Initial fetch
+    this.updatePendingBookingsCount();
+
+    // Poll every 60 seconds
+    this.pollInterval = setInterval(() => {
+      this.updatePendingBookingsCount();
+    }, 60000);
+  },
+
+  /**
+   * Stop polling
+   */
+  stopPendingBookingsPolling() {
+    if (this.pollInterval) {
+      clearInterval(this.pollInterval);
+      this.pollInterval = null;
+    }
+  },
+
+  /**
+   * Fetch and update pending bookings count
+   */
+  async updatePendingBookingsCount() {
+    const badge = document.getElementById('notification-badge');
+    if (!badge) return;
+
+    try {
+      const response = await window.utils?.authFetch('/.netlify/functions/pending-bookings');
+      if (!response || !response.ok) {
+        badge.style.display = 'none';
+        return;
+      }
+
+      const data = await response.json();
+      this.pendingCount = data.count || 0;
+
+      if (this.pendingCount > 0) {
+        badge.textContent = this.pendingCount > 99 ? '99+' : this.pendingCount;
+        badge.style.display = 'flex';
+      } else {
+        badge.style.display = 'none';
+      }
+    } catch (error) {
+      console.error('Failed to fetch pending bookings count:', error);
+      badge.style.display = 'none';
+    }
+  },
+
+  /**
+   * Manually refresh the pending count (called after actions)
+   */
+  async refreshPendingCount() {
+    await this.updatePendingBookingsCount();
   }
 };
 

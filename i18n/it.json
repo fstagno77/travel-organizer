@@ -170,5 +170,26 @@
     "profile": "Profilo",
     "preferences": "Preferenze",
     "languageDesc": "Seleziona la lingua dell'interfaccia"
+  },
+  "pendingBookings": {
+    "title": "Prenotazioni in Attesa",
+    "subtitle": "Prenotazioni dalle email inoltrate",
+    "forwardInfo": "Inoltra le tue email di conferma prenotazione a:",
+    "noBookings": "Nessuna prenotazione in attesa",
+    "noBookingsText": "Inoltra le email di conferma delle tue prenotazioni per vederle qui",
+    "unknownBooking": "Prenotazione",
+    "addToTrip": "Aggiungi",
+    "dismiss": "Ignora",
+    "dismissConfirm": "Sei sicuro di voler ignorare questa prenotazione?",
+    "dismissError": "Errore durante l'operazione",
+    "selectTrip": "Seleziona un viaggio",
+    "or": "oppure",
+    "createNewTrip": "Crea nuovo viaggio",
+    "noTripsYet": "Nessun viaggio creato. Crea un nuovo viaggio con questa prenotazione.",
+    "datesMatch": "Date compatibili",
+    "associateError": "Errore durante l'associazione",
+    "createTripError": "Errore durante la creazione del viaggio",
+    "loadError": "Errore durante il caricamento",
+    "viewTrip": "Vuoi vedere il viaggio?"
   }
 }

@@ -170,5 +170,26 @@
     "profile": "Profile",
     "preferences": "Preferences",
     "languageDesc": "Select the interface language"
+  },
+  "pendingBookings": {
+    "title": "Pending Bookings",
+    "subtitle": "Bookings from forwarded emails",
+    "forwardInfo": "Forward your booking confirmation emails to:",
+    "noBookings": "No pending bookings",
+    "noBookingsText": "Forward your booking confirmation emails to see them here",
+    "unknownBooking": "Booking",
+    "addToTrip": "Add",
+    "dismiss": "Dismiss",
+    "dismissConfirm": "Are you sure you want to dismiss this booking?",
+    "dismissError": "Error during operation",
+    "selectTrip": "Select a trip",
+    "or": "or",
+    "createNewTrip": "Create new trip",
+    "noTripsYet": "No trips yet. Create a new trip with this booking.",
+    "datesMatch": "Dates match",
+    "associateError": "Error associating booking",
+    "createTripError": "Error creating trip",
+    "loadError": "Error loading data",
+    "viewTrip": "Would you like to view the trip?"
   }
 }

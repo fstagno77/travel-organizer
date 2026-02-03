@@ -118,10 +118,105 @@ async function getPdfSignedUrl(path, expiresIn = 3600) {
   return data.signedUrl;
 }
 
+// ============================================
+// Pending Bookings Storage Functions
+// ============================================
+
+/**
+ * Upload PDF to pending folder (for email forwarding)
+ * @param {string} base64Content - Base64 encoded PDF content
+ * @param {string} pendingBookingId - Pending booking UUID
+ * @returns {Promise<string>} Storage path
+ */
+async function uploadPendingPdf(base64Content, pendingBookingId) {
+  const supabase = getSupabaseClient();
+  const path = `pending/${pendingBookingId}/attachment.pdf`;
+
+  const buffer = Buffer.from(base64Content, 'base64');
+
+  const { error } = await supabase.storage
+    .from(BUCKET_NAME)
+    .upload(path, buffer, {
+      contentType: 'application/pdf',
+      upsert: true
+    });
+
+  if (error) {
+    console.error('Error uploading pending PDF:', error);
+    throw error;
+  }
+
+  return path;
+}
+
+/**
+ * Move PDF from pending folder to trip folder
+ * @param {string} pendingPath - Current path (e.g., pending/abc123/attachment.pdf)
+ * @param {string} tripId - Destination trip ID
+ * @param {string} itemId - Flight or hotel ID (e.g., flight-1)
+ * @returns {Promise<string>} New storage path
+ */
+async function movePdfToTrip(pendingPath, tripId, itemId) {
+  const supabase = getSupabaseClient();
+  const newPath = `trips/${tripId}/${itemId}.pdf`;
+
+  // Download from pending
+  const { data, error: downloadError } = await supabase.storage
+    .from(BUCKET_NAME)
+    .download(pendingPath);
+
+  if (downloadError) {
+    console.error('Error downloading pending PDF:', downloadError);
+    throw downloadError;
+  }
+
+  // Upload to trips folder
+  const buffer = Buffer.from(await data.arrayBuffer());
+  const { error: uploadError } = await supabase.storage
+    .from(BUCKET_NAME)
+    .upload(newPath, buffer, {
+      contentType: 'application/pdf',
+      upsert: true
+    });
+
+  if (uploadError) {
+    console.error('Error uploading PDF to trip:', uploadError);
+    throw uploadError;
+  }
+
+  // Delete from pending folder
+  await supabase.storage.from(BUCKET_NAME).remove([pendingPath]);
+
+  return newPath;
+}
+
+/**
+ * Delete pending booking PDF
+ * @param {string} pendingBookingId - Pending booking UUID
+ */
+async function deletePendingPdf(pendingBookingId) {
+  if (!pendingBookingId) return;
+
+  const supabase = getSupabaseClient();
+  const path = `pending/${pendingBookingId}/attachment.pdf`;
+
+  const { error } = await supabase.storage
+    .from(BUCKET_NAME)
+    .remove([path]);
+
+  if (error) {
+    console.error('Error deleting pending PDF:', error);
+    // Don't throw - deletion failure shouldn't block other operations
+  }
+}
+
 module.exports = {
   uploadPdf,
   deletePdf,
   deleteAllTripPdfs,
   getPdfSignedUrl,
+  uploadPendingPdf,
+  movePdfToTrip,
+  deletePendingPdf,
   BUCKET_NAME
 };
