@@ -143,7 +143,7 @@
     "or": "or",
     "emailPlaceholder": "Your email",
     "sendCode": "Send code",
-    "otpHint": "You'll receive a 6-digit code via email",
+    "otpHint": "You'll receive an 8-digit code via email",
     "codeSentTo": "Code sent to",
     "verifyCode": "Verify",
     "changeEmail": "Change email",

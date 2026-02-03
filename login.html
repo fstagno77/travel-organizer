@@ -83,8 +83,8 @@
           type="text"
           class="form-input otp-code-input"
           id="otp-code"
-          placeholder="000000"
-          maxlength="6"
+          placeholder="00000000"
+          maxlength="8"
           inputmode="numeric"
           pattern="[0-9]*"
           autocomplete="one-time-code"
@@ -202,7 +202,7 @@
       // Verify OTP
       otpVerifyBtn.addEventListener('click', async () => {
         const code = otpCode.value.trim();
-        if (!code || code.length !== 6) {
+        if (!code || code.length < 6) {
           otpCode.focus();
           return;
         }
