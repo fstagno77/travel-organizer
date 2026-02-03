@@ -20,20 +20,30 @@ const crypto = require('crypto');
 const EMAIL_ADDRESS = 'trips@travel-flow.com';
 
 exports.handler = async (event, context) => {
+  console.log('=== PROCESS-EMAIL FUNCTION START ===');
+  console.log('HTTP Method:', event.httpMethod);
+  console.log('Content-Type:', event.headers['content-type'] || event.headers['Content-Type']);
+  console.log('Body length:', event.body?.length || 0);
+  console.log('Is Base64:', event.isBase64Encoded);
+
   // Only accept POST from SendGrid
   if (event.httpMethod !== 'POST') {
+    console.log('Rejecting non-POST request');
     return { statusCode: 405, body: 'Method not allowed' };
   }
 
-  console.log('Received email webhook');
+  console.log('Received email webhook - starting processing');
 
   // Use service role client (bypasses RLS for INSERT)
   const supabase = getServiceClient();
+  console.log('Supabase client initialized');
 
   try {
     // Parse multipart form data from SendGrid
+    console.log('Starting multipart parsing...');
     const formData = await parseMultipartFormData(event);
     console.log('Parsed form data fields:', Object.keys(formData));
+    console.log('Form data keys count:', Object.keys(formData).length);
 
     // Extract key fields
     const senderEmail = extractSenderEmail(formData.from || '');
@@ -188,7 +198,10 @@ exports.handler = async (event, context) => {
     return { statusCode: 200, body: 'OK' };
 
   } catch (error) {
-    console.error('Error processing email:', error);
+    console.error('=== ERROR PROCESSING EMAIL ===');
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
 
     // Log error
     try {
