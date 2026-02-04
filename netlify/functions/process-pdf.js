@@ -123,21 +123,39 @@ exports.handler = async (event, context) => {
     }
 
     // Deduplicate flights by booking reference + flight number + date
+    // When duplicates are found (same flight for different passengers), aggregate passengers
     const deduplicatedFlights = [];
     for (const flight of allFlights) {
       const bookingRef = flight.bookingReference?.toLowerCase()?.trim();
       const flightNum = flight.flightNumber?.toLowerCase()?.trim();
       const flightDate = flight.date;
 
-      const alreadyAdded = deduplicatedFlights.find(f =>
+      const existingFlight = deduplicatedFlights.find(f =>
         f.bookingReference?.toLowerCase()?.trim() === bookingRef &&
         f.flightNumber?.toLowerCase()?.trim() === flightNum &&
         f.date === flightDate
       );
-      if (!alreadyAdded) {
+
+      if (!existingFlight) {
+        // First occurrence of this flight - initialize passengers array with _pdfIndex
+        flight.passengers = flight.passenger ? [{ ...flight.passenger, _pdfIndex: flight._pdfIndex }] : [];
         deduplicatedFlights.push(flight);
       } else {
-        console.log(`Skipping duplicate flight in batch: ${flightNum} on ${flightDate}`);
+        // Duplicate flight found - aggregate passenger info
+        if (flight.passenger) {
+          if (!existingFlight.passengers) {
+            existingFlight.passengers = existingFlight.passenger ? [{ ...existingFlight.passenger, _pdfIndex: existingFlight._pdfIndex }] : [];
+          }
+          // Only add if this passenger isn't already in the list (check by ticketNumber or name)
+          const alreadyHasPassenger = existingFlight.passengers.some(p =>
+            (p.ticketNumber && flight.passenger.ticketNumber && p.ticketNumber === flight.passenger.ticketNumber) ||
+            (p.name && flight.passenger.name && p.name === flight.passenger.name)
+          );
+          if (!alreadyHasPassenger) {
+            existingFlight.passengers.push({ ...flight.passenger, _pdfIndex: flight._pdfIndex });
+            console.log(`Added passenger ${flight.passenger.name} to flight ${flightNum} on ${flightDate}`);
+          }
+        }
       }
     }
 
@@ -155,20 +173,33 @@ exports.handler = async (event, context) => {
     for (let pdfIndex = 0; pdfIndex < pdfs.length; pdfIndex++) {
       const pdf = pdfs[pdfIndex];
 
-      // Find items that came from this PDF
-      const flightsFromPdf = tripData.flights.filter(f => f._pdfIndex === pdfIndex);
-      const hotelsFromPdf = tripData.hotels.filter(h => h._pdfIndex === pdfIndex);
+      // Find passengers that came from this PDF and upload PDF for each flight they're on
+      const flightsWithPassengersFromPdf = new Map(); // flight.id -> passengers from this PDF
+      for (const flight of tripData.flights) {
+        if (flight.passengers) {
+          const passengersFromPdf = flight.passengers.filter(p => p._pdfIndex === pdfIndex);
+          if (passengersFromPdf.length > 0) {
+            flightsWithPassengersFromPdf.set(flight.id, { flight, passengers: passengersFromPdf });
+          }
+        }
+      }
 
-      for (const flight of flightsFromPdf) {
+      // Upload PDF once per flight and assign pdfPath to passengers from this PDF
+      for (const { flight, passengers } of flightsWithPassengersFromPdf.values()) {
         uploadPromises.push(
-          uploadPdf(pdf.content, tripData.id, flight.id)
+          uploadPdf(pdf.content, tripData.id, `${flight.id}-p${pdfIndex}`)
             .then(pdfPath => {
-              flight.pdfPath = pdfPath;
-              console.log(`Uploaded PDF for ${flight.id}: ${pdfPath}`);
+              passengers.forEach(p => {
+                p.pdfPath = pdfPath;
+              });
+              console.log(`Uploaded PDF for ${flight.id}, passengers: ${passengers.map(p => p.name).join(', ')}`);
             })
             .catch(err => console.error(`Error uploading PDF for ${flight.id}:`, err))
         );
       }
+
+      // Hotels remain linked at hotel level
+      const hotelsFromPdf = tripData.hotels.filter(h => h._pdfIndex === pdfIndex);
       for (const hotel of hotelsFromPdf) {
         uploadPromises.push(
           uploadPdf(pdf.content, tripData.id, hotel.id)
@@ -187,7 +218,12 @@ exports.handler = async (event, context) => {
     }
 
     // Clean up temporary markers
-    tripData.flights.forEach(f => delete f._pdfIndex);
+    tripData.flights.forEach(f => {
+      delete f._pdfIndex;
+      if (f.passengers) {
+        f.passengers.forEach(p => delete p._pdfIndex);
+      }
+    });
     tripData.hotels.forEach(h => delete h._pdfIndex);
 
     // Always show photo selection when there's a destination
@@ -341,7 +377,9 @@ function getPromptForDocType(docType) {
   if (docType === 'flight') {
     return `Extract flight information from this document. Return a JSON object with this exact structure.
 
-IMPORTANT: If the flight duration is not explicitly stated in the document, calculate it from the departure and arrival times. Consider the arrivalNextDay flag if the arrival is on the next day. The duration should always be provided in HH:MM format.
+IMPORTANT:
+- If the flight duration is not explicitly stated in the document, calculate it from the departure and arrival times. Consider the arrivalNextDay flag if the arrival is on the next day. The duration should always be provided in HH:MM format.
+- Each flight MUST include a "passenger" object with the passenger's name, type (ADT for adult, CHD for child, INF for infant), and ticketNumber specific to that passenger.
 
 {
   "flights": [
@@ -371,7 +409,12 @@ IMPORTANT: If the flight duration is not explicitly stated in the document, calc
       "ticketNumber": "XXX XXXXXXXXXX or null",
       "seat": "12A or null",
       "baggage": "0PC or 1PC etc",
-      "status": "OK"
+      "status": "OK",
+      "passenger": {
+        "name": "Full Name",
+        "type": "ADT or CHD or INF",
+        "ticketNumber": "XXX XXXXXXXXXX"
+      }
     }
   ],
   "passenger": {

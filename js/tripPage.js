@@ -877,6 +877,57 @@
           </button>
 
           <div class="flight-details" id="flight-details-${index}">
+            ${flight.passengers && flight.passengers.length > 1 ? `
+            <!-- Multiple passengers view -->
+            <div class="flight-details-grid">
+              <div class="flight-detail-item">
+                <span class="flight-detail-label" data-i18n="flight.bookingRef">Booking Reference</span>
+                <span class="flight-detail-value-wrapper">
+                  <span class="flight-detail-value">${flight.bookingReference || '-'}</span>
+                  ${flight.bookingReference ? `<button class="btn-copy-value" data-copy="${flight.bookingReference}" title="Copy">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                  </button>` : ''}
+                </span>
+              </div>
+              <div class="flight-detail-item">
+                <span class="flight-detail-label" data-i18n="flight.class">Class</span>
+                <span class="flight-detail-value">${flight.class || '-'}</span>
+              </div>
+            </div>
+            <div class="flight-passengers-section">
+              <span class="flight-detail-label" data-i18n="flight.passengers">Passengers</span>
+              <div class="flight-passengers-list">
+                ${flight.passengers.map(p => `
+                  <div class="flight-passenger-item">
+                    <div class="flight-passenger-info">
+                      <span class="flight-passenger-name">${p.name || '-'}</span>
+                      <span class="flight-passenger-type">${p.type || ''}</span>
+                    </div>
+                    ${p.ticketNumber ? `
+                    <div class="flight-passenger-ticket-row">
+                      <span class="flight-passenger-ticket-label" data-i18n="flight.ticketNumber">Ticket</span>
+                      <span class="flight-passenger-ticket">${p.ticketNumber}</span>
+                    </div>
+                    ` : ''}
+                    ${p.pdfPath ? `
+                    <button class="btn-download-pdf btn-download-pdf-inline" data-pdf-path="${p.pdfPath}">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                      </svg>
+                      <span>PDF</span>
+                    </button>
+                    ` : ''}
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+            ` : `
+            <!-- Single passenger view -->
             <div class="flight-details-grid">
               <div class="flight-detail-item">
                 <span class="flight-detail-label" data-i18n="flight.bookingRef">Booking Reference</span>
@@ -921,6 +972,7 @@
               <span data-i18n="flight.downloadPdf">Download PDF</span>
             </button>
             ` : ''}
+            `}
             <button class="btn-delete-item" data-type="flight" data-id="${flight.id}">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="3 6 5 6 21 6"></polyline>

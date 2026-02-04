@@ -83,6 +83,8 @@
     "ticketNumber": "Ticket Number",
     "seat": "Seat",
     "class": "Class",
+    "passengers": "Passengers",
+    "passenger": "Passenger",
     "departureTerminal": "Departure Terminal",
     "arrivalTerminal": "Arrival Terminal",
     "duration": "Flight Duration",
