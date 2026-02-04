@@ -1136,18 +1136,32 @@
         newBtn.disabled = true;
         newBtn.innerHTML = '<span class="spinner spinner-sm"></span>';
 
+        // Pre-open window for Safari iOS (must be synchronous with user click)
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        let newWindow = null;
+        if (isIOS) {
+          newWindow = window.open('about:blank', '_blank');
+        }
+
         try {
           const response = await utils.authFetch(`/.netlify/functions/get-pdf-url?path=${encodeURIComponent(pdfPath)}`);
           const result = await response.json();
 
           if (result.success && result.url) {
-            // Open PDF in new tab
-            window.open(result.url, '_blank');
+            if (newWindow) {
+              // iOS: redirect the pre-opened window
+              newWindow.location.href = result.url;
+            } else {
+              // Other browsers: open normally
+              window.open(result.url, '_blank');
+            }
           } else {
+            if (newWindow) newWindow.close();
             throw new Error(result.error || 'Failed to get PDF URL');
           }
         } catch (error) {
           console.error('Error downloading PDF:', error);
+          if (newWindow) newWindow.close();
           alert(i18n.t('common.downloadError') || 'Error downloading PDF');
         } finally {
           // Restore button state
