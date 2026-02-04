@@ -198,9 +198,24 @@ const tripCreator = {
    * Add files to the list
    * @param {FileList} fileList
    */
+  maxFiles: 3,
+
   addFiles(fileList) {
     const pdfFiles = Array.from(fileList).filter(f => f.type === 'application/pdf');
-    this.files.push(...pdfFiles);
+
+    // Limit to maxFiles
+    const availableSlots = this.maxFiles - this.files.length;
+    if (availableSlots <= 0) {
+      alert(i18n.t('trip.maxFilesReached') || `Maximum ${this.maxFiles} files allowed`);
+      return;
+    }
+
+    const filesToAdd = pdfFiles.slice(0, availableSlots);
+    if (filesToAdd.length < pdfFiles.length) {
+      alert(i18n.t('trip.maxFilesReached') || `Maximum ${this.maxFiles} files allowed. Only ${filesToAdd.length} file(s) added.`);
+    }
+
+    this.files.push(...filesToAdd);
     this.renderFileList();
     this.updateSubmitButton();
   },

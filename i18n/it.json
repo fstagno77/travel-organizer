@@ -27,6 +27,7 @@
     "processing": "Elaborazione in corso...",
     "success": "Viaggio creato con successo!",
     "error": "Errore durante l'elaborazione",
+    "maxFilesReached": "Massimo 3 file per upload",
     "viewTrip": "Vai al viaggio",
     "flights": "Voli",
     "hotels": "Hotel",

@@ -1654,7 +1654,14 @@
 
     const lang = i18n.getLang();
 
-    const html = hotels.map((hotel, index) => {
+    // Sort hotels by check-in date
+    const sortedHotels = [...hotels].sort((a, b) => {
+      const dateA = new Date(a.checkIn?.date || '9999-12-31');
+      const dateB = new Date(b.checkIn?.date || '9999-12-31');
+      return dateA - dateB;
+    });
+
+    const html = sortedHotels.map((hotel, index) => {
       const checkInDate = new Date(hotel.checkIn.date);
       const checkOutDate = new Date(hotel.checkOut.date);
       const checkInDay = checkInDate.getDate();
@@ -1735,7 +1742,7 @@
               </div>
               <div class="hotel-detail-item">
                 <span class="hotel-detail-label" data-i18n="hotel.guests">Guests</span>
-                <span class="hotel-detail-value">${hotel.guests}</span>
+                <span class="hotel-detail-value">${utils.formatGuests(hotel.guests, lang)}</span>
               </div>
               <div class="hotel-detail-item">
                 <span class="hotel-detail-label" data-i18n="hotel.guestName">Guest name</span>

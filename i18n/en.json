@@ -27,6 +27,7 @@
     "processing": "Processing...",
     "success": "Trip created successfully!",
     "error": "Error processing files",
+    "maxFilesReached": "Maximum 3 files allowed per upload",
     "viewTrip": "Go to trip",
     "flights": "Flights",
     "hotels": "Hotels",

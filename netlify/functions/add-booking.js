@@ -73,31 +73,41 @@ exports.handler = async (event, context) => {
 
     const tripData = tripRecord.data;
 
-    // Process all PDFs and track which items came from which PDF
+    // Process PDFs sequentially to avoid rate limits and stay within timeout
     const newFlights = [];
     const newHotels = [];
+    const results = [];
+
+    console.log(`Processing ${pdfs.length} PDFs sequentially...`);
 
     for (let pdfIndex = 0; pdfIndex < pdfs.length; pdfIndex++) {
       const pdf = pdfs[pdfIndex];
       try {
-        console.log(`Processing file: ${pdf.filename}`);
+        console.log(`Processing file ${pdfIndex + 1}/${pdfs.length}: ${pdf.filename}`);
         const result = await processPdfWithClaude(pdf.content, pdf.filename);
-        console.log(`Claude result:`, JSON.stringify(result, null, 2));
-
-        if (result.flights) {
-          result.flights.forEach(flight => {
-            flight._pdfIndex = pdfIndex; // Temporary marker
-            newFlights.push(flight);
-          });
-        }
-        if (result.hotels) {
-          result.hotels.forEach(hotel => {
-            hotel._pdfIndex = pdfIndex; // Temporary marker
-            newHotels.push(hotel);
-          });
-        }
+        console.log(`Claude result for ${pdf.filename}:`, JSON.stringify(result, null, 2));
+        results.push({ result, pdfIndex, filename: pdf.filename });
       } catch (error) {
         console.error(`Error processing ${pdf.filename}:`, error.message);
+        results.push({ result: null, pdfIndex, filename: pdf.filename, error });
+      }
+    }
+
+    // Collect results from all PDFs
+    for (const { result, pdfIndex } of results) {
+      if (!result) continue;
+
+      if (result.flights) {
+        result.flights.forEach(flight => {
+          flight._pdfIndex = pdfIndex;
+          newFlights.push(flight);
+        });
+      }
+      if (result.hotels) {
+        result.hotels.forEach(hotel => {
+          hotel._pdfIndex = pdfIndex;
+          newHotels.push(hotel);
+        });
       }
     }
 
@@ -112,16 +122,102 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Add new bookings to trip
-    const existingFlightCount = tripData.flights?.length || 0;
-    const existingHotelCount = tripData.hotels?.length || 0;
+    // Deduplicate hotels by confirmation number
+    const existingHotels = tripData.hotels || [];
+    const existingFlights = tripData.flights || [];
+    const deduplicatedHotels = [];
+    const deduplicatedFlights = [];
+    let skippedHotels = 0;
+    let skippedFlights = 0;
 
-    const flightsWithIds = newFlights.map((f, i) => ({
+    for (const newHotel of newHotels) {
+      const confirmNum = newHotel.confirmationNumber?.toLowerCase()?.trim();
+      if (!confirmNum) {
+        // No confirmation number, add it
+        deduplicatedHotels.push(newHotel);
+        continue;
+      }
+
+      // Check if hotel with same confirmation number exists
+      const existingHotel = existingHotels.find(h =>
+        h.confirmationNumber?.toLowerCase()?.trim() === confirmNum
+      );
+
+      if (existingHotel) {
+        console.log(`Skipping duplicate hotel: ${confirmNum} (${newHotel.name})`);
+        skippedHotels++;
+        // Optionally merge additional info into existing hotel
+        // For now, we just skip duplicates
+      } else {
+        // Check if already in deduplicatedHotels (from same upload batch)
+        const alreadyAdded = deduplicatedHotels.find(h =>
+          h.confirmationNumber?.toLowerCase()?.trim() === confirmNum
+        );
+        if (!alreadyAdded) {
+          deduplicatedHotels.push(newHotel);
+        } else {
+          console.log(`Skipping duplicate hotel in same batch: ${confirmNum}`);
+          skippedHotels++;
+        }
+      }
+    }
+
+    // Deduplicate flights by booking reference + flight number + date
+    for (const newFlight of newFlights) {
+      const bookingRef = newFlight.bookingReference?.toLowerCase()?.trim();
+      const flightNum = newFlight.flightNumber?.toLowerCase()?.trim();
+      const flightDate = newFlight.date;
+
+      // Check if flight with same booking ref, flight number and date exists
+      const existingFlight = existingFlights.find(f =>
+        f.bookingReference?.toLowerCase()?.trim() === bookingRef &&
+        f.flightNumber?.toLowerCase()?.trim() === flightNum &&
+        f.date === flightDate
+      );
+
+      if (existingFlight) {
+        console.log(`Skipping duplicate flight: ${flightNum} on ${flightDate}`);
+        skippedFlights++;
+      } else {
+        // Check if already in deduplicatedFlights
+        const alreadyAdded = deduplicatedFlights.find(f =>
+          f.bookingReference?.toLowerCase()?.trim() === bookingRef &&
+          f.flightNumber?.toLowerCase()?.trim() === flightNum &&
+          f.date === flightDate
+        );
+        if (!alreadyAdded) {
+          deduplicatedFlights.push(newFlight);
+        } else {
+          console.log(`Skipping duplicate flight in same batch: ${flightNum}`);
+          skippedFlights++;
+        }
+      }
+    }
+
+    if (!deduplicatedFlights.length && !deduplicatedHotels.length) {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          success: true,
+          tripData,
+          added: { flights: 0, hotels: 0 },
+          skipped: { flights: skippedFlights, hotels: skippedHotels },
+          message: 'All bookings already exist in this trip'
+        })
+      };
+    }
+
+    // Add new bookings to trip
+    const existingFlightCount = existingFlights.length;
+    const existingHotelCount = existingHotels.length;
+
+    const flightsWithIds = deduplicatedFlights.map((f, i) => ({
       ...f,
       id: `flight-${existingFlightCount + i + 1}`
     }));
 
-    const hotelsWithIds = newHotels.map((h, i) => ({
+    const hotelsWithIds = deduplicatedHotels.map((h, i) => ({
       ...h,
       id: `hotel-${existingHotelCount + i + 1}`
     }));
@@ -193,8 +289,12 @@ exports.handler = async (event, context) => {
         success: true,
         tripData,
         added: {
-          flights: newFlights.length,
-          hotels: newHotels.length
+          flights: deduplicatedFlights.length,
+          hotels: deduplicatedHotels.length
+        },
+        skipped: {
+          flights: skippedFlights,
+          hotels: skippedHotels
         }
       })
     };
@@ -239,50 +339,72 @@ function updateTripDates(tripData) {
 }
 
 /**
- * Process PDF with Claude API using vision
+ * Sleep helper for retry delays
  */
-async function processPdfWithClaude(base64Content, filename) {
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Process PDF with Claude API using vision (with retry on rate limit)
+ */
+async function processPdfWithClaude(base64Content, filename, retries = 3) {
   const docType = detectDocumentType(filename);
 
   const systemPrompt = `You are a travel document parser. Extract structured data from travel documents and return ONLY valid JSON. Do not include any explanations or markdown formatting.`;
 
   let userPrompt = getPromptForDocType(docType);
 
-  const response = await client.messages.create({
-    model: 'claude-3-5-haiku-20241022',
-    max_tokens: 4096,
-    messages: [
-      {
-        role: 'user',
-        content: [
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const response = await client.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 4096,
+        messages: [
           {
-            type: 'document',
-            source: {
-              type: 'base64',
-              media_type: 'application/pdf',
-              data: base64Content
-            }
-          },
-          {
-            type: 'text',
-            text: userPrompt
+            role: 'user',
+            content: [
+              {
+                type: 'document',
+                source: {
+                  type: 'base64',
+                  media_type: 'application/pdf',
+                  data: base64Content
+                }
+              },
+              {
+                type: 'text',
+                text: userPrompt
+              }
+            ]
           }
-        ]
+        ],
+        system: systemPrompt
+      });
+
+      const responseText = response.content[0].text;
+
+      try {
+        return JSON.parse(responseText);
+      } catch (e) {
+        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          return JSON.parse(jsonMatch[0]);
+        }
+        throw new Error('Could not parse Claude response as JSON');
       }
-    ],
-    system: systemPrompt
-  });
+    } catch (error) {
+      const isRateLimit = error.status === 429 || error.message?.includes('rate_limit');
 
-  const responseText = response.content[0].text;
+      if (isRateLimit && attempt < retries) {
+        const delay = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
+        console.log(`Rate limit hit for ${filename}, retrying in ${delay/1000}s (attempt ${attempt}/${retries})...`);
+        await sleep(delay);
+        continue;
+      }
 
-  try {
-    return JSON.parse(responseText);
-  } catch (e) {
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
+      throw error;
     }
-    throw new Error('Could not parse Claude response as JSON');
   }
 }
 
@@ -357,72 +479,58 @@ IMPORTANT: If the flight duration is not explicitly stated in the document, calc
   }
 }`;
   } else if (docType === 'hotel') {
-    return `Extract hotel booking information from this document. Return a JSON object with this exact structure.
+    return `Extract ALL hotel booking information from this document. You MUST include EVERY field listed below - do not skip any fields.
 
-IMPORTANT: If the booking contains multiple rooms with the same confirmation number and dates, keep them as a SINGLE hotel entry with "rooms" set to the number of rooms and "roomTypes" as an array listing each room type. Do NOT create separate hotel entries for rooms in the same booking.
+MANDATORY EXTRACTION RULES:
+- Extract ALL fields even if you need to infer them from context
+- For "city": use the MAIN CITY (Tokyo, not Taito-ku). Japanese -ku/-ward are districts, not cities.
+- For "district": extract the neighborhood/ward name (e.g., "Taito-ku", "Ueno")
+- For "guests": count adults AND children separately, include children's ages if mentioned
+- For "roomTypes": extract the room type name in both Italian and English
+- For "breakfast": check if breakfast/colazione is included
+- For "pinCode": look for PIN, codice PIN, or similar
+- For "price": extract room price, tax, and total separately
+- If multiple rooms with same confirmation, keep as ONE entry with rooms count
+
+Return this EXACT JSON structure with ALL fields populated:
 
 {
-  "hotels": [
-    {
-      "name": "Hotel Name",
-      "address": {
-        "street": "123 Street Name",
-        "city": "City",
-        "state": "State/Province or null",
-        "postalCode": "12345",
-        "country": "Country",
-        "fullAddress": "Full formatted address"
-      },
-      "coordinates": {
-        "lat": 12.3456,
-        "lng": -12.3456
-      },
-      "phone": "+1 234 567 8900 or null",
-      "checkIn": {
-        "date": "YYYY-MM-DD",
-        "time": "HH:MM"
-      },
-      "checkOut": {
-        "date": "YYYY-MM-DD",
-        "time": "HH:MM"
-      },
-      "nights": 3,
-      "rooms": 2,
-      "roomTypes": [
-        {
-          "it": "Tipo camera 1 in italiano",
-          "en": "Room type 1 in English"
-        },
-        {
-          "it": "Tipo camera 2 in italiano",
-          "en": "Room type 2 in English"
-        }
-      ],
-      "guests": 4,
-      "guestName": "Guest Name",
-      "confirmationNumber": "123456789",
-      "pinCode": "1234 or null",
-      "price": {
-        "room": { "value": 100, "currency": "EUR" },
-        "tax": { "value": 20, "currency": "EUR" },
-        "total": { "value": 120, "currency": "EUR" }
-      },
-      "payment": {
-        "method": "Pay at property or Prepaid",
-        "prepayment": false
-      },
-      "cancellation": {
-        "freeCancellationUntil": "YYYY-MM-DDTHH:MM:SS or null",
-        "penaltyAfter": { "value": 50, "currency": "EUR" }
-      },
-      "amenities": ["WiFi", "Air conditioning"],
-      "notes": {
-        "it": "Note in italiano",
-        "en": "Notes in English"
-      },
-      "source": "Booking.com or Expedia"
-    }
-  ]
+  "hotels": [{
+    "name": "Hotel name",
+    "address": {
+      "street": "Street address",
+      "district": "Ward/neighborhood or null",
+      "city": "MAIN CITY NAME",
+      "postalCode": "Postal code",
+      "country": "Country",
+      "fullAddress": "Complete address string"
+    },
+    "coordinates": { "lat": 0.0, "lng": 0.0 },
+    "phone": "Phone number or null",
+    "checkIn": { "date": "YYYY-MM-DD", "time": "HH:MM" },
+    "checkOut": { "date": "YYYY-MM-DD", "time": "HH:MM" },
+    "nights": 0,
+    "rooms": 1,
+    "roomTypes": [{ "it": "Tipo camera", "en": "Room type" }],
+    "guests": { "adults": 0, "children": [{ "age": 0 }], "total": 0 },
+    "guestName": "Guest name",
+    "confirmationNumber": "Confirmation number",
+    "pinCode": "PIN code or null",
+    "price": {
+      "room": { "value": 0, "currency": "EUR" },
+      "tax": { "value": 0, "currency": "EUR" },
+      "total": { "value": 0, "currency": "EUR" }
+    },
+    "breakfast": { "included": false, "type": null },
+    "bedTypes": "Bed description",
+    "payment": { "method": "Pay at property or Prepaid", "prepayment": false },
+    "cancellation": {
+      "freeCancellationUntil": "YYYY-MM-DDTHH:MM:SS or null",
+      "penaltyAfter": { "value": 0, "currency": "EUR" }
+    },
+    "amenities": [],
+    "source": "Booking.com"
+  }]
 }`;
   } else {
     return `This is a travel document. Extract any flight or hotel information you can find. Return a JSON object with "flights" array and/or "hotels" array.

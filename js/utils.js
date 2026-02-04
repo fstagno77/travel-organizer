@@ -47,6 +47,51 @@ const utils = {
   },
 
   /**
+   * Format guests count - handles both number and object formats
+   * @param {number|object} guests - Guests count or object with adults/children
+   * @param {string} lang - Language code
+   * @returns {string} Formatted guests string
+   */
+  formatGuests(guests, lang = 'en') {
+    if (!guests) return '-';
+
+    // If it's a simple number, return it
+    if (typeof guests === 'number') return String(guests);
+
+    // If it's an object with adults/children
+    if (typeof guests === 'object') {
+      const adults = guests.adults || 0;
+      const children = guests.children;
+
+      // Handle children as number or array
+      let childCount = 0;
+      let childAges = [];
+      if (Array.isArray(children)) {
+        childCount = children.length;
+        childAges = children.map(c => c.age).filter(a => a);
+      } else if (typeof children === 'number') {
+        childCount = children;
+      }
+
+      const parts = [];
+      if (adults > 0) {
+        parts.push(`${adults} ${lang === 'it' ? (adults === 1 ? 'adulto' : 'adulti') : (adults === 1 ? 'adult' : 'adults')}`);
+      }
+      if (childCount > 0) {
+        let childStr = `${childCount} ${lang === 'it' ? (childCount === 1 ? 'bambino' : 'bambini') : (childCount === 1 ? 'child' : 'children')}`;
+        if (childAges.length > 0) {
+          childStr += ` (${childAges.join(', ')} ${lang === 'it' ? 'anni' : 'y/o'})`;
+        }
+        parts.push(childStr);
+      }
+
+      return parts.length > 0 ? parts.join(', ') : (guests.total ? String(guests.total) : '-');
+    }
+
+    return String(guests);
+  },
+
+  /**
    * Parse flight duration from format like "01:15" or "10:00"
    * @param {string} duration - Duration string (HH:MM)
    * @param {string} lang - Language code
