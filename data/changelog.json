@@ -1,6 +1,32 @@
 {
   "versions": [
     {
+      "version": "0.11.0",
+      "date": "2026-02-04",
+      "changes": {
+        "it": [
+          "Deduplicazione automatica prenotazioni: non vengono create card duplicate se il numero conferma esiste già",
+          "Ordinamento hotel per data check-in nella pagina dettagli viaggio",
+          "Elaborazione PDF sequenziale per evitare rate limit e timeout",
+          "Retry automatico con exponential backoff in caso di errori API",
+          "Aggiornamento modello Claude a Haiku 4.5",
+          "Timeout funzioni aumentato a 60 secondi",
+          "Limite upload a 3 file per nuovo viaggio",
+          "Fix visualizzazione ospiti quando formato oggetto complesso"
+        ],
+        "en": [
+          "Automatic booking deduplication: no duplicate cards created if confirmation number already exists",
+          "Hotels sorted by check-in date on trip details page",
+          "Sequential PDF processing to avoid rate limits and timeouts",
+          "Automatic retry with exponential backoff on API errors",
+          "Updated Claude model to Haiku 4.5",
+          "Function timeout increased to 60 seconds",
+          "Upload limit of 3 files for new trips",
+          "Fixed guest display when using complex object format"
+        ]
+      }
+    },
+    {
       "version": "0.10.1",
       "date": "2026-02-03",
       "changes": {
