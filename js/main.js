@@ -1318,14 +1318,26 @@
           body: JSON.stringify({ pdfs, tripId })
         });
 
-        if (!response.ok) throw new Error('Failed to add booking');
+        const result = await response.json();
+
+        // Check for rate limit error
+        if (response.status === 429 || result.errorType === 'rate_limit') {
+          throw new Error('rate_limit');
+        }
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Failed to add booking');
+        }
 
         closeModal();
         // Reload trip page
         initTripPage();
       } catch (error) {
         console.error('Error adding booking:', error);
-        alert(i18n.t('trip.addError') || 'Errore durante l\'aggiunta');
+        const errorMessage = error.message === 'rate_limit'
+          ? (i18n.t('common.rateLimitError') || 'Rate limit reached. Please wait a minute.')
+          : (i18n.t('trip.addError') || 'Errore durante l\'aggiunta');
+        alert(errorMessage);
         submitBtn.disabled = false;
         submitBtn.textContent = i18n.t('modal.add') || 'Aggiungi';
       }

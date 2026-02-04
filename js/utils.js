@@ -185,6 +185,50 @@ const utils = {
   },
 
   /**
+   * Loading phrase rotator - shows entertaining messages during processing
+   * @param {HTMLElement} textElement - Element to update with rotating phrases
+   * @param {number} interval - Interval in ms between phrases (default 3000)
+   * @returns {object} Controller with stop() method
+   */
+  startLoadingPhrases(textElement, interval = 3000) {
+    const phrases = window.i18n?.translations?.loadingPhrases || [];
+    if (phrases.length === 0 || !textElement) {
+      return { stop: () => {} };
+    }
+
+    // Shuffle array to get random order
+    const shuffled = [...phrases].sort(() => Math.random() - 0.5);
+    let index = 0;
+    let intervalId = null;
+
+    // Show first phrase immediately
+    textElement.textContent = shuffled[index];
+    textElement.classList.add('phrase-visible');
+
+    // Rotate through phrases
+    intervalId = setInterval(() => {
+      // Fade out
+      textElement.classList.remove('phrase-visible');
+
+      setTimeout(() => {
+        // Change text and fade in
+        index = (index + 1) % shuffled.length;
+        textElement.textContent = shuffled[index];
+        textElement.classList.add('phrase-visible');
+      }, 300); // Wait for fade out
+    }, interval);
+
+    return {
+      stop: () => {
+        if (intervalId) {
+          clearInterval(intervalId);
+          intervalId = null;
+        }
+      }
+    };
+  },
+
+  /**
    * Authenticated fetch - adds Authorization header with JWT token
    * @param {string} url - API endpoint URL
    * @param {object} options - Fetch options
@@ -206,6 +250,45 @@ const utils = {
       ...options,
       headers
     });
+  },
+
+  /**
+   * Show a toast notification
+   * @param {string} message - Message to display
+   * @param {string} type - 'error' or 'success' (default: 'error')
+   * @param {number} duration - Duration in ms (default: 4000)
+   */
+  showToast(message, type = 'error', duration = 4000) {
+    // Remove existing toast if any
+    const existingToast = document.querySelector('.toast-notification');
+    if (existingToast) {
+      existingToast.remove();
+    }
+
+    const toast = document.createElement('div');
+    toast.className = `toast-notification toast-${type}`;
+    toast.innerHTML = `
+      <div class="toast-icon">
+        ${type === 'error'
+          ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><circle cx="12" cy="16" r="1" fill="currentColor"></circle></svg>'
+          : '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>'
+        }
+      </div>
+      <span class="toast-message">${message}</span>
+    `;
+
+    document.body.appendChild(toast);
+
+    // Trigger animation
+    requestAnimationFrame(() => {
+      toast.classList.add('toast-visible');
+    });
+
+    // Auto-hide
+    setTimeout(() => {
+      toast.classList.remove('toast-visible');
+      setTimeout(() => toast.remove(), 300);
+    }, duration);
   }
 };
 

@@ -48,34 +48,61 @@ exports.handler = async (event, context) => {
 
     console.log(`Processing ${pdfs.length} PDF file(s)...`);
 
-    // Process PDFs sequentially to avoid rate limits and stay within timeout
+    // Process PDFs in parallel for speed (local dev has 30s timeout)
     const allFlights = [];
     const allHotels = [];
     let metadata = {};
-    const results = [];
 
-    console.log(`Processing ${pdfs.length} PDFs sequentially...`);
+    console.log(`Processing ${pdfs.length} PDFs in parallel...`);
 
-    for (let pdfIndex = 0; pdfIndex < pdfs.length; pdfIndex++) {
-      const pdf = pdfs[pdfIndex];
-      try {
-        console.log(`Processing file ${pdfIndex + 1}/${pdfs.length}: ${pdf.filename}`);
-        const result = await processPdfWithClaude(pdf.content, pdf.filename);
-        console.log(`Claude result for ${pdf.filename}:`, JSON.stringify(result, null, 2));
-        results.push({ result, pdfIndex, filename: pdf.filename });
-      } catch (error) {
-        console.error(`Error processing ${pdf.filename}:`, error.message);
-        results.push({ result: null, pdfIndex, filename: pdf.filename, error });
-      }
+    const processingPromises = pdfs.map((pdf, pdfIndex) => {
+      console.log(`Starting processing of file ${pdfIndex + 1}/${pdfs.length}: ${pdf.filename}`);
+      return processPdfWithClaude(pdf.content, pdf.filename)
+        .then(result => {
+          console.log(`Claude result for ${pdf.filename}:`, JSON.stringify(result, null, 2));
+          return { result, pdfIndex, filename: pdf.filename };
+        })
+        .catch(error => {
+          console.error(`Error processing ${pdf.filename}:`, error.message);
+          return { result: null, pdfIndex, filename: pdf.filename, error };
+        });
+    });
+
+    const results = await Promise.all(processingPromises);
+
+    // Check for rate limit errors
+    const rateLimitError = results.find(r => r.error?.isRateLimit);
+    if (rateLimitError) {
+      return {
+        statusCode: 429,
+        headers,
+        body: JSON.stringify({
+          success: false,
+          error: 'Rate limit reached. Please wait a minute before uploading another file.',
+          errorType: 'rate_limit'
+        })
+      };
     }
 
     // Collect results from all PDFs
-    for (const { result, pdfIndex } of results) {
+    for (const { result, pdfIndex, filename } of results) {
       if (!result) continue;
 
       if (result.flights) {
         result.flights.forEach(flight => {
           flight._pdfIndex = pdfIndex;
+          // If flight doesn't have its own passenger, use top-level passenger from result
+          if (!flight.passenger && result.passenger) {
+            flight.passenger = { ...result.passenger };
+          }
+          // Fallback: extract passenger name from filename if still missing
+          if (!flight.passenger) {
+            const extractedName = extractPassengerFromFilename(filename);
+            if (extractedName) {
+              flight.passenger = { name: extractedName, type: 'ADT' };
+              console.log(`Extracted passenger "${extractedName}" from filename: ${filename}`);
+            }
+          }
           allFlights.push(flight);
         });
       }
@@ -104,21 +131,34 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Deduplicate hotels by confirmation number (within same upload batch)
+    // Deduplicate hotels by confirmation number or by name + dates (within same upload batch)
     const deduplicatedHotels = [];
     for (const hotel of allHotels) {
       const confirmNum = hotel.confirmationNumber?.toLowerCase()?.trim();
-      if (!confirmNum) {
-        deduplicatedHotels.push(hotel);
-        continue;
+      const hotelName = hotel.name?.toLowerCase()?.trim();
+      const checkIn = hotel.checkIn?.date;
+      const checkOut = hotel.checkOut?.date;
+
+      let alreadyAdded = false;
+
+      if (confirmNum) {
+        // Primary deduplication: by confirmation number
+        alreadyAdded = deduplicatedHotels.some(h =>
+          h.confirmationNumber?.toLowerCase()?.trim() === confirmNum
+        );
+      } else if (hotelName && checkIn && checkOut) {
+        // Fallback deduplication: by hotel name + check-in date + check-out date
+        alreadyAdded = deduplicatedHotels.some(h =>
+          h.name?.toLowerCase()?.trim() === hotelName &&
+          h.checkIn?.date === checkIn &&
+          h.checkOut?.date === checkOut
+        );
       }
-      const alreadyAdded = deduplicatedHotels.find(h =>
-        h.confirmationNumber?.toLowerCase()?.trim() === confirmNum
-      );
+
       if (!alreadyAdded) {
         deduplicatedHotels.push(hotel);
       } else {
-        console.log(`Skipping duplicate hotel in batch: ${confirmNum}`);
+        console.log(`Skipping duplicate hotel in batch: ${confirmNum || hotelName}`);
       }
     }
 
@@ -269,10 +309,13 @@ exports.handler = async (event, context) => {
 
   } catch (error) {
     console.error('Error processing PDFs:', error);
+    console.error('Stack trace:', error.stack);
     return {
       statusCode: 500,
       headers,
       body: JSON.stringify({
+        errorDetails: error.message,
+        stack: error.stack,
         success: false,
         error: error.message || 'Failed to process PDF documents',
         details: error.stack
@@ -280,6 +323,36 @@ exports.handler = async (event, context) => {
     };
   }
 };
+
+/**
+ * Extract passenger name from filename as fallback
+ * Handles patterns like "Le ricevute elettroniche di viaggio per AGATA BRIGNONE del 15JUN.pdf"
+ */
+function extractPassengerFromFilename(filename) {
+  if (!filename) return null;
+
+  // Pattern: "per NAME SURNAME del" or "for NAME SURNAME"
+  const patterns = [
+    /per\s+([A-Z][A-Z\s]+)\s+del/i,
+    /for\s+([A-Z][A-Z\s]+)\s+/i,
+    /viaggio\s+([A-Z][A-Z\s]+)\s+/i
+  ];
+
+  for (const pattern of patterns) {
+    const match = filename.match(pattern);
+    if (match && match[1]) {
+      // Clean up and format the name (Title Case)
+      const name = match[1].trim()
+        .toLowerCase()
+        .split(/\s+/)
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+      return name;
+    }
+  }
+
+  return null;
+}
 
 /**
  * Sleep helper for retry delays
@@ -340,12 +413,18 @@ async function processPdfWithClaude(base64Content, filename, retries = 3) {
       const isRateLimit = error.status === 429 || error.message?.includes('rate_limit');
 
       if (isRateLimit && attempt < retries) {
-        const delay = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
+        // Use longer fixed delays for rate limits: 5s, then 15s
+        const delays = [5000, 15000];
+        const delay = delays[attempt - 1] || 15000;
         console.log(`Rate limit hit for ${filename}, retrying in ${delay/1000}s (attempt ${attempt}/${retries})...`);
         await sleep(delay);
         continue;
       }
 
+      // Mark rate limit errors for better error messages
+      if (isRateLimit) {
+        error.isRateLimit = true;
+      }
       throw error;
     }
   }
@@ -377,9 +456,10 @@ function getPromptForDocType(docType) {
   if (docType === 'flight') {
     return `Extract flight information from this document. Return a JSON object with this exact structure.
 
-IMPORTANT:
-- If the flight duration is not explicitly stated in the document, calculate it from the departure and arrival times. Consider the arrivalNextDay flag if the arrival is on the next day. The duration should always be provided in HH:MM format.
-- Each flight MUST include a "passenger" object with the passenger's name, type (ADT for adult, CHD for child, INF for infant), and ticketNumber specific to that passenger.
+CRITICAL REQUIREMENTS:
+1. The "passenger" field at the TOP LEVEL is MANDATORY - you MUST always include it with the passenger's full name and type (ADT/CHD/INF). This is the most important field.
+2. Look for the passenger name in: "NOME/NAME", "PASSEGGERO", "PASSENGER", title like "MR/MRS/MS", or anywhere the traveler's name appears.
+3. If the flight duration is not explicitly stated, calculate it from departure and arrival times.
 
 {
   "flights": [
@@ -409,17 +489,13 @@ IMPORTANT:
       "ticketNumber": "XXX XXXXXXXXXX or null",
       "seat": "12A or null",
       "baggage": "0PC or 1PC etc",
-      "status": "OK",
-      "passenger": {
-        "name": "Full Name",
-        "type": "ADT or CHD or INF",
-        "ticketNumber": "XXX XXXXXXXXXX"
-      }
+      "status": "OK"
     }
   ],
   "passenger": {
-    "name": "Full Name",
-    "type": "ADT"
+    "name": "PASSENGER FULL NAME (REQUIRED)",
+    "type": "ADT or CHD or INF",
+    "ticketNumber": "XXX XXXXXXXXXX or null"
   },
   "booking": {
     "reference": "XXXXXX",

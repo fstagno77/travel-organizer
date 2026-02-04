@@ -326,11 +326,9 @@
               <div class="upload-zone-text" data-i18n="trip.uploadHint">Drag PDFs here or click to select</div>
               <div class="upload-zone-hint">PDF</div>
             </div>
-            <div class="file-list" id="add-booking-file-list"></div>
           </div>
           <div class="modal-footer">
             <button class="btn btn-secondary" id="add-booking-cancel" data-i18n="modal.cancel">Cancel</button>
-            <button class="btn btn-primary" id="add-booking-submit" disabled data-i18n="modal.add">Add</button>
           </div>
         </div>
       </div>
@@ -341,10 +339,8 @@
     const modal = document.getElementById('add-booking-modal');
     const closeBtn = document.getElementById('add-booking-close');
     const cancelBtn = document.getElementById('add-booking-cancel');
-    const submitBtn = document.getElementById('add-booking-submit');
     const uploadZone = document.getElementById('add-booking-upload-zone');
     const fileInput = document.getElementById('add-booking-file-input');
-    const fileList = document.getElementById('add-booking-file-list');
 
     let files = [];
 
@@ -353,48 +349,12 @@
       document.body.style.overflow = '';
     };
 
-    const renderFileList = () => {
-      if (files.length === 0) {
-        fileList.innerHTML = '';
-        submitBtn.disabled = true;
-        return;
-      }
-
-      fileList.innerHTML = files.map((file, index) => `
-        <div class="file-item">
-          <div class="file-item-icon">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-              <polyline points="14 2 14 8 20 8"></polyline>
-            </svg>
-          </div>
-          <div class="file-item-info">
-            <div class="file-item-name">${file.name}</div>
-          </div>
-          <button class="file-item-remove" data-index="${index}">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
-        </div>
-      `).join('');
-
-      submitBtn.disabled = false;
-
-      fileList.querySelectorAll('.file-item-remove').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const index = parseInt(btn.dataset.index);
-          files.splice(index, 1);
-          renderFileList();
-        });
-      });
-    };
-
     const addFiles = (fileListInput) => {
       const pdfFiles = Array.from(fileListInput).filter(f => f.type === 'application/pdf');
-      files.push(...pdfFiles);
-      renderFileList();
+      if (pdfFiles.length > 0) {
+        files = pdfFiles;
+        submitBooking();
+      }
     };
 
     const fileToBase64 = (file) => {
@@ -412,8 +372,22 @@
     const submitBooking = async () => {
       if (files.length === 0) return;
 
-      submitBtn.disabled = true;
-      submitBtn.innerHTML = '<span class="spinner spinner-sm"></span>';
+      // Show processing state with rotating phrases
+      const modalBody = modal.querySelector('.modal-body');
+      const modalFooter = modal.querySelector('.modal-footer');
+      const originalBodyContent = modalBody.innerHTML;
+
+      modalBody.innerHTML = `
+        <div class="processing-state">
+          <div class="spinner"></div>
+          <p class="processing-phrase loading-phrase"></p>
+        </div>
+      `;
+      modalFooter.style.display = 'none';
+
+      // Start rotating phrases
+      const phraseElement = modalBody.querySelector('.processing-phrase');
+      const phraseController = utils.startLoadingPhrases(phraseElement, 3000);
 
       try {
         const pdfs = await Promise.all(
@@ -431,9 +405,20 @@
         const result = await response.json();
 
         if (!response.ok || !result.success) {
+          // Check for rate limit error
+          if (response.status === 429 || result.errorType === 'rate_limit') {
+            throw new Error('rate_limit');
+          }
+          // Check for duplicate booking error
+          if (response.status === 409 || result.errorType === 'duplicate') {
+            const error = new Error('duplicate');
+            error.tripName = result.tripName;
+            throw error;
+          }
           throw new Error(result.error || 'Failed to add booking');
         }
 
+        phraseController.stop();
         closeModal();
         // Reload trip data
         await loadTripFromUrl();
@@ -448,9 +433,61 @@
         }
       } catch (error) {
         console.error('Error adding booking:', error);
-        alert(i18n.t('trip.addError') || 'Error adding booking');
-        submitBtn.disabled = false;
-        submitBtn.textContent = i18n.t('modal.add') || 'Add';
+        phraseController.stop();
+
+        // Show error in modal
+        let errorMessage;
+        if (error.message === 'rate_limit') {
+          errorMessage = i18n.t('common.rateLimitError') || 'Rate limit reached. Please wait a minute.';
+        } else if (error.message === 'duplicate') {
+          errorMessage = `${i18n.t('trip.duplicateError') || 'This booking is already in'} "${error.tripName}"`;
+        } else {
+          errorMessage = i18n.t('trip.addError') || 'Error adding booking';
+        }
+
+        modalBody.innerHTML = `
+          <div class="error-state">
+            <div class="error-state-icon">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <circle cx="12" cy="16" r="1" fill="currentColor"></circle>
+              </svg>
+            </div>
+            <p class="error-state-message">${errorMessage}</p>
+            <button class="btn btn-secondary" id="error-retry-btn" data-i18n="modal.retry">Try again</button>
+          </div>
+        `;
+        modalFooter.style.display = 'none';
+        i18n.apply();
+
+        // Retry button - restore upload zone
+        document.getElementById('error-retry-btn').addEventListener('click', () => {
+          modalBody.innerHTML = originalBodyContent;
+          modalFooter.style.display = '';
+          i18n.apply();
+
+          // Re-attach event listeners
+          const newUploadZone = document.getElementById('add-booking-upload-zone');
+          const newFileInput = document.getElementById('add-booking-file-input');
+          newUploadZone.addEventListener('click', () => newFileInput.click());
+          newFileInput.addEventListener('change', (e) => {
+            addFiles(e.target.files);
+            newFileInput.value = '';
+          });
+          newUploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            newUploadZone.classList.add('dragover');
+          });
+          newUploadZone.addEventListener('dragleave', () => {
+            newUploadZone.classList.remove('dragover');
+          });
+          newUploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            newUploadZone.classList.remove('dragover');
+            addFiles(e.dataTransfer.files);
+          });
+        });
       }
     };
 
@@ -479,7 +516,6 @@
     modal.addEventListener('click', (e) => {
       if (e.target === modal) closeModal();
     });
-    submitBtn.addEventListener('click', submitBooking);
 
     // Show modal
     modal.classList.add('active');
@@ -791,19 +827,20 @@
         <div class="empty-state">
           <h3 class="empty-state-title" data-i18n="trip.noFlights">No flights</h3>
           <p class="empty-state-text" data-i18n="trip.noFlightsText">No flight information available</p>
-          <button class="btn btn-primary mt-4" id="add-flight-btn">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="12" y1="5" x2="12" y2="19"></line>
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-            <span data-i18n="trip.addBooking">Add booking</span>
-          </button>
+        </div>
+        <div class="quick-upload-card" id="quick-upload-flights">
+          <input type="file" class="quick-upload-input" accept=".pdf" hidden>
+          <svg class="quick-upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
+          <div class="quick-upload-spinner"></div>
+          <span class="quick-upload-text" data-i18n="trip.quickUploadHint">Drop a PDF here to add a booking</span>
         </div>
       `;
       i18n.apply();
-      document.getElementById('add-flight-btn')?.addEventListener('click', () => {
-        showAddBookingModal(currentTripData.id);
-      });
+      initQuickUploadCard('quick-upload-flights');
       return;
     }
 
@@ -823,7 +860,7 @@
       const isPast = isFlightPast(flight);
 
       return `
-        <div class="flight-card${isPast ? ' past' : ''}">
+        <div class="flight-card${isPast ? ' past' : ''}" data-id="${flight.id}">
           <div class="flight-card-header">
             <span class="flight-date">${formattedDate}</span>
             <a href="${trackingUrl}" target="_blank" rel="noopener" class="flight-number-link">
@@ -879,49 +916,65 @@
           <div class="flight-details" id="flight-details-${index}">
             ${flight.passengers && flight.passengers.length > 1 ? `
             <!-- Multiple passengers view -->
-            <div class="flight-details-grid">
-              <div class="flight-detail-item">
-                <span class="flight-detail-label" data-i18n="flight.bookingRef">Booking Reference</span>
-                <span class="flight-detail-value-wrapper">
-                  <span class="flight-detail-value">${flight.bookingReference || '-'}</span>
-                  ${flight.bookingReference ? `<button class="btn-copy-value" data-copy="${flight.bookingReference}" title="Copy">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                    </svg>
-                  </button>` : ''}
-                </span>
-              </div>
-              <div class="flight-detail-item">
-                <span class="flight-detail-label" data-i18n="flight.class">Class</span>
-                <span class="flight-detail-value">${flight.class || '-'}</span>
-              </div>
-            </div>
             <div class="flight-passengers-section">
               <span class="flight-detail-label" data-i18n="flight.passengers">Passengers</span>
               <div class="flight-passengers-list">
-                ${flight.passengers.map(p => `
-                  <div class="flight-passenger-item">
-                    <div class="flight-passenger-info">
-                      <span class="flight-passenger-name">${p.name || '-'}</span>
-                      <span class="flight-passenger-type">${p.type || ''}</span>
+                ${flight.passengers.map((p, pIndex) => `
+                  <div class="flight-passenger-item" data-passenger-index="${pIndex}">
+                    <div class="flight-passenger-header">
+                      <div class="flight-passenger-info">
+                        <span class="flight-passenger-name">${p.name || '-'}</span>
+                        <span class="flight-passenger-type">${p.type || ''}</span>
+                      </div>
+                      <div class="flight-passenger-actions">
+                        ${p.pdfPath ? `
+                        <button class="btn-download-pdf-small" data-pdf-path="${p.pdfPath}" title="Download PDF">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                          </svg>
+                          <span data-i18n="flight.downloadPdf">PDF</span>
+                        </button>
+                        ` : ''}
+                        <button class="btn-delete-passenger" data-passenger-name="${p.name}" data-booking-ref="${flight.bookingReference}" title="Remove passenger">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                          </svg>
+                        </button>
+                      </div>
                     </div>
-                    ${p.ticketNumber ? `
-                    <div class="flight-passenger-ticket-row">
-                      <span class="flight-passenger-ticket-label" data-i18n="flight.ticketNumber">Ticket</span>
-                      <span class="flight-passenger-ticket">${p.ticketNumber}</span>
+                    <div class="flight-passenger-details">
+                      <div class="flight-passenger-detail">
+                        <span class="flight-passenger-detail-label" data-i18n="flight.bookingRef">Booking</span>
+                        <span class="flight-passenger-detail-value-wrapper">
+                          <span class="flight-passenger-detail-value">${flight.bookingReference || '-'}</span>
+                          ${flight.bookingReference ? `<button class="btn-copy-value btn-copy-small" data-copy="${flight.bookingReference}" title="Copy">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                          </button>` : ''}
+                        </span>
+                      </div>
+                      <div class="flight-passenger-detail">
+                        <span class="flight-passenger-detail-label" data-i18n="flight.class">Class</span>
+                        <span class="flight-passenger-detail-value">${flight.class || '-'}</span>
+                      </div>
+                      <div class="flight-passenger-detail">
+                        <span class="flight-passenger-detail-label" data-i18n="flight.ticketNumber">Ticket</span>
+                        <span class="flight-passenger-detail-value-wrapper">
+                          <span class="flight-passenger-detail-value">${p.ticketNumber || '-'}</span>
+                          ${p.ticketNumber ? `<button class="btn-copy-value btn-copy-small" data-copy="${p.ticketNumber}" title="Copy">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                          </button>` : ''}
+                        </span>
+                      </div>
                     </div>
-                    ` : ''}
-                    ${p.pdfPath ? `
-                    <button class="btn-download-pdf btn-download-pdf-inline" data-pdf-path="${p.pdfPath}">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                        <polyline points="7 10 12 15 17 10"></polyline>
-                        <line x1="12" y1="15" x2="12" y2="3"></line>
-                      </svg>
-                      <span>PDF</span>
-                    </button>
-                    ` : ''}
                   </div>
                 `).join('')}
               </div>
@@ -985,12 +1038,29 @@
       `;
     }).join('');
 
-    container.innerHTML = html;
+    // Add quick upload card at the end
+    const quickUploadCard = `
+      <div class="quick-upload-card" id="quick-upload-flights">
+        <input type="file" class="quick-upload-input" accept=".pdf" hidden>
+        <svg class="quick-upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="17 8 12 3 7 8"></polyline>
+          <line x1="12" y1="3" x2="12" y2="15"></line>
+        </svg>
+        <div class="quick-upload-spinner"></div>
+        <span class="quick-upload-text" data-i18n="trip.quickUploadHint">Drop a PDF here to add a booking</span>
+      </div>
+    `;
+
+    container.innerHTML = html + quickUploadCard;
     i18n.apply();
     initFlightToggleButtons();
     initDeleteItemButtons();
     initPdfDownloadButtons();
+    initSmallPdfButtons();
+    initDeletePassengerButtons();
     initCopyValueButtons();
+    initQuickUploadCard('quick-upload-flights');
   }
 
   /**
@@ -1004,19 +1074,20 @@
         <div class="empty-state">
           <h3 class="empty-state-title" data-i18n="trip.noHotels">No hotels</h3>
           <p class="empty-state-text" data-i18n="trip.noHotelsText">No hotel information available</p>
-          <button class="btn btn-primary mt-4" id="add-hotel-btn">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="12" y1="5" x2="12" y2="19"></line>
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-            <span data-i18n="trip.addBooking">Add booking</span>
-          </button>
+        </div>
+        <div class="quick-upload-card" id="quick-upload-hotels">
+          <input type="file" class="quick-upload-input" accept=".pdf" hidden>
+          <svg class="quick-upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
+          <div class="quick-upload-spinner"></div>
+          <span class="quick-upload-text" data-i18n="trip.quickUploadHint">Drop a PDF here to add a booking</span>
         </div>
       `;
       i18n.apply();
-      document.getElementById('add-hotel-btn')?.addEventListener('click', () => {
-        showAddBookingModal(currentTripData.id);
-      });
+      initQuickUploadCard('quick-upload-hotels');
       return;
     }
 
@@ -1050,7 +1121,7 @@
       }
 
       return `
-        <div class="hotel-card">
+        <div class="hotel-card" data-id="${hotel.id}">
           <div class="hotel-card-header">
             <h3>${hotel.name}</h3>
           </div>
@@ -1152,11 +1223,26 @@
       `;
     }).join('');
 
-    container.innerHTML = html;
+    // Add quick upload card at the end
+    const quickUploadCard = `
+      <div class="quick-upload-card" id="quick-upload-hotels">
+        <input type="file" class="quick-upload-input" accept=".pdf" hidden>
+        <svg class="quick-upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="17 8 12 3 7 8"></polyline>
+          <line x1="12" y1="3" x2="12" y2="15"></line>
+        </svg>
+        <div class="quick-upload-spinner"></div>
+        <span class="quick-upload-text" data-i18n="trip.quickUploadHint">Drop a PDF here to add a booking</span>
+      </div>
+    `;
+
+    container.innerHTML = html + quickUploadCard;
     i18n.apply();
     initHotelToggleButtons();
     initDeleteItemButtons();
     initPdfDownloadButtons();
+    initQuickUploadCard('quick-upload-hotels');
   }
 
   /**
@@ -1229,6 +1315,171 @@
         }
       });
     });
+  }
+
+  /**
+   * Initialize small PDF download buttons (for multi-passenger view)
+   */
+  function initSmallPdfButtons() {
+    document.querySelectorAll('.btn-download-pdf-small').forEach(btn => {
+      // Remove existing listeners by cloning
+      const newBtn = btn.cloneNode(true);
+      btn.parentNode.replaceChild(newBtn, btn);
+
+      newBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const pdfPath = newBtn.dataset.pdfPath;
+
+        // Show loading state
+        newBtn.disabled = true;
+        const svg = newBtn.querySelector('svg');
+        if (svg) svg.style.opacity = '0.5';
+
+        // Pre-open window for Safari iOS
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        let newWindow = null;
+        if (isIOS) {
+          newWindow = window.open('about:blank', '_blank');
+        }
+
+        try {
+          const response = await utils.authFetch(`/.netlify/functions/get-pdf-url?path=${encodeURIComponent(pdfPath)}`);
+          const result = await response.json();
+
+          if (result.success && result.url) {
+            if (newWindow) {
+              newWindow.location.href = result.url;
+            } else {
+              window.open(result.url, '_blank');
+            }
+          } else {
+            if (newWindow) newWindow.close();
+            throw new Error(result.error || 'Failed to get PDF URL');
+          }
+        } catch (error) {
+          console.error('Error downloading PDF:', error);
+          if (newWindow) newWindow.close();
+          alert(i18n.t('common.downloadError') || 'Error downloading PDF');
+        } finally {
+          newBtn.disabled = false;
+          if (svg) svg.style.opacity = '1';
+        }
+      });
+    });
+  }
+
+  /**
+   * Initialize delete passenger buttons
+   */
+  function initDeletePassengerButtons() {
+    document.querySelectorAll('.btn-delete-passenger').forEach(btn => {
+      // Remove existing listeners by cloning
+      const newBtn = btn.cloneNode(true);
+      btn.parentNode.replaceChild(newBtn, btn);
+
+      newBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const passengerName = newBtn.dataset.passengerName;
+        const bookingRef = newBtn.dataset.bookingRef;
+        showDeletePassengerModal(passengerName, bookingRef);
+      });
+    });
+  }
+
+  /**
+   * Show delete passenger confirmation modal
+   * @param {string} passengerName
+   * @param {string} bookingRef
+   */
+  function showDeletePassengerModal(passengerName, bookingRef) {
+    const existingModal = document.getElementById('delete-passenger-modal');
+    if (existingModal) existingModal.remove();
+
+    // Count how many flights this passenger is on with this booking
+    const flightsWithPassenger = (currentTripData?.flights || []).filter(f =>
+      f.bookingReference?.toLowerCase()?.trim() === bookingRef?.toLowerCase()?.trim() &&
+      f.passengers?.some(p => p.name?.toLowerCase()?.trim() === passengerName?.toLowerCase()?.trim())
+    );
+
+    const modalHTML = `
+      <div class="modal-overlay" id="delete-passenger-modal">
+        <div class="modal">
+          <div class="modal-header">
+            <h2 data-i18n="passenger.deleteTitle">Remove passenger</h2>
+            <button class="modal-close" id="delete-passenger-close">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <p data-i18n="passenger.deleteConfirm">Are you sure you want to remove this passenger?</p>
+            <p class="text-muted mt-2"><strong>${passengerName}</strong></p>
+            <p class="text-muted text-sm mt-2" data-i18n="passenger.deleteInfo">This will remove the passenger from ${flightsWithPassenger.length} flight(s) with booking ${bookingRef}.</p>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" id="delete-passenger-cancel" data-i18n="modal.cancel">Cancel</button>
+            <button class="btn btn-danger" id="delete-passenger-confirm" data-i18n="passenger.delete">Remove</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    const modal = document.getElementById('delete-passenger-modal');
+    const closeBtn = document.getElementById('delete-passenger-close');
+    const cancelBtn = document.getElementById('delete-passenger-cancel');
+    const confirmBtn = document.getElementById('delete-passenger-confirm');
+
+    const closeModal = () => {
+      modal.remove();
+      document.body.style.overflow = '';
+    };
+
+    const performDelete = async () => {
+      confirmBtn.disabled = true;
+      confirmBtn.innerHTML = '<span class="spinner spinner-sm"></span>';
+
+      try {
+        const response = await utils.authFetch('/.netlify/functions/delete-passenger', {
+          method: 'POST',
+          body: JSON.stringify({
+            tripId: currentTripData.id,
+            passengerName: passengerName,
+            bookingReference: bookingRef
+          })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Failed to remove passenger');
+        }
+
+        closeModal();
+
+        // Reload trip data
+        await loadTripFromUrl();
+      } catch (error) {
+        console.error('Error removing passenger:', error);
+        alert(i18n.t('common.deleteError') || 'Error removing passenger');
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = i18n.t('passenger.delete') || 'Remove';
+      }
+    };
+
+    closeBtn.addEventListener('click', closeModal);
+    cancelBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+    confirmBtn.addEventListener('click', performDelete);
+
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    i18n.apply();
   }
 
   /**
@@ -1335,11 +1586,26 @@
           return;
         }
 
+        // Get current tab to restore after reload
+        const currentTab = document.querySelector('.segmented-control-btn.active')?.dataset.tab || 'flights';
+
+        // Animate card removal
+        const card = document.querySelector(`.${type}-card[data-id="${itemId}"]`);
+        if (card) {
+          card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+          card.style.opacity = '0';
+          card.style.transform = 'scale(0.95)';
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
+
         // Reload trip data
         await loadTripFromUrl();
+
+        // Restore tab
+        switchToTab(currentTab);
       } catch (error) {
         console.error('Error deleting item:', error);
-        alert(i18n.t('common.deleteError') || 'Error deleting');
+        utils.showToast(i18n.t('common.error') || 'Error deleting', 'error');
         confirmBtn.disabled = false;
         confirmBtn.textContent = i18n.t(deleteKey) || 'Delete';
       }
@@ -1404,6 +1670,162 @@
           setTimeout(() => btn.classList.remove('copied'), 1500);
         }
       });
+    });
+  }
+
+  /**
+   * Initialize quick upload card
+   * @param {string} cardId - The ID of the quick upload card
+   */
+  function initQuickUploadCard(cardId) {
+    const card = document.getElementById(cardId);
+    if (!card) return;
+
+    const input = card.querySelector('.quick-upload-input');
+
+    // Click to select file
+    card.addEventListener('click', (e) => {
+      if (e.target !== input) {
+        input.click();
+      }
+    });
+
+    // File selected
+    input.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file && file.type === 'application/pdf') {
+        handleQuickUpload(file);
+      }
+      input.value = ''; // Reset for next upload
+    });
+
+    // Drag & drop
+    card.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      card.classList.add('dragover');
+    });
+
+    card.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      card.classList.remove('dragover');
+    });
+
+    card.addEventListener('drop', (e) => {
+      e.preventDefault();
+      card.classList.remove('dragover');
+
+      const file = e.dataTransfer.files[0];
+      if (file && file.type === 'application/pdf') {
+        handleQuickUpload(file);
+      }
+    });
+  }
+
+  /**
+   * Handle quick upload - process file immediately
+   * @param {File} file - The PDF file to upload
+   */
+  async function handleQuickUpload(file) {
+    // Show loading state on all quick upload cards
+    const cards = document.querySelectorAll('.quick-upload-card');
+    const phraseControllers = [];
+
+    cards.forEach(card => {
+      card.classList.add('uploading');
+      const text = card.querySelector('.quick-upload-text');
+      if (text) {
+        text.dataset.originalText = text.textContent;
+        text.classList.add('loading-phrase');
+        // Start rotating phrases
+        const controller = utils.startLoadingPhrases(text, 3000);
+        phraseControllers.push(controller);
+      }
+    });
+
+    try {
+      // Convert file to base64
+      const content = await fileToBase64(file);
+      const pdfs = [{ filename: file.name, content }];
+
+      const response = await utils.authFetch('/.netlify/functions/add-booking', {
+        method: 'POST',
+        body: JSON.stringify({ pdfs, tripId: currentTripData.id })
+      });
+
+      const result = await response.json();
+
+      // Check for rate limit error
+      if (response.status === 429 || result.errorType === 'rate_limit') {
+        throw new Error('rate_limit');
+      }
+
+      // Check for duplicate booking error
+      if (response.status === 409 || result.errorType === 'duplicate') {
+        const error = new Error('duplicate');
+        error.tripName = result.tripName;
+        throw error;
+      }
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to add booking');
+      }
+
+      // Reload trip data
+      await loadTripFromUrl();
+
+      // Switch to the appropriate tab based on what was added
+      if (result.added) {
+        if (result.added.hotels > 0) {
+          switchToTab('hotels');
+        } else if (result.added.flights > 0) {
+          switchToTab('flights');
+        }
+      }
+    } catch (error) {
+      let errorMessage;
+      if (error.message === 'rate_limit') {
+        console.log('Rate limit reached');
+        errorMessage = i18n.t('common.rateLimitError') || 'Rate limit reached. Please wait a minute.';
+      } else if (error.message === 'duplicate') {
+        console.log('Duplicate booking detected');
+        errorMessage = `${i18n.t('trip.duplicateError') || 'This booking is already in'} "${error.tripName}"`;
+      } else {
+        console.error('Error in quick upload:', error);
+        errorMessage = i18n.t('trip.addError') || 'Error adding booking';
+      }
+      utils.showToast(errorMessage, 'error');
+    } finally {
+      // Stop rotating phrases
+      phraseControllers.forEach(controller => controller.stop());
+
+      // Reset loading state
+      cards.forEach(card => {
+        card.classList.remove('uploading');
+        const text = card.querySelector('.quick-upload-text');
+        if (text) {
+          text.classList.remove('loading-phrase', 'phrase-visible');
+          if (text.dataset.originalText) {
+            text.textContent = text.dataset.originalText;
+          }
+        }
+      });
+    }
+  }
+
+  /**
+   * Convert file to base64
+   * @param {File} file
+   * @returns {Promise<string>}
+   */
+  function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        const base64 = reader.result.split(',')[1];
+        resolve(base64);
+      };
+      reader.onerror = error => reject(error);
     });
   }
 

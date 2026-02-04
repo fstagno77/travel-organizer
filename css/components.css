@@ -403,8 +403,9 @@
   flex-direction: column;
   gap: var(--spacing-2);
   padding: var(--spacing-3);
-  background-color: var(--color-gray-50);
+  background-color: var(--color-gray-100);
   border-radius: var(--radius-md);
+  border: 1px solid var(--color-gray-200);
 }
 
 .flight-passenger-info {
@@ -450,6 +451,103 @@
   margin-top: var(--spacing-1);
   padding: var(--spacing-2) var(--spacing-3);
   font-size: var(--font-size-xs);
+}
+
+/* Multi-passenger view styles */
+.flight-passenger-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-2);
+}
+
+.flight-passenger-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+}
+
+.btn-download-pdf-small {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  padding: var(--spacing-1) var(--spacing-2);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  background-color: var(--color-primary);
+  color: white;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.btn-download-pdf-small:hover {
+  background-color: var(--color-primary-600);
+}
+
+.btn-download-pdf-small svg {
+  flex-shrink: 0;
+}
+
+.btn-delete-passenger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: var(--spacing-1);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+  background-color: var(--color-error);
+  color: white;
+}
+
+.btn-delete-passenger:hover {
+  opacity: 0.85;
+}
+
+.flight-passenger-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--spacing-2);
+  margin-top: var(--spacing-2);
+  padding-top: var(--spacing-2);
+  border-top: 1px solid var(--color-gray-200);
+}
+
+.flight-passenger-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.flight-passenger-detail-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-500);
+}
+
+.flight-passenger-detail-value {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-gray-800);
+}
+
+.flight-passenger-detail-value-wrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+}
+
+.btn-copy-small {
+  padding: 2px;
+}
+
+.btn-copy-small svg {
+  width: 12px;
+  height: 12px;
 }
 
 .flight-toggle-details {
@@ -1691,6 +1789,97 @@
   background-color: var(--color-gray-50);
 }
 
+/* Quick Upload Card (inline) */
+.quick-upload-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-4) var(--spacing-6);
+  margin-top: var(--spacing-4);
+  border: 2px dashed var(--color-gray-300);
+  border-radius: var(--radius-lg);
+  background-color: white;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.quick-upload-card:hover {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary-light);
+}
+
+.quick-upload-card.dragover {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary-light);
+  transform: scale(1.01);
+}
+
+.quick-upload-card.uploading {
+  pointer-events: none;
+  cursor: default;
+}
+
+.quick-upload-icon {
+  width: 24px;
+  height: 24px;
+  color: var(--color-gray-400);
+  flex-shrink: 0;
+}
+
+.quick-upload-card:hover .quick-upload-icon,
+.quick-upload-card.dragover .quick-upload-icon {
+  color: var(--color-primary);
+}
+
+/* Hide icon when uploading */
+.quick-upload-card.uploading .quick-upload-icon {
+  display: none;
+}
+
+/* Spinner for quick upload */
+.quick-upload-spinner {
+  display: none;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--color-gray-300);
+  border-top-color: var(--color-gray-500);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+/* Show spinner when uploading */
+.quick-upload-card.uploading .quick-upload-spinner {
+  display: block;
+}
+
+.quick-upload-text {
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-500);
+}
+
+.quick-upload-card:hover .quick-upload-text,
+.quick-upload-card.dragover .quick-upload-text {
+  color: var(--color-primary);
+}
+
+/* Loading phrase animation */
+.loading-phrase {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.loading-phrase.phrase-visible {
+  opacity: 1;
+}
+
+/* Processing state with rotating phrases */
+.processing-state .processing-phrase {
+  min-height: 1.5em;
+  text-align: center;
+}
+
 /* Upload Zone */
 .upload-zone {
   display: flex;
@@ -1857,6 +2046,34 @@
 .result-state-text {
   font-size: var(--font-size-sm);
   color: var(--color-gray-600);
+}
+
+/* Error State in Modals */
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-4);
+  padding: var(--spacing-8);
+  text-align: center;
+}
+
+.error-state-icon {
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background-color: #fee2e2;
+  color: var(--color-error);
+}
+
+.error-state-message {
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-600);
+  margin: 0;
+  line-height: var(--line-height-relaxed);
 }
 
 /* Share Modal */
@@ -2084,4 +2301,49 @@
   padding: var(--spacing-6);
   text-align: center;
   color: var(--color-gray-500);
+}
+
+/* Toast Notifications */
+.toast-notification {
+  position: fixed;
+  bottom: var(--spacing-6);
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3) var(--spacing-4);
+  background-color: var(--color-gray-800);
+  color: white;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  z-index: 10000;
+  opacity: 0;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  max-width: calc(100vw - var(--spacing-8));
+}
+
+.toast-notification.toast-visible {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+.toast-notification.toast-error {
+  background-color: var(--color-error);
+}
+
+.toast-notification.toast-success {
+  background-color: var(--color-success);
+}
+
+.toast-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toast-message {
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
 }

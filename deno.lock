@@ -13,6 +13,7 @@
       "dependencies": [
         "npm:@anthropic-ai/sdk@0.39",
         "npm:@supabase/supabase-js@^2.90.1",
+        "npm:busboy@^1.6.0",
         "npm:cors@^2.8.5",
         "npm:dotenv@^16.4.7",
         "npm:express@^4.21.2",

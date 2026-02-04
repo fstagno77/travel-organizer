@@ -1,6 +1,26 @@
 {
   "versions": [
     {
+      "version": "0.11.2",
+      "date": "2026-02-04",
+      "changes": {
+        "it": [
+          "Errore duplicati: messaggio in modale invece di scartare silenziosamente",
+          "Elaborazione PDF immediata: rimosso pulsante Aggiungi, parte al caricamento",
+          "Animazione eliminazione card con mantenimento tab corrente",
+          "50 frasi di caricamento: consigli di viaggio invece di domande",
+          "Fix icona errore (punto esclamativo nel cerchio)"
+        ],
+        "en": [
+          "Duplicate error: message in modal instead of silent skip",
+          "Immediate PDF processing: removed Add button, starts on upload",
+          "Card deletion animation with current tab preservation",
+          "50 loading phrases: travel tips instead of questions",
+          "Fixed error icon (exclamation point in circle)"
+        ]
+      }
+    },
+    {
       "version": "0.11.0",
       "date": "2026-02-04",
       "changes": {

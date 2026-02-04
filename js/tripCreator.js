@@ -12,6 +12,7 @@ const tripCreator = {
   hasMorePhotos: true, // Whether more photos are available
   isLoadingMore: false, // Loading more photos flag
   isChangingPhoto: false, // True when changing photo for existing trip
+  phraseController: null, // Controller for rotating loading phrases
 
   /**
    * Initialize trip creator
@@ -116,6 +117,7 @@ const tripCreator = {
    * Reset modal state
    */
   reset() {
+    this.stopLoadingPhrases();
     this.files = [];
     this.state = 'idle';
     this.pendingTripData = null;
@@ -145,7 +147,7 @@ const tripCreator = {
     const body = document.getElementById('modal-body');
     body.innerHTML = `
       <div class="upload-zone" id="upload-zone">
-        <input type="file" id="file-input" accept=".pdf" multiple hidden>
+        <input type="file" id="file-input" accept=".pdf" hidden>
         <svg class="upload-zone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
           <polyline points="17 8 12 3 7 8"></polyline>
@@ -198,7 +200,7 @@ const tripCreator = {
    * Add files to the list
    * @param {FileList} fileList
    */
-  maxFiles: 3,
+  maxFiles: 1,
 
   addFiles(fileList) {
     const pdfFiles = Array.from(fileList).filter(f => f.type === 'application/pdf');
@@ -342,14 +344,20 @@ const tripCreator = {
         body: JSON.stringify({ pdfs })
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to process PDFs');
+      const result = await response.json();
+
+      // Check for rate limit error
+      if (response.status === 429 || result.errorType === 'rate_limit') {
+        throw new Error(i18n.t('common.rateLimitError') || 'Rate limit reached. Please wait a minute.');
       }
 
-      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to process PDFs');
+      }
 
       if (result.success) {
         const tripData = result.tripData;
+        this.stopLoadingPhrases();
 
         // Always show photo selection when there's a destination
         if (result.needsPhotoSelection && result.destination) {
@@ -366,6 +374,7 @@ const tripCreator = {
       }
     } catch (error) {
       console.error('Error processing trip:', error);
+      this.stopLoadingPhrases();
       this.state = 'error';
       this.renderErrorState(error.message);
     }
@@ -379,10 +388,23 @@ const tripCreator = {
     body.innerHTML = `
       <div class="processing-state">
         <span class="spinner"></span>
-        <div class="processing-state-text" data-i18n="trip.processing">Elaborazione in corso...</div>
+        <p class="processing-phrase loading-phrase"></p>
       </div>
     `;
-    i18n.apply();
+
+    // Start rotating phrases
+    const phraseElement = body.querySelector('.processing-phrase');
+    this.phraseController = utils.startLoadingPhrases(phraseElement, 3000);
+  },
+
+  /**
+   * Stop loading phrases
+   */
+  stopLoadingPhrases() {
+    if (this.phraseController) {
+      this.phraseController.stop();
+      this.phraseController = null;
+    }
   },
 
   /**
