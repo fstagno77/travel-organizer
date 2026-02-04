@@ -448,10 +448,8 @@
         modalBody.innerHTML = `
           <div class="error-state">
             <div class="error-state-icon">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="12" y1="8" x2="12" y2="12"></line>
-                <circle cx="12" cy="16" r="1" fill="currentColor"></circle>
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
               </svg>
             </div>
             <p class="error-state-message">${errorMessage}</p>
