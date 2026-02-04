@@ -222,8 +222,10 @@ exports.handler = async (event, context) => {
       id: `hotel-${existingHotelCount + i + 1}`
     }));
 
-    // Upload PDFs and link to items
+    // Upload PDFs and link to items (in parallel for speed)
     console.log('Uploading PDFs to storage...');
+    const uploadPromises = [];
+
     for (let pdfIndex = 0; pdfIndex < pdfs.length; pdfIndex++) {
       const pdf = pdfs[pdfIndex];
 
@@ -231,24 +233,31 @@ exports.handler = async (event, context) => {
       const flightsFromPdf = flightsWithIds.filter(f => f._pdfIndex === pdfIndex);
       const hotelsFromPdf = hotelsWithIds.filter(h => h._pdfIndex === pdfIndex);
 
-      if (flightsFromPdf.length > 0 || hotelsFromPdf.length > 0) {
-        try {
-          // Upload PDF for each item
-          for (const flight of flightsFromPdf) {
-            const pdfPath = await uploadPdf(pdf.content, tripId, flight.id);
-            flight.pdfPath = pdfPath;
-            console.log(`Uploaded PDF for ${flight.id}: ${pdfPath}`);
-          }
-          for (const hotel of hotelsFromPdf) {
-            const pdfPath = await uploadPdf(pdf.content, tripId, hotel.id);
-            hotel.pdfPath = pdfPath;
-            console.log(`Uploaded PDF for ${hotel.id}: ${pdfPath}`);
-          }
-        } catch (uploadError) {
-          console.error(`Error uploading PDF ${pdf.filename}:`, uploadError);
-          // Continue without PDF - not a critical failure
-        }
+      for (const flight of flightsFromPdf) {
+        uploadPromises.push(
+          uploadPdf(pdf.content, tripId, flight.id)
+            .then(pdfPath => {
+              flight.pdfPath = pdfPath;
+              console.log(`Uploaded PDF for ${flight.id}: ${pdfPath}`);
+            })
+            .catch(err => console.error(`Error uploading PDF for ${flight.id}:`, err))
+        );
       }
+      for (const hotel of hotelsFromPdf) {
+        uploadPromises.push(
+          uploadPdf(pdf.content, tripId, hotel.id)
+            .then(pdfPath => {
+              hotel.pdfPath = pdfPath;
+              console.log(`Uploaded PDF for ${hotel.id}: ${pdfPath}`);
+            })
+            .catch(err => console.error(`Error uploading PDF for ${hotel.id}:`, err))
+        );
+      }
+    }
+
+    // Wait for all uploads to complete
+    if (uploadPromises.length > 0) {
+      await Promise.all(uploadPromises);
     }
 
     // Clean up temporary markers
