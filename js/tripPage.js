@@ -161,19 +161,12 @@
             </svg>
           </button>
           <div class="section-dropdown" id="content-dropdown">
-            <button class="section-dropdown-item" data-action="add-flight">
+            <button class="section-dropdown-item" data-action="add-booking">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
               </svg>
-              <span data-i18n="trip.addFlight">+ Flights</span>
-            </button>
-            <button class="section-dropdown-item" data-action="add-hotel">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              <span data-i18n="trip.addHotel">+ Hotel</span>
+              <span data-i18n="modal.add">Add</span>
             </button>
             <button class="section-dropdown-item" data-action="share">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -272,36 +265,15 @@
     if (targetContent) targetContent.classList.add('active');
 
     // Show/hide menu items based on active tab
-    const addFlightItem = document.querySelector('[data-action="add-flight"]');
-    const addHotelItem = document.querySelector('[data-action="add-hotel"]');
+    const addBookingItem = document.querySelector('[data-action="add-booking"]');
     const deleteBookingItem = document.querySelector('[data-action="delete-booking"]');
     const menuDivider = deleteBookingItem?.previousElementSibling;
+    const isActivities = tabName === 'activities';
 
-    const addFlightLabel = addFlightItem?.querySelector('span');
-    const addHotelLabel = addHotelItem?.querySelector('span');
-
-    if (tabName === 'activities') {
-      // Activities: show both with specific labels, hide delete booking
-      if (addFlightItem) addFlightItem.style.display = '';
-      if (addHotelItem) addHotelItem.style.display = '';
-      if (addFlightLabel) addFlightLabel.textContent = i18n.t('trip.addFlight');
-      if (addHotelLabel) addHotelLabel.textContent = i18n.t('trip.addHotel');
-      if (deleteBookingItem) deleteBookingItem.style.display = 'none';
-      if (menuDivider?.classList.contains('section-dropdown-divider')) menuDivider.style.display = 'none';
-    } else if (tabName === 'flights') {
-      // Flights: show only add-flight with generic label, show delete booking
-      if (addFlightItem) addFlightItem.style.display = '';
-      if (addHotelItem) addHotelItem.style.display = 'none';
-      if (addFlightLabel) addFlightLabel.textContent = i18n.t('modal.add');
-      if (deleteBookingItem) deleteBookingItem.style.display = '';
-      if (menuDivider?.classList.contains('section-dropdown-divider')) menuDivider.style.display = '';
-    } else if (tabName === 'hotels') {
-      // Hotels: show only add-hotel with generic label, show delete booking
-      if (addFlightItem) addFlightItem.style.display = 'none';
-      if (addHotelItem) addHotelItem.style.display = '';
-      if (addHotelLabel) addHotelLabel.textContent = i18n.t('modal.add');
-      if (deleteBookingItem) deleteBookingItem.style.display = '';
-      if (menuDivider?.classList.contains('section-dropdown-divider')) menuDivider.style.display = '';
+    if (addBookingItem) addBookingItem.style.display = '';
+    if (deleteBookingItem) deleteBookingItem.style.display = isActivities ? 'none' : '';
+    if (menuDivider?.classList.contains('section-dropdown-divider')) {
+      menuDivider.style.display = isActivities ? 'none' : '';
     }
   }
 
@@ -330,8 +302,13 @@
           deleteTrip(tripId);
         } else if (action === 'delete-booking') {
           showDeleteBookingModal(tripId);
-        } else if (action === 'add-flight' || action === 'add-hotel') {
-          showAddBookingModal(tripId);
+        } else if (action === 'add-booking') {
+          const activeTab = document.querySelector('.segmented-control-btn.active')?.dataset.tab;
+          if (activeTab === 'activities') {
+            showAddChoiceModal(tripId);
+          } else {
+            showAddBookingModal(tripId);
+          }
         } else if (action === 'share') {
           showShareModal(tripId);
         }
@@ -340,6 +317,71 @@
 
     document.addEventListener('click', () => {
       dropdown?.classList.remove('active');
+    });
+  }
+
+  /**
+   * Show choice modal (Volo / Hotel / Attività) from Activities tab
+   * @param {string} tripId
+   */
+  function showAddChoiceModal(tripId) {
+    const existingModal = document.getElementById('add-choice-modal');
+    if (existingModal) existingModal.remove();
+
+    const modalHTML = `
+      <div class="modal-overlay" id="add-choice-modal">
+        <div class="modal">
+          <div class="modal-header">
+            <h2 data-i18n="modal.add">Add</h2>
+            <button class="modal-close" id="add-choice-close">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div class="add-choice-grid">
+              <button class="add-choice-block" data-choice="flight">
+                <span class="material-symbols-outlined add-choice-icon">travel</span>
+                <span data-i18n="trip.addFlight">Flights</span>
+              </button>
+              <button class="add-choice-block" data-choice="hotel">
+                <span class="material-symbols-outlined add-choice-icon">bed</span>
+                <span data-i18n="trip.addHotel">Hotel</span>
+              </button>
+              <button class="add-choice-block add-choice-block--disabled" data-choice="activity">
+                <span class="material-symbols-outlined add-choice-icon">calendar_today</span>
+                <span data-i18n="trip.activities">Activities</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    i18n.apply();
+
+    const modal = document.getElementById('add-choice-modal');
+    const closeBtn = document.getElementById('add-choice-close');
+
+    const closeModal = () => modal.remove();
+
+    closeBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+
+    modal.querySelectorAll('.add-choice-block').forEach(block => {
+      block.addEventListener('click', () => {
+        const choice = block.dataset.choice;
+        if (choice === 'flight' || choice === 'hotel') {
+          closeModal();
+          showAddBookingModal(tripId);
+        }
+        // 'activity' is a no-op for now
+      });
     });
   }
 
