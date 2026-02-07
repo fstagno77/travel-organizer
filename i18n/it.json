@@ -78,7 +78,12 @@
     "photoTooLarge": "File troppo grande. Dimensione massima 2MB",
     "uploadError": "Errore durante il caricamento",
     "noPhotosFound": "Nessuna foto trovata per questa destinazione",
-    "lastUsedPhoto": "Ultima usata"
+    "lastUsedPhoto": "Ultima usata",
+    "activities": "Attività",
+    "noActivities": "Nessuna attività",
+    "noActivitiesText": "Aggiungi una prenotazione per visualizzare le attività",
+    "newActivity": "Nuova attività",
+    "flightTo": "Volo per"
   },
   "modal": {
     "cancel": "Annulla",
@@ -111,7 +116,8 @@
     "deleteTitle": "Rimuovi passeggero",
     "deleteConfirm": "Sei sicuro di voler rimuovere questo passeggero?",
     "deleteInfo": "Questo rimuoverà il passeggero da tutti i voli con questa prenotazione.",
-    "delete": "Rimuovi"
+    "delete": "Rimuovi",
+    "removePassenger": "Rimuovi passeggero"
   },
   "hotel": {
     "showDetails": "Mostra dettagli",

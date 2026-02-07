@@ -78,7 +78,12 @@
     "photoTooLarge": "File too large. Maximum size is 2MB",
     "uploadError": "Error uploading photo",
     "noPhotosFound": "No photos found for this destination",
-    "lastUsedPhoto": "Last used"
+    "lastUsedPhoto": "Last used",
+    "activities": "Activities",
+    "noActivities": "No activities",
+    "noActivitiesText": "Add a booking to see your activities here",
+    "newActivity": "New activity",
+    "flightTo": "Flight to"
   },
   "modal": {
     "cancel": "Cancel",
@@ -111,7 +116,8 @@
     "deleteTitle": "Remove passenger",
     "deleteConfirm": "Are you sure you want to remove this passenger?",
     "deleteInfo": "This will remove the passenger from all flights with this booking.",
-    "delete": "Remove"
+    "delete": "Remove",
+    "removePassenger": "Remove passenger"
   },
   "hotel": {
     "showDetails": "Show details",

@@ -146,6 +146,15 @@
             </svg>
             <span data-i18n="trip.hotels">Hotels</span>
           </button>
+          <button class="segmented-control-btn" data-tab="activities">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            <span data-i18n="trip.activities">Activities</span>
+          </button>
         </div>
         <div class="section-menu" id="content-menu">
           <button class="section-menu-btn" id="content-menu-btn">
@@ -209,6 +218,10 @@
       <div id="hotels-tab" class="tab-content">
         <div id="hotels-container"></div>
       </div>
+
+      <div id="activities-tab" class="tab-content">
+        <div id="activities-container"></div>
+      </div>
     `;
 
     container.innerHTML = html;
@@ -216,6 +229,7 @@
     // Render content
     renderFlights(document.getElementById('flights-container'), tripData.flights);
     renderHotels(document.getElementById('hotels-container'), tripData.hotels);
+    renderActivities(document.getElementById('activities-container'), tripData);
 
     // Initialize tab switching
     initTabSwitching();
@@ -1227,6 +1241,34 @@
                           </svg>
                         </button>
                       </div>
+                      <div class="passenger-menu-wrapper">
+                        <button class="btn-passenger-menu" aria-label="Actions">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <circle cx="12" cy="5" r="2"></circle>
+                            <circle cx="12" cy="12" r="2"></circle>
+                            <circle cx="12" cy="19" r="2"></circle>
+                          </svg>
+                        </button>
+                        <div class="passenger-menu-dropdown">
+                          ${p.pdfPath ? `
+                          <button class="passenger-menu-item" data-action="download-pdf" data-pdf-path="${p.pdfPath}">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                              <polyline points="7 10 12 15 17 10"></polyline>
+                              <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            <span data-i18n="flight.downloadPdf">Scarica PDF</span>
+                          </button>
+                          ` : ''}
+                          <button class="passenger-menu-item passenger-menu-item--danger" data-action="delete-passenger" data-passenger-name="${p.name}" data-booking-ref="${flight.bookingReference}">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                              <line x1="18" y1="6" x2="6" y2="18"></line>
+                              <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                            <span data-i18n="passenger.removePassenger">Rimuovi passeggero</span>
+                          </button>
+                        </div>
+                      </div>
                     </div>
                     <div class="flight-passenger-details">
                       <div class="flight-passenger-detail">
@@ -1342,6 +1384,7 @@
     initPdfDownloadButtons();
     initSmallPdfButtons();
     initDeletePassengerButtons();
+    initPassengerMenus();
     initCopyValueButtons();
     initQuickUploadCard('quick-upload-flights');
   }
@@ -1665,6 +1708,86 @@
         const passengerName = newBtn.dataset.passengerName;
         const bookingRef = newBtn.dataset.bookingRef;
         showDeletePassengerModal(passengerName, bookingRef);
+      });
+    });
+  }
+
+  /**
+   * Initialize 3-dot passenger menus (mobile only)
+   */
+  function initPassengerMenus() {
+    document.querySelectorAll('.btn-passenger-menu').forEach(btn => {
+      const newBtn = btn.cloneNode(true);
+      btn.parentNode.replaceChild(newBtn, btn);
+
+      newBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const dropdown = newBtn.nextElementSibling;
+        const wasActive = dropdown.classList.contains('active');
+
+        // Close all open passenger menus
+        document.querySelectorAll('.passenger-menu-dropdown.active').forEach(d => {
+          d.classList.remove('active');
+        });
+
+        if (!wasActive) {
+          dropdown.classList.add('active');
+        }
+      });
+    });
+
+    document.querySelectorAll('.passenger-menu-item').forEach(item => {
+      item.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const action = item.dataset.action;
+        const dropdown = item.closest('.passenger-menu-dropdown');
+        dropdown?.classList.remove('active');
+
+        if (action === 'download-pdf') {
+          const pdfPath = item.dataset.pdfPath;
+          if (!pdfPath) return;
+
+          item.style.opacity = '0.5';
+          item.style.pointerEvents = 'none';
+
+          const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+          let newWindow = null;
+          if (isIOS) {
+            newWindow = window.open('about:blank', '_blank');
+          }
+
+          try {
+            const response = await utils.authFetch(`/.netlify/functions/get-pdf-url?path=${encodeURIComponent(pdfPath)}`);
+            const result = await response.json();
+
+            if (result.success && result.url) {
+              if (newWindow) {
+                newWindow.location.href = result.url;
+              } else {
+                window.open(result.url, '_blank');
+              }
+            } else {
+              if (newWindow) newWindow.close();
+              throw new Error(result.error || 'Failed to get PDF URL');
+            }
+          } catch (error) {
+            console.error('Error downloading PDF:', error);
+            if (newWindow) newWindow.close();
+            alert(i18n.t('common.downloadError') || 'Error downloading PDF');
+          } finally {
+            item.style.opacity = '';
+            item.style.pointerEvents = '';
+          }
+        } else if (action === 'delete-passenger') {
+          showDeletePassengerModal(item.dataset.passengerName, item.dataset.bookingRef);
+        }
+      });
+    });
+
+    // Close on outside click
+    document.addEventListener('click', () => {
+      document.querySelectorAll('.passenger-menu-dropdown.active').forEach(d => {
+        d.classList.remove('active');
       });
     });
   }

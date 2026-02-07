@@ -509,6 +509,109 @@
   opacity: 0.85;
 }
 
+/* Passenger 3-dot menu (mobile only) */
+.passenger-menu-wrapper {
+  display: none;
+  position: relative;
+}
+
+.btn-passenger-menu {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: var(--spacing-1);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  background: none;
+  color: var(--color-gray-500);
+  transition: background-color 0.15s ease;
+}
+
+.btn-passenger-menu:hover {
+  background-color: var(--color-gray-200);
+}
+
+.passenger-menu-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  min-width: 180px;
+  background-color: var(--color-white);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--color-gray-200);
+  z-index: 50;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px);
+  transition: all var(--transition-fast);
+}
+
+.passenger-menu-dropdown.active {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.passenger-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  width: 100%;
+  padding: var(--spacing-3) var(--spacing-4);
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-700);
+  transition: background-color 0.15s ease;
+}
+
+.passenger-menu-item:first-child {
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+
+.passenger-menu-item:last-child {
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+}
+
+.passenger-menu-item:only-child {
+  border-radius: var(--radius-md);
+}
+
+.passenger-menu-item:hover {
+  background-color: var(--color-gray-50);
+}
+
+.passenger-menu-item svg {
+  flex-shrink: 0;
+  color: var(--color-gray-500);
+}
+
+.passenger-menu-item--danger {
+  color: var(--color-error);
+}
+
+.passenger-menu-item--danger svg {
+  color: var(--color-error);
+}
+
+.passenger-menu-item--danger:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+@media (max-width: 768px) {
+  .flight-passenger-actions {
+    display: none !important;
+  }
+  .passenger-menu-wrapper {
+    display: block !important;
+  }
+}
+
 .flight-passenger-details {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
