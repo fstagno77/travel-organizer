@@ -2318,13 +2318,15 @@
       }
     }
 
-    const flightIcon = `<span class="material-symbols-outlined activity-icon-flight">travel</span>`;
-    const hotelIcon = `<span class="material-symbols-outlined activity-icon-hotel">bed</span>`;
+    const flightDot = `<span class="activity-dot activity-dot-flight"></span>`;
+    const hotelDot = `<span class="activity-dot activity-dot-hotel"></span>`;
 
     // Render
     const html = allDates.map(date => {
-      const dayLabel = utils.formatDate(date, lang, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-      const capitalizedDay = dayLabel.charAt(0).toUpperCase() + dayLabel.slice(1);
+      const dateObj = new Date(date + 'T00:00:00');
+      const dayNumber = dateObj.getDate();
+      const monthShort = dateObj.toLocaleDateString(lang, { month: 'short' }).toUpperCase().replace('.', '');
+      const weekdayShort = dateObj.toLocaleDateString(lang, { weekday: 'short' }).toUpperCase().replace('.', '');
       const dayEvents = grouped[date] || [];
 
       const itemsHtml = dayEvents.map(event => {
@@ -2337,22 +2339,22 @@
           const dep = event.data.departure?.city || event.data.departure?.code || '';
           const dest = event.data.arrival?.city || event.data.arrival?.code || '';
           text = `${i18n.t('trip.flightFromTo') || 'Flight from'} ${dep} → ${dest}`;
-          icon = flightIcon;
+          icon = flightDot;
           tab = 'flights';
           itemId = event.data.id;
         } else if (event.type === 'hotel-checkin') {
           text = `Check-in ${event.data.name || 'Hotel'}`;
-          icon = hotelIcon;
+          icon = hotelDot;
           tab = 'hotels';
           itemId = event.data.id;
         } else if (event.type === 'hotel-stay') {
           text = `${i18n.t('hotel.stay') || 'Stay'} ${event.data.name || 'Hotel'}`;
-          icon = hotelIcon;
+          icon = hotelDot;
           tab = 'hotels';
           itemId = event.data.id;
         } else if (event.type === 'hotel-checkout') {
           text = `Check-out ${event.data.name || 'Hotel'}`;
-          icon = hotelIcon;
+          icon = hotelDot;
           tab = 'hotels';
           itemId = event.data.id;
         }
@@ -2361,7 +2363,7 @@
 
         return `
           <div class="activity-item">
-            <div class="activity-item-icon">${icon}</div>
+            ${icon}
             <div class="activity-item-content">
               ${timeStr}
               <span class="activity-item-text">${text}</span>
@@ -2386,7 +2388,10 @@
 
       return `
         <div class="activity-day">
-          <div class="activity-day-title">${capitalizedDay}</div>
+          <div class="activity-day-header">
+            <div class="activity-day-number">${dayNumber}</div>
+            <div class="activity-day-meta">${monthShort}, ${weekdayShort}</div>
+          </div>
           <div class="activity-list">
             ${itemsHtml}
             ${newActivityBtn}
