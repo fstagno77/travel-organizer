@@ -18,14 +18,13 @@ const SYSTEM_PROMPT = 'You are a travel document parser. Extract structured data
  * - 2+ PDFs: batches of 2, processed sequentially
  *
  * @param {Array<{content: string, filename: string}>} pdfs - Array of PDF objects
- * @param {number} retries - Number of retries per API call
  * @returns {Promise<Array<{result: Object|null, pdfIndex: number, filename: string, error?: Error}>>}
  */
-async function processPdfsWithClaude(pdfs, retries = 3) {
+async function processPdfsWithClaude(pdfs) {
   if (pdfs.length === 1) {
     // Single PDF - use simple individual approach
     try {
-      const result = await processSinglePdfWithClaude(pdfs[0].content, pdfs[0].filename, retries);
+      const result = await processSinglePdfWithClaude(pdfs[0].content, pdfs[0].filename);
       return [{ result, pdfIndex: 0, filename: pdfs[0].filename }];
     } catch (error) {
       return [{ result: null, pdfIndex: 0, filename: pdfs[0].filename, error }];
@@ -40,7 +39,7 @@ async function processPdfsWithClaude(pdfs, retries = 3) {
     const batchStartIndex = i;
 
     try {
-      const batchResults = await processBatch(batch, batchStartIndex, retries);
+      const batchResults = await processBatch(batch, batchStartIndex);
       allResults.push(...batchResults);
     } catch (error) {
       console.warn(`Batch ${i}-${i + batch.length} failed, falling back to individual calls:`, error.message);
@@ -48,7 +47,7 @@ async function processPdfsWithClaude(pdfs, retries = 3) {
       for (let j = 0; j < batch.length; j++) {
         const pdfIndex = batchStartIndex + j;
         try {
-          const result = await processSinglePdfWithClaude(batch[j].content, batch[j].filename, retries);
+          const result = await processSinglePdfWithClaude(batch[j].content, batch[j].filename);
           allResults.push({ result, pdfIndex, filename: batch[j].filename });
         } catch (err) {
           allResults.push({ result: null, pdfIndex, filename: batch[j].filename, error: err });
@@ -63,11 +62,11 @@ async function processPdfsWithClaude(pdfs, retries = 3) {
 /**
  * Process a batch of 1-2 PDFs in a single Claude API call.
  */
-async function processBatch(pdfs, startIndex, retries = 3) {
+async function processBatch(pdfs, startIndex) {
   if (pdfs.length === 1) {
     // Single PDF in batch - use individual call
     try {
-      const result = await processSinglePdfWithClaude(pdfs[0].content, pdfs[0].filename, retries);
+      const result = await processSinglePdfWithClaude(pdfs[0].content, pdfs[0].filename);
       return [{ result, pdfIndex: startIndex, filename: pdfs[0].filename }];
     } catch (error) {
       return [{ result: null, pdfIndex: startIndex, filename: pdfs[0].filename, error }];
@@ -94,47 +93,36 @@ async function processBatch(pdfs, startIndex, retries = 3) {
   const batchPrompt = buildBatchedPrompt(pdfs.length, docDescriptions);
   contentBlocks.push({ type: 'text', text: batchPrompt });
 
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      console.log(`Batch API call: ${pdfs.length} documents (attempt ${attempt}/${retries})`);
+  try {
+    console.log(`Batch API call: ${pdfs.length} documents`);
 
-      const response = await client.messages.create({
-        model: MODEL,
-        max_tokens: MAX_TOKENS_BATCH,
-        system: SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: contentBlocks }]
-      });
+    const response = await client.messages.create({
+      model: MODEL,
+      max_tokens: MAX_TOKENS_BATCH,
+      system: SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: contentBlocks }]
+    });
 
-      // Check for truncation
-      if (response.stop_reason === 'max_tokens') {
-        console.warn('Batch response was truncated (max_tokens reached), falling back to individual calls');
-        throw new Error('Response truncated');
-      }
-
-      const responseText = response.content[0].text;
-      const documents = parseBatchedResponse(responseText, pdfs.length);
-
-      return documents.map((doc, i) => ({
-        result: doc,
-        pdfIndex: startIndex + (doc.index != null ? doc.index : i),
-        filename: pdfs[doc.index != null ? doc.index : i].filename
-      }));
-    } catch (error) {
-      const isRateLimit = error.status === 429 || error.message?.includes('rate_limit');
-
-      if (isRateLimit && attempt < retries) {
-        const delays = [5000, 15000];
-        const delay = delays[attempt - 1] || 15000;
-        console.log(`Rate limit hit on batch, retrying in ${delay / 1000}s (attempt ${attempt}/${retries})...`);
-        await sleep(delay);
-        continue;
-      }
-
-      if (isRateLimit) {
-        error.isRateLimit = true;
-      }
-      throw error;
+    // Check for truncation
+    if (response.stop_reason === 'max_tokens') {
+      console.warn('Batch response was truncated (max_tokens reached), falling back to individual calls');
+      throw new Error('Response truncated');
     }
+
+    const responseText = response.content[0].text;
+    const documents = parseBatchedResponse(responseText, pdfs.length);
+
+    return documents.map((doc, i) => ({
+      result: doc,
+      pdfIndex: startIndex + (doc.index != null ? doc.index : i),
+      filename: pdfs[doc.index != null ? doc.index : i].filename
+    }));
+  } catch (error) {
+    const isRateLimit = error.status === 429 || error.message?.includes('rate_limit');
+    if (isRateLimit) {
+      error.isRateLimit = true;
+    }
+    throw error;
   }
 }
 
@@ -212,66 +200,57 @@ function parseBatchedResponse(responseText, expectedCount) {
 }
 
 /**
- * Process a single PDF with Claude API (with retry on rate limit).
+ * Process a single PDF with Claude API.
+ * No server-side retry on rate limit — returns 429 immediately to the client,
+ * which already has retry UI. This prevents exceeding Netlify's ~26s proxy timeout.
  */
-async function processSinglePdfWithClaude(base64Content, filename, retries = 3) {
+async function processSinglePdfWithClaude(base64Content, filename) {
   const docType = detectDocumentType(filename);
   const userPrompt = getPromptForDocType(docType);
 
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      const response = await client.messages.create({
-        model: MODEL,
-        max_tokens: MAX_TOKENS_SINGLE,
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'document',
-                source: {
-                  type: 'base64',
-                  media_type: 'application/pdf',
-                  data: base64Content
-                }
-              },
-              {
-                type: 'text',
-                text: userPrompt
+  try {
+    const response = await client.messages.create({
+      model: MODEL,
+      max_tokens: MAX_TOKENS_SINGLE,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'document',
+              source: {
+                type: 'base64',
+                media_type: 'application/pdf',
+                data: base64Content
               }
-            ]
-          }
-        ],
-        system: SYSTEM_PROMPT
-      });
-
-      const responseText = response.content[0].text;
-
-      try {
-        return JSON.parse(responseText);
-      } catch (e) {
-        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          return JSON.parse(jsonMatch[0]);
+            },
+            {
+              type: 'text',
+              text: userPrompt
+            }
+          ]
         }
-        throw new Error('Could not parse Claude response as JSON');
-      }
-    } catch (error) {
-      const isRateLimit = error.status === 429 || error.message?.includes('rate_limit');
+      ],
+      system: SYSTEM_PROMPT
+    });
 
-      if (isRateLimit && attempt < retries) {
-        const delays = [5000, 15000];
-        const delay = delays[attempt - 1] || 15000;
-        console.log(`Rate limit hit for ${filename}, retrying in ${delay / 1000}s (attempt ${attempt}/${retries})...`);
-        await sleep(delay);
-        continue;
-      }
+    const responseText = response.content[0].text;
 
-      if (isRateLimit) {
-        error.isRateLimit = true;
+    try {
+      return JSON.parse(responseText);
+    } catch (e) {
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
       }
-      throw error;
+      throw new Error('Could not parse Claude response as JSON');
     }
+  } catch (error) {
+    const isRateLimit = error.status === 429 || error.message?.includes('rate_limit');
+    if (isRateLimit) {
+      error.isRateLimit = true;
+    }
+    throw error;
   }
 }
 
@@ -441,10 +420,6 @@ function extractPassengerFromFilename(filename) {
   }
 
   return null;
-}
-
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 module.exports = {
