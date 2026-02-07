@@ -17,6 +17,7 @@
         "npm:cors@^2.8.5",
         "npm:dotenv@^16.4.7",
         "npm:express@^4.21.2",
+        "npm:jest@^30.2.0",
         "npm:multer@^1.4.5-lts.1",
         "npm:nodemon@^3.1.9",
         "npm:pdf-parse@^1.1.1"

@@ -180,6 +180,15 @@
               </svg>
               <span data-i18n="trip.rename">Rename</span>
             </button>
+            <div class="section-dropdown-divider"></div>
+            <button class="section-dropdown-item section-dropdown-item--danger" data-action="delete-booking">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="15" y1="9" x2="9" y2="15"></line>
+                <line x1="9" y1="9" x2="15" y2="15"></line>
+              </svg>
+              <span data-i18n="trip.deleteBookingMenu">Delete booking</span>
+            </button>
             <button class="section-dropdown-item section-dropdown-item--danger" data-action="delete">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="3 6 5 6 21 6"></polyline>
@@ -187,7 +196,7 @@
                 <line x1="10" y1="11" x2="10" y2="17"></line>
                 <line x1="14" y1="11" x2="14" y2="17"></line>
               </svg>
-              <span data-i18n="trip.delete">Delete</span>
+              <span data-i18n="trip.deleteTrip">Delete trip</span>
             </button>
           </div>
         </div>
@@ -280,6 +289,8 @@
 
         if (action === 'delete') {
           deleteTrip(tripId);
+        } else if (action === 'delete-booking') {
+          showDeleteBookingModal(tripId);
         } else if (action === 'add-booking') {
           showAddBookingModal(tripId);
         } else if (action === 'share') {
@@ -317,7 +328,7 @@
           </div>
           <div class="modal-body">
             <div class="upload-zone" id="add-booking-upload-zone">
-              <input type="file" id="add-booking-file-input" accept=".pdf" multiple hidden>
+              <input type="file" id="add-booking-file-input" accept=".pdf" hidden>
               <svg class="upload-zone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                 <polyline points="17 8 12 3 7 8"></polyline>
@@ -351,6 +362,10 @@
 
     const addFiles = (fileListInput) => {
       const pdfFiles = Array.from(fileListInput).filter(f => f.type === 'application/pdf');
+      if (pdfFiles.length > 1) {
+        utils.showToast(i18n.t('trip.maxFilesReached') || 'You can only upload one file at a time', 'error');
+        return;
+      }
       if (pdfFiles.length > 0) {
         files = pdfFiles;
         submitBooking();
@@ -431,6 +446,8 @@
             switchToTab('flights');
           }
         }
+
+        utils.showToast(i18n.t('trip.addSuccess') || 'Booking added', 'success');
       } catch (error) {
         console.error('Error adding booking:', error);
         phraseController.stop();
@@ -597,6 +614,264 @@
         alert(i18n.t('trip.deleteError') || 'Error deleting trip');
         confirmBtn.disabled = false;
         confirmBtn.textContent = i18n.t('trip.delete') || 'Delete';
+      }
+    };
+
+    closeBtn.addEventListener('click', closeModal);
+    cancelBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+    confirmBtn.addEventListener('click', performDelete);
+
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    i18n.apply();
+  }
+
+  /**
+   * Show delete booking modal with checkbox list
+   * @param {string} tripId
+   */
+  function showDeleteBookingModal(tripId) {
+    const existingModal = document.getElementById('delete-booking-modal');
+    if (existingModal) existingModal.remove();
+
+    const currentTab = document.querySelector('.segmented-control-btn.active')?.dataset.tab || 'flights';
+    const type = currentTab === 'hotels' ? 'hotel' : 'flight';
+    const items = type === 'flight'
+      ? (currentTripData?.flights || [])
+      : (currentTripData?.hotels || []);
+
+    // Build single-items list
+    let singleListHTML = '';
+    if (items.length === 0) {
+      singleListHTML = `<p class="text-muted">${i18n.t('trip.noBookings') || 'No bookings to delete'}</p>`;
+    } else {
+      singleListHTML = '<div class="delete-booking-list">';
+      for (const item of items) {
+        let label = '';
+        if (type === 'flight') {
+          const dep = item.departure?.code || '???';
+          const arr = item.arrival?.code || '???';
+          const date = item.date || '';
+          label = `${item.flightNumber || ''} ${dep} → ${arr}` + (date ? ` &middot; ${date}` : '');
+        } else {
+          const checkIn = item.checkIn?.date || '';
+          const checkOut = item.checkOut?.date || '';
+          label = item.name || 'Hotel';
+          if (checkIn) label += ` &middot; ${checkIn}`;
+          if (checkOut) label += ` → ${checkOut}`;
+        }
+        singleListHTML += `
+          <label class="delete-booking-item">
+            <input type="checkbox" value="${item.id}" data-type="${type}">
+            <span class="delete-booking-item-label">${label}</span>
+          </label>`;
+      }
+      singleListHTML += '</div>';
+    }
+
+    // Build by-booking list (grouped by bookingReference/confirmation)
+    let bookingListHTML = '';
+    if (items.length === 0) {
+      bookingListHTML = `<p class="text-muted">${i18n.t('trip.noBookings') || 'No bookings to delete'}</p>`;
+    } else {
+      const groups = {};
+      for (const item of items) {
+        const key = type === 'flight'
+          ? (item.bookingReference || item.id)
+          : (item.confirmation || item.id);
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(item);
+      }
+      bookingListHTML = '<div class="delete-booking-list">';
+      for (const [ref, groupItems] of Object.entries(groups)) {
+        const itemIds = groupItems.map(g => g.id).join(',');
+        let sublabel = '';
+        if (type === 'flight') {
+          sublabel = groupItems.map(f => {
+            const dep = f.departure?.code || '???';
+            const arr = f.arrival?.code || '???';
+            return `${f.flightNumber || ''} ${dep} → ${arr}`;
+          }).join(', ');
+          // Collect unique passenger names across all flights in this booking
+          const nameSet = new Set();
+          for (const f of groupItems) {
+            if (f.passengers?.length) {
+              f.passengers.forEach(p => p.name && nameSet.add(p.name));
+            } else if (f.passenger?.name) {
+              nameSet.add(f.passenger.name);
+            }
+          }
+          const passengerNames = [...nameSet];
+          if (passengerNames.length > 1) {
+            // Multiple passengers: one row per passenger
+            for (const name of passengerNames) {
+              bookingListHTML += `
+                <label class="delete-booking-item">
+                  <input type="checkbox" value="${itemIds}" data-type="${type}" data-mode="booking" data-passenger="${name}">
+                  <span class="delete-booking-item-label">
+                    <span><strong>${ref}</strong> &middot; ${name}</span>
+                    <span class="delete-booking-item-sub">${sublabel}</span>
+                  </span>
+                </label>`;
+            }
+          } else {
+            const name = passengerNames[0] || '';
+            bookingListHTML += `
+              <label class="delete-booking-item">
+                <input type="checkbox" value="${itemIds}" data-type="${type}" data-mode="booking">
+                <span class="delete-booking-item-label">
+                  <span><strong>${ref}</strong>${name ? ` &middot; ${name}` : ''}</span>
+                  <span class="delete-booking-item-sub">${sublabel}</span>
+                </span>
+              </label>`;
+          }
+        } else {
+          sublabel = groupItems.map(h => h.name || 'Hotel').join(', ');
+          const nameSet = new Set();
+          for (const h of groupItems) {
+            if (h.guestName) nameSet.add(h.guestName);
+          }
+          const guestNames = [...nameSet];
+          const names = guestNames.length ? guestNames.join(', ') : '';
+          bookingListHTML += `
+            <label class="delete-booking-item">
+              <input type="checkbox" value="${itemIds}" data-type="${type}" data-mode="booking">
+              <span class="delete-booking-item-label">
+                <span><strong>${ref}</strong>${names ? ` &middot; ${names}` : ''}</span>
+                <span class="delete-booking-item-sub">${sublabel}</span>
+              </span>
+            </label>`;
+        }
+      }
+      bookingListHTML += '</div>';
+    }
+
+    const modalHTML = `
+      <div class="modal-overlay" id="delete-booking-modal">
+        <div class="modal">
+          <div class="modal-header">
+            <h2 data-i18n="trip.deleteBookingTitle">Delete booking</h2>
+            <button class="modal-close" id="delete-booking-close">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div class="segmented-control delete-mode-control">
+              <button class="segmented-control-btn active" data-delete-mode="single" data-i18n="trip.deleteModeSingle">Individual</button>
+              <button class="segmented-control-btn" data-delete-mode="booking" data-i18n="trip.deleteModeBooking">By booking</button>
+            </div>
+            <div id="delete-single-view">${singleListHTML}</div>
+            <div id="delete-booking-view" style="display:none">${bookingListHTML}</div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" id="delete-booking-cancel" data-i18n="modal.cancel">Cancel</button>
+            <button class="btn btn-danger" id="delete-booking-confirm" disabled data-i18n="trip.deleteSelected">Delete selected</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    const modal = document.getElementById('delete-booking-modal');
+    const closeBtn = document.getElementById('delete-booking-close');
+    const cancelBtn = document.getElementById('delete-booking-cancel');
+    const confirmBtn = document.getElementById('delete-booking-confirm');
+    const singleView = document.getElementById('delete-single-view');
+    const bookingView = document.getElementById('delete-booking-view');
+    const modeButtons = modal.querySelectorAll('[data-delete-mode]');
+
+    const closeModal = () => {
+      modal.remove();
+      document.body.style.overflow = '';
+    };
+
+    // Enable/disable confirm button based on active view's checkboxes
+    const updateConfirmState = () => {
+      const activeView = modal.querySelector('[data-delete-mode].active').dataset.deleteMode === 'single' ? singleView : bookingView;
+      const anyChecked = [...activeView.querySelectorAll('input[type="checkbox"]')].some(cb => cb.checked);
+      confirmBtn.disabled = !anyChecked;
+    };
+
+    // Attach checkbox listeners
+    modal.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.addEventListener('change', updateConfirmState));
+
+    // Segmented control switching
+    modeButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        modeButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const mode = btn.dataset.deleteMode;
+        singleView.style.display = mode === 'single' ? '' : 'none';
+        bookingView.style.display = mode === 'booking' ? '' : 'none';
+        // Uncheck all and reset confirm
+        modal.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = false; });
+        confirmBtn.disabled = true;
+      });
+    });
+
+    const performDelete = async () => {
+      const activeMode = modal.querySelector('[data-delete-mode].active').dataset.deleteMode;
+      const activeView = activeMode === 'single' ? singleView : bookingView;
+      const selected = [...activeView.querySelectorAll('input[type="checkbox"]')].filter(cb => cb.checked);
+      if (selected.length === 0) return;
+
+      confirmBtn.disabled = true;
+      confirmBtn.innerHTML = '<span class="spinner spinner-sm"></span>';
+
+      try {
+        // Separate passenger-level deletions from item-level deletions
+        for (const cb of selected) {
+          const passengerName = cb.dataset.passenger;
+          if (passengerName) {
+            // Per-passenger deletion: find the bookingReference from the flights
+            const ids = cb.value.split(',');
+            const flight = (currentTripData?.flights || []).find(f => f.id === ids[0]);
+            const bookingRef = flight?.bookingReference || '';
+            const response = await utils.authFetch('/.netlify/functions/delete-passenger', {
+              method: 'POST',
+              body: JSON.stringify({
+                tripId,
+                passengerName,
+                bookingReference: bookingRef
+              })
+            });
+            if (!response.ok) {
+              throw new Error('Failed to delete passenger');
+            }
+          } else {
+            // Delete entire items
+            const ids = cb.value.split(',');
+            for (const id of ids) {
+              const response = await utils.authFetch('/.netlify/functions/delete-booking', {
+                method: 'POST',
+                body: JSON.stringify({
+                  tripId,
+                  type: cb.dataset.type,
+                  itemId: id
+                })
+              });
+              if (!response.ok) {
+                throw new Error('Failed to delete booking');
+              }
+            }
+          }
+        }
+
+        closeModal();
+        await loadTripFromUrl();
+        utils.showToast(i18n.t('trip.deleteBookingSuccess') || 'Bookings deleted', 'success');
+      } catch (error) {
+        console.error('Error deleting bookings:', error);
+        utils.showToast(i18n.t('trip.deleteError') || 'Error deleting', 'error');
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = i18n.t('trip.deleteSelected') || 'Delete selected';
       }
     };
 
@@ -1712,9 +1987,13 @@
       e.preventDefault();
       card.classList.remove('dragover');
 
-      const file = e.dataTransfer.files[0];
-      if (file && file.type === 'application/pdf') {
-        handleQuickUpload(file);
+      const pdfFiles = Array.from(e.dataTransfer.files).filter(f => f.type === 'application/pdf');
+      if (pdfFiles.length > 1) {
+        utils.showToast(i18n.t('trip.maxFilesReached') || 'You can only upload one file at a time', 'error');
+        return;
+      }
+      if (pdfFiles.length === 1) {
+        handleQuickUpload(pdfFiles[0]);
       }
     });
   }
@@ -1779,6 +2058,8 @@
           switchToTab('flights');
         }
       }
+
+      utils.showToast(i18n.t('trip.addSuccess') || 'Booking added', 'success');
     } catch (error) {
       let errorMessage;
       if (error.message === 'rate_limit') {

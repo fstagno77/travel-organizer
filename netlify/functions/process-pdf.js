@@ -5,11 +5,9 @@
  * Authenticated endpoint - associates trips with user
  */
 
-const Anthropic = require('@anthropic-ai/sdk');
 const { authenticateRequest, unauthorizedResponse, getCorsHeaders, handleOptions } = require('./utils/auth');
 const { uploadPdf } = require('./utils/storage');
-
-const client = new Anthropic();
+const { processPdfsWithClaude, extractPassengerFromFilename } = require('./utils/pdfProcessor');
 
 exports.handler = async (event, context) => {
   const headers = getCorsHeaders();
@@ -48,27 +46,14 @@ exports.handler = async (event, context) => {
 
     console.log(`Processing ${pdfs.length} PDF file(s)...`);
 
-    // Process PDFs in parallel for speed (local dev has 30s timeout)
+    // Process PDFs using batched Claude API calls to reduce rate limit hits
     const allFlights = [];
     const allHotels = [];
     let metadata = {};
 
-    console.log(`Processing ${pdfs.length} PDFs in parallel...`);
+    console.log(`Processing ${pdfs.length} PDFs with batching...`);
 
-    const processingPromises = pdfs.map((pdf, pdfIndex) => {
-      console.log(`Starting processing of file ${pdfIndex + 1}/${pdfs.length}: ${pdf.filename}`);
-      return processPdfWithClaude(pdf.content, pdf.filename)
-        .then(result => {
-          console.log(`Claude result for ${pdf.filename}:`, JSON.stringify(result, null, 2));
-          return { result, pdfIndex, filename: pdf.filename };
-        })
-        .catch(error => {
-          console.error(`Error processing ${pdf.filename}:`, error.message);
-          return { result: null, pdfIndex, filename: pdf.filename, error };
-        });
-    });
-
-    const results = await Promise.all(processingPromises);
+    const results = await processPdfsWithClaude(pdfs);
 
     // Check for rate limit errors
     const rateLimitError = results.find(r => r.error?.isRateLimit);
@@ -328,248 +313,6 @@ exports.handler = async (event, context) => {
   }
 };
 
-/**
- * Extract passenger name from filename as fallback
- * Handles patterns like "Le ricevute elettroniche di viaggio per AGATA BRIGNONE del 15JUN.pdf"
- */
-function extractPassengerFromFilename(filename) {
-  if (!filename) return null;
-
-  // Pattern: "per NAME SURNAME del" or "for NAME SURNAME"
-  const patterns = [
-    /per\s+([A-Z][A-Z\s]+)\s+del/i,
-    /for\s+([A-Z][A-Z\s]+)\s+/i,
-    /viaggio\s+([A-Z][A-Z\s]+)\s+/i
-  ];
-
-  for (const pattern of patterns) {
-    const match = filename.match(pattern);
-    if (match && match[1]) {
-      // Clean up and format the name (Title Case)
-      const name = match[1].trim()
-        .toLowerCase()
-        .split(/\s+/)
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ');
-      return name;
-    }
-  }
-
-  return null;
-}
-
-/**
- * Sleep helper for retry delays
- */
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-/**
- * Process PDF with Claude API using vision (with retry on rate limit)
- */
-async function processPdfWithClaude(base64Content, filename, retries = 3) {
-  const docType = detectDocumentType(filename);
-
-  const systemPrompt = `You are a travel document parser. Extract structured data from travel documents and return ONLY valid JSON. Do not include any explanations or markdown formatting.`;
-
-  let userPrompt = getPromptForDocType(docType);
-
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      const response = await client.messages.create({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 4096,
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'document',
-                source: {
-                  type: 'base64',
-                  media_type: 'application/pdf',
-                  data: base64Content
-                }
-              },
-              {
-                type: 'text',
-                text: userPrompt
-              }
-            ]
-          }
-        ],
-        system: systemPrompt
-      });
-
-      const responseText = response.content[0].text;
-
-      try {
-        return JSON.parse(responseText);
-      } catch (e) {
-        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          return JSON.parse(jsonMatch[0]);
-        }
-        throw new Error('Could not parse Claude response as JSON');
-      }
-    } catch (error) {
-      const isRateLimit = error.status === 429 || error.message?.includes('rate_limit');
-
-      if (isRateLimit && attempt < retries) {
-        // Use longer fixed delays for rate limits: 5s, then 15s
-        const delays = [5000, 15000];
-        const delay = delays[attempt - 1] || 15000;
-        console.log(`Rate limit hit for ${filename}, retrying in ${delay/1000}s (attempt ${attempt}/${retries})...`);
-        await sleep(delay);
-        continue;
-      }
-
-      // Mark rate limit errors for better error messages
-      if (isRateLimit) {
-        error.isRateLimit = true;
-      }
-      throw error;
-    }
-  }
-}
-
-/**
- * Detect document type from filename
- */
-function detectDocumentType(filename) {
-  const filenameLower = filename.toLowerCase();
-
-  const flightIndicators = ['flight', 'volo', 'boarding', 'itinerary', 'ticket', 'eticket', 'ricevut', 'viaggio', 'biglietto', 'airways', 'airline'];
-  const hotelIndicators = ['hotel', 'booking', 'reservation', 'accommodation', 'soggiorno', 'albergo'];
-
-  for (const indicator of flightIndicators) {
-    if (filenameLower.includes(indicator)) return 'flight';
-  }
-  for (const indicator of hotelIndicators) {
-    if (filenameLower.includes(indicator)) return 'hotel';
-  }
-
-  return 'unknown';
-}
-
-/**
- * Get extraction prompt based on document type
- */
-function getPromptForDocType(docType) {
-  if (docType === 'flight') {
-    return `Extract flight information from this document. Return a JSON object with this exact structure.
-
-CRITICAL REQUIREMENTS:
-1. The "passenger" field at the TOP LEVEL is MANDATORY - you MUST always include it with the passenger's full name and type (ADT/CHD/INF). This is the most important field.
-2. Look for the passenger name in: "NOME/NAME", "PASSEGGERO", "PASSENGER", title like "MR/MRS/MS", or anywhere the traveler's name appears.
-3. If the flight duration is not explicitly stated, calculate it from departure and arrival times.
-
-{
-  "flights": [
-    {
-      "date": "YYYY-MM-DD",
-      "flightNumber": "XX123",
-      "airline": "Airline Name",
-      "operatedBy": "Airline Name or null",
-      "departure": {
-        "code": "XXX",
-        "city": "City Name",
-        "airport": "Airport Name",
-        "terminal": "1 or null"
-      },
-      "arrival": {
-        "code": "XXX",
-        "city": "City Name",
-        "airport": "Airport Name",
-        "terminal": "1 or null"
-      },
-      "departureTime": "HH:MM",
-      "arrivalTime": "HH:MM",
-      "arrivalNextDay": false,
-      "duration": "HH:MM",
-      "class": "Economy/Business/etc",
-      "bookingReference": "XXXXXX",
-      "ticketNumber": "XXX XXXXXXXXXX or null",
-      "seat": "12A or null",
-      "baggage": "0PC or 1PC etc",
-      "status": "OK"
-    }
-  ],
-  "passenger": {
-    "name": "PASSENGER FULL NAME (REQUIRED)",
-    "type": "ADT or CHD or INF",
-    "ticketNumber": "XXX XXXXXXXXXX or null"
-  },
-  "booking": {
-    "reference": "XXXXXX",
-    "ticketNumber": "XXX XXXXXXXXXX",
-    "issueDate": "YYYY-MM-DD or null",
-    "totalAmount": { "value": 123.45, "currency": "EUR" }
-  }
-}`;
-  } else if (docType === 'hotel') {
-    return `Extract ALL hotel booking information from this document. You MUST include EVERY field listed below - do not skip any fields.
-
-MANDATORY EXTRACTION RULES:
-- Extract ALL fields even if you need to infer them from context
-- For "city": use the MAIN CITY (Tokyo, not Taito-ku). Japanese -ku/-ward are districts, not cities.
-- For "district": extract the neighborhood/ward name (e.g., "Taito-ku", "Ueno")
-- For "guests": count adults AND children separately, include children's ages if mentioned
-- For "roomTypes": extract the room type name in both Italian and English
-- For "breakfast": check if breakfast/colazione is included
-- For "pinCode": look for PIN, codice PIN, or similar
-- For "price": extract room price, tax, and total separately
-- If multiple rooms with same confirmation, keep as ONE entry with rooms count
-
-Return this EXACT JSON structure with ALL fields populated:
-
-{
-  "hotels": [{
-    "name": "Hotel name",
-    "address": {
-      "street": "Street address",
-      "district": "Ward/neighborhood or null",
-      "city": "MAIN CITY NAME",
-      "postalCode": "Postal code",
-      "country": "Country",
-      "fullAddress": "Complete address string"
-    },
-    "coordinates": { "lat": 0.0, "lng": 0.0 },
-    "phone": "Phone number or null",
-    "checkIn": { "date": "YYYY-MM-DD", "time": "HH:MM" },
-    "checkOut": { "date": "YYYY-MM-DD", "time": "HH:MM" },
-    "nights": 0,
-    "rooms": 1,
-    "roomTypes": [{ "it": "Tipo camera", "en": "Room type" }],
-    "guests": { "adults": 0, "children": [{ "age": 0 }], "total": 0 },
-    "guestName": "Guest name",
-    "confirmationNumber": "Confirmation number",
-    "pinCode": "PIN code or null",
-    "price": {
-      "room": { "value": 0, "currency": "EUR" },
-      "tax": { "value": 0, "currency": "EUR" },
-      "total": { "value": 0, "currency": "EUR" }
-    },
-    "breakfast": { "included": false, "type": null },
-    "bedTypes": "Bed description",
-    "payment": { "method": "Pay at property or Prepaid", "prepayment": false },
-    "cancellation": {
-      "freeCancellationUntil": "YYYY-MM-DDTHH:MM:SS or null",
-      "penaltyAfter": { "value": 0, "currency": "EUR" }
-    },
-    "amenities": [],
-    "source": "Booking.com"
-  }]
-}`;
-  } else {
-    return `This is a travel document. Extract any flight or hotel information you can find. Return a JSON object with "flights" array and/or "hotels" array.
-
-For flights include: date, flightNumber, airline, departure (code, city, airport), arrival (code, city, airport), departureTime, arrivalTime, bookingReference, status.
-
-For hotels include: name, address (street, city, country, fullAddress), checkIn (date, time), checkOut (date, time), nights, confirmationNumber, guestName.`;
-  }
-}
 
 /**
  * Create trip data structure from extracted data

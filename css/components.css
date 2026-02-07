@@ -1457,6 +1457,12 @@
   background-color: rgba(239, 68, 68, 0.1);
 }
 
+.section-dropdown-divider {
+  height: 1px;
+  background-color: var(--color-gray-200);
+  margin: var(--spacing-1) 0;
+}
+
 /* Segmented Control */
 .segmented-control {
   display: inline-flex;
@@ -2074,6 +2080,60 @@
   color: var(--color-gray-600);
   margin: 0;
   line-height: var(--line-height-relaxed);
+}
+
+/* Delete Booking Modal */
+.delete-booking-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.delete-booking-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3) var(--spacing-4);
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+  user-select: none;
+}
+
+.delete-booking-item:hover {
+  background-color: var(--color-gray-50);
+}
+
+.delete-booking-item input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  accent-color: var(--color-error);
+  cursor: pointer;
+}
+
+.delete-booking-item-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-700);
+  line-height: var(--line-height-normal);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.delete-booking-item-sub {
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-500);
+}
+
+.delete-mode-control {
+  width: 100%;
+  margin-bottom: var(--spacing-4);
+}
+
+.delete-mode-control .segmented-control-btn {
+  flex: 1;
 }
 
 /* Share Modal */

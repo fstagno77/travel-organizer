@@ -205,21 +205,19 @@ const tripCreator = {
   addFiles(fileList) {
     const pdfFiles = Array.from(fileList).filter(f => f.type === 'application/pdf');
 
-    // Limit to maxFiles
-    const availableSlots = this.maxFiles - this.files.length;
-    if (availableSlots <= 0) {
-      alert(i18n.t('trip.maxFilesReached') || `Maximum ${this.maxFiles} files allowed`);
+    if (pdfFiles.length > 1 || (pdfFiles.length === 1 && this.files.length > 0)) {
+      utils.showToast(i18n.t('trip.maxFilesReached') || 'You can only upload one file at a time', 'error');
       return;
     }
 
-    const filesToAdd = pdfFiles.slice(0, availableSlots);
-    if (filesToAdd.length < pdfFiles.length) {
-      alert(i18n.t('trip.maxFilesReached') || `Maximum ${this.maxFiles} files allowed. Only ${filesToAdd.length} file(s) added.`);
-    }
+    if (pdfFiles.length === 0) return;
 
-    this.files.push(...filesToAdd);
+    this.files.push(...pdfFiles);
     this.renderFileList();
     this.updateSubmitButton();
+
+    // Auto-submit immediately
+    this.submit();
   },
 
   /**

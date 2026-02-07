@@ -5,8 +5,9 @@
 
 const Anthropic = require('@anthropic-ai/sdk');
 const client = new Anthropic();
+const { processSinglePdfWithClaude, detectDocumentType } = require('./pdfProcessor');
 
-const MODEL = 'claude-3-5-haiku-20241022';
+const MODEL = 'claude-haiku-4-5-20251001';
 
 /**
  * Extract booking data from email HTML body
@@ -137,8 +138,6 @@ async function extractFromPdf(base64Content, filename) {
 
   // Validate and clean base64 content
   console.log(`extractFromPdf: filename=${filename}, content length=${base64Content.length}`);
-  console.log(`extractFromPdf: first 100 chars: ${base64Content.substring(0, 100)}`);
-  console.log(`extractFromPdf: last 100 chars: ${base64Content.substring(base64Content.length - 100)}`);
 
   // Clean the base64 - remove any non-base64 characters
   let cleanedBase64 = base64Content.replace(/[^A-Za-z0-9+/=]/g, '');
@@ -149,13 +148,9 @@ async function extractFromPdf(base64Content, filename) {
     cleanedBase64 += '='.repeat(4 - paddingNeeded);
   }
 
-  console.log(`extractFromPdf: cleaned length=${cleanedBase64.length}`);
-
   // Validate it looks like a PDF (should start with JVBERi which is %PDF- in base64)
   if (!cleanedBase64.startsWith('JVBERi')) {
     console.error('extractFromPdf: Content does not appear to be a PDF (should start with JVBERi)');
-    console.log('extractFromPdf: actual start:', cleanedBase64.substring(0, 20));
-    // Try to find the PDF start
     const pdfStartIndex = cleanedBase64.indexOf('JVBERi');
     if (pdfStartIndex > 0) {
       console.log(`extractFromPdf: Found PDF start at index ${pdfStartIndex}, trimming...`);
@@ -163,38 +158,8 @@ async function extractFromPdf(base64Content, filename) {
     }
   }
 
-  const docType = detectDocumentTypeFromFilename(filename);
-  const systemPrompt = `You are a travel document parser. Extract structured data from travel documents and return ONLY valid JSON.`;
-  const userPrompt = getPromptForDocType(docType);
-
   try {
-    const response = await client.messages.create({
-      model: MODEL,
-      max_tokens: 4096,
-      system: systemPrompt,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'document',
-              source: {
-                type: 'base64',
-                media_type: 'application/pdf',
-                data: cleanedBase64
-              }
-            },
-            {
-              type: 'text',
-              text: userPrompt
-            }
-          ]
-        }
-      ]
-    });
-
-    const text = response.content[0].text;
-    const parsed = parseJsonResponse(text);
+    const parsed = await processSinglePdfWithClaude(cleanedBase64, filename, 1);
 
     // Add type field based on what was extracted
     if (parsed) {
@@ -211,78 +176,6 @@ async function extractFromPdf(base64Content, filename) {
   } catch (error) {
     console.error('Error extracting from PDF:', error);
     return null;
-  }
-}
-
-/**
- * Detect document type from filename
- */
-function detectDocumentTypeFromFilename(filename) {
-  if (!filename) return 'unknown';
-  const filenameLower = filename.toLowerCase();
-
-  const flightIndicators = ['flight', 'volo', 'boarding', 'itinerary', 'ticket', 'eticket', 'ricevut', 'viaggio', 'biglietto', 'airways', 'airline'];
-  const hotelIndicators = ['hotel', 'booking', 'reservation', 'accommodation', 'soggiorno', 'albergo'];
-
-  for (const indicator of flightIndicators) {
-    if (filenameLower.includes(indicator)) return 'flight';
-  }
-  for (const indicator of hotelIndicators) {
-    if (filenameLower.includes(indicator)) return 'hotel';
-  }
-
-  return 'unknown';
-}
-
-/**
- * Get extraction prompt based on document type
- */
-function getPromptForDocType(docType) {
-  if (docType === 'flight') {
-    return `Extract flight information from this document. Return a JSON object with this structure:
-{
-  "flights": [
-    {
-      "date": "YYYY-MM-DD",
-      "flightNumber": "XX123",
-      "airline": "Airline Name",
-      "operatedBy": "Airline Name or null",
-      "departure": { "code": "XXX", "city": "City", "airport": "Airport Name", "terminal": "1 or null" },
-      "arrival": { "code": "XXX", "city": "City", "airport": "Airport Name", "terminal": "1 or null" },
-      "departureTime": "HH:MM",
-      "arrivalTime": "HH:MM",
-      "arrivalNextDay": false,
-      "duration": "HH:MM",
-      "class": "Economy",
-      "bookingReference": "XXXXXX",
-      "seat": "12A or null",
-      "baggage": "1PC"
-    }
-  ],
-  "passenger": { "name": "Full Name", "type": "ADT" }
-}`;
-  } else if (docType === 'hotel') {
-    return `Extract hotel booking information from this document. Return a JSON object with this structure:
-{
-  "hotels": [
-    {
-      "name": "Hotel Name",
-      "address": { "street": "Street", "city": "City", "country": "Country", "fullAddress": "Full address" },
-      "checkIn": { "date": "YYYY-MM-DD", "time": "HH:MM" },
-      "checkOut": { "date": "YYYY-MM-DD", "time": "HH:MM" },
-      "nights": 3,
-      "rooms": 1,
-      "roomTypes": [{ "it": "Tipo camera", "en": "Room type" }],
-      "guests": 2,
-      "guestName": "Guest Name",
-      "confirmationNumber": "123456",
-      "price": { "total": { "value": 100, "currency": "EUR" } },
-      "source": "Booking.com"
-    }
-  ]
-}`;
-  } else {
-    return `Extract any flight or hotel information from this document. Return JSON with "flights" array and/or "hotels" array.`;
   }
 }
 
@@ -402,5 +295,5 @@ module.exports = {
   extractFromPdf,
   determineBookingType,
   generateSummary,
-  detectDocumentTypeFromFilename
+  detectDocumentType
 };

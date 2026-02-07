@@ -1180,7 +1180,7 @@
           </div>
           <div class="modal-body" id="add-booking-modal-body">
             <div class="upload-zone" id="add-booking-upload-zone">
-              <input type="file" id="add-booking-file-input" accept=".pdf" multiple hidden>
+              <input type="file" id="add-booking-file-input" accept=".pdf" hidden>
               <svg class="upload-zone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                 <polyline points="17 8 12 3 7 8"></polyline>
@@ -1261,6 +1261,10 @@
     // Add files
     const addFiles = (fileListInput) => {
       const pdfFiles = Array.from(fileListInput).filter(f => f.type === 'application/pdf');
+      if (pdfFiles.length > 1 || (pdfFiles.length === 1 && files.length > 0)) {
+        utils.showToast(i18n.t('trip.maxFilesReached') || 'You can only upload one file at a time', 'error');
+        return;
+      }
       files.push(...pdfFiles);
       renderFileList();
     };
@@ -1332,6 +1336,7 @@
         closeModal();
         // Reload trip page
         initTripPage();
+        utils.showToast(i18n.t('trip.addSuccess') || 'Booking added', 'success');
       } catch (error) {
         console.error('Error adding booking:', error);
         const errorMessage = error.message === 'rate_limit'

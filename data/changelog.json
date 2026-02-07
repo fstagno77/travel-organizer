@@ -1,6 +1,32 @@
 {
   "versions": [
     {
+      "version": "0.12.0",
+      "date": "2026-02-07",
+      "changes": {
+        "it": [
+          "Refactoring elaborazione PDF: modulo condiviso per process-pdf, add-booking e email",
+          "Batching PDF: fino a 2 PDF per chiamata Claude (riduce rate limit)",
+          "Fix ticketNumber perso quando si aggiunge un secondo passeggero",
+          "Modale 'Elimina prenotazione' con segmented control: vista Voli e Prenotazioni",
+          "Eliminazione per prenotazione: raggruppa per codice prenotazione con nomi passeggeri",
+          "Eliminazione singolo passeggero dalla vista Prenotazioni",
+          "Nuove icone: X outline per elimina prenotazione, cestino per elimina viaggio",
+          "Linea divisore nel menu dropdown tra azioni e operazioni pericolose"
+        ],
+        "en": [
+          "PDF processing refactor: shared module for process-pdf, add-booking and email",
+          "PDF batching: up to 2 PDFs per Claude call (reduces rate limits)",
+          "Fix ticketNumber lost when adding second passenger to flight",
+          "Delete booking modal with segmented control: Flights and Bookings views",
+          "Delete by booking: groups by booking reference with passenger names",
+          "Single passenger deletion from Bookings view",
+          "New icons: X outline for delete booking, trash for delete trip",
+          "Divider line in dropdown menu between actions and danger operations"
+        ]
+      }
+    },
+    {
       "version": "0.11.2",
       "date": "2026-02-04",
       "changes": {
