@@ -1141,6 +1141,9 @@
           selectionView.style.display = 'none';
           formView.style.display = '';
           formView.innerHTML = type === 'flight' ? buildFlightEditForm(item) : buildHotelEditForm(item);
+          if (type === 'flight' && typeof AirportAutocomplete !== 'undefined') {
+            AirportAutocomplete.init(formView);
+          }
           confirmBtn.disabled = false;
         }
       });
