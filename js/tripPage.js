@@ -139,6 +139,10 @@
     const html = `
       <div class="trip-content-header mb-6">
         <div class="segmented-control">
+          <button class="segmented-control-btn active" data-tab="activities">
+            <span class="material-symbols-outlined" style="font-size: 20px;">calendar_today</span>
+            <span data-i18n="trip.activities">Activities</span>
+          </button>
           <button class="segmented-control-btn" data-tab="flights">
             <span class="material-symbols-outlined" style="font-size: 20px;">travel</span>
             <span data-i18n="trip.flights">Flights</span>
@@ -146,10 +150,6 @@
           <button class="segmented-control-btn" data-tab="hotels">
             <span class="material-symbols-outlined" style="font-size: 20px;">bed</span>
             <span data-i18n="trip.hotels">Hotels</span>
-          </button>
-          <button class="segmented-control-btn active" data-tab="activities">
-            <span class="material-symbols-outlined" style="font-size: 20px;">calendar_today</span>
-            <span data-i18n="trip.activities">Activities</span>
           </button>
         </div>
         <div class="section-menu" id="content-menu">
@@ -161,12 +161,19 @@
             </svg>
           </button>
           <div class="section-dropdown" id="content-dropdown">
-            <button class="section-dropdown-item" data-action="add-booking">
+            <button class="section-dropdown-item" data-action="add-flight">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
               </svg>
-              <span data-i18n="trip.addBooking">Add booking</span>
+              <span data-i18n="trip.addFlight">+ Flights</span>
+            </button>
+            <button class="section-dropdown-item" data-action="add-hotel">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              <span data-i18n="trip.addHotel">+ Hotel</span>
             </button>
             <button class="section-dropdown-item" data-action="share">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -200,16 +207,16 @@
         </div>
       </div>
 
+      <div id="activities-tab" class="tab-content active">
+        <div id="activities-container"></div>
+      </div>
+
       <div id="flights-tab" class="tab-content">
         <div id="flights-container"></div>
       </div>
 
       <div id="hotels-tab" class="tab-content">
         <div id="hotels-container"></div>
-      </div>
-
-      <div id="activities-tab" class="tab-content active">
-        <div id="activities-container"></div>
       </div>
     `;
 
@@ -264,15 +271,30 @@
     const targetContent = document.getElementById(`${tabName}-tab`);
     if (targetContent) targetContent.classList.add('active');
 
-    // Hide add/delete booking menu items on activities tab
-    const hideOnActivities = tabName === 'activities';
-    const addBookingItem = document.querySelector('[data-action="add-booking"]');
+    // Show/hide menu items based on active tab
+    const addFlightItem = document.querySelector('[data-action="add-flight"]');
+    const addHotelItem = document.querySelector('[data-action="add-hotel"]');
     const deleteBookingItem = document.querySelector('[data-action="delete-booking"]');
     const menuDivider = deleteBookingItem?.previousElementSibling;
-    if (addBookingItem) addBookingItem.style.display = hideOnActivities ? 'none' : '';
-    if (deleteBookingItem) deleteBookingItem.style.display = hideOnActivities ? 'none' : '';
-    if (menuDivider?.classList.contains('section-dropdown-divider')) {
-      menuDivider.style.display = hideOnActivities ? 'none' : '';
+
+    if (tabName === 'activities') {
+      // Activities: show both + Voli and + Hotel, hide delete booking
+      if (addFlightItem) addFlightItem.style.display = '';
+      if (addHotelItem) addHotelItem.style.display = '';
+      if (deleteBookingItem) deleteBookingItem.style.display = 'none';
+      if (menuDivider?.classList.contains('section-dropdown-divider')) menuDivider.style.display = 'none';
+    } else if (tabName === 'flights') {
+      // Flights: show only + Voli, show delete booking
+      if (addFlightItem) addFlightItem.style.display = '';
+      if (addHotelItem) addHotelItem.style.display = 'none';
+      if (deleteBookingItem) deleteBookingItem.style.display = '';
+      if (menuDivider?.classList.contains('section-dropdown-divider')) menuDivider.style.display = '';
+    } else if (tabName === 'hotels') {
+      // Hotels: show only + Hotel, show delete booking
+      if (addFlightItem) addFlightItem.style.display = 'none';
+      if (addHotelItem) addHotelItem.style.display = '';
+      if (deleteBookingItem) deleteBookingItem.style.display = '';
+      if (menuDivider?.classList.contains('section-dropdown-divider')) menuDivider.style.display = '';
     }
   }
 
@@ -301,7 +323,7 @@
           deleteTrip(tripId);
         } else if (action === 'delete-booking') {
           showDeleteBookingModal(tripId);
-        } else if (action === 'add-booking') {
+        } else if (action === 'add-flight' || action === 'add-hotel') {
           showAddBookingModal(tripId);
         } else if (action === 'share') {
           showShareModal(tripId);
@@ -1127,7 +1149,7 @@
             <line x1="12" y1="3" x2="12" y2="15"></line>
           </svg>
           <div class="quick-upload-spinner"></div>
-          <span class="quick-upload-text" data-i18n="trip.addFlight">+ Flights</span>
+          <span class="quick-upload-text" data-i18n="${i18n.isTouchDevice() ? 'trip.quickUploadHintMobile' : 'trip.quickUploadHint'}">Drop a PDF here to add a booking</span>
         </div>
       `;
       i18n.apply();
@@ -1368,7 +1390,7 @@
           <line x1="12" y1="3" x2="12" y2="15"></line>
         </svg>
         <div class="quick-upload-spinner"></div>
-        <span class="quick-upload-text" data-i18n="trip.addFlight">+ Flights</span>
+        <span class="quick-upload-text" data-i18n="trip.quickUploadHint">Drop a PDF here to add a booking</span>
       </div>
     `;
 
@@ -1404,7 +1426,7 @@
             <line x1="12" y1="3" x2="12" y2="15"></line>
           </svg>
           <div class="quick-upload-spinner"></div>
-          <span class="quick-upload-text" data-i18n="trip.addHotel">+ Hotel</span>
+          <span class="quick-upload-text" data-i18n="${i18n.isTouchDevice() ? 'trip.quickUploadHintMobile' : 'trip.quickUploadHint'}">Drop a PDF here to add a booking</span>
         </div>
       `;
       i18n.apply();
@@ -1554,7 +1576,7 @@
           <line x1="12" y1="3" x2="12" y2="15"></line>
         </svg>
         <div class="quick-upload-spinner"></div>
-        <span class="quick-upload-text" data-i18n="trip.addHotel">+ Hotel</span>
+        <span class="quick-upload-text" data-i18n="trip.quickUploadHint">Drop a PDF here to add a booking</span>
       </div>
     `;
 
@@ -1768,36 +1790,9 @@
       `;
     }).join('');
 
-    const addButtons = `
-      <div class="activity-add-buttons">
-        <div class="quick-upload-card" id="quick-upload-activity-flights">
-          <input type="file" class="quick-upload-input" accept=".pdf" hidden>
-          <svg class="quick-upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="17 8 12 3 7 8"></polyline>
-            <line x1="12" y1="3" x2="12" y2="15"></line>
-          </svg>
-          <div class="quick-upload-spinner"></div>
-          <span class="quick-upload-text" data-i18n="trip.addFlight">+ Flights</span>
-        </div>
-        <div class="quick-upload-card" id="quick-upload-activity-hotels">
-          <input type="file" class="quick-upload-input" accept=".pdf" hidden>
-          <svg class="quick-upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="17 8 12 3 7 8"></polyline>
-            <line x1="12" y1="3" x2="12" y2="15"></line>
-          </svg>
-          <div class="quick-upload-spinner"></div>
-          <span class="quick-upload-text" data-i18n="trip.addHotel">+ Hotel</span>
-        </div>
-      </div>
-    `;
-
-    container.innerHTML = html + addButtons;
+    container.innerHTML = html;
     i18n.apply();
     initActivityLinks();
-    initQuickUploadCard('quick-upload-activity-flights');
-    initQuickUploadCard('quick-upload-activity-hotels');
   }
 
   /**
