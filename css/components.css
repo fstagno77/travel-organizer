@@ -1818,6 +1818,117 @@
   display: block;
 }
 
+/* Activities Timeline */
+.activity-day {
+  margin-bottom: var(--spacing-6);
+}
+
+.activity-day-title {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-gray-800);
+  padding-bottom: var(--spacing-2);
+  margin-bottom: var(--spacing-3);
+  border-bottom: 1px solid var(--color-gray-200);
+}
+
+.activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.activity-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.activity-item:hover {
+  background-color: var(--color-gray-50);
+}
+
+.activity-item-icon {
+  flex-shrink: 0;
+  color: var(--color-gray-500);
+  display: flex;
+  align-items: center;
+}
+
+.activity-item-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  min-width: 0;
+}
+
+.activity-item-time {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-gray-500);
+  white-space: nowrap;
+}
+
+.activity-item-text {
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-700);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-item-link {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--color-gray-400);
+  cursor: pointer;
+  padding: var(--spacing-1);
+  display: flex;
+  align-items: center;
+  transition: color var(--transition-fast);
+}
+
+.activity-item-link:hover {
+  color: var(--color-primary);
+}
+
+.activity-new-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-2) var(--spacing-3);
+  margin-top: var(--spacing-1);
+  background: none;
+  border: none;
+  color: var(--color-gray-400);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+}
+
+.activity-new-btn:hover {
+  color: var(--color-gray-600);
+  background-color: var(--color-gray-50);
+}
+
+/* Highlight card animation (for activity link navigation) */
+@keyframes highlightPulse {
+  0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+  100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+}
+
+.highlight-card {
+  animation: highlightPulse 1.5s ease-out;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+}
+
 /* Modal */
 .modal-overlay {
   position: fixed;

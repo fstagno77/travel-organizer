@@ -1572,6 +1572,221 @@
   }
 
   /**
+   * Render activities timeline (day-by-day view)
+   * @param {HTMLElement} container
+   * @param {Object} tripData
+   */
+  function renderActivities(container, tripData) {
+    const flights = tripData.flights || [];
+    const hotels = tripData.hotels || [];
+
+    if (flights.length === 0 && hotels.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <h3 class="empty-state-title" data-i18n="trip.noActivities">No activities</h3>
+          <p class="empty-state-text" data-i18n="trip.noActivitiesText">Add a booking to see your activities here</p>
+        </div>
+      `;
+      i18n.apply();
+      return;
+    }
+
+    const lang = i18n.getLang();
+
+    // Build events list
+    const events = [];
+
+    // Add flight events
+    for (const flight of flights) {
+      events.push({
+        date: flight.date,
+        time: flight.departureTime || '00:00',
+        type: 'flight',
+        data: flight
+      });
+    }
+
+    // Add hotel events
+    for (const hotel of hotels) {
+      const checkInDate = hotel.checkIn?.date;
+      const checkOutDate = hotel.checkOut?.date;
+
+      if (checkInDate) {
+        events.push({
+          date: checkInDate,
+          time: hotel.checkIn?.time || '15:00',
+          type: 'hotel-checkin',
+          data: hotel
+        });
+      }
+
+      // Add stay days (intermediate days between check-in and check-out)
+      if (checkInDate && checkOutDate) {
+        const start = new Date(checkInDate + 'T00:00:00');
+        const end = new Date(checkOutDate + 'T00:00:00');
+        const oneDay = 24 * 60 * 60 * 1000;
+        let current = new Date(start.getTime() + oneDay);
+        while (current < end) {
+          const dateStr = current.toISOString().split('T')[0];
+          events.push({
+            date: dateStr,
+            time: '00:00',
+            type: 'hotel-stay',
+            data: hotel
+          });
+          current = new Date(current.getTime() + oneDay);
+        }
+      }
+
+      if (checkOutDate) {
+        events.push({
+          date: checkOutDate,
+          time: hotel.checkOut?.time || '11:00',
+          type: 'hotel-checkout',
+          data: hotel
+        });
+      }
+    }
+
+    // Group by date
+    const grouped = {};
+    for (const event of events) {
+      if (!grouped[event.date]) grouped[event.date] = [];
+      grouped[event.date].push(event);
+    }
+
+    // Sort dates chronologically
+    const sortedDates = Object.keys(grouped).sort();
+
+    // Sort events within each day by time, with type priority for same time
+    const typePriority = { 'hotel-checkout': 0, 'flight': 1, 'hotel-checkin': 2, 'hotel-stay': 3 };
+    for (const date of sortedDates) {
+      grouped[date].sort((a, b) => {
+        if (a.time !== b.time) return a.time.localeCompare(b.time);
+        return (typePriority[a.type] || 99) - (typePriority[b.type] || 99);
+      });
+    }
+
+    // Render
+    const html = sortedDates.map(date => {
+      const dayLabel = utils.formatDate(date, lang, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+      // Capitalize first letter
+      const capitalizedDay = dayLabel.charAt(0).toUpperCase() + dayLabel.slice(1);
+
+      const itemsHtml = grouped[date].map(event => {
+        let icon = '';
+        let text = '';
+        let tab = '';
+        let itemId = '';
+
+        if (event.type === 'flight') {
+          const dest = event.data.arrival?.city || event.data.arrival?.code || '';
+          text = `${i18n.t('trip.flightTo') || 'Flight to'} ${dest}`;
+          icon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.4-.1.9.3 1.1l4.8 3.2-2.1 2.1-2.4-.6c-.4-.1-.8 0-1 .3l-.2.3c-.2.3-.1.7.1 1l2.2 2.2 2.2 2.2c.3.3.7.3 1 .1l.3-.2c.3-.2.4-.6.3-1l-.6-2.4 2.1-2.1 3.2 4.8c.2.4.7.5 1.1.3l.5-.3c.4-.2.6-.6.5-1.1z"/>
+          </svg>`;
+          tab = 'flights';
+          itemId = event.data.id;
+        } else if (event.type === 'hotel-checkin') {
+          text = `Check-in ${event.data.name || 'Hotel'}`;
+          icon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 21h18"></path><path d="M5 21V7l8-4v18"></path><path d="M19 21V11l-6-4"></path>
+            <path d="M9 9v.01"></path><path d="M9 12v.01"></path><path d="M9 15v.01"></path><path d="M9 18v.01"></path>
+          </svg>`;
+          tab = 'hotels';
+          itemId = event.data.id;
+        } else if (event.type === 'hotel-stay') {
+          text = `${i18n.t('hotel.stay') || 'Stay'} ${event.data.name || 'Hotel'}`;
+          icon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 21h18"></path><path d="M5 21V7l8-4v18"></path><path d="M19 21V11l-6-4"></path>
+            <path d="M9 9v.01"></path><path d="M9 12v.01"></path><path d="M9 15v.01"></path><path d="M9 18v.01"></path>
+          </svg>`;
+          tab = 'hotels';
+          itemId = event.data.id;
+        } else if (event.type === 'hotel-checkout') {
+          text = `Check-out ${event.data.name || 'Hotel'}`;
+          icon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 21h18"></path><path d="M5 21V7l8-4v18"></path><path d="M19 21V11l-6-4"></path>
+            <path d="M9 9v.01"></path><path d="M9 12v.01"></path><path d="M9 15v.01"></path><path d="M9 18v.01"></path>
+          </svg>`;
+          tab = 'hotels';
+          itemId = event.data.id;
+        }
+
+        const timeStr = event.time && event.time !== '00:00' ? `<span class="activity-item-time">${event.time}</span>` : '';
+
+        return `
+          <div class="activity-item" data-tab="${tab}" data-item-id="${itemId}">
+            <div class="activity-item-icon">${icon}</div>
+            <div class="activity-item-content">
+              ${timeStr}
+              <span class="activity-item-text">${text}</span>
+            </div>
+            <button class="activity-item-link" data-tab="${tab}" data-item-id="${itemId}">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </button>
+          </div>
+        `;
+      }).join('');
+
+      const newActivityBtn = `
+        <button class="activity-new-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <span data-i18n="trip.newActivity">${i18n.t('trip.newActivity') || 'New activity'}</span>
+        </button>
+      `;
+
+      return `
+        <div class="activity-day">
+          <div class="activity-day-title">${capitalizedDay}</div>
+          <div class="activity-list">
+            ${itemsHtml}
+            ${newActivityBtn}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    container.innerHTML = html;
+    i18n.apply();
+    initActivityLinks();
+  }
+
+  /**
+   * Initialize activity link click handlers
+   */
+  function initActivityLinks() {
+    document.querySelectorAll('.activity-item-link, .activity-item').forEach(el => {
+      el.addEventListener('click', (e) => {
+        // Don't trigger twice if clicking the button inside the item
+        if (e.target.closest('.activity-item-link') && el.classList.contains('activity-item')) return;
+
+        const tab = el.dataset.tab;
+        const itemId = el.dataset.itemId;
+        if (tab) {
+          switchToTab(tab);
+          // Scroll to the specific card
+          if (itemId) {
+            setTimeout(() => {
+              const card = document.querySelector(`[data-id="${itemId}"]`);
+              if (card) {
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                card.classList.add('highlight-card');
+                setTimeout(() => card.classList.remove('highlight-card'), 1500);
+              }
+            }, 100);
+          }
+        }
+      });
+    });
+  }
+
+  /**
    * Initialize delete item buttons
    */
   function initDeleteItemButtons() {
