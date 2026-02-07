@@ -1879,7 +1879,8 @@
   align-items: center;
 }
 
-.activity-icon-flight {
+.activity-icon-flight,
+.activity-icon-hotel {
   font-size: 20px;
 }
 

@@ -144,15 +144,7 @@
             <span data-i18n="trip.flights">Flights</span>
           </button>
           <button class="segmented-control-btn" data-tab="hotels">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M3 21h18"></path>
-              <path d="M5 21V7l8-4v18"></path>
-              <path d="M19 21V11l-6-4"></path>
-              <path d="M9 9v.01"></path>
-              <path d="M9 12v.01"></path>
-              <path d="M9 15v.01"></path>
-              <path d="M9 18v.01"></path>
-            </svg>
+            <span class="material-symbols-outlined" style="font-size: 20px;">bed</span>
             <span data-i18n="trip.hotels">Hotels</span>
           </button>
           <button class="segmented-control-btn" data-tab="activities">
@@ -1709,10 +1701,7 @@
     }
 
     const flightIcon = `<span class="material-symbols-outlined activity-icon-flight">travel</span>`;
-    const hotelIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M3 21h18"></path><path d="M5 21V7l8-4v18"></path><path d="M19 21V11l-6-4"></path>
-      <path d="M9 9v.01"></path><path d="M9 12v.01"></path><path d="M9 15v.01"></path><path d="M9 18v.01"></path>
-    </svg>`;
+    const hotelIcon = `<span class="material-symbols-outlined activity-icon-hotel">bed</span>`;
 
     // Render
     const html = allDates.map(date => {
