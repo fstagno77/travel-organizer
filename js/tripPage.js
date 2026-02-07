@@ -168,6 +168,13 @@
               </svg>
               <span data-i18n="modal.add">Add</span>
             </button>
+            <button class="section-dropdown-item" data-action="edit-booking">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+              <span data-i18n="trip.editBookingMenu">Modifica prenotazione</span>
+            </button>
             <button class="section-dropdown-item" data-action="share">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="18" cy="5" r="3"></circle>
@@ -177,13 +184,6 @@
                 <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
               </svg>
               <span data-i18n="trip.share">Share</span>
-            </button>
-            <button class="section-dropdown-item" data-action="edit-booking">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-              </svg>
-              <span data-i18n="trip.editBookingMenu">Modifica prenotazione</span>
             </button>
             <div class="section-dropdown-divider"></div>
             <button class="section-dropdown-item section-dropdown-item--danger" data-action="delete-booking">
@@ -413,6 +413,9 @@
     const existingModal = document.getElementById('add-booking-modal');
     if (existingModal) existingModal.remove();
 
+    // Remember which tab was active when modal opened
+    const originTab = document.querySelector('.segmented-control-btn.active')?.dataset.tab;
+
     let titleKey = 'trip.addBookingTitle';
     if (type === 'flight') titleKey = 'trip.addFlightTitle';
     else if (type === 'hotel') titleKey = 'trip.addHotelTitle';
@@ -549,13 +552,16 @@
         // Reload trip data
         await loadTripFromUrl();
 
-        // Switch to the appropriate tab based on what was added
-        if (result.added) {
+        // Switch tab: if added from Flights/Hotels, stay on that tab;
+        // if added from Activities, navigate to the corresponding tab
+        if (originTab === 'activities' && result.added) {
           if (result.added.hotels > 0) {
             switchToTab('hotels');
           } else if (result.added.flights > 0) {
             switchToTab('flights');
           }
+        } else if (originTab) {
+          switchToTab(originTab);
         }
 
         utils.showToast(i18n.t('trip.addSuccess') || 'Booking added', 'success');
@@ -1019,27 +1025,60 @@
       return;
     }
 
-    // Build selection list
-    let listHTML = '<div class="edit-booking-list">';
+    // Build selection list grouped by booking reference (same logic as delete modal "Prenotazioni" tab)
+    const groups = {};
     for (const item of items) {
-      let label = '';
+      const key = type === 'flight'
+        ? (item.bookingReference || item.id)
+        : (item.confirmation || item.id);
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(item);
+    }
+
+    let listHTML = '<div class="edit-booking-list">';
+    for (const [ref, groupItems] of Object.entries(groups)) {
+      const itemIds = groupItems.map(g => g.id).join(',');
+      let sublabel = '';
       if (type === 'flight') {
-        const dep = item.departure?.code || '???';
-        const arr = item.arrival?.code || '???';
-        const date = item.date || '';
-        label = `${item.flightNumber || ''} ${dep} → ${arr}` + (date ? ` &middot; ${date}` : '');
+        sublabel = groupItems.map(f => {
+          const dep = f.departure?.code || '???';
+          const arr = f.arrival?.code || '???';
+          return `${f.flightNumber || ''} ${dep} → ${arr}`;
+        }).join(', ');
+        const nameSet = new Set();
+        for (const f of groupItems) {
+          if (f.passengers?.length) {
+            f.passengers.forEach(p => p.name && nameSet.add(p.name));
+          } else if (f.passenger?.name) {
+            nameSet.add(f.passenger.name);
+          }
+        }
+        const passengerNames = [...nameSet];
+        const name = passengerNames.join(', ');
+        listHTML += `
+          <label class="edit-booking-item">
+            <input type="radio" name="edit-item" value="${itemIds}" data-type="${type}">
+            <span class="edit-booking-item-label">
+              <span><strong>${ref}</strong>${name ? ` &middot; ${name}` : ''}</span>
+              <span class="edit-booking-item-sub">${sublabel}</span>
+            </span>
+          </label>`;
       } else {
-        const checkIn = item.checkIn?.date || '';
-        const checkOut = item.checkOut?.date || '';
-        label = item.name || 'Hotel';
-        if (checkIn) label += ` &middot; ${checkIn}`;
-        if (checkOut) label += ` → ${checkOut}`;
+        sublabel = groupItems.map(h => h.name || 'Hotel').join(', ');
+        const nameSet = new Set();
+        for (const h of groupItems) {
+          if (h.guestName) nameSet.add(h.guestName);
+        }
+        const names = [...nameSet].join(', ');
+        listHTML += `
+          <label class="edit-booking-item">
+            <input type="radio" name="edit-item" value="${itemIds}" data-type="${type}">
+            <span class="edit-booking-item-label">
+              <span><strong>${ref}</strong>${names ? ` &middot; ${names}` : ''}</span>
+              <span class="edit-booking-item-sub">${sublabel}</span>
+            </span>
+          </label>`;
       }
-      listHTML += `
-        <label class="edit-booking-item">
-          <input type="radio" name="edit-item" value="${item.id}">
-          <span class="edit-booking-item-label">${label}</span>
-        </label>`;
     }
     listHTML += '</div>';
 
@@ -1076,7 +1115,7 @@
     const selectionView = document.getElementById('edit-selection-view');
     const formView = document.getElementById('edit-form-view');
 
-    let selectedItemId = null;
+    let selectedItemIds = null;
 
     const closeModal = () => {
       modal.remove();
@@ -1086,12 +1125,12 @@
     // Handle radio selection → show edit form
     modal.querySelectorAll('input[type="radio"]').forEach(radio => {
       radio.addEventListener('change', () => {
-        selectedItemId = radio.value;
+        selectedItemIds = radio.value.split(',');
         // Highlight selected
         modal.querySelectorAll('.edit-booking-item').forEach(el => el.classList.remove('selected'));
         radio.closest('.edit-booking-item').classList.add('selected');
-        // Build and show edit form
-        const item = items.find(i => i.id === selectedItemId);
+        // Build and show edit form for the first item of the group
+        const item = items.find(i => i.id === selectedItemIds[0]);
         if (item) {
           selectionView.style.display = 'none';
           formView.style.display = '';
@@ -1102,7 +1141,7 @@
     });
 
     const performSave = async () => {
-      if (!selectedItemId) return;
+      if (!selectedItemIds || selectedItemIds.length === 0) return;
 
       confirmBtn.disabled = true;
       confirmBtn.innerHTML = '<span class="spinner spinner-sm"></span>';
@@ -1112,13 +1151,16 @@
           ? collectFlightUpdates(formView)
           : collectHotelUpdates(formView);
 
-        const response = await utils.authFetch('/.netlify/functions/edit-booking', {
-          method: 'POST',
-          body: JSON.stringify({ tripId, type, itemId: selectedItemId, updates })
-        });
+        // Apply updates to each item in the booking group
+        for (const itemId of selectedItemIds) {
+          const response = await utils.authFetch('/.netlify/functions/edit-booking', {
+            method: 'POST',
+            body: JSON.stringify({ tripId, type, itemId, updates })
+          });
 
-        if (!response.ok) {
-          throw new Error('Failed to save');
+          if (!response.ok) {
+            throw new Error('Failed to save');
+          }
         }
 
         closeModal();
@@ -1139,7 +1181,7 @@
         formView.style.display = 'none';
         selectionView.style.display = '';
         confirmBtn.disabled = true;
-        selectedItemId = null;
+        selectedItemIds = null;
         modal.querySelectorAll('.edit-booking-item').forEach(el => el.classList.remove('selected'));
         modal.querySelectorAll('input[type="radio"]').forEach(r => { r.checked = false; });
       } else {
@@ -2973,17 +3015,10 @@
         );
       }
 
-      // Reload trip data
+      // Remember current tab, reload, then stay on same tab
+      const currentTab = document.querySelector('.segmented-control-btn.active')?.dataset.tab;
       await loadTripFromUrl();
-
-      // Switch to the appropriate tab based on what was added
-      if (result.added) {
-        if (result.added.hotels > 0) {
-          switchToTab('hotels');
-        } else if (result.added.flights > 0) {
-          switchToTab('flights');
-        }
-      }
+      if (currentTab) switchToTab(currentTab);
 
       utils.showToast(i18n.t('trip.addSuccess') || 'Booking added', 'success');
     } catch (error) {
