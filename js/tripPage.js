@@ -1711,8 +1711,9 @@
         let itemId = '';
 
         if (event.type === 'flight') {
+          const dep = event.data.departure?.city || event.data.departure?.code || '';
           const dest = event.data.arrival?.city || event.data.arrival?.code || '';
-          text = `${i18n.t('trip.flightTo') || 'Flight to'} ${dest}`;
+          text = `${i18n.t('trip.flightFromTo') || 'Flight from'} ${dep} → ${dest}`;
           icon = flightIcon;
           tab = 'flights';
           itemId = event.data.id;
@@ -1742,7 +1743,10 @@
               ${timeStr}
               <span class="activity-item-text">${text}</span>
             </div>
-            <a class="activity-item-link" href="#" data-tab="${tab}" data-item-id="${itemId}">${detailsLabel}</a>
+            <a class="activity-item-link" href="#" data-tab="${tab}" data-item-id="${itemId}">
+              <span class="activity-link-text">${detailsLabel}</span>
+              <svg class="activity-link-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </a>
           </div>
         `;
       }).join('');

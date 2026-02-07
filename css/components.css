@@ -1914,10 +1914,25 @@
   text-decoration: none;
   cursor: pointer;
   transition: opacity var(--transition-fast);
+  display: flex;
+  align-items: center;
 }
 
 .activity-item-link:hover {
   opacity: 0.7;
+}
+
+.activity-link-arrow {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .activity-link-text {
+    display: none;
+  }
+  .activity-link-arrow {
+    display: block;
+  }
 }
 
 .activity-new-btn {
