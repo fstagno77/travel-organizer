@@ -186,6 +186,14 @@ const i18n = {
   },
 
   /**
+   * Check if device is touch-only (smartphone/tablet without mouse)
+   * @returns {boolean}
+   */
+  isTouchDevice() {
+    return 'ontouchstart' in window && window.matchMedia('(max-width: 768px)').matches;
+  },
+
+  /**
    * Get language flag emoji
    * @param {string} lang - Language code
    * @returns {string}

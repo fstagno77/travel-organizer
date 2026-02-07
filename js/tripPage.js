@@ -834,7 +834,7 @@
             <line x1="12" y1="3" x2="12" y2="15"></line>
           </svg>
           <div class="quick-upload-spinner"></div>
-          <span class="quick-upload-text" data-i18n="trip.quickUploadHint">Drop a PDF here to add a booking</span>
+          <span class="quick-upload-text" data-i18n="${i18n.isTouchDevice() ? 'trip.quickUploadHintMobile' : 'trip.quickUploadHint'}">Drop a PDF here to add a booking</span>
         </div>
       `;
       i18n.apply();
@@ -1081,7 +1081,7 @@
             <line x1="12" y1="3" x2="12" y2="15"></line>
           </svg>
           <div class="quick-upload-spinner"></div>
-          <span class="quick-upload-text" data-i18n="trip.quickUploadHint">Drop a PDF here to add a booking</span>
+          <span class="quick-upload-text" data-i18n="${i18n.isTouchDevice() ? 'trip.quickUploadHintMobile' : 'trip.quickUploadHint'}">Drop a PDF here to add a booking</span>
         </div>
       `;
       i18n.apply();

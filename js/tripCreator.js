@@ -153,7 +153,7 @@ const tripCreator = {
           <polyline points="17 8 12 3 7 8"></polyline>
           <line x1="12" y1="3" x2="12" y2="15"></line>
         </svg>
-        <div class="upload-zone-text" data-i18n="trip.uploadHint">Trascina qui i PDF o clicca per selezionare</div>
+        <div class="upload-zone-text" data-i18n="${i18n.isTouchDevice() ? 'trip.uploadHintMobile' : 'trip.uploadHint'}">Trascina qui i PDF o clicca per selezionare</div>
         <div class="upload-zone-hint">PDF</div>
       </div>
       <div class="file-list" id="file-list"></div>
