@@ -1127,7 +1127,7 @@
             <line x1="12" y1="3" x2="12" y2="15"></line>
           </svg>
           <div class="quick-upload-spinner"></div>
-          <span class="quick-upload-text" data-i18n="${i18n.isTouchDevice() ? 'trip.quickUploadHintMobile' : 'trip.quickUploadHint'}">Drop a PDF here to add a booking</span>
+          <span class="quick-upload-text" data-i18n="trip.addFlight">+ Flights</span>
         </div>
       `;
       i18n.apply();
@@ -1368,7 +1368,7 @@
           <line x1="12" y1="3" x2="12" y2="15"></line>
         </svg>
         <div class="quick-upload-spinner"></div>
-        <span class="quick-upload-text" data-i18n="trip.quickUploadHint">Drop a PDF here to add a booking</span>
+        <span class="quick-upload-text" data-i18n="trip.addFlight">+ Flights</span>
       </div>
     `;
 
@@ -1404,7 +1404,7 @@
             <line x1="12" y1="3" x2="12" y2="15"></line>
           </svg>
           <div class="quick-upload-spinner"></div>
-          <span class="quick-upload-text" data-i18n="${i18n.isTouchDevice() ? 'trip.quickUploadHintMobile' : 'trip.quickUploadHint'}">Drop a PDF here to add a booking</span>
+          <span class="quick-upload-text" data-i18n="trip.addHotel">+ Hotel</span>
         </div>
       `;
       i18n.apply();
@@ -1554,7 +1554,7 @@
           <line x1="12" y1="3" x2="12" y2="15"></line>
         </svg>
         <div class="quick-upload-spinner"></div>
-        <span class="quick-upload-text" data-i18n="trip.quickUploadHint">Drop a PDF here to add a booking</span>
+        <span class="quick-upload-text" data-i18n="trip.addHotel">+ Hotel</span>
       </div>
     `;
 
@@ -1768,9 +1768,36 @@
       `;
     }).join('');
 
-    container.innerHTML = html;
+    const addButtons = `
+      <div class="activity-add-buttons">
+        <div class="quick-upload-card" id="quick-upload-activity-flights">
+          <input type="file" class="quick-upload-input" accept=".pdf" hidden>
+          <svg class="quick-upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
+          <div class="quick-upload-spinner"></div>
+          <span class="quick-upload-text" data-i18n="trip.addFlight">+ Flights</span>
+        </div>
+        <div class="quick-upload-card" id="quick-upload-activity-hotels">
+          <input type="file" class="quick-upload-input" accept=".pdf" hidden>
+          <svg class="quick-upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
+          <div class="quick-upload-spinner"></div>
+          <span class="quick-upload-text" data-i18n="trip.addHotel">+ Hotel</span>
+        </div>
+      </div>
+    `;
+
+    container.innerHTML = html + addButtons;
     i18n.apply();
     initActivityLinks();
+    initQuickUploadCard('quick-upload-activity-flights');
+    initQuickUploadCard('quick-upload-activity-hotels');
   }
 
   /**

@@ -85,7 +85,9 @@
     "newActivity": "Nuova attività",
     "flightTo": "Volo per",
     "flightFromTo": "Volo da",
-    "activityDetails": "Dettagli"
+    "activityDetails": "Dettagli",
+    "addFlight": "+ Voli",
+    "addHotel": "+ Hotel"
   },
   "modal": {
     "cancel": "Annulla",

@@ -1955,6 +1955,16 @@
   background-color: var(--color-gray-50);
 }
 
+.activity-add-buttons {
+  display: flex;
+  gap: var(--spacing-4);
+  margin-top: var(--spacing-6);
+}
+
+.activity-add-buttons .quick-upload-card {
+  flex: 1;
+}
+
 /* Highlight card animation (for activity link navigation) */
 @keyframes highlightPulse {
   0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
