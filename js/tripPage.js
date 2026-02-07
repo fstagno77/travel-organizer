@@ -1614,7 +1614,7 @@
     for (const flight of flights) {
       events.push({
         date: flight.date,
-        time: flight.departureTime || '00:00',
+        time: flight.departureTime || null,
         type: 'flight',
         data: flight
       });
@@ -1628,7 +1628,7 @@
       if (checkInDate) {
         events.push({
           date: checkInDate,
-          time: hotel.checkIn?.time || '15:00',
+          time: hotel.checkIn?.time || null,
           type: 'hotel-checkin',
           data: hotel
         });
@@ -1643,7 +1643,7 @@
           const dateStr = current.toISOString().split('T')[0];
           events.push({
             date: dateStr,
-            time: '00:00',
+            time: null,
             type: 'hotel-stay',
             data: hotel
           });
@@ -1654,7 +1654,7 @@
       if (checkOutDate) {
         events.push({
           date: checkOutDate,
-          time: hotel.checkOut?.time || '11:00',
+          time: hotel.checkOut?.time || null,
           type: 'hotel-checkout',
           data: hotel
         });
@@ -1684,12 +1684,18 @@
     }
     allDates.sort();
 
-    // Sort events within each day
+    // Sort events within each day: no-time first, then by time, then by type
     const typePriority = { 'hotel-checkout': 0, 'flight': 1, 'hotel-checkin': 2, 'hotel-stay': 3 };
     for (const date of allDates) {
       if (grouped[date]) {
         grouped[date].sort((a, b) => {
-          if (a.time !== b.time) return a.time.localeCompare(b.time);
+          const aHasTime = a.time !== null;
+          const bHasTime = b.time !== null;
+          // Activities without time go first
+          if (aHasTime !== bHasTime) return aHasTime ? 1 : -1;
+          // Both have time: sort by time
+          if (aHasTime && bHasTime && a.time !== b.time) return a.time.localeCompare(b.time);
+          // Same time or both no time: sort by type priority
           return (typePriority[a.type] || 99) - (typePriority[b.type] || 99);
         });
       }
@@ -1738,7 +1744,7 @@
           itemId = event.data.id;
         }
 
-        const timeStr = event.time && event.time !== '00:00' ? `<span class="activity-item-time">${event.time}</span>` : '';
+        const timeStr = event.time ? `<span class="activity-item-time">${event.time}</span>` : '';
 
         return `
           <div class="activity-item">
