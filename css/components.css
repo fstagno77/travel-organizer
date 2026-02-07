@@ -2757,6 +2757,14 @@
   font-size: var(--font-size-sm);
   color: var(--color-gray-700);
   line-height: var(--line-height-normal);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.edit-booking-item-sub {
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-500);
 }
 
 .edit-booking-form {
@@ -2782,11 +2790,6 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-2);
-}
-
-.edit-booking-section-title .material-symbols-outlined {
-  font-size: 18px;
-  color: var(--color-primary);
 }
 
 .edit-booking-grid {
@@ -2832,6 +2835,10 @@
   outline: none;
   border-color: var(--color-primary);
   box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb, 59, 130, 246), 0.15);
+}
+
+.edit-booking-field input:invalid:not(:placeholder-shown) {
+  border-color: var(--color-error);
 }
 
 .edit-booking-passenger {

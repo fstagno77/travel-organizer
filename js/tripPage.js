@@ -1149,6 +1149,33 @@
     const performSave = async () => {
       if (!selectedItemIds || selectedItemIds.length === 0) return;
 
+      // Validate required fields and patterns
+      const invalidInput = formView.querySelector('input:invalid');
+      if (invalidInput) {
+        invalidInput.focus();
+        invalidInput.reportValidity();
+        return;
+      }
+
+      // Validate IATA codes are uppercase 3 letters if provided
+      formView.querySelectorAll('input[data-field$=".code"]').forEach(input => {
+        if (input.value.trim()) input.value = input.value.trim().toUpperCase();
+      });
+
+      // Validate hotel: check-out must be after check-in
+      if (type === 'hotel') {
+        const checkInDate = formView.querySelector('[data-field="checkIn.date"]')?.value;
+        const checkOutDate = formView.querySelector('[data-field="checkOut.date"]')?.value;
+        if (checkInDate && checkOutDate && checkOutDate <= checkInDate) {
+          const field = formView.querySelector('[data-field="checkOut.date"]');
+          field.focus();
+          field.setCustomValidity(i18n.t('hotel.checkOut') + ' > ' + i18n.t('hotel.checkIn'));
+          field.reportValidity();
+          field.setCustomValidity('');
+          return;
+        }
+      }
+
       confirmBtn.disabled = true;
       confirmBtn.innerHTML = '<span class="spinner spinner-sm"></span>';
 
@@ -1239,38 +1266,36 @@
       <div class="edit-booking-form">
         <div class="edit-booking-section">
           <div class="edit-booking-section-title">
-            <span class="material-symbols-outlined">flight</span>
             ${i18n.t('flight.flightInfo') || 'Volo'}
           </div>
           <div class="edit-booking-grid">
             <div class="edit-booking-field">
               <label>${i18n.t('flight.date') || 'Data'}</label>
-              <input type="date" data-field="date" value="${escAttr(flight.date)}">
+              <input type="date" data-field="date" value="${escAttr(flight.date)}" required>
             </div>
             <div class="edit-booking-field">
               <label>${i18n.t('flight.flightNumber') || 'Numero volo'}</label>
-              <input type="text" data-field="flightNumber" value="${escAttr(flight.flightNumber)}">
+              <input type="text" data-field="flightNumber" value="${escAttr(flight.flightNumber)}" pattern="[A-Za-z0-9]{2,8}" placeholder="es. AZ1154">
             </div>
             <div class="edit-booking-field">
               <label>${i18n.t('flight.departureTime') || 'Partenza'}</label>
-              <input type="time" data-field="departureTime" value="${escAttr(flight.departureTime)}">
+              <input type="time" data-field="departureTime" value="${escAttr(flight.departureTime)}" required>
             </div>
             <div class="edit-booking-field">
               <label>${i18n.t('flight.arrivalTime') || 'Arrivo'}</label>
-              <input type="time" data-field="arrivalTime" value="${escAttr(flight.arrivalTime)}">
+              <input type="time" data-field="arrivalTime" value="${escAttr(flight.arrivalTime)}" required>
             </div>
           </div>
         </div>
 
         <div class="edit-booking-section">
           <div class="edit-booking-section-title">
-            <span class="material-symbols-outlined">flight_takeoff</span>
             ${i18n.t('flight.departureInfo') || 'Partenza'}
           </div>
           <div class="edit-booking-grid">
             <div class="edit-booking-field">
               <label>${i18n.t('flight.iataCode') || 'IATA'}</label>
-              <input type="text" data-field="departure.code" value="${escAttr(flight.departure?.code)}" maxlength="3" style="text-transform:uppercase">
+              <input type="text" data-field="departure.code" value="${escAttr(flight.departure?.code)}" maxlength="3" pattern="[A-Za-z]{3}" style="text-transform:uppercase" placeholder="es. FCO">
             </div>
             <div class="edit-booking-field">
               <label>${i18n.t('flight.city') || 'Città'}</label>
@@ -1285,13 +1310,12 @@
 
         <div class="edit-booking-section">
           <div class="edit-booking-section-title">
-            <span class="material-symbols-outlined">flight_land</span>
             ${i18n.t('flight.arrivalInfo') || 'Arrivo'}
           </div>
           <div class="edit-booking-grid">
             <div class="edit-booking-field">
               <label>${i18n.t('flight.iataCode') || 'IATA'}</label>
-              <input type="text" data-field="arrival.code" value="${escAttr(flight.arrival?.code)}" maxlength="3" style="text-transform:uppercase">
+              <input type="text" data-field="arrival.code" value="${escAttr(flight.arrival?.code)}" maxlength="3" pattern="[A-Za-z]{3}" style="text-transform:uppercase" placeholder="es. NRT">
             </div>
             <div class="edit-booking-field">
               <label>${i18n.t('flight.city') || 'Città'}</label>
@@ -1306,7 +1330,6 @@
 
         <div class="edit-booking-section">
           <div class="edit-booking-section-title">
-            <span class="material-symbols-outlined">confirmation_number</span>
             ${i18n.t('flight.bookingInfo') || 'Prenotazione'}
           </div>
           <div class="edit-booking-grid">
@@ -1321,7 +1344,7 @@
             ${!isMultiPax ? `
             <div class="edit-booking-field">
               <label>${i18n.t('flight.seat') || 'Posto'}</label>
-              <input type="text" data-field="seat" value="${escAttr(flight.seat)}">
+              <input type="text" data-field="seat" value="${escAttr(flight.seat)}" placeholder="es. 12A">
             </div>
             <div class="edit-booking-field">
               <label>${i18n.t('flight.ticketNumber') || 'Biglietto'}</label>
@@ -1354,28 +1377,27 @@
       <div class="edit-booking-form">
         <div class="edit-booking-section">
           <div class="edit-booking-section-title">
-            <span class="material-symbols-outlined">hotel</span>
             ${i18n.t('hotel.hotelInfo') || 'Hotel'}
           </div>
           <div class="edit-booking-grid">
             <div class="edit-booking-field full-width">
               <label>${i18n.t('hotel.hotelInfo') || 'Nome'}</label>
-              <input type="text" data-field="name" value="${escAttr(hotel.name)}">
+              <input type="text" data-field="name" value="${escAttr(hotel.name)}" required>
             </div>
             <div class="edit-booking-field">
-              <label>${i18n.t('hotel.checkIn') || 'Check-in'} - ${i18n.t('flight.date') || 'Data'}</label>
-              <input type="date" data-field="checkIn.date" value="${escAttr(hotel.checkIn?.date)}">
+              <label>${i18n.t('hotel.checkIn') || 'Check-in'}</label>
+              <input type="date" data-field="checkIn.date" value="${escAttr(hotel.checkIn?.date)}" required>
             </div>
             <div class="edit-booking-field">
-              <label>${i18n.t('hotel.checkIn') || 'Check-in'} - ${i18n.t('flight.departureTime') || 'Orario'}</label>
+              <label>${i18n.t('hotel.checkIn') || 'Check-in'} - ${i18n.t('common.from') || 'Orario'}</label>
               <input type="time" data-field="checkIn.time" value="${escAttr(hotel.checkIn?.time)}">
             </div>
             <div class="edit-booking-field">
-              <label>${i18n.t('hotel.checkOut') || 'Check-out'} - ${i18n.t('flight.date') || 'Data'}</label>
-              <input type="date" data-field="checkOut.date" value="${escAttr(hotel.checkOut?.date)}">
+              <label>${i18n.t('hotel.checkOut') || 'Check-out'}</label>
+              <input type="date" data-field="checkOut.date" value="${escAttr(hotel.checkOut?.date)}" required>
             </div>
             <div class="edit-booking-field">
-              <label>${i18n.t('hotel.checkOut') || 'Check-out'} - ${i18n.t('flight.departureTime') || 'Orario'}</label>
+              <label>${i18n.t('hotel.checkOut') || 'Check-out'} - ${i18n.t('common.until') || 'Orario'}</label>
               <input type="time" data-field="checkOut.time" value="${escAttr(hotel.checkOut?.time)}">
             </div>
           </div>
@@ -1383,7 +1405,6 @@
 
         <div class="edit-booking-section">
           <div class="edit-booking-section-title">
-            <span class="material-symbols-outlined">info</span>
             ${i18n.t('hotel.detailsInfo') || 'Dettagli'}
           </div>
           <div class="edit-booking-grid">
@@ -1397,7 +1418,7 @@
             </div>
             <div class="edit-booking-field">
               <label>${i18n.t('hotel.phone') || 'Telefono'}</label>
-              <input type="text" data-field="phone" value="${escAttr(hotel.phone)}">
+              <input type="tel" data-field="phone" value="${escAttr(hotel.phone)}">
             </div>
             <div class="edit-booking-field">
               <label>${i18n.t('hotel.confirmation') || 'N. Conferma'}</label>
@@ -1408,7 +1429,6 @@
 
         <div class="edit-booking-section">
           <div class="edit-booking-section-title">
-            <span class="material-symbols-outlined">location_on</span>
             ${i18n.t('hotel.addressInfo') || 'Indirizzo'}
           </div>
           <div class="edit-booking-grid">
@@ -1421,17 +1441,16 @@
 
         <div class="edit-booking-section">
           <div class="edit-booking-section-title">
-            <span class="material-symbols-outlined">payments</span>
             ${i18n.t('hotel.priceInfo') || 'Prezzo'}
           </div>
           <div class="edit-booking-grid">
             <div class="edit-booking-field">
               <label>${i18n.t('hotel.currency') || 'Valuta'}</label>
-              <input type="text" data-field="price.total.currency" value="${escAttr(hotel.price?.total?.currency)}">
+              <input type="text" data-field="price.total.currency" value="${escAttr(hotel.price?.total?.currency)}" maxlength="3" placeholder="es. EUR" style="text-transform:uppercase">
             </div>
             <div class="edit-booking-field">
               <label>${i18n.t('hotel.amount') || 'Importo'}</label>
-              <input type="text" data-field="price.total.value" value="${escAttr(hotel.price?.total?.value)}">
+              <input type="number" data-field="price.total.value" value="${escAttr(hotel.price?.total?.value)}" min="0" step="0.01">
             </div>
           </div>
         </div>
