@@ -106,7 +106,18 @@
     // Update page title
     const title = tripData.title[lang] || tripData.title.en || tripData.title.it;
     document.title = `${title} - Travel Flow`;
-    document.getElementById('trip-title').textContent = title;
+    const titleEl = document.getElementById('trip-title');
+    titleEl.textContent = title;
+
+    // Add rename icon next to title
+    const renameBtn = document.createElement('button');
+    renameBtn.className = 'trip-title-edit-btn';
+    renameBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+    </svg>`;
+    renameBtn.addEventListener('click', () => showRenameModal(tripData.id));
+    titleEl.appendChild(renameBtn);
 
     // Update dates
     if (tripData.startDate && tripData.endDate) {
@@ -179,13 +190,6 @@
                 <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
               </svg>
               <span data-i18n="trip.share">Share</span>
-            </button>
-            <button class="section-dropdown-item" data-action="rename">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-              </svg>
-              <span data-i18n="trip.rename">Rename</span>
             </button>
             <div class="section-dropdown-divider"></div>
             <button class="section-dropdown-item section-dropdown-item--danger" data-action="delete-booking">
@@ -318,8 +322,6 @@
           showAddBookingModal(tripId);
         } else if (action === 'share') {
           showShareModal(tripId);
-        } else if (action === 'rename') {
-          showRenameModal(tripId);
         }
       });
     });
