@@ -277,22 +277,29 @@
     const deleteBookingItem = document.querySelector('[data-action="delete-booking"]');
     const menuDivider = deleteBookingItem?.previousElementSibling;
 
+    const addFlightLabel = addFlightItem?.querySelector('span');
+    const addHotelLabel = addHotelItem?.querySelector('span');
+
     if (tabName === 'activities') {
-      // Activities: show both + Voli and + Hotel, hide delete booking
+      // Activities: show both with specific labels, hide delete booking
       if (addFlightItem) addFlightItem.style.display = '';
       if (addHotelItem) addHotelItem.style.display = '';
+      if (addFlightLabel) addFlightLabel.textContent = i18n.t('trip.addFlight');
+      if (addHotelLabel) addHotelLabel.textContent = i18n.t('trip.addHotel');
       if (deleteBookingItem) deleteBookingItem.style.display = 'none';
       if (menuDivider?.classList.contains('section-dropdown-divider')) menuDivider.style.display = 'none';
     } else if (tabName === 'flights') {
-      // Flights: show only + Voli, show delete booking
+      // Flights: show only add-flight with generic label, show delete booking
       if (addFlightItem) addFlightItem.style.display = '';
       if (addHotelItem) addHotelItem.style.display = 'none';
+      if (addFlightLabel) addFlightLabel.textContent = i18n.t('modal.add');
       if (deleteBookingItem) deleteBookingItem.style.display = '';
       if (menuDivider?.classList.contains('section-dropdown-divider')) menuDivider.style.display = '';
     } else if (tabName === 'hotels') {
-      // Hotels: show only + Hotel, show delete booking
+      // Hotels: show only add-hotel with generic label, show delete booking
       if (addFlightItem) addFlightItem.style.display = 'none';
       if (addHotelItem) addHotelItem.style.display = '';
+      if (addHotelLabel) addHotelLabel.textContent = i18n.t('modal.add');
       if (deleteBookingItem) deleteBookingItem.style.display = '';
       if (menuDivider?.classList.contains('section-dropdown-divider')) menuDivider.style.display = '';
     }

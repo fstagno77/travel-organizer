@@ -86,8 +86,8 @@
     "flightTo": "Flight to",
     "flightFromTo": "Flight from",
     "activityDetails": "Details",
-    "addFlight": "+ Flights",
-    "addHotel": "+ Hotel"
+    "addFlight": "Flights",
+    "addHotel": "Hotel"
   },
   "modal": {
     "cancel": "Cancel",

@@ -86,8 +86,8 @@
     "flightTo": "Volo per",
     "flightFromTo": "Volo da",
     "activityDetails": "Dettagli",
-    "addFlight": "+ Voli",
-    "addHotel": "+ Hotel"
+    "addFlight": "Voli",
+    "addHotel": "Hotel"
   },
   "modal": {
     "cancel": "Annulla",
