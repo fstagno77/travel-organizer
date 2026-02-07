@@ -1,11 +1,9 @@
 /**
  * Airport Autocomplete
- * Attaches autocomplete to IATA code and city inputs in the flight edit form.
- * - Type in IATA field → suggests by code, auto-fills city
- * - Type in City field → suggests by city/airport name, auto-fills IATA code
+ * - IATA field: type 3 letters → auto-fills city (no dropdown)
+ * - City field: type 2+ chars → dropdown with alternatives, selecting fills both city and IATA code
  */
 const AirportAutocomplete = (() => {
-  // Pre-build search array once on first use (lazy)
   let _searchIndex = null;
 
   function getSearchIndex() {
@@ -16,22 +14,10 @@ const AirportAutocomplete = (() => {
       city,
       name,
       country,
-      // Pre-compute lowercase for fast search
       _cityLower: city.toLowerCase(),
-      _nameLower: name.toLowerCase(),
-      _codeLower: code.toLowerCase()
+      _nameLower: name.toLowerCase()
     }));
     return _searchIndex;
-  }
-
-  function searchByCode(query) {
-    const q = query.toUpperCase();
-    const index = getSearchIndex();
-    const results = [];
-    for (let i = 0; i < index.length && results.length < 8; i++) {
-      if (index[i].code.startsWith(q)) results.push(index[i]);
-    }
-    return results;
   }
 
   function searchByCity(query) {
@@ -75,7 +61,7 @@ const AirportAutocomplete = (() => {
         `<span class="ac-detail">${airport.city}${airport.country ? ' <span class="ac-country">' + airport.country + '</span>' : ''}</span>` +
         `<span class="ac-name">${airport.name}</span>`;
       item.addEventListener('mousedown', (e) => {
-        e.preventDefault(); // prevent blur
+        e.preventDefault();
         onSelect(airport);
       });
       dropdown.appendChild(item);
@@ -85,7 +71,7 @@ const AirportAutocomplete = (() => {
 
   function navigateDropdown(dropdown, direction) {
     const items = dropdown.querySelectorAll('.airport-autocomplete-item');
-    if (!items.length) return null;
+    if (!items.length) return;
     let activeIdx = -1;
     items.forEach((item, i) => {
       if (item.classList.contains('active')) activeIdx = i;
@@ -96,140 +82,94 @@ const AirportAutocomplete = (() => {
     if (newIdx >= items.length) newIdx = 0;
     items[newIdx].classList.add('active');
     items[newIdx].scrollIntoView({ block: 'nearest' });
-    return parseInt(items[newIdx].dataset.index);
   }
 
-  function getActiveIndex(dropdown) {
+  function getActiveAirport(dropdown, results) {
     const active = dropdown.querySelector('.airport-autocomplete-item.active');
-    return active ? parseInt(active.dataset.index) : -1;
+    if (!active) return null;
+    return results[parseInt(active.dataset.index)] || null;
   }
 
   /**
    * Attach autocomplete to a pair of IATA code + city inputs.
-   * @param {HTMLInputElement} codeInput - The IATA code input
-   * @param {HTMLInputElement} cityInput - The city input
    */
   function attach(codeInput, cityInput) {
     if (!codeInput || !cityInput) return;
     if (typeof AIRPORTS === 'undefined') return;
 
-    // Wrap each input's parent (.edit-booking-field) for relative positioning
-    [codeInput, cityInput].forEach(input => {
-      const field = input.closest('.edit-booking-field');
-      if (field) field.style.position = 'relative';
-    });
-
-    const codeDropdown = createDropdown();
-    const cityDropdown = createDropdown();
-    codeInput.closest('.edit-booking-field').appendChild(codeDropdown);
-    cityInput.closest('.edit-booking-field').appendChild(cityDropdown);
-
-    let codeResults = [];
-    let cityResults = [];
-
-    function selectFromCode(airport) {
-      codeInput.value = airport.code;
-      cityInput.value = airport.city;
-      codeDropdown.style.display = 'none';
-      // Trigger change events so form picks up values
-      codeInput.dispatchEvent(new Event('input', { bubbles: true }));
-      cityInput.dispatchEvent(new Event('input', { bubbles: true }));
+    // --- IATA field: no dropdown, just auto-fill city on exact match ---
+    function autoFillFromCode() {
+      const val = codeInput.value.trim().toUpperCase();
+      if (val.length === 3 && AIRPORTS[val]) {
+        cityInput.value = AIRPORTS[val][0];
+      }
     }
 
-    function selectFromCity(airport) {
+    codeInput.addEventListener('input', autoFillFromCode);
+    codeInput.addEventListener('change', autoFillFromCode);
+
+    // --- City field: dropdown with alternatives ---
+    const cityField = cityInput.closest('.edit-booking-field');
+    if (cityField) cityField.style.position = 'relative';
+
+    const dropdown = createDropdown();
+    cityField.appendChild(dropdown);
+
+    let results = [];
+    let skipNextInput = false;
+
+    function selectAirport(airport) {
+      skipNextInput = true;
       codeInput.value = airport.code;
       cityInput.value = airport.city;
-      cityDropdown.style.display = 'none';
-      codeInput.dispatchEvent(new Event('input', { bubbles: true }));
-      cityInput.dispatchEvent(new Event('input', { bubbles: true }));
+      dropdown.style.display = 'none';
     }
 
-    // IATA code input
-    codeInput.addEventListener('input', () => {
-      const val = codeInput.value.trim();
-      if (val.length === 0) {
-        codeDropdown.style.display = 'none';
-        return;
-      }
-      codeResults = searchByCode(val);
-      renderResults(codeDropdown, codeResults, selectFromCode);
-      // If exact 3-letter match, auto-fill city
-      if (val.length === 3) {
-        const upper = val.toUpperCase();
-        if (AIRPORTS[upper]) {
-          cityInput.value = AIRPORTS[upper][0];
-          cityInput.dispatchEvent(new Event('input', { bubbles: true }));
-        }
-      }
-    });
-
-    codeInput.addEventListener('keydown', (e) => {
-      if (codeDropdown.style.display !== 'block') return;
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        navigateDropdown(codeDropdown, 1);
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        navigateDropdown(codeDropdown, -1);
-      } else if (e.key === 'Enter') {
-        e.preventDefault();
-        const idx = getActiveIndex(codeDropdown);
-        if (idx >= 0 && codeResults[idx]) selectFromCode(codeResults[idx]);
-      } else if (e.key === 'Escape') {
-        codeDropdown.style.display = 'none';
-      }
-    });
-
-    codeInput.addEventListener('blur', () => {
-      setTimeout(() => { codeDropdown.style.display = 'none'; }, 150);
-    });
-
-    // City input
     cityInput.addEventListener('input', () => {
+      if (skipNextInput) { skipNextInput = false; return; }
       const val = cityInput.value.trim();
       if (val.length < 2) {
-        cityDropdown.style.display = 'none';
+        dropdown.style.display = 'none';
+        results = [];
         return;
       }
-      cityResults = searchByCity(val);
-      renderResults(cityDropdown, cityResults, selectFromCity);
+      results = searchByCity(val);
+      renderResults(dropdown, results, selectAirport);
     });
 
     cityInput.addEventListener('keydown', (e) => {
-      if (cityDropdown.style.display !== 'block') return;
+      if (dropdown.style.display !== 'block') return;
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        navigateDropdown(cityDropdown, 1);
+        navigateDropdown(dropdown, 1);
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
-        navigateDropdown(cityDropdown, -1);
+        navigateDropdown(dropdown, -1);
       } else if (e.key === 'Enter') {
         e.preventDefault();
-        const idx = getActiveIndex(cityDropdown);
-        if (idx >= 0 && cityResults[idx]) selectFromCity(cityResults[idx]);
+        const airport = getActiveAirport(dropdown, results);
+        if (airport) selectAirport(airport);
       } else if (e.key === 'Escape') {
-        cityDropdown.style.display = 'none';
+        dropdown.style.display = 'none';
       }
     });
 
     cityInput.addEventListener('blur', () => {
-      setTimeout(() => { cityDropdown.style.display = 'none'; }, 150);
+      setTimeout(() => { dropdown.style.display = 'none'; }, 150);
     });
   }
 
-  /**
-   * Scan a container for departure/arrival code+city pairs and attach autocomplete.
-   * Call this after the edit form HTML is inserted into the DOM.
-   */
   function init(container) {
     if (!container) return;
-    const depCode = container.querySelector('input[data-field="departure.code"]');
-    const depCity = container.querySelector('input[data-field="departure.city"]');
-    const arrCode = container.querySelector('input[data-field="arrival.code"]');
-    const arrCity = container.querySelector('input[data-field="arrival.city"]');
-    attach(depCode, depCity);
-    attach(arrCode, arrCity);
+    attach(
+      container.querySelector('input[data-field="departure.code"]'),
+      container.querySelector('input[data-field="departure.city"]')
+    );
+    attach(
+      container.querySelector('input[data-field="arrival.code"]'),
+      container.querySelector('input[data-field="arrival.city"]')
+    );
   }
 
-  return { init, attach };
+  return { init };
 })();
