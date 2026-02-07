@@ -121,6 +121,7 @@ async function processBatch(pdfs, startIndex) {
     const isRateLimit = error.status === 429 || error.message?.includes('rate_limit');
     if (isRateLimit) {
       error.isRateLimit = true;
+      error.retryAfter = extractRetryAfter(error);
     }
     throw error;
   }
@@ -249,9 +250,22 @@ async function processSinglePdfWithClaude(base64Content, filename) {
     const isRateLimit = error.status === 429 || error.message?.includes('rate_limit');
     if (isRateLimit) {
       error.isRateLimit = true;
+      error.retryAfter = extractRetryAfter(error);
     }
     throw error;
   }
+}
+
+/**
+ * Extract retry-after seconds from Anthropic SDK error.
+ */
+function extractRetryAfter(error) {
+  const raw = error.headers?.get?.('retry-after') || error.headers?.['retry-after'];
+  if (raw) {
+    const seconds = parseInt(raw, 10);
+    if (!isNaN(seconds) && seconds > 0) return seconds;
+  }
+  return null;
 }
 
 /**

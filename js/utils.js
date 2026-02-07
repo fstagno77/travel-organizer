@@ -247,15 +247,17 @@ const utils = {
     }
 
     const fetchOptions = { ...options, headers };
-    const maxRetries = 2;
-    const retryDelay = 5000;
+    const maxRetries = 1;
+    const defaultDelay = 15000;
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       const response = await fetch(url, fetchOptions);
 
       if (response.status === 429 && attempt < maxRetries) {
-        console.log(`Rate limit (attempt ${attempt + 1}/${maxRetries + 1}), retrying in ${retryDelay / 1000}s...`);
-        await new Promise(r => setTimeout(r, retryDelay));
+        const retryAfter = response.headers.get('Retry-After');
+        const delay = retryAfter ? Math.min(parseInt(retryAfter, 10) * 1000, 60000) : defaultDelay;
+        console.log(`Rate limit (attempt ${attempt + 1}/${maxRetries + 1}), retrying in ${delay / 1000}s...`);
+        await new Promise(r => setTimeout(r, delay));
         continue;
       }
 

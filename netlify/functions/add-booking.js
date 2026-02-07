@@ -82,9 +82,10 @@ exports.handler = async (event, context) => {
     // Check for rate limit errors
     const rateLimitError = results.find(r => r.error?.isRateLimit);
     if (rateLimitError) {
+      const retryAfter = rateLimitError.error.retryAfter || 30;
       return {
         statusCode: 429,
-        headers,
+        headers: { ...headers, 'Retry-After': String(retryAfter) },
         body: JSON.stringify({
           success: false,
           error: 'Rate limit reached. Please wait a minute before uploading another file.',
@@ -449,9 +450,10 @@ exports.handler = async (event, context) => {
   } catch (error) {
     console.error('Error adding booking:', error);
     const isRateLimit = error.status === 429 || error.message?.includes('rate_limit');
+    const retryAfter = error.retryAfter || 30;
     return {
       statusCode: isRateLimit ? 429 : 500,
-      headers,
+      headers: isRateLimit ? { ...headers, 'Retry-After': String(retryAfter) } : headers,
       body: JSON.stringify({
         success: false,
         error: error.message || 'Failed to process PDF documents',
