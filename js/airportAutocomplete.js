@@ -1,7 +1,8 @@
 /**
  * Airport Autocomplete
- * - IATA field: type 3 letters → auto-fills city (no dropdown)
- * - City field: type 2+ chars → dropdown with alternatives, selecting fills both city and IATA code
+ * - IATA field: type letters → dropdown with matching codes, selecting fills city too
+ * - City field: type 2+ chars → dropdown with matching cities, selecting fills IATA code too
+ * Both dropdowns appear below their respective input fields.
  */
 const AirportAutocomplete = (() => {
   let _searchIndex = null;
@@ -20,11 +21,30 @@ const AirportAutocomplete = (() => {
     return _searchIndex;
   }
 
+  function searchByCode(query) {
+    const q = query.toUpperCase();
+    const index = getSearchIndex();
+    const results = [];
+    for (let i = 0; i < index.length && results.length < 8; i++) {
+      if (index[i].code.startsWith(q)) results.push(index[i]);
+    }
+    return results;
+  }
+
+  function commonPrefixLen(a, b) {
+    let i = 0;
+    while (i < a.length && i < b.length && a[i] === b[i]) i++;
+    return i;
+  }
+
   function searchByCity(query) {
     const q = query.toLowerCase();
+    const qUpper = query.toUpperCase();
     const index = getSearchIndex();
     const exact = [];
     const startsWith = [];
+    const codeMatch = [];
+    const prefixMatch = [];
     const contains = [];
     for (let i = 0; i < index.length; i++) {
       const a = index[i];
@@ -32,12 +52,16 @@ const AirportAutocomplete = (() => {
         exact.push(a);
       } else if (a._cityLower.startsWith(q)) {
         startsWith.push(a);
+      } else if (q.length >= 2 && a.code.startsWith(qUpper)) {
+        codeMatch.push(a);
+      } else if (q.length >= 3 && commonPrefixLen(a._cityLower, q) >= 3) {
+        prefixMatch.push(a);
       } else if (a._cityLower.includes(q) || a._nameLower.includes(q)) {
         contains.push(a);
       }
-      if (exact.length + startsWith.length + contains.length >= 30) break;
+      if (exact.length + startsWith.length + codeMatch.length + prefixMatch.length + contains.length >= 30) break;
     }
-    return [...exact, ...startsWith, ...contains].slice(0, 8);
+    return [...exact, ...startsWith, ...codeMatch, ...prefixMatch, ...contains].slice(0, 8);
   }
 
   function createDropdown() {
@@ -90,54 +114,36 @@ const AirportAutocomplete = (() => {
     return results[parseInt(active.dataset.index)] || null;
   }
 
-  /**
-   * Attach autocomplete to a pair of IATA code + city inputs.
-   */
-  function attach(codeInput, cityInput) {
-    if (!codeInput || !cityInput) return;
-    if (typeof AIRPORTS === 'undefined') return;
-
-    // --- IATA field: no dropdown, just auto-fill city on exact match ---
-    function autoFillFromCode() {
-      const val = codeInput.value.trim().toUpperCase();
-      if (val.length === 3 && AIRPORTS[val]) {
-        cityInput.value = AIRPORTS[val][0];
-      }
-    }
-
-    codeInput.addEventListener('input', autoFillFromCode);
-    codeInput.addEventListener('change', autoFillFromCode);
-
-    // --- City field: dropdown with alternatives ---
-    const cityField = cityInput.closest('.edit-booking-field');
-    if (cityField) cityField.style.position = 'relative';
+  function attachDropdown(input, searchFn, onSelect) {
+    const field = input.closest('.edit-booking-field');
+    if (!field) return;
+    field.style.position = 'relative';
 
     const dropdown = createDropdown();
-    cityField.appendChild(dropdown);
+    field.appendChild(dropdown);
 
     let results = [];
     let skipNextInput = false;
 
-    function selectAirport(airport) {
+    function select(airport) {
       skipNextInput = true;
-      codeInput.value = airport.code;
-      cityInput.value = airport.city;
+      onSelect(airport);
       dropdown.style.display = 'none';
     }
 
-    cityInput.addEventListener('input', () => {
+    input.addEventListener('input', () => {
       if (skipNextInput) { skipNextInput = false; return; }
-      const val = cityInput.value.trim();
-      if (val.length < 2) {
+      const val = input.value.trim();
+      if (val.length < 1) {
         dropdown.style.display = 'none';
         results = [];
         return;
       }
-      results = searchByCity(val);
-      renderResults(dropdown, results, selectAirport);
+      results = searchFn(val);
+      renderResults(dropdown, results, select);
     });
 
-    cityInput.addEventListener('keydown', (e) => {
+    input.addEventListener('keydown', (e) => {
       if (dropdown.style.display !== 'block') return;
       if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -148,14 +154,41 @@ const AirportAutocomplete = (() => {
       } else if (e.key === 'Enter') {
         e.preventDefault();
         const airport = getActiveAirport(dropdown, results);
-        if (airport) selectAirport(airport);
+        if (airport) select(airport);
       } else if (e.key === 'Escape') {
         dropdown.style.display = 'none';
       }
     });
 
-    cityInput.addEventListener('blur', () => {
+    input.addEventListener('blur', () => {
       setTimeout(() => { dropdown.style.display = 'none'; }, 150);
+    });
+
+    return { setSkip: () => { skipNextInput = true; } };
+  }
+
+  function attach(codeInput, cityInput) {
+    if (!codeInput || !cityInput) return;
+    if (typeof AIRPORTS === 'undefined') return;
+
+    const cityCtrl = attachDropdown(cityInput, searchByCity, (airport) => {
+      codeInput.value = airport.code;
+      cityInput.value = airport.city;
+    });
+
+    const codeCtrl = attachDropdown(codeInput, searchByCode, (airport) => {
+      codeInput.value = airport.code;
+      cityInput.value = airport.city;
+      if (cityCtrl) cityCtrl.setSkip();
+    });
+
+    // Also auto-fill city silently when typing exact 3-letter IATA match
+    codeInput.addEventListener('input', () => {
+      const val = codeInput.value.trim().toUpperCase();
+      if (val.length === 3 && AIRPORTS[val]) {
+        cityInput.value = AIRPORTS[val][0];
+        if (cityCtrl) cityCtrl.setSkip();
+      }
     });
   }
 
