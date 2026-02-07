@@ -246,10 +246,21 @@ const utils = {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    return fetch(url, {
-      ...options,
-      headers
-    });
+    const fetchOptions = { ...options, headers };
+    const maxRetries = 2;
+    const retryDelay = 5000;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      const response = await fetch(url, fetchOptions);
+
+      if (response.status === 429 && attempt < maxRetries) {
+        console.log(`Rate limit (attempt ${attempt + 1}/${maxRetries + 1}), retrying in ${retryDelay / 1000}s...`);
+        await new Promise(r => setTimeout(r, retryDelay));
+        continue;
+      }
+
+      return response;
+    }
   },
 
   /**
