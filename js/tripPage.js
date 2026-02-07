@@ -139,7 +139,7 @@
     const html = `
       <div class="trip-content-header mb-6">
         <div class="segmented-control">
-          <button class="segmented-control-btn active" data-tab="flights">
+          <button class="segmented-control-btn" data-tab="flights">
             <span class="material-symbols-outlined" style="font-size: 20px;">travel</span>
             <span data-i18n="trip.flights">Flights</span>
           </button>
@@ -147,7 +147,7 @@
             <span class="material-symbols-outlined" style="font-size: 20px;">bed</span>
             <span data-i18n="trip.hotels">Hotels</span>
           </button>
-          <button class="segmented-control-btn" data-tab="activities">
+          <button class="segmented-control-btn active" data-tab="activities">
             <span class="material-symbols-outlined" style="font-size: 20px;">calendar_today</span>
             <span data-i18n="trip.activities">Activities</span>
           </button>
@@ -200,7 +200,7 @@
         </div>
       </div>
 
-      <div id="flights-tab" class="tab-content active">
+      <div id="flights-tab" class="tab-content">
         <div id="flights-container"></div>
       </div>
 
@@ -208,7 +208,7 @@
         <div id="hotels-container"></div>
       </div>
 
-      <div id="activities-tab" class="tab-content">
+      <div id="activities-tab" class="tab-content active">
         <div id="activities-container"></div>
       </div>
     `;
@@ -223,12 +223,8 @@
     // Initialize tab switching
     initTabSwitching();
 
-    // Determine initial tab: show hotels if no flights, otherwise flights
-    const hasFlights = tripData.flights && tripData.flights.length > 0;
-    const hasHotels = tripData.hotels && tripData.hotels.length > 0;
-    if (!hasFlights && hasHotels) {
-      switchToTab('hotels');
-    }
+    // Default tab is activities; hide add/delete booking menu items initially
+    switchToTab('activities');
 
     // Initialize menu
     initMenu(tripData.id);
