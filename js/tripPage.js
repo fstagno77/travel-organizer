@@ -417,7 +417,12 @@
           body: JSON.stringify({ pdfs, tripId })
         });
 
-        const result = await response.json();
+        let result;
+        try {
+          result = await response.json();
+        } catch {
+          throw Object.assign(new Error('server_error'), { errorCode: `HTTP${response.status}` });
+        }
 
         if (!response.ok || !result.success) {
           // Check for rate limit error
@@ -430,7 +435,10 @@
             error.tripName = result.tripName;
             throw error;
           }
-          throw new Error(result.error || 'Failed to add booking');
+          throw Object.assign(
+            new Error(result.error || 'Failed to add booking'),
+            { errorCode: result.errorCode }
+          );
         }
 
         phraseController.stop();
@@ -461,6 +469,7 @@
         } else {
           errorMessage = i18n.t('trip.addError') || 'Error adding booking';
         }
+        const errorCode = error.errorCode || '';
 
         modalBody.innerHTML = `
           <div class="error-state">
@@ -470,6 +479,7 @@
               </svg>
             </div>
             <p class="error-state-message">${errorMessage}</p>
+            ${errorCode ? `<p class="error-state-code">${errorCode}</p>` : ''}
             <button class="btn btn-secondary" id="error-retry-btn" data-i18n="modal.retry">Try again</button>
           </div>
         `;
@@ -2029,7 +2039,12 @@
         body: JSON.stringify({ pdfs, tripId: currentTripData.id })
       });
 
-      const result = await response.json();
+      let result;
+      try {
+        result = await response.json();
+      } catch {
+        throw Object.assign(new Error('server_error'), { errorCode: `HTTP${response.status}` });
+      }
 
       // Check for rate limit error
       if (response.status === 429 || result.errorType === 'rate_limit') {
@@ -2044,7 +2059,10 @@
       }
 
       if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Failed to add booking');
+        throw Object.assign(
+          new Error(result.error || 'Failed to add booking'),
+          { errorCode: result.errorCode }
+        );
       }
 
       // Reload trip data
@@ -2071,6 +2089,7 @@
       } else {
         console.error('Error in quick upload:', error);
         errorMessage = i18n.t('trip.addError') || 'Error adding booking';
+        if (error.errorCode) errorMessage += ` [${error.errorCode}]`;
       }
       utils.showToast(errorMessage, 'error');
     } finally {

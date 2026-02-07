@@ -40,7 +40,7 @@ exports.handler = async (event, context) => {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ success: false, error: 'No PDF files provided' })
+        body: JSON.stringify({ success: false, error: 'No PDF files provided', errorCode: 'E100' })
       };
     }
 
@@ -64,9 +64,16 @@ exports.handler = async (event, context) => {
         body: JSON.stringify({
           success: false,
           error: 'Rate limit reached. Please wait a minute before uploading another file.',
-          errorType: 'rate_limit'
+          errorType: 'rate_limit',
+          errorCode: 'E200'
         })
       };
+    }
+
+    // Check for other API errors (not rate limit)
+    const apiError = results.find(r => r.error && !r.error.isRateLimit);
+    if (apiError) {
+      console.error('Claude API error:', apiError.error.message, apiError.error.status);
     }
 
     // Collect results from all PDFs
@@ -106,12 +113,16 @@ exports.handler = async (event, context) => {
     }
 
     if (!allFlights.length && !allHotels.length) {
+      const errorCode = apiError ? 'E201' : 'E103';
       return {
         statusCode: 400,
         headers,
         body: JSON.stringify({
           success: false,
-          error: 'Could not extract any travel data from the uploaded PDFs'
+          error: apiError
+            ? `Processing error: ${apiError.error.message || 'API unavailable'}`
+            : 'Could not extract any travel data from the uploaded PDFs',
+          errorCode
         })
       };
     }
@@ -276,7 +287,8 @@ exports.handler = async (event, context) => {
         headers,
         body: JSON.stringify({
           success: false,
-          error: 'Failed to save trip to database'
+          error: 'Failed to save trip to database',
+          errorCode: 'E300'
         })
       };
     }
@@ -298,16 +310,15 @@ exports.handler = async (event, context) => {
 
   } catch (error) {
     console.error('Error processing PDFs:', error);
-    console.error('Stack trace:', error.stack);
+    const isRateLimit = error.status === 429 || error.message?.includes('rate_limit');
     return {
-      statusCode: 500,
+      statusCode: isRateLimit ? 429 : 500,
       headers,
       body: JSON.stringify({
-        errorDetails: error.message,
-        stack: error.stack,
         success: false,
         error: error.message || 'Failed to process PDF documents',
-        details: error.stack
+        errorType: isRateLimit ? 'rate_limit' : undefined,
+        errorCode: isRateLimit ? 'E200' : 'E999'
       })
     };
   }

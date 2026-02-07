@@ -2082,6 +2082,13 @@
   line-height: var(--line-height-relaxed);
 }
 
+.error-state-code {
+  font-size: 11px;
+  color: var(--color-gray-400);
+  margin: 4px 0 0;
+  font-family: var(--font-mono, monospace);
+}
+
 /* Delete Booking Modal */
 .delete-booking-list {
   display: flex;

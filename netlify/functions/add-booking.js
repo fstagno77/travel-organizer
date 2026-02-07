@@ -40,7 +40,7 @@ exports.handler = async (event, context) => {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ success: false, error: 'No PDF files provided' })
+        body: JSON.stringify({ success: false, error: 'No PDF files provided', errorCode: 'E100' })
       };
     }
 
@@ -48,7 +48,7 @@ exports.handler = async (event, context) => {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ success: false, error: 'Trip ID is required' })
+        body: JSON.stringify({ success: false, error: 'Trip ID is required', errorCode: 'E101' })
       };
     }
 
@@ -65,7 +65,7 @@ exports.handler = async (event, context) => {
       return {
         statusCode: 404,
         headers,
-        body: JSON.stringify({ success: false, error: 'Trip not found' })
+        body: JSON.stringify({ success: false, error: 'Trip not found', errorCode: 'E102' })
       };
     }
 
@@ -88,9 +88,16 @@ exports.handler = async (event, context) => {
         body: JSON.stringify({
           success: false,
           error: 'Rate limit reached. Please wait a minute before uploading another file.',
-          errorType: 'rate_limit'
+          errorType: 'rate_limit',
+          errorCode: 'E200'
         })
       };
+    }
+
+    // Check for other API errors (not rate limit)
+    const apiError = results.find(r => r.error && !r.error.isRateLimit);
+    if (apiError) {
+      console.error('Claude API error:', apiError.error.message, apiError.error.status);
     }
 
     // Collect results from all PDFs
@@ -124,12 +131,16 @@ exports.handler = async (event, context) => {
     }
 
     if (!newFlights.length && !newHotels.length) {
+      const errorCode = apiError ? 'E201' : 'E103';
       return {
         statusCode: 400,
         headers,
         body: JSON.stringify({
           success: false,
-          error: 'Could not extract any travel data from the uploaded PDFs'
+          error: apiError
+            ? `Processing error: ${apiError.error.message || 'API unavailable'}`
+            : 'Could not extract any travel data from the uploaded PDFs',
+          errorCode
         })
       };
     }
@@ -289,6 +300,7 @@ exports.handler = async (event, context) => {
           success: false,
           error: 'duplicate_booking',
           errorType: 'duplicate',
+          errorCode: 'E104',
           duplicateInfo: duplicateInfo.join(', '),
           tripName: tripData.name || tripData.destination
         })
@@ -411,7 +423,8 @@ exports.handler = async (event, context) => {
         headers,
         body: JSON.stringify({
           success: false,
-          error: 'Failed to update trip in database'
+          error: 'Failed to update trip in database',
+          errorCode: 'E300'
         })
       };
     }
@@ -435,12 +448,15 @@ exports.handler = async (event, context) => {
 
   } catch (error) {
     console.error('Error adding booking:', error);
+    const isRateLimit = error.status === 429 || error.message?.includes('rate_limit');
     return {
-      statusCode: 500,
+      statusCode: isRateLimit ? 429 : 500,
       headers,
       body: JSON.stringify({
         success: false,
-        error: error.message || 'Failed to process PDF documents'
+        error: error.message || 'Failed to process PDF documents',
+        errorType: isRateLimit ? 'rate_limit' : undefined,
+        errorCode: isRateLimit ? 'E200' : 'E999'
       })
     };
   }

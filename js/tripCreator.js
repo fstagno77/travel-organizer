@@ -342,7 +342,12 @@ const tripCreator = {
         body: JSON.stringify({ pdfs })
       });
 
-      const result = await response.json();
+      let result;
+      try {
+        result = await response.json();
+      } catch {
+        throw new Error(`${i18n.t('trip.addError') || 'Error processing file'} [HTTP${response.status}]`);
+      }
 
       // Check for rate limit error
       if (response.status === 429 || result.errorType === 'rate_limit') {
@@ -350,7 +355,8 @@ const tripCreator = {
       }
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to process PDFs');
+        const code = result.errorCode ? ` [${result.errorCode}]` : '';
+        throw new Error((result.error || 'Failed to process PDFs') + code);
       }
 
       if (result.success) {

@@ -1322,7 +1322,12 @@
           body: JSON.stringify({ pdfs, tripId })
         });
 
-        const result = await response.json();
+        let result;
+        try {
+          result = await response.json();
+        } catch {
+          throw Object.assign(new Error('server_error'), { errorCode: `HTTP${response.status}` });
+        }
 
         // Check for rate limit error
         if (response.status === 429 || result.errorType === 'rate_limit') {
@@ -1330,7 +1335,10 @@
         }
 
         if (!response.ok || !result.success) {
-          throw new Error(result.error || 'Failed to add booking');
+          throw Object.assign(
+            new Error(result.error || 'Failed to add booking'),
+            { errorCode: result.errorCode }
+          );
         }
 
         closeModal();
@@ -1339,9 +1347,13 @@
         utils.showToast(i18n.t('trip.addSuccess') || 'Booking added', 'success');
       } catch (error) {
         console.error('Error adding booking:', error);
-        const errorMessage = error.message === 'rate_limit'
-          ? (i18n.t('common.rateLimitError') || 'Rate limit reached. Please wait a minute.')
-          : (i18n.t('trip.addError') || 'Errore durante l\'aggiunta');
+        let errorMessage;
+        if (error.message === 'rate_limit') {
+          errorMessage = i18n.t('common.rateLimitError') || 'Rate limit reached. Please wait a minute.';
+        } else {
+          errorMessage = i18n.t('trip.addError') || 'Errore durante l\'aggiunta';
+          if (error.errorCode) errorMessage += ` [${error.errorCode}]`;
+        }
         alert(errorMessage);
         submitBtn.disabled = false;
         submitBtn.textContent = i18n.t('modal.add') || 'Aggiungi';
