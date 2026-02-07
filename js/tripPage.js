@@ -366,6 +366,10 @@
     const modal = document.getElementById('add-choice-modal');
     const closeBtn = document.getElementById('add-choice-close');
 
+    // Trigger reflow then add active class for CSS transition
+    modal.offsetHeight;
+    modal.classList.add('active');
+
     const closeModal = () => modal.remove();
 
     closeBtn.addEventListener('click', closeModal);
