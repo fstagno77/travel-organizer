@@ -178,6 +178,13 @@
               </svg>
               <span data-i18n="trip.share">Share</span>
             </button>
+            <button class="section-dropdown-item" data-action="edit-booking">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+              <span data-i18n="trip.editBookingMenu">Modifica prenotazione</span>
+            </button>
             <div class="section-dropdown-divider"></div>
             <button class="section-dropdown-item section-dropdown-item--danger" data-action="delete-booking">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -266,11 +273,13 @@
 
     // Show/hide menu items based on active tab
     const addBookingItem = document.querySelector('[data-action="add-booking"]');
+    const editBookingItem = document.querySelector('[data-action="edit-booking"]');
     const deleteBookingItem = document.querySelector('[data-action="delete-booking"]');
     const menuDivider = deleteBookingItem?.previousElementSibling;
     const isActivities = tabName === 'activities';
 
     if (addBookingItem) addBookingItem.style.display = '';
+    if (editBookingItem) editBookingItem.style.display = isActivities ? 'none' : '';
     if (deleteBookingItem) deleteBookingItem.style.display = isActivities ? 'none' : '';
     if (menuDivider?.classList.contains('section-dropdown-divider')) {
       menuDivider.style.display = isActivities ? 'none' : '';
@@ -306,9 +315,15 @@
           const activeTab = document.querySelector('.segmented-control-btn.active')?.dataset.tab;
           if (activeTab === 'activities') {
             showAddChoiceModal(tripId);
+          } else if (activeTab === 'flights') {
+            showAddBookingModal(tripId, 'flight');
+          } else if (activeTab === 'hotels') {
+            showAddBookingModal(tripId, 'hotel');
           } else {
             showAddBookingModal(tripId);
           }
+        } else if (action === 'edit-booking') {
+          showEditBookingModal(tripId);
         } else if (action === 'share') {
           showShareModal(tripId);
         }
@@ -382,7 +397,7 @@
         const choice = block.dataset.choice;
         if (choice === 'flight' || choice === 'hotel') {
           closeModal();
-          showAddBookingModal(tripId);
+          showAddBookingModal(tripId, choice);
         }
         // 'activity' is a no-op for now
       });
@@ -392,16 +407,21 @@
   /**
    * Show modal to add booking
    * @param {string} tripId
+   * @param {string} [type] - 'flight' or 'hotel' to customize title
    */
-  function showAddBookingModal(tripId) {
+  function showAddBookingModal(tripId, type) {
     const existingModal = document.getElementById('add-booking-modal');
     if (existingModal) existingModal.remove();
+
+    let titleKey = 'trip.addBookingTitle';
+    if (type === 'flight') titleKey = 'trip.addFlightTitle';
+    else if (type === 'hotel') titleKey = 'trip.addHotelTitle';
 
     const modalHTML = `
       <div class="modal-overlay" id="add-booking-modal">
         <div class="modal">
           <div class="modal-header">
-            <h2 data-i18n="trip.addBooking">Add booking</h2>
+            <h2 data-i18n="${titleKey}">Add booking</h2>
             <button class="modal-close" id="add-booking-close">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -978,6 +998,468 @@
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
     i18n.apply();
+  }
+
+  /**
+   * Show edit booking modal with selection + edit form
+   * @param {string} tripId
+   */
+  function showEditBookingModal(tripId) {
+    const existingModal = document.getElementById('edit-booking-modal');
+    if (existingModal) existingModal.remove();
+
+    const currentTab = document.querySelector('.segmented-control-btn.active')?.dataset.tab || 'flights';
+    const type = currentTab === 'hotels' ? 'hotel' : 'flight';
+    const items = type === 'flight'
+      ? (currentTripData?.flights || [])
+      : (currentTripData?.hotels || []);
+
+    if (items.length === 0) {
+      utils.showToast(i18n.t('trip.noBookings') || 'No bookings', 'error');
+      return;
+    }
+
+    // Build selection list
+    let listHTML = '<div class="edit-booking-list">';
+    for (const item of items) {
+      let label = '';
+      if (type === 'flight') {
+        const dep = item.departure?.code || '???';
+        const arr = item.arrival?.code || '???';
+        const date = item.date || '';
+        label = `${item.flightNumber || ''} ${dep} → ${arr}` + (date ? ` &middot; ${date}` : '');
+      } else {
+        const checkIn = item.checkIn?.date || '';
+        const checkOut = item.checkOut?.date || '';
+        label = item.name || 'Hotel';
+        if (checkIn) label += ` &middot; ${checkIn}`;
+        if (checkOut) label += ` → ${checkOut}`;
+      }
+      listHTML += `
+        <label class="edit-booking-item">
+          <input type="radio" name="edit-item" value="${item.id}">
+          <span class="edit-booking-item-label">${label}</span>
+        </label>`;
+    }
+    listHTML += '</div>';
+
+    const modalHTML = `
+      <div class="modal-overlay" id="edit-booking-modal">
+        <div class="modal">
+          <div class="modal-header">
+            <h2 data-i18n="trip.editBookingTitle">Modifica prenotazione</h2>
+            <button class="modal-close" id="edit-booking-close">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div id="edit-selection-view">${listHTML}</div>
+            <div id="edit-form-view" style="display:none"></div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" id="edit-booking-cancel" data-i18n="modal.cancel">Annulla</button>
+            <button class="btn btn-primary" id="edit-booking-confirm" disabled data-i18n="modal.save">Salva</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    const modal = document.getElementById('edit-booking-modal');
+    const closeBtn = document.getElementById('edit-booking-close');
+    const cancelBtn = document.getElementById('edit-booking-cancel');
+    const confirmBtn = document.getElementById('edit-booking-confirm');
+    const selectionView = document.getElementById('edit-selection-view');
+    const formView = document.getElementById('edit-form-view');
+
+    let selectedItemId = null;
+
+    const closeModal = () => {
+      modal.remove();
+      document.body.style.overflow = '';
+    };
+
+    // Handle radio selection → show edit form
+    modal.querySelectorAll('input[type="radio"]').forEach(radio => {
+      radio.addEventListener('change', () => {
+        selectedItemId = radio.value;
+        // Highlight selected
+        modal.querySelectorAll('.edit-booking-item').forEach(el => el.classList.remove('selected'));
+        radio.closest('.edit-booking-item').classList.add('selected');
+        // Build and show edit form
+        const item = items.find(i => i.id === selectedItemId);
+        if (item) {
+          selectionView.style.display = 'none';
+          formView.style.display = '';
+          formView.innerHTML = type === 'flight' ? buildFlightEditForm(item) : buildHotelEditForm(item);
+          confirmBtn.disabled = false;
+        }
+      });
+    });
+
+    const performSave = async () => {
+      if (!selectedItemId) return;
+
+      confirmBtn.disabled = true;
+      confirmBtn.innerHTML = '<span class="spinner spinner-sm"></span>';
+
+      try {
+        const updates = type === 'flight'
+          ? collectFlightUpdates(formView)
+          : collectHotelUpdates(formView);
+
+        const response = await utils.authFetch('/.netlify/functions/edit-booking', {
+          method: 'POST',
+          body: JSON.stringify({ tripId, type, itemId: selectedItemId, updates })
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to save');
+        }
+
+        closeModal();
+        await loadTripFromUrl();
+        utils.showToast(i18n.t('trip.editBookingSuccess') || 'Booking updated', 'success');
+      } catch (error) {
+        console.error('Error editing booking:', error);
+        utils.showToast(i18n.t('trip.editError') || 'Error updating', 'error');
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = i18n.t('modal.save') || 'Salva';
+      }
+    };
+
+    closeBtn.addEventListener('click', closeModal);
+    cancelBtn.addEventListener('click', () => {
+      // If in form view, go back to selection
+      if (formView.style.display !== 'none') {
+        formView.style.display = 'none';
+        selectionView.style.display = '';
+        confirmBtn.disabled = true;
+        selectedItemId = null;
+        modal.querySelectorAll('.edit-booking-item').forEach(el => el.classList.remove('selected'));
+        modal.querySelectorAll('input[type="radio"]').forEach(r => { r.checked = false; });
+      } else {
+        closeModal();
+      }
+    });
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+    confirmBtn.addEventListener('click', performSave);
+
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    i18n.apply();
+  }
+
+  /**
+   * Build flight edit form HTML
+   */
+  function buildFlightEditForm(flight) {
+    const isMultiPax = flight.passengers && flight.passengers.length > 1;
+
+    let passengersHTML = '';
+    if (isMultiPax) {
+      passengersHTML = flight.passengers.map((p, i) => `
+        <div class="edit-booking-passenger">
+          <div class="edit-booking-passenger-title">${p.name || `Passenger ${i + 1}`}</div>
+          <div class="edit-booking-grid">
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.passengerName') || 'Nome'}</label>
+              <input type="text" data-field="passengers.${i}.name" value="${escAttr(p.name)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.passengerType') || 'Tipo'}</label>
+              <input type="text" data-field="passengers.${i}.type" value="${escAttr(p.type)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.ticketNumber') || 'Biglietto'}</label>
+              <input type="text" data-field="passengers.${i}.ticketNumber" value="${escAttr(p.ticketNumber)}">
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    return `
+      <div class="edit-booking-form">
+        <div class="edit-booking-section">
+          <div class="edit-booking-section-title">
+            <span class="material-symbols-outlined">flight</span>
+            ${i18n.t('flight.flightInfo') || 'Volo'}
+          </div>
+          <div class="edit-booking-grid">
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.date') || 'Data'}</label>
+              <input type="date" data-field="date" value="${escAttr(flight.date)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.flightNumber') || 'Numero volo'}</label>
+              <input type="text" data-field="flightNumber" value="${escAttr(flight.flightNumber)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.departureTime') || 'Partenza'}</label>
+              <input type="time" data-field="departureTime" value="${escAttr(flight.departureTime)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.arrivalTime') || 'Arrivo'}</label>
+              <input type="time" data-field="arrivalTime" value="${escAttr(flight.arrivalTime)}">
+            </div>
+          </div>
+        </div>
+
+        <div class="edit-booking-section">
+          <div class="edit-booking-section-title">
+            <span class="material-symbols-outlined">flight_takeoff</span>
+            ${i18n.t('flight.departureInfo') || 'Partenza'}
+          </div>
+          <div class="edit-booking-grid">
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.iataCode') || 'IATA'}</label>
+              <input type="text" data-field="departure.code" value="${escAttr(flight.departure?.code)}" maxlength="3" style="text-transform:uppercase">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.city') || 'Città'}</label>
+              <input type="text" data-field="departure.city" value="${escAttr(flight.departure?.city)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.terminal') || 'Terminal'}</label>
+              <input type="text" data-field="departure.terminal" value="${escAttr(flight.departure?.terminal)}">
+            </div>
+          </div>
+        </div>
+
+        <div class="edit-booking-section">
+          <div class="edit-booking-section-title">
+            <span class="material-symbols-outlined">flight_land</span>
+            ${i18n.t('flight.arrivalInfo') || 'Arrivo'}
+          </div>
+          <div class="edit-booking-grid">
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.iataCode') || 'IATA'}</label>
+              <input type="text" data-field="arrival.code" value="${escAttr(flight.arrival?.code)}" maxlength="3" style="text-transform:uppercase">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.city') || 'Città'}</label>
+              <input type="text" data-field="arrival.city" value="${escAttr(flight.arrival?.city)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.terminal') || 'Terminal'}</label>
+              <input type="text" data-field="arrival.terminal" value="${escAttr(flight.arrival?.terminal)}">
+            </div>
+          </div>
+        </div>
+
+        <div class="edit-booking-section">
+          <div class="edit-booking-section-title">
+            <span class="material-symbols-outlined">confirmation_number</span>
+            ${i18n.t('flight.bookingInfo') || 'Prenotazione'}
+          </div>
+          <div class="edit-booking-grid">
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.bookingRef') || 'Riferimento'}</label>
+              <input type="text" data-field="bookingReference" value="${escAttr(flight.bookingReference)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.class') || 'Classe'}</label>
+              <input type="text" data-field="class" value="${escAttr(flight.class)}">
+            </div>
+            ${!isMultiPax ? `
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.seat') || 'Posto'}</label>
+              <input type="text" data-field="seat" value="${escAttr(flight.seat)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.ticketNumber') || 'Biglietto'}</label>
+              <input type="text" data-field="ticketNumber" value="${escAttr(flight.ticketNumber)}">
+            </div>
+            ` : ''}
+          </div>
+          ${passengersHTML}
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Build hotel edit form HTML
+   */
+  function buildHotelEditForm(hotel) {
+    // Resolve roomType to a simple string for editing
+    const lang = i18n.getLang();
+    let roomTypeVal = '';
+    if (hotel.roomTypes && Array.isArray(hotel.roomTypes)) {
+      roomTypeVal = hotel.roomTypes.map(rt => rt[lang] || rt.en || rt).join(', ');
+    } else if (hotel.roomType && typeof hotel.roomType === 'object') {
+      roomTypeVal = hotel.roomType[lang] || hotel.roomType.en || '';
+    } else if (hotel.roomType) {
+      roomTypeVal = hotel.roomType;
+    }
+
+    return `
+      <div class="edit-booking-form">
+        <div class="edit-booking-section">
+          <div class="edit-booking-section-title">
+            <span class="material-symbols-outlined">hotel</span>
+            ${i18n.t('hotel.hotelInfo') || 'Hotel'}
+          </div>
+          <div class="edit-booking-grid">
+            <div class="edit-booking-field full-width">
+              <label>${i18n.t('hotel.hotelInfo') || 'Nome'}</label>
+              <input type="text" data-field="name" value="${escAttr(hotel.name)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('hotel.checkIn') || 'Check-in'} - ${i18n.t('flight.date') || 'Data'}</label>
+              <input type="date" data-field="checkIn.date" value="${escAttr(hotel.checkIn?.date)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('hotel.checkIn') || 'Check-in'} - ${i18n.t('flight.departureTime') || 'Orario'}</label>
+              <input type="time" data-field="checkIn.time" value="${escAttr(hotel.checkIn?.time)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('hotel.checkOut') || 'Check-out'} - ${i18n.t('flight.date') || 'Data'}</label>
+              <input type="date" data-field="checkOut.date" value="${escAttr(hotel.checkOut?.date)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('hotel.checkOut') || 'Check-out'} - ${i18n.t('flight.departureTime') || 'Orario'}</label>
+              <input type="time" data-field="checkOut.time" value="${escAttr(hotel.checkOut?.time)}">
+            </div>
+          </div>
+        </div>
+
+        <div class="edit-booking-section">
+          <div class="edit-booking-section-title">
+            <span class="material-symbols-outlined">info</span>
+            ${i18n.t('hotel.detailsInfo') || 'Dettagli'}
+          </div>
+          <div class="edit-booking-grid">
+            <div class="edit-booking-field">
+              <label>${i18n.t('hotel.roomType') || 'Tipo camera'}</label>
+              <input type="text" data-field="roomType" value="${escAttr(roomTypeVal)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('hotel.guestName') || 'Nome ospite'}</label>
+              <input type="text" data-field="guestName" value="${escAttr(hotel.guestName)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('hotel.phone') || 'Telefono'}</label>
+              <input type="text" data-field="phone" value="${escAttr(hotel.phone)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('hotel.confirmation') || 'N. Conferma'}</label>
+              <input type="text" data-field="confirmationNumber" value="${escAttr(hotel.confirmationNumber)}">
+            </div>
+          </div>
+        </div>
+
+        <div class="edit-booking-section">
+          <div class="edit-booking-section-title">
+            <span class="material-symbols-outlined">location_on</span>
+            ${i18n.t('hotel.addressInfo') || 'Indirizzo'}
+          </div>
+          <div class="edit-booking-grid">
+            <div class="edit-booking-field full-width">
+              <label>${i18n.t('hotel.fullAddress') || 'Indirizzo completo'}</label>
+              <input type="text" data-field="address.fullAddress" value="${escAttr(hotel.address?.fullAddress)}">
+            </div>
+          </div>
+        </div>
+
+        <div class="edit-booking-section">
+          <div class="edit-booking-section-title">
+            <span class="material-symbols-outlined">payments</span>
+            ${i18n.t('hotel.priceInfo') || 'Prezzo'}
+          </div>
+          <div class="edit-booking-grid">
+            <div class="edit-booking-field">
+              <label>${i18n.t('hotel.currency') || 'Valuta'}</label>
+              <input type="text" data-field="price.total.currency" value="${escAttr(hotel.price?.total?.currency)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('hotel.amount') || 'Importo'}</label>
+              <input type="text" data-field="price.total.value" value="${escAttr(hotel.price?.total?.value)}">
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Escape attribute value for safe HTML insertion
+   */
+  function escAttr(val) {
+    if (val == null) return '';
+    return String(val).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  /**
+   * Collect flight form values into an updates object
+   */
+  function collectFlightUpdates(formView) {
+    const updates = {};
+    formView.querySelectorAll('input[data-field]').forEach(input => {
+      const field = input.dataset.field;
+      const val = input.value.trim();
+
+      if (field.startsWith('passengers.')) {
+        // passengers.0.name → { passengers: [{ name: val }] }
+        const parts = field.split('.');
+        const idx = parseInt(parts[1], 10);
+        const prop = parts[2];
+        if (!updates.passengers) updates.passengers = [];
+        while (updates.passengers.length <= idx) updates.passengers.push({});
+        updates.passengers[idx][prop] = val;
+      } else if (field.startsWith('departure.')) {
+        const prop = field.split('.')[1];
+        if (!updates.departure) updates.departure = {};
+        updates.departure[prop] = val;
+      } else if (field.startsWith('arrival.')) {
+        const prop = field.split('.')[1];
+        if (!updates.arrival) updates.arrival = {};
+        updates.arrival[prop] = val;
+      } else {
+        updates[field] = val;
+      }
+    });
+    return updates;
+  }
+
+  /**
+   * Collect hotel form values into an updates object
+   */
+  function collectHotelUpdates(formView) {
+    const updates = {};
+    formView.querySelectorAll('input[data-field]').forEach(input => {
+      const field = input.dataset.field;
+      const val = input.value.trim();
+
+      if (field.startsWith('checkIn.')) {
+        const prop = field.split('.')[1];
+        if (!updates.checkIn) updates.checkIn = {};
+        updates.checkIn[prop] = val;
+      } else if (field.startsWith('checkOut.')) {
+        const prop = field.split('.')[1];
+        if (!updates.checkOut) updates.checkOut = {};
+        updates.checkOut[prop] = val;
+      } else if (field.startsWith('address.')) {
+        const prop = field.split('.')[1];
+        if (!updates.address) updates.address = {};
+        updates.address[prop] = val;
+      } else if (field.startsWith('price.total.')) {
+        const prop = field.split('.')[2];
+        if (!updates.price) updates.price = {};
+        if (!updates.price.total) updates.price.total = {};
+        updates.price.total[prop] = val;
+      } else {
+        updates[field] = val;
+      }
+    });
+    return updates;
   }
 
   /**

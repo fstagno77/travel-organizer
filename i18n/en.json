@@ -87,7 +87,14 @@
     "flightFromTo": "Flight from",
     "activityDetails": "Details",
     "addFlight": "Flights",
-    "addHotel": "Hotel"
+    "addFlightTitle": "Add Flight",
+    "addHotel": "Hotel",
+    "addHotelTitle": "Add Hotel",
+    "editBookingMenu": "Edit booking",
+    "editBookingTitle": "Edit booking",
+    "editBookingSuccess": "Booking updated",
+    "editError": "Error updating booking",
+    "selectToEdit": "Select to edit"
   },
   "modal": {
     "cancel": "Cancel",
@@ -114,7 +121,19 @@
     "delete": "Delete flight",
     "deleteTitle": "Delete flight",
     "deleteConfirm": "Are you sure you want to delete this flight?",
-    "downloadPdf": "Download PDF"
+    "downloadPdf": "Download PDF",
+    "flightInfo": "Flight",
+    "departureInfo": "Departure",
+    "arrivalInfo": "Arrival",
+    "bookingInfo": "Booking",
+    "date": "Date",
+    "flightNumber": "Flight number",
+    "departureTime": "Departure time",
+    "arrivalTime": "Arrival time",
+    "iataCode": "IATA code",
+    "city": "City",
+    "passengerName": "Name",
+    "passengerType": "Type"
   },
   "passenger": {
     "deleteTitle": "Remove passenger",
@@ -151,7 +170,14 @@
     "delete": "Delete hotel",
     "deleteTitle": "Delete hotel",
     "deleteConfirm": "Are you sure you want to delete this hotel?",
-    "downloadPdf": "Download PDF"
+    "downloadPdf": "Download PDF",
+    "hotelInfo": "Hotel",
+    "detailsInfo": "Details",
+    "addressInfo": "Address",
+    "priceInfo": "Price",
+    "currency": "Currency",
+    "amount": "Amount",
+    "fullAddress": "Full address"
   },
   "changelog": {
     "title": "Changelog",

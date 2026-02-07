@@ -87,7 +87,14 @@
     "flightFromTo": "Volo da",
     "activityDetails": "Dettagli",
     "addFlight": "Voli",
-    "addHotel": "Hotel"
+    "addFlightTitle": "Aggiungi Voli",
+    "addHotel": "Hotel",
+    "addHotelTitle": "Aggiungi Hotel",
+    "editBookingMenu": "Modifica prenotazione",
+    "editBookingTitle": "Modifica prenotazione",
+    "editBookingSuccess": "Prenotazione modificata",
+    "editError": "Errore durante la modifica",
+    "selectToEdit": "Seleziona da modificare"
   },
   "modal": {
     "cancel": "Annulla",
@@ -114,7 +121,19 @@
     "delete": "Elimina volo",
     "deleteTitle": "Elimina volo",
     "deleteConfirm": "Sei sicuro di voler eliminare questo volo?",
-    "downloadPdf": "Scarica PDF"
+    "downloadPdf": "Scarica PDF",
+    "flightInfo": "Volo",
+    "departureInfo": "Partenza",
+    "arrivalInfo": "Arrivo",
+    "bookingInfo": "Prenotazione",
+    "date": "Data",
+    "flightNumber": "Numero volo",
+    "departureTime": "Orario partenza",
+    "arrivalTime": "Orario arrivo",
+    "iataCode": "Codice IATA",
+    "city": "Città",
+    "passengerName": "Nome",
+    "passengerType": "Tipo"
   },
   "passenger": {
     "deleteTitle": "Rimuovi passeggero",
@@ -151,7 +170,14 @@
     "delete": "Elimina hotel",
     "deleteTitle": "Elimina hotel",
     "deleteConfirm": "Sei sicuro di voler eliminare questo hotel?",
-    "downloadPdf": "Scarica PDF"
+    "downloadPdf": "Scarica PDF",
+    "hotelInfo": "Hotel",
+    "detailsInfo": "Dettagli",
+    "addressInfo": "Indirizzo",
+    "priceInfo": "Prezzo",
+    "currency": "Valuta",
+    "amount": "Importo",
+    "fullAddress": "Indirizzo completo"
   },
   "changelog": {
     "title": "Changelog",
