@@ -1604,6 +1604,13 @@
     const lang = i18n.getLang();
     const detailsLabel = i18n.t('trip.activityDetails') || 'Details';
     const oneDay = 24 * 60 * 60 * 1000;
+    // Format date as YYYY-MM-DD in local timezone (avoids UTC shift from toISOString)
+    const toLocalDateStr = (d) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    };
 
     // Build events list
     const events = [];
@@ -1638,7 +1645,7 @@
         const end = new Date(checkOutDate + 'T00:00:00');
         let current = new Date(start.getTime() + oneDay);
         while (current < end) {
-          const dateStr = current.toISOString().split('T')[0];
+          const dateStr = toLocalDateStr(current);
           events.push({
             date: dateStr,
             time: null,
@@ -1672,7 +1679,7 @@
       let current = new Date(tripData.startDate + 'T00:00:00');
       const end = new Date(tripData.endDate + 'T00:00:00');
       while (current <= end) {
-        allDates.push(current.toISOString().split('T')[0]);
+        allDates.push(toLocalDateStr(current));
         current = new Date(current.getTime() + oneDay);
       }
     }
