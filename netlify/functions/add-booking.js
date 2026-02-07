@@ -215,14 +215,23 @@ exports.handler = async (event, context) => {
         // Flight exists - aggregate passenger if new
         if (newFlight.passenger) {
           if (!existingFlight.passengers) {
-            existingFlight.passengers = existingFlight.passenger ? [existingFlight.passenger] : [];
+            existingFlight.passengers = existingFlight.passenger
+              ? [{ ...existingFlight.passenger, ticketNumber: existingFlight.passenger.ticketNumber || existingFlight.ticketNumber || null }]
+              : [];
+          } else {
+            // Backfill ticketNumber from flight level into existing passengers that lack it
+            existingFlight.passengers.forEach(p => {
+              if (!p.ticketNumber && existingFlight.ticketNumber) {
+                p.ticketNumber = existingFlight.ticketNumber;
+              }
+            });
           }
           const alreadyHasPassenger = existingFlight.passengers.some(p =>
             (p.ticketNumber && newFlight.passenger.ticketNumber && p.ticketNumber === newFlight.passenger.ticketNumber) ||
             (p.name && newFlight.passenger.name && p.name === newFlight.passenger.name)
           );
           if (!alreadyHasPassenger) {
-            existingFlight.passengers.push({ ...newFlight.passenger, _pdfIndex: newFlight._pdfIndex });
+            existingFlight.passengers.push({ ...newFlight.passenger, ticketNumber: newFlight.passenger.ticketNumber || newFlight.ticketNumber || null, _pdfIndex: newFlight._pdfIndex });
             existingFlight._needsPdfUpload = true; // Mark that we need to upload PDF for new passenger
             console.log(`Added passenger ${newFlight.passenger.name} to existing flight ${flightNum} on ${flightDate}`);
           } else {
@@ -242,20 +251,24 @@ exports.handler = async (event, context) => {
         );
         if (!alreadyAdded) {
           // First occurrence - initialize passengers array with _pdfIndex
-          newFlight.passengers = newFlight.passenger ? [{ ...newFlight.passenger, _pdfIndex: newFlight._pdfIndex }] : [];
+          newFlight.passengers = newFlight.passenger
+            ? [{ ...newFlight.passenger, ticketNumber: newFlight.passenger.ticketNumber || newFlight.ticketNumber || null, _pdfIndex: newFlight._pdfIndex }]
+            : [];
           deduplicatedFlights.push(newFlight);
         } else {
           // Aggregate passenger to flight in batch
           if (newFlight.passenger) {
             if (!alreadyAdded.passengers) {
-              alreadyAdded.passengers = alreadyAdded.passenger ? [{ ...alreadyAdded.passenger, _pdfIndex: alreadyAdded._pdfIndex }] : [];
+              alreadyAdded.passengers = alreadyAdded.passenger
+                ? [{ ...alreadyAdded.passenger, ticketNumber: alreadyAdded.passenger.ticketNumber || alreadyAdded.ticketNumber || null, _pdfIndex: alreadyAdded._pdfIndex }]
+                : [];
             }
             const alreadyHasPassenger = alreadyAdded.passengers.some(p =>
               (p.ticketNumber && newFlight.passenger.ticketNumber && p.ticketNumber === newFlight.passenger.ticketNumber) ||
               (p.name && newFlight.passenger.name && p.name === newFlight.passenger.name)
             );
             if (!alreadyHasPassenger) {
-              alreadyAdded.passengers.push({ ...newFlight.passenger, _pdfIndex: newFlight._pdfIndex });
+              alreadyAdded.passengers.push({ ...newFlight.passenger, ticketNumber: newFlight.passenger.ticketNumber || newFlight.ticketNumber || null, _pdfIndex: newFlight._pdfIndex });
               console.log(`Added passenger ${newFlight.passenger.name} to batch flight ${flightNum} on ${flightDate}`);
             } else {
               console.log(`Skipping duplicate flight in same batch: ${flightNum}`);

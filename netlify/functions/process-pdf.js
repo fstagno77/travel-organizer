@@ -178,13 +178,17 @@ exports.handler = async (event, context) => {
 
       if (!existingFlight) {
         // First occurrence of this flight - initialize passengers array with _pdfIndex
-        flight.passengers = flight.passenger ? [{ ...flight.passenger, _pdfIndex: flight._pdfIndex }] : [];
+        flight.passengers = flight.passenger
+          ? [{ ...flight.passenger, ticketNumber: flight.passenger.ticketNumber || flight.ticketNumber || null, _pdfIndex: flight._pdfIndex }]
+          : [];
         deduplicatedFlights.push(flight);
       } else {
         // Duplicate flight found - aggregate passenger info
         if (flight.passenger) {
           if (!existingFlight.passengers) {
-            existingFlight.passengers = existingFlight.passenger ? [{ ...existingFlight.passenger, _pdfIndex: existingFlight._pdfIndex }] : [];
+            existingFlight.passengers = existingFlight.passenger
+              ? [{ ...existingFlight.passenger, ticketNumber: existingFlight.passenger.ticketNumber || existingFlight.ticketNumber || null, _pdfIndex: existingFlight._pdfIndex }]
+              : [];
           }
           // Only add if this passenger isn't already in the list (check by ticketNumber or name)
           const alreadyHasPassenger = existingFlight.passengers.some(p =>
@@ -192,7 +196,7 @@ exports.handler = async (event, context) => {
             (p.name && flight.passenger.name && p.name === flight.passenger.name)
           );
           if (!alreadyHasPassenger) {
-            existingFlight.passengers.push({ ...flight.passenger, _pdfIndex: flight._pdfIndex });
+            existingFlight.passengers.push({ ...flight.passenger, ticketNumber: flight.passenger.ticketNumber || flight.ticketNumber || null, _pdfIndex: flight._pdfIndex });
             console.log(`Added passenger ${flight.passenger.name} to flight ${flightNum} on ${flightDate}`);
           }
         }
