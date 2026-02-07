@@ -1260,12 +1260,13 @@
                             <span data-i18n="flight.downloadPdf">Scarica PDF</span>
                           </button>
                           ` : ''}
+                          ${p.pdfPath ? `<div class="passenger-menu-divider"></div>` : ''}
                           <button class="passenger-menu-item passenger-menu-item--danger" data-action="delete-passenger" data-passenger-name="${p.name}" data-booking-ref="${flight.bookingReference}">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                               <line x1="18" y1="6" x2="6" y2="18"></line>
                               <line x1="6" y1="6" x2="18" y2="18"></line>
                             </svg>
-                            <span data-i18n="passenger.removePassenger">Rimuovi passeggero</span>
+                            <span data-i18n="passenger.delete">Rimuovi</span>
                           </button>
                         </div>
                       </div>

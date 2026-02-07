@@ -591,6 +591,12 @@
   color: var(--color-gray-500);
 }
 
+.passenger-menu-divider {
+  height: 1px;
+  background-color: var(--color-gray-200);
+  margin: var(--spacing-1) 0;
+}
+
 .passenger-menu-item--danger {
   color: var(--color-error);
 }
