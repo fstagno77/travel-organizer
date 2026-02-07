@@ -83,7 +83,8 @@
     "noActivities": "Nessuna attività",
     "noActivitiesText": "Aggiungi una prenotazione per visualizzare le attività",
     "newActivity": "Nuova attività",
-    "flightTo": "Volo per"
+    "flightTo": "Volo per",
+    "activityDetails": "Dettagli"
   },
   "modal": {
     "cancel": "Annulla",

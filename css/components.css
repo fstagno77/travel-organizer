@@ -1848,14 +1848,8 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-3);
-  padding: var(--spacing-3);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: background-color var(--transition-fast);
-}
-
-.activity-item:hover {
-  background-color: var(--color-gray-50);
+  padding: var(--spacing-3) var(--spacing-3);
+  border-bottom: 1px solid var(--color-gray-100);
 }
 
 .activity-item-icon {
@@ -1890,18 +1884,15 @@
 
 .activity-item-link {
   flex-shrink: 0;
-  background: none;
-  border: none;
-  color: var(--color-gray-400);
+  color: var(--color-primary);
+  font-size: var(--font-size-sm);
+  text-decoration: none;
   cursor: pointer;
-  padding: var(--spacing-1);
-  display: flex;
-  align-items: center;
-  transition: color var(--transition-fast);
+  transition: opacity var(--transition-fast);
 }
 
 .activity-item-link:hover {
-  color: var(--color-primary);
+  opacity: 0.7;
 }
 
 .activity-new-btn {

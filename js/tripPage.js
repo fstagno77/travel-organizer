@@ -278,6 +278,17 @@
     });
     const targetContent = document.getElementById(`${tabName}-tab`);
     if (targetContent) targetContent.classList.add('active');
+
+    // Hide add/delete booking menu items on activities tab
+    const hideOnActivities = tabName === 'activities';
+    const addBookingItem = document.querySelector('[data-action="add-booking"]');
+    const deleteBookingItem = document.querySelector('[data-action="delete-booking"]');
+    const menuDivider = deleteBookingItem?.previousElementSibling;
+    if (addBookingItem) addBookingItem.style.display = hideOnActivities ? 'none' : '';
+    if (deleteBookingItem) deleteBookingItem.style.display = hideOnActivities ? 'none' : '';
+    if (menuDivider?.classList.contains('section-dropdown-divider')) {
+      menuDivider.style.display = hideOnActivities ? 'none' : '';
+    }
   }
 
   /**
@@ -1593,6 +1604,8 @@
     }
 
     const lang = i18n.getLang();
+    const detailsLabel = i18n.t('trip.activityDetails') || 'Details';
+    const oneDay = 24 * 60 * 60 * 1000;
 
     // Build events list
     const events = [];
@@ -1607,7 +1620,7 @@
       });
     }
 
-    // Add hotel events
+    // Add hotel events (check-in, stay, check-out are mutually exclusive per day)
     for (const hotel of hotels) {
       const checkInDate = hotel.checkIn?.date;
       const checkOutDate = hotel.checkOut?.date;
@@ -1621,11 +1634,10 @@
         });
       }
 
-      // Add stay days (intermediate days between check-in and check-out)
+      // Stay days: only intermediate days (excludes check-in and check-out)
       if (checkInDate && checkOutDate) {
         const start = new Date(checkInDate + 'T00:00:00');
         const end = new Date(checkOutDate + 'T00:00:00');
-        const oneDay = 24 * 60 * 60 * 1000;
         let current = new Date(start.getTime() + oneDay);
         while (current < end) {
           const dateStr = current.toISOString().split('T')[0];
@@ -1656,25 +1668,48 @@
       grouped[event.date].push(event);
     }
 
-    // Sort dates chronologically
-    const sortedDates = Object.keys(grouped).sort();
+    // Generate all trip days from startDate to endDate
+    const allDates = [];
+    if (tripData.startDate && tripData.endDate) {
+      let current = new Date(tripData.startDate + 'T00:00:00');
+      const end = new Date(tripData.endDate + 'T00:00:00');
+      while (current <= end) {
+        allDates.push(current.toISOString().split('T')[0]);
+        current = new Date(current.getTime() + oneDay);
+      }
+    }
+    // Also include any event dates that fall outside start/end range
+    for (const date of Object.keys(grouped)) {
+      if (!allDates.includes(date)) allDates.push(date);
+    }
+    allDates.sort();
 
-    // Sort events within each day by time, with type priority for same time
+    // Sort events within each day
     const typePriority = { 'hotel-checkout': 0, 'flight': 1, 'hotel-checkin': 2, 'hotel-stay': 3 };
-    for (const date of sortedDates) {
-      grouped[date].sort((a, b) => {
-        if (a.time !== b.time) return a.time.localeCompare(b.time);
-        return (typePriority[a.type] || 99) - (typePriority[b.type] || 99);
-      });
+    for (const date of allDates) {
+      if (grouped[date]) {
+        grouped[date].sort((a, b) => {
+          if (a.time !== b.time) return a.time.localeCompare(b.time);
+          return (typePriority[a.type] || 99) - (typePriority[b.type] || 99);
+        });
+      }
     }
 
-    // Render
-    const html = sortedDates.map(date => {
-      const dayLabel = utils.formatDate(date, lang, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-      // Capitalize first letter
-      const capitalizedDay = dayLabel.charAt(0).toUpperCase() + dayLabel.slice(1);
+    const flightIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.4-.1.9.3 1.1l4.8 3.2-2.1 2.1-2.4-.6c-.4-.1-.8 0-1 .3l-.2.3c-.2.3-.1.7.1 1l2.2 2.2 2.2 2.2c.3.3.7.3 1 .1l.3-.2c.3-.2.4-.6.3-1l-.6-2.4 2.1-2.1 3.2 4.8c.2.4.7.5 1.1.3l.5-.3c.4-.2.6-.6.5-1.1z"/>
+    </svg>`;
+    const hotelIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M3 21h18"></path><path d="M5 21V7l8-4v18"></path><path d="M19 21V11l-6-4"></path>
+      <path d="M9 9v.01"></path><path d="M9 12v.01"></path><path d="M9 15v.01"></path><path d="M9 18v.01"></path>
+    </svg>`;
 
-      const itemsHtml = grouped[date].map(event => {
+    // Render
+    const html = allDates.map(date => {
+      const dayLabel = utils.formatDate(date, lang, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+      const capitalizedDay = dayLabel.charAt(0).toUpperCase() + dayLabel.slice(1);
+      const dayEvents = grouped[date] || [];
+
+      const itemsHtml = dayEvents.map(event => {
         let icon = '';
         let text = '';
         let tab = '';
@@ -1683,33 +1718,22 @@
         if (event.type === 'flight') {
           const dest = event.data.arrival?.city || event.data.arrival?.code || '';
           text = `${i18n.t('trip.flightTo') || 'Flight to'} ${dest}`;
-          icon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.4-.1.9.3 1.1l4.8 3.2-2.1 2.1-2.4-.6c-.4-.1-.8 0-1 .3l-.2.3c-.2.3-.1.7.1 1l2.2 2.2 2.2 2.2c.3.3.7.3 1 .1l.3-.2c.3-.2.4-.6.3-1l-.6-2.4 2.1-2.1 3.2 4.8c.2.4.7.5 1.1.3l.5-.3c.4-.2.6-.6.5-1.1z"/>
-          </svg>`;
+          icon = flightIcon;
           tab = 'flights';
           itemId = event.data.id;
         } else if (event.type === 'hotel-checkin') {
           text = `Check-in ${event.data.name || 'Hotel'}`;
-          icon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M3 21h18"></path><path d="M5 21V7l8-4v18"></path><path d="M19 21V11l-6-4"></path>
-            <path d="M9 9v.01"></path><path d="M9 12v.01"></path><path d="M9 15v.01"></path><path d="M9 18v.01"></path>
-          </svg>`;
+          icon = hotelIcon;
           tab = 'hotels';
           itemId = event.data.id;
         } else if (event.type === 'hotel-stay') {
           text = `${i18n.t('hotel.stay') || 'Stay'} ${event.data.name || 'Hotel'}`;
-          icon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M3 21h18"></path><path d="M5 21V7l8-4v18"></path><path d="M19 21V11l-6-4"></path>
-            <path d="M9 9v.01"></path><path d="M9 12v.01"></path><path d="M9 15v.01"></path><path d="M9 18v.01"></path>
-          </svg>`;
+          icon = hotelIcon;
           tab = 'hotels';
           itemId = event.data.id;
         } else if (event.type === 'hotel-checkout') {
           text = `Check-out ${event.data.name || 'Hotel'}`;
-          icon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M3 21h18"></path><path d="M5 21V7l8-4v18"></path><path d="M19 21V11l-6-4"></path>
-            <path d="M9 9v.01"></path><path d="M9 12v.01"></path><path d="M9 15v.01"></path><path d="M9 18v.01"></path>
-          </svg>`;
+          icon = hotelIcon;
           tab = 'hotels';
           itemId = event.data.id;
         }
@@ -1717,17 +1741,13 @@
         const timeStr = event.time && event.time !== '00:00' ? `<span class="activity-item-time">${event.time}</span>` : '';
 
         return `
-          <div class="activity-item" data-tab="${tab}" data-item-id="${itemId}">
+          <div class="activity-item">
             <div class="activity-item-icon">${icon}</div>
             <div class="activity-item-content">
               ${timeStr}
               <span class="activity-item-text">${text}</span>
             </div>
-            <button class="activity-item-link" data-tab="${tab}" data-item-id="${itemId}">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="9 18 15 12 9 6"></polyline>
-              </svg>
-            </button>
+            <a class="activity-item-link" href="#" data-tab="${tab}" data-item-id="${itemId}">${detailsLabel}</a>
           </div>
         `;
       }).join('');
@@ -1762,16 +1782,13 @@
    * Initialize activity link click handlers
    */
   function initActivityLinks() {
-    document.querySelectorAll('.activity-item-link, .activity-item').forEach(el => {
-      el.addEventListener('click', (e) => {
-        // Don't trigger twice if clicking the button inside the item
-        if (e.target.closest('.activity-item-link') && el.classList.contains('activity-item')) return;
-
-        const tab = el.dataset.tab;
-        const itemId = el.dataset.itemId;
+    document.querySelectorAll('.activity-item-link').forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const tab = link.dataset.tab;
+        const itemId = link.dataset.itemId;
         if (tab) {
           switchToTab(tab);
-          // Scroll to the specific card
           if (itemId) {
             setTimeout(() => {
               const card = document.querySelector(`[data-id="${itemId}"]`);

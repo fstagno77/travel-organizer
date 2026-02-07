@@ -83,7 +83,8 @@
     "noActivities": "No activities",
     "noActivitiesText": "Add a booking to see your activities here",
     "newActivity": "New activity",
-    "flightTo": "Flight to"
+    "flightTo": "Flight to",
+    "activityDetails": "Details"
   },
   "modal": {
     "cancel": "Cancel",
