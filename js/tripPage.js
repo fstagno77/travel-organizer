@@ -230,8 +230,9 @@
     // Initialize tab switching
     initTabSwitching();
 
-    // Default tab is activities; hide add/delete booking menu items initially
-    switchToTab('activities');
+    // Restore last active tab (or default to activities)
+    const savedTab = sessionStorage.getItem('tripActiveTab') || 'activities';
+    switchToTab(savedTab);
 
     // Initialize menu
     initMenu(tripData.id);
@@ -270,6 +271,9 @@
     });
     const targetContent = document.getElementById(`${tabName}-tab`);
     if (targetContent) targetContent.classList.add('active');
+
+    // Persist active tab for page refresh
+    try { sessionStorage.setItem('tripActiveTab', tabName); } catch(e) {}
 
     // Show/hide menu items based on active tab
     const addBookingItem = document.querySelector('[data-action="add-booking"]');
@@ -983,8 +987,10 @@
           }
         }
 
+        const activeTab = document.querySelector('.segmented-control-btn.active')?.dataset.tab;
         closeModal();
         await loadTripFromUrl();
+        if (activeTab) switchToTab(activeTab);
         utils.showToast(i18n.t('trip.deleteBookingSuccess') || 'Bookings deleted', 'success');
       } catch (error) {
         console.error('Error deleting bookings:', error);
@@ -1163,8 +1169,10 @@
           }
         }
 
+        const activeTab = document.querySelector('.segmented-control-btn.active')?.dataset.tab;
         closeModal();
         await loadTripFromUrl();
+        if (activeTab) switchToTab(activeTab);
         utils.showToast(i18n.t('trip.editBookingSuccess') || 'Booking updated', 'success');
       } catch (error) {
         console.error('Error editing booking:', error);
@@ -1641,9 +1649,10 @@
           throw new Error(result.error || 'Failed to rename trip');
         }
 
+        const activeTab = document.querySelector('.segmented-control-btn.active')?.dataset.tab;
         closeModal();
-        // Reload trip data
         await loadTripFromUrl();
+        if (activeTab) switchToTab(activeTab);
       } catch (error) {
         console.error('Error renaming trip:', error);
         alert(i18n.t('trip.renameError') || 'Error renaming trip');
@@ -2691,10 +2700,10 @@
           throw new Error(result.error || 'Failed to remove passenger');
         }
 
+        const activeTab = document.querySelector('.segmented-control-btn.active')?.dataset.tab;
         closeModal();
-
-        // Reload trip data
         await loadTripFromUrl();
+        if (activeTab) switchToTab(activeTab);
       } catch (error) {
         console.error('Error removing passenger:', error);
         alert(i18n.t('common.deleteError') || 'Error removing passenger');
