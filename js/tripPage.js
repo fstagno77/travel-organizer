@@ -2318,8 +2318,8 @@
       }
     }
 
-    const flightDot = `<span class="activity-dot activity-dot-flight"></span>`;
-    const hotelDot = `<span class="activity-dot activity-dot-hotel"></span>`;
+    const flightIcon = `<span class="material-symbols-outlined activity-icon-flight">travel</span>`;
+    const hotelIcon = `<span class="material-symbols-outlined activity-icon-hotel">bed</span>`;
 
     // Render
     const html = allDates.map(date => {
@@ -2339,22 +2339,22 @@
           const dep = event.data.departure?.city || event.data.departure?.code || '';
           const dest = event.data.arrival?.city || event.data.arrival?.code || '';
           text = `${i18n.t('trip.flightFromTo') || 'Flight from'} ${dep} → ${dest}`;
-          icon = flightDot;
+          icon = flightIcon;
           tab = 'flights';
           itemId = event.data.id;
         } else if (event.type === 'hotel-checkin') {
           text = `Check-in ${event.data.name || 'Hotel'}`;
-          icon = hotelDot;
+          icon = hotelIcon;
           tab = 'hotels';
           itemId = event.data.id;
         } else if (event.type === 'hotel-stay') {
           text = `${i18n.t('hotel.stay') || 'Stay'} ${event.data.name || 'Hotel'}`;
-          icon = hotelDot;
+          icon = hotelIcon;
           tab = 'hotels';
           itemId = event.data.id;
         } else if (event.type === 'hotel-checkout') {
           text = `Check-out ${event.data.name || 'Hotel'}`;
-          icon = hotelDot;
+          icon = hotelIcon;
           tab = 'hotels';
           itemId = event.data.id;
         }
@@ -2363,7 +2363,7 @@
 
         return `
           <div class="activity-item">
-            ${icon}
+            <div class="activity-item-icon">${icon}</div>
             <div class="activity-item-content">
               ${timeStr}
               <span class="activity-item-text">${text}</span>
