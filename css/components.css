@@ -1239,8 +1239,9 @@
   color: var(--color-gray-400);
 }
 
-/* iOS Safari: date inputs can overflow containers due to native chrome */
-input[type="date"].form-input {
+/* iOS Safari: date/time inputs can overflow containers due to native chrome */
+input[type="date"].form-input,
+input[type="time"].form-input {
   -webkit-appearance: none;
   appearance: none;
   min-width: 0;
@@ -2868,7 +2869,8 @@ input[type="date"].form-input {
   box-sizing: border-box;
 }
 
-.edit-booking-field input[type="date"] {
+.edit-booking-field input[type="date"],
+.edit-booking-field input[type="time"] {
   -webkit-appearance: none;
   appearance: none;
   min-width: 0;
