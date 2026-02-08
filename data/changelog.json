@@ -1,6 +1,34 @@
 {
   "versions": [
     {
+      "version": "0.15.0",
+      "date": "2026-02-08",
+      "changes": {
+        "it": [
+          "Attività personalizzate: crea, visualizza, modifica ed elimina attività (musei, ristoranti, escursioni...)",
+          "Pannello slide-in da destra per gestione attività con tre modalità: crea, visualizza, modifica",
+          "Upload file nelle attività: PDF e immagini (JPEG, PNG, GIF, WebP), max 5 file da 10MB",
+          "Drag & drop per aggiungere file alle attività",
+          "Link personalizzati nelle attività con validazione URL e apertura in nuova scheda",
+          "Bucket storage separato per allegati attività (activity-files)",
+          "Righe attività con sfondo bianco, bordi arrotondati e click su tutta la riga",
+          "Icona occhio per anteprima attività nella timeline",
+          "Orario attività: mostra intervallo hh:mm – hh:mm quando presente ora fine"
+        ],
+        "en": [
+          "Custom activities: create, view, edit and delete activities (museums, restaurants, excursions...)",
+          "Slide-in panel from right for activity management with three modes: create, view, edit",
+          "File uploads in activities: PDF and images (JPEG, PNG, GIF, WebP), max 5 files of 10MB",
+          "Drag & drop to add files to activities",
+          "Custom links in activities with URL validation and new tab opening",
+          "Separate storage bucket for activity attachments (activity-files)",
+          "Activity rows with white background, rounded borders and full-row click",
+          "Eye icon for activity preview in timeline",
+          "Activity time: shows hh:mm – hh:mm range when end time is present"
+        ]
+      }
+    },
+    {
       "version": "0.14.0",
       "date": "2026-02-08",
       "changes": {

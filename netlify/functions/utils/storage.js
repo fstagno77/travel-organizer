@@ -1,14 +1,17 @@
 /**
  * Supabase Storage Helper
- * Handles PDF file storage operations
+ * Handles file storage operations
+ * - trip-pdfs: booking PDFs (flights, hotels)
+ * - activity-files: activity attachments (PDFs, images)
  */
 
 const { createClient } = require('@supabase/supabase-js');
 
 const BUCKET_NAME = 'trip-pdfs';
+const ACTIVITY_BUCKET = 'activity-files';
 
 /**
- * Get Supabase client instance
+ * Get Supabase client instance (anon key)
  */
 function getSupabaseClient() {
   return createClient(
@@ -16,6 +19,45 @@ function getSupabaseClient() {
     process.env.SUPABASE_ANON_KEY
   );
 }
+
+/**
+ * Get Supabase client with service role (for storage admin ops)
+ */
+function getServiceClient() {
+  return createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+}
+
+let activityBucketReady = false;
+
+/**
+ * Ensure activity-files bucket exists (idempotent, creates if missing)
+ */
+async function ensureActivityBucket() {
+  if (activityBucketReady) return;
+  try {
+    const supabase = getServiceClient();
+    // Try to create; if already exists, Supabase returns an error we can ignore
+    const { error } = await supabase.storage.createBucket(ACTIVITY_BUCKET, {
+      public: false,
+      allowedMimeTypes: ['application/pdf', 'image/jpeg', 'image/png', 'image/gif', 'image/webp'],
+      fileSizeLimit: 10 * 1024 * 1024 // 10MB
+    });
+    if (error && !error.message?.includes('already exists')) {
+      console.error('Error creating activity bucket:', error);
+    }
+    activityBucketReady = true;
+  } catch (err) {
+    console.error('Error ensuring activity bucket:', err);
+    activityBucketReady = true; // Don't retry endlessly
+  }
+}
+
+// ============================================
+// Booking PDF Functions (trip-pdfs bucket)
+// ============================================
 
 /**
  * Upload PDF to Supabase Storage
@@ -210,6 +252,77 @@ async function deletePendingPdf(pendingBookingId) {
   }
 }
 
+// ============================================
+// Activity File Functions (activity-files bucket)
+// ============================================
+
+/**
+ * Upload a file (PDF, image) for an activity
+ * @param {string} base64Content - Base64 encoded file
+ * @param {string} tripId - Trip ID
+ * @param {string} activityId - Activity ID
+ * @param {number} index - File index
+ * @param {string} extension - File extension (pdf, jpg, png, etc.)
+ * @param {string} contentType - MIME type
+ * @returns {Promise<string>} Storage path
+ */
+async function uploadActivityFile(base64Content, tripId, activityId, index, extension, contentType) {
+  await ensureActivityBucket();
+
+  const supabase = getServiceClient();
+  const path = `${tripId}/${activityId}-${index}.${extension}`;
+  const buffer = Buffer.from(base64Content, 'base64');
+
+  const { error } = await supabase.storage
+    .from(ACTIVITY_BUCKET)
+    .upload(path, buffer, { contentType, upsert: true });
+
+  if (error) {
+    console.error('Error uploading activity file:', error);
+    throw error;
+  }
+
+  return path;
+}
+
+/**
+ * Delete a file from the activity bucket
+ * @param {string} path - Storage path
+ */
+async function deleteActivityFile(path) {
+  if (!path) return;
+  const supabase = getServiceClient();
+
+  const { error } = await supabase.storage
+    .from(ACTIVITY_BUCKET)
+    .remove([path]);
+
+  if (error) {
+    console.error('Error deleting activity file:', error);
+  }
+}
+
+/**
+ * Get signed URL for an activity file
+ * @param {string} path - Storage path
+ * @param {number} expiresIn - URL expiry in seconds (default 1 hour)
+ * @returns {Promise<string>} Signed URL
+ */
+async function getActivityFileSignedUrl(path, expiresIn = 3600) {
+  const supabase = getServiceClient();
+
+  const { data, error } = await supabase.storage
+    .from(ACTIVITY_BUCKET)
+    .createSignedUrl(path, expiresIn);
+
+  if (error) {
+    console.error('Error creating activity file signed URL:', error);
+    throw error;
+  }
+
+  return data.signedUrl;
+}
+
 module.exports = {
   uploadPdf,
   deletePdf,
@@ -218,5 +331,9 @@ module.exports = {
   uploadPendingPdf,
   movePdfToTrip,
   deletePendingPdf,
-  BUCKET_NAME
+  uploadActivityFile,
+  deleteActivityFile,
+  getActivityFileSignedUrl,
+  BUCKET_NAME,
+  ACTIVITY_BUCKET
 };
