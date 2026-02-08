@@ -1038,7 +1038,7 @@
       return;
     }
 
-    // Build selection list grouped by booking reference (same logic as delete modal "Prenotazioni" tab)
+    // If only one booking group, skip selection and open panel directly
     const groups = {};
     for (const item of items) {
       const key = type === 'flight'
@@ -1048,8 +1048,17 @@
       groups[key].push(item);
     }
 
+    const groupEntries = Object.entries(groups);
+    if (groupEntries.length === 1) {
+      const [, groupItems] = groupEntries[0];
+      const itemIds = groupItems.map(g => g.id);
+      showEditBookingPanel(type, items, itemIds, tripId);
+      return;
+    }
+
+    // Build selection list grouped by booking reference
     let listHTML = '<div class="edit-booking-list">';
-    for (const [ref, groupItems] of Object.entries(groups)) {
+    for (const [ref, groupItems] of groupEntries) {
       const itemIds = groupItems.map(g => g.id).join(',');
       let sublabel = '';
       if (type === 'flight') {
@@ -1099,7 +1108,7 @@
       <div class="modal-overlay" id="edit-booking-modal">
         <div class="modal">
           <div class="modal-header">
-            <h2 data-i18n="trip.editBookingTitle">Modifica prenotazione</h2>
+            <h2 data-i18n="trip.selectToEdit">Seleziona da modificare</h2>
             <button class="modal-close" id="edit-booking-close">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -1108,12 +1117,11 @@
             </button>
           </div>
           <div class="modal-body">
-            <div id="edit-selection-view">${listHTML}</div>
-            <div id="edit-form-view" style="display:none"></div>
+            ${listHTML}
           </div>
           <div class="modal-footer">
             <button class="btn btn-secondary" id="edit-booking-cancel" data-i18n="modal.cancel">Annulla</button>
-            <button class="btn btn-primary" id="edit-booking-confirm" disabled data-i18n="modal.save">Salva</button>
+            <button class="btn btn-primary" id="edit-booking-confirm" disabled data-i18n="travelers.edit">Modifica</button>
           </div>
         </div>
       </div>
@@ -1125,8 +1133,6 @@
     const closeBtn = document.getElementById('edit-booking-close');
     const cancelBtn = document.getElementById('edit-booking-cancel');
     const confirmBtn = document.getElementById('edit-booking-confirm');
-    const selectionView = document.getElementById('edit-selection-view');
-    const formView = document.getElementById('edit-form-view');
 
     let selectedItemIds = null;
 
@@ -1135,32 +1141,90 @@
       document.body.style.overflow = '';
     };
 
-    // Handle radio selection → show edit form
+    // Handle radio selection → enable confirm button
     modal.querySelectorAll('input[type="radio"]').forEach(radio => {
       radio.addEventListener('change', () => {
         selectedItemIds = radio.value.split(',');
-        // Highlight selected
         modal.querySelectorAll('.edit-booking-item').forEach(el => el.classList.remove('selected'));
         radio.closest('.edit-booking-item').classList.add('selected');
-        // Build and show edit form for the first item of the group
-        const item = items.find(i => i.id === selectedItemIds[0]);
-        if (item) {
-          selectionView.style.display = 'none';
-          formView.style.display = '';
-          formView.innerHTML = type === 'flight' ? buildFlightEditForm(item) : buildHotelEditForm(item);
-          if (type === 'flight' && typeof AirportAutocomplete !== 'undefined') {
-            AirportAutocomplete.init(formView);
-          }
-          confirmBtn.disabled = false;
-        }
+        confirmBtn.disabled = false;
       });
     });
 
-    const performSave = async () => {
-      if (!selectedItemIds || selectedItemIds.length === 0) return;
+    // Confirm → close modal and open slide panel
+    confirmBtn.addEventListener('click', () => {
+      if (!selectedItemIds) return;
+      closeModal();
+      showEditBookingPanel(type, items, selectedItemIds, tripId);
+    });
 
+    closeBtn.addEventListener('click', closeModal);
+    cancelBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    i18n.apply();
+  }
+
+  /**
+   * Show slide-in panel with edit booking form
+   */
+  function showEditBookingPanel(type, items, selectedItemIds, tripId) {
+    const existingPanel = document.getElementById('edit-booking-panel');
+    if (existingPanel) existingPanel.remove();
+
+    const item = items.find(i => i.id === selectedItemIds[0]);
+    if (!item) return;
+
+    const formHTML = type === 'flight' ? buildFlightEditForm(item) : buildHotelEditForm(item);
+
+    const panelHTML = `
+      <div class="slide-panel-overlay" id="edit-booking-panel">
+        <div class="slide-panel">
+          <div class="slide-panel-header">
+            <h2>${i18n.t('trip.editBookingTitle') || 'Modifica prenotazione'}</h2>
+            <button class="modal-close" id="edit-panel-close">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <div class="slide-panel-body">
+            ${formHTML}
+          </div>
+          <div class="slide-panel-footer">
+            <button class="btn btn-secondary" id="edit-panel-cancel">${i18n.t('modal.cancel') || 'Annulla'}</button>
+            <button class="btn btn-primary" id="edit-panel-save">${i18n.t('modal.save') || 'Salva'}</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', panelHTML);
+
+    const panel = document.getElementById('edit-booking-panel');
+    const panelBody = panel.querySelector('.slide-panel-body');
+    const closeBtn = document.getElementById('edit-panel-close');
+    const cancelBtn = document.getElementById('edit-panel-cancel');
+    const saveBtn = document.getElementById('edit-panel-save');
+
+    if (type === 'flight' && typeof AirportAutocomplete !== 'undefined') {
+      AirportAutocomplete.init(panelBody);
+    }
+
+    const closePanel = () => {
+      panel.classList.remove('active');
+      setTimeout(() => panel.remove(), 300);
+      document.body.style.overflow = '';
+    };
+
+    const performSave = async () => {
       // Validate required fields and patterns
-      const invalidInput = formView.querySelector('input:invalid');
+      const invalidInput = panelBody.querySelector('input:invalid');
       if (invalidInput) {
         invalidInput.focus();
         invalidInput.reportValidity();
@@ -1168,16 +1232,16 @@
       }
 
       // Validate IATA codes are uppercase 3 letters if provided
-      formView.querySelectorAll('input[data-field$=".code"]').forEach(input => {
+      panelBody.querySelectorAll('input[data-field$=".code"]').forEach(input => {
         if (input.value.trim()) input.value = input.value.trim().toUpperCase();
       });
 
       // Validate hotel: check-out must be after check-in
       if (type === 'hotel') {
-        const checkInDate = formView.querySelector('[data-field="checkIn.date"]')?.value;
-        const checkOutDate = formView.querySelector('[data-field="checkOut.date"]')?.value;
+        const checkInDate = panelBody.querySelector('[data-field="checkIn.date"]')?.value;
+        const checkOutDate = panelBody.querySelector('[data-field="checkOut.date"]')?.value;
         if (checkInDate && checkOutDate && checkOutDate <= checkInDate) {
-          const field = formView.querySelector('[data-field="checkOut.date"]');
+          const field = panelBody.querySelector('[data-field="checkOut.date"]');
           field.focus();
           field.setCustomValidity(i18n.t('hotel.checkOut') + ' > ' + i18n.t('hotel.checkIn'));
           field.reportValidity();
@@ -1186,15 +1250,14 @@
         }
       }
 
-      confirmBtn.disabled = true;
-      confirmBtn.innerHTML = '<span class="spinner spinner-sm"></span>';
+      saveBtn.disabled = true;
+      saveBtn.innerHTML = '<span class="spinner spinner-sm"></span>';
 
       try {
         const updates = type === 'flight'
-          ? collectFlightUpdates(formView)
-          : collectHotelUpdates(formView);
+          ? collectFlightUpdates(panelBody)
+          : collectHotelUpdates(panelBody);
 
-        // Apply updates to each item in the booking group
         for (const itemId of selectedItemIds) {
           const response = await utils.authFetch('/.netlify/functions/edit-booking', {
             method: 'POST',
@@ -1207,40 +1270,30 @@
         }
 
         const activeTab = document.querySelector('.segmented-control-btn.active')?.dataset.tab;
-        closeModal();
+        closePanel();
         await loadTripFromUrl();
         if (activeTab) switchToTab(activeTab);
         utils.showToast(i18n.t('trip.editBookingSuccess') || 'Booking updated', 'success');
       } catch (error) {
         console.error('Error editing booking:', error);
         utils.showToast(i18n.t('trip.editError') || 'Error updating', 'error');
-        confirmBtn.disabled = false;
-        confirmBtn.textContent = i18n.t('modal.save') || 'Salva';
+        saveBtn.disabled = false;
+        saveBtn.textContent = i18n.t('modal.save') || 'Salva';
       }
     };
 
-    closeBtn.addEventListener('click', closeModal);
-    cancelBtn.addEventListener('click', () => {
-      // If in form view, go back to selection
-      if (formView.style.display !== 'none') {
-        formView.style.display = 'none';
-        selectionView.style.display = '';
-        confirmBtn.disabled = true;
-        selectedItemIds = null;
-        modal.querySelectorAll('.edit-booking-item').forEach(el => el.classList.remove('selected'));
-        modal.querySelectorAll('input[type="radio"]').forEach(r => { r.checked = false; });
-      } else {
-        closeModal();
-      }
+    closeBtn.addEventListener('click', closePanel);
+    cancelBtn.addEventListener('click', closePanel);
+    panel.addEventListener('click', (e) => {
+      if (e.target === panel) closePanel();
     });
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) closeModal();
-    });
-    confirmBtn.addEventListener('click', performSave);
+    saveBtn.addEventListener('click', performSave);
 
-    modal.classList.add('active');
+    // Trigger animation
+    requestAnimationFrame(() => {
+      panel.classList.add('active');
+    });
     document.body.style.overflow = 'hidden';
-    i18n.apply();
   }
 
   /**

@@ -30,6 +30,7 @@
   position: relative;
   box-shadow: var(--shadow-xl);
   animation: slideUp 0.3s ease-out;
+  overflow: hidden;
 }
 
 .auth-modal-close {
@@ -85,6 +86,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-4);
+  min-width: 0;
 }
 
 /* =====================================================
