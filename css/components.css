@@ -748,6 +748,34 @@
   flex-shrink: 0;
 }
 
+/* Edit item button (inside details) */
+.btn-edit-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-2);
+  width: 100%;
+  margin-top: var(--spacing-3);
+  padding: var(--spacing-3);
+  color: var(--color-primary, #2563eb);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  background-color: transparent;
+  border: 1px solid var(--color-primary, #2563eb);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-edit-item:hover {
+  background-color: var(--color-primary, #2563eb);
+  color: var(--color-white);
+}
+
+.btn-edit-item svg {
+  flex-shrink: 0;
+}
+
 /* Today Section */
 .today-section {
   margin-bottom: var(--spacing-4);
@@ -2759,55 +2787,6 @@ input[type="time"].form-input {
 }
 
 /* Edit Booking Modal */
-.edit-booking-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-2);
-}
-
-.edit-booking-item {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-3);
-  padding: var(--spacing-3) var(--spacing-4);
-  border: 1px solid var(--color-gray-200);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: background-color var(--transition-fast), border-color var(--transition-fast);
-  user-select: none;
-}
-
-.edit-booking-item:hover {
-  background-color: var(--color-gray-50);
-}
-
-.edit-booking-item.selected {
-  border-color: var(--color-primary);
-  background-color: rgba(var(--color-primary-rgb, 59, 130, 246), 0.05);
-}
-
-.edit-booking-item input[type="radio"] {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-  accent-color: var(--color-primary);
-  cursor: pointer;
-}
-
-.edit-booking-item-label {
-  font-size: var(--font-size-sm);
-  color: var(--color-gray-700);
-  line-height: var(--line-height-normal);
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.edit-booking-item-sub {
-  font-size: var(--font-size-xs);
-  color: var(--color-gray-500);
-}
-
 .edit-booking-form {
   display: flex;
   flex-direction: column;

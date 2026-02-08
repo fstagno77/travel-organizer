@@ -90,11 +90,9 @@
     "addFlightTitle": "Aggiungi Voli",
     "addHotel": "Hotel",
     "addHotelTitle": "Aggiungi Hotel",
-    "editBookingMenu": "Modifica prenotazione",
     "editBookingTitle": "Modifica prenotazione",
     "editBookingSuccess": "Prenotazione modificata",
-    "editError": "Errore durante la modifica",
-    "selectToEdit": "Seleziona da modificare"
+    "editError": "Errore durante la modifica"
   },
   "modal": {
     "cancel": "Annulla",
@@ -118,6 +116,7 @@
     "arrivalTerminal": "Terminal arrivo",
     "duration": "Durata volo",
     "frequentFlyer": "Frequent Flyer",
+    "edit": "Modifica volo",
     "delete": "Elimina volo",
     "deleteTitle": "Elimina volo",
     "deleteConfirm": "Sei sicuro di voler eliminare questo volo?",
@@ -167,6 +166,7 @@
     "amenities": "Servizi",
     "notes": "Note",
     "source": "Prenotato su",
+    "edit": "Modifica hotel",
     "delete": "Elimina hotel",
     "deleteTitle": "Elimina hotel",
     "deleteConfirm": "Sei sicuro di voler eliminare questo hotel?",

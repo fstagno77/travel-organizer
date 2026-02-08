@@ -168,13 +168,6 @@
               </svg>
               <span data-i18n="modal.add">Add</span>
             </button>
-            <button class="section-dropdown-item" data-action="edit-booking">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-              </svg>
-              <span data-i18n="trip.editBookingMenu">Modifica prenotazione</span>
-            </button>
             <button class="section-dropdown-item" data-action="share">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="18" cy="5" r="3"></circle>
@@ -277,13 +270,11 @@
 
     // Show/hide menu items based on active tab
     const addBookingItem = document.querySelector('[data-action="add-booking"]');
-    const editBookingItem = document.querySelector('[data-action="edit-booking"]');
     const deleteBookingItem = document.querySelector('[data-action="delete-booking"]');
     const menuDivider = deleteBookingItem?.previousElementSibling;
     const isActivities = tabName === 'activities';
 
     if (addBookingItem) addBookingItem.style.display = '';
-    if (editBookingItem) editBookingItem.style.display = isActivities ? 'none' : '';
     if (deleteBookingItem) deleteBookingItem.style.display = isActivities ? 'none' : '';
     if (menuDivider?.classList.contains('section-dropdown-divider')) {
       menuDivider.style.display = isActivities ? 'none' : '';
@@ -326,8 +317,6 @@
           } else {
             showAddBookingModal(tripId);
           }
-        } else if (action === 'edit-booking') {
-          showEditBookingModal(tripId);
         } else if (action === 'share') {
           showShareModal(tripId);
         }
@@ -1020,164 +1009,31 @@
   }
 
   /**
-   * Show edit booking modal with selection + edit form
-   * @param {string} tripId
+   * Open edit panel for a single item directly from card button
    */
-  function showEditBookingModal(tripId) {
-    const existingModal = document.getElementById('edit-booking-modal');
-    if (existingModal) existingModal.remove();
+  function openEditPanelForItem(type, itemId) {
+    const tripId = currentTripData?.id;
+    if (!tripId) return;
 
-    const currentTab = document.querySelector('.segmented-control-btn.active')?.dataset.tab || 'flights';
-    const type = currentTab === 'hotels' ? 'hotel' : 'flight';
     const items = type === 'flight'
       ? (currentTripData?.flights || [])
       : (currentTripData?.hotels || []);
 
-    if (items.length === 0) {
-      utils.showToast(i18n.t('trip.noBookings') || 'No bookings', 'error');
+    const item = items.find(i => i.id === itemId);
+    if (!item) {
+      utils.showToast(i18n.t('trip.editError') || 'Error', 'error');
       return;
     }
 
-    // If only one booking group, skip selection and open panel directly
-    const groups = {};
-    for (const item of items) {
-      const key = type === 'flight'
-        ? (item.bookingReference || item.id)
-        : (item.confirmation || item.id);
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(item);
-    }
-
-    const groupEntries = Object.entries(groups);
-    if (groupEntries.length === 1) {
-      const [, groupItems] = groupEntries[0];
-      const itemIds = groupItems.map(g => g.id);
-      showEditBookingPanel(type, items, itemIds, tripId);
-      return;
-    }
-
-    // Build selection list grouped by booking reference
-    let listHTML = '<div class="edit-booking-list">';
-    for (const [ref, groupItems] of groupEntries) {
-      const itemIds = groupItems.map(g => g.id).join(',');
-      let sublabel = '';
-      if (type === 'flight') {
-        sublabel = groupItems.map(f => {
-          const dep = f.departure?.code || '???';
-          const arr = f.arrival?.code || '???';
-          return `${f.flightNumber || ''} ${dep} → ${arr}`;
-        }).join(', ');
-        const nameSet = new Set();
-        for (const f of groupItems) {
-          if (f.passengers?.length) {
-            f.passengers.forEach(p => p.name && nameSet.add(p.name));
-          } else if (f.passenger?.name) {
-            nameSet.add(f.passenger.name);
-          }
-        }
-        const passengerNames = [...nameSet];
-        const name = passengerNames.join(', ');
-        listHTML += `
-          <label class="edit-booking-item">
-            <input type="radio" name="edit-item" value="${itemIds}" data-type="${type}">
-            <span class="edit-booking-item-label">
-              <span><strong>${ref}</strong>${name ? ` &middot; ${name}` : ''}</span>
-              <span class="edit-booking-item-sub">${sublabel}</span>
-            </span>
-          </label>`;
-      } else {
-        sublabel = groupItems.map(h => h.name || 'Hotel').join(', ');
-        const nameSet = new Set();
-        for (const h of groupItems) {
-          if (h.guestName) nameSet.add(h.guestName);
-        }
-        const names = [...nameSet].join(', ');
-        listHTML += `
-          <label class="edit-booking-item">
-            <input type="radio" name="edit-item" value="${itemIds}" data-type="${type}">
-            <span class="edit-booking-item-label">
-              <span><strong>${ref}</strong>${names ? ` &middot; ${names}` : ''}</span>
-              <span class="edit-booking-item-sub">${sublabel}</span>
-            </span>
-          </label>`;
-      }
-    }
-    listHTML += '</div>';
-
-    const modalHTML = `
-      <div class="modal-overlay" id="edit-booking-modal">
-        <div class="modal">
-          <div class="modal-header">
-            <h2 data-i18n="trip.selectToEdit">Seleziona da modificare</h2>
-            <button class="modal-close" id="edit-booking-close">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
-          </div>
-          <div class="modal-body">
-            ${listHTML}
-          </div>
-          <div class="modal-footer">
-            <button class="btn btn-secondary" id="edit-booking-cancel" data-i18n="modal.cancel">Annulla</button>
-            <button class="btn btn-primary" id="edit-booking-confirm" disabled data-i18n="travelers.edit">Modifica</button>
-          </div>
-        </div>
-      </div>
-    `;
-
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-
-    const modal = document.getElementById('edit-booking-modal');
-    const closeBtn = document.getElementById('edit-booking-close');
-    const cancelBtn = document.getElementById('edit-booking-cancel');
-    const confirmBtn = document.getElementById('edit-booking-confirm');
-
-    let selectedItemIds = null;
-
-    const closeModal = () => {
-      modal.remove();
-      document.body.style.overflow = '';
-    };
-
-    // Handle radio selection → enable confirm button
-    modal.querySelectorAll('input[type="radio"]').forEach(radio => {
-      radio.addEventListener('change', () => {
-        selectedItemIds = radio.value.split(',');
-        modal.querySelectorAll('.edit-booking-item').forEach(el => el.classList.remove('selected'));
-        radio.closest('.edit-booking-item').classList.add('selected');
-        confirmBtn.disabled = false;
-      });
-    });
-
-    // Confirm → close modal and open slide panel
-    confirmBtn.addEventListener('click', () => {
-      if (!selectedItemIds) return;
-      closeModal();
-      showEditBookingPanel(type, items, selectedItemIds, tripId);
-    });
-
-    closeBtn.addEventListener('click', closeModal);
-    cancelBtn.addEventListener('click', closeModal);
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) closeModal();
-    });
-
-    modal.classList.add('active');
-    document.body.style.overflow = 'hidden';
-    i18n.apply();
+    showEditBookingPanel(type, item, tripId);
   }
 
   /**
-   * Show slide-in panel with edit booking form
+   * Show slide-in panel with edit booking form for a single item
    */
-  function showEditBookingPanel(type, items, selectedItemIds, tripId) {
+  function showEditBookingPanel(type, item, tripId) {
     const existingPanel = document.getElementById('edit-booking-panel');
     if (existingPanel) existingPanel.remove();
-
-    const item = items.find(i => i.id === selectedItemIds[0]);
-    if (!item) return;
 
     const formHTML = type === 'flight' ? buildFlightEditForm(item) : buildHotelEditForm(item);
 
@@ -1258,15 +1114,13 @@
           ? collectFlightUpdates(panelBody)
           : collectHotelUpdates(panelBody);
 
-        for (const itemId of selectedItemIds) {
-          const response = await utils.authFetch('/.netlify/functions/edit-booking', {
-            method: 'POST',
-            body: JSON.stringify({ tripId, type, itemId, updates })
-          });
+        const response = await utils.authFetch('/.netlify/functions/edit-booking', {
+          method: 'POST',
+          body: JSON.stringify({ tripId, type, itemId: item.id, updates })
+        });
 
-          if (!response.ok) {
-            throw new Error('Failed to save');
-          }
+        if (!response.ok) {
+          throw new Error('Failed to save');
         }
 
         const activeTab = document.querySelector('.segmented-control-btn.active')?.dataset.tab;
@@ -2036,6 +1890,13 @@
             </button>
             ` : ''}
             `}
+            <button class="btn-edit-item" data-type="flight" data-id="${flight.id}">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+              <span data-i18n="flight.edit">Modifica volo</span>
+            </button>
             <button class="btn-delete-item" data-type="flight" data-id="${flight.id}">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="3 6 5 6 21 6"></polyline>
@@ -2065,6 +1926,7 @@
     container.innerHTML = html + quickUploadCard;
     i18n.apply();
     initFlightToggleButtons();
+    initEditItemButtons();
     initDeleteItemButtons();
     initPdfDownloadButtons();
     initSmallPdfButtons();
@@ -2222,6 +2084,13 @@
               <span data-i18n="hotel.downloadPdf">Download PDF</span>
             </button>
             ` : ''}
+            <button class="btn-edit-item" data-type="hotel" data-id="${hotel.id}">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+              <span data-i18n="hotel.edit">Modifica hotel</span>
+            </button>
             <button class="btn-delete-item" data-type="hotel" data-id="${hotel.id}">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="3 6 5 6 21 6"></polyline>
@@ -2251,6 +2120,7 @@
     container.innerHTML = html + quickUploadCard;
     i18n.apply();
     initHotelToggleButtons();
+    initEditItemButtons();
     initDeleteItemButtons();
     initPdfDownloadButtons();
     initQuickUploadCard('quick-upload-hotels');
@@ -3179,6 +3049,23 @@
         const type = newBtn.dataset.type;
         const id = newBtn.dataset.id;
         showDeleteItemModal(type, id);
+      });
+    });
+  }
+
+  /**
+   * Initialize edit item buttons
+   */
+  function initEditItemButtons() {
+    document.querySelectorAll('.btn-edit-item').forEach(btn => {
+      const newBtn = btn.cloneNode(true);
+      btn.parentNode.replaceChild(newBtn, btn);
+
+      newBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const type = newBtn.dataset.type;
+        const id = newBtn.dataset.id;
+        openEditPanelForItem(type, id);
       });
     });
   }
