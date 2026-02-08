@@ -2338,11 +2338,11 @@
       <div class="form-row">
         <div class="form-group">
           <label data-i18n="activity.startTime">${i18n.t('activity.startTime') || 'Start time'}</label>
-          <input type="time" class="form-input" id="activity-start-time" value="${act.startTime || ''}">
+          <input type="time" class="form-input" id="activity-start-time" step="900" value="${act.startTime || ''}">
         </div>
         <div class="form-group">
           <label data-i18n="activity.endTime">${i18n.t('activity.endTime') || 'End time'}</label>
-          <input type="time" class="form-input" id="activity-end-time" value="${act.endTime || ''}">
+          <input type="time" class="form-input" id="activity-end-time" step="900" value="${act.endTime || ''}">
         </div>
       </div>
       <div class="form-group">
