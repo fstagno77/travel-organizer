@@ -72,6 +72,7 @@
       <div class="settings-layout">
         <nav class="settings-sidebar">
           <ul class="settings-nav">
+            <div class="settings-nav-indicator"></div>
             <li>
               <button class="settings-nav-item ${activeSection === 'profile' ? 'active' : ''}" data-section="profile">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -116,6 +117,19 @@
   }
 
   /**
+   * Position the vertical sliding indicator on the active nav item
+   */
+  function updateSettingsNavIndicator(activeItem) {
+    const indicator = document.querySelector('.settings-nav-indicator');
+    if (!indicator || !activeItem) return;
+    const nav = activeItem.closest('.settings-nav');
+    if (!nav) return;
+    const li = activeItem.parentElement;
+    indicator.style.height = li.offsetHeight + 'px';
+    indicator.style.transform = 'translateY(' + li.offsetTop + 'px)';
+  }
+
+  /**
    * Bind sidebar navigation events
    */
   function bindSidebarEvents() {
@@ -127,6 +141,7 @@
         // Update active state
         navItems.forEach(i => i.classList.remove('active'));
         item.classList.add('active');
+        updateSettingsNavIndicator(item);
 
         // Render section
         activeSection = section;
@@ -134,6 +149,19 @@
         renderSection(section);
       });
     });
+
+    // Position indicator on the initially active item (no animation)
+    const indicator = document.querySelector('.settings-nav-indicator');
+    const activeItem = document.querySelector('.settings-nav-item.active');
+    if (indicator && activeItem) {
+      indicator.style.transition = 'none';
+      updateSettingsNavIndicator(activeItem);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          indicator.style.transition = '';
+        });
+      });
+    }
   }
 
   /**

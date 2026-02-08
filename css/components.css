@@ -1631,10 +1631,24 @@ input[type="time"].form-input {
 /* Segmented Control */
 .segmented-control {
   display: inline-flex;
+  position: relative;
   background-color: var(--color-gray-100);
   border-radius: var(--radius-lg);
   padding: var(--spacing-1);
   gap: var(--spacing-1);
+}
+
+.segmented-indicator {
+  position: absolute;
+  top: var(--spacing-1);
+  left: var(--spacing-1);
+  height: calc(100% - var(--spacing-1) * 2);
+  background-color: var(--color-white);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  z-index: 0;
 }
 
 .segmented-control-btn {
@@ -1650,17 +1664,24 @@ input[type="time"].form-input {
   border: none;
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: color var(--transition-fast);
   min-height: 44px;
+  position: relative;
+  z-index: 1;
 }
 
-.segmented-control-btn:hover {
+.segmented-control-btn:hover:not(.active) {
   color: var(--color-gray-800);
+  background-color: rgba(0, 0, 0, 0.06);
 }
 
 .segmented-control-btn.active {
-  background-color: var(--color-white);
   color: var(--color-primary);
+}
+
+/* Delete mode control keeps original active style (no sliding indicator) */
+.delete-mode-control .segmented-control-btn.active {
+  background-color: var(--color-white);
   box-shadow: var(--shadow-sm);
 }
 

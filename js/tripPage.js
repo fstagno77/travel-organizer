@@ -139,6 +139,7 @@
     const html = `
       <div class="trip-content-header mb-6">
         <div class="segmented-control">
+          <div class="segmented-indicator"></div>
           <button class="segmented-control-btn active" data-tab="activities">
             <span class="material-symbols-outlined" style="font-size: 20px;">calendar_today</span>
             <span data-i18n="trip.activities">Activities</span>
@@ -237,6 +238,15 @@
   /**
    * Initialize tab switching
    */
+  function updateSegmentedIndicator(activeBtn) {
+    const indicator = document.querySelector('.segmented-control > .segmented-indicator');
+    if (!indicator || !activeBtn) return;
+    const control = activeBtn.parentElement;
+    const controlPadding = parseFloat(getComputedStyle(control).paddingLeft) || 0;
+    indicator.style.width = activeBtn.offsetWidth + 'px';
+    indicator.style.transform = 'translateX(' + (activeBtn.offsetLeft - controlPadding) + 'px)';
+  }
+
   function initTabSwitching() {
     const tabs = document.querySelectorAll('.segmented-control-btn');
 
@@ -246,6 +256,20 @@
         switchToTab(targetTab);
       });
     });
+
+    // Position indicator on the initially active tab (no animation)
+    const indicator = document.querySelector('.segmented-control > .segmented-indicator');
+    const activeBtn = document.querySelector('.segmented-control-btn.active[data-tab]');
+    if (indicator && activeBtn) {
+      indicator.style.transition = 'none';
+      updateSegmentedIndicator(activeBtn);
+      // Re-enable transition after layout
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          indicator.style.transition = '';
+        });
+      });
+    }
   }
 
   /**
@@ -257,7 +281,10 @@
 
     tabs.forEach(t => t.classList.remove('active'));
     const targetBtn = document.querySelector(`.segmented-control-btn[data-tab="${tabName}"]`);
-    if (targetBtn) targetBtn.classList.add('active');
+    if (targetBtn) {
+      targetBtn.classList.add('active');
+      updateSegmentedIndicator(targetBtn);
+    }
 
     document.querySelectorAll('.tab-content').forEach(content => {
       content.classList.remove('active');
@@ -1160,7 +1187,6 @@
     if (isMultiPax) {
       passengersHTML = flight.passengers.map((p, i) => `
         <div class="edit-booking-passenger">
-          <div class="edit-booking-passenger-title">${p.name || `Passenger ${i + 1}`}</div>
           <div class="edit-booking-grid">
             <div class="edit-booking-field">
               <label>${i18n.t('flight.passengerName') || 'Nome'}</label>

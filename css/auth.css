@@ -382,6 +382,19 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-1);
+  position: relative;
+}
+
+.settings-nav-indicator {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  background: var(--color-primary-light);
+  border-radius: var(--radius-md);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  z-index: 0;
 }
 
 .settings-nav-item {
@@ -397,17 +410,18 @@
   font-weight: 500;
   color: var(--color-text-secondary);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease;
   text-align: left;
+  position: relative;
+  z-index: 1;
 }
 
-.settings-nav-item:hover {
+.settings-nav-item:hover:not(.active) {
   background: var(--color-gray-100);
   color: var(--color-text);
 }
 
 .settings-nav-item.active {
-  background: var(--color-primary-light);
   color: var(--color-primary);
 }
 

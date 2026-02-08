@@ -1,6 +1,22 @@
 {
   "versions": [
     {
+      "version": "0.15.2",
+      "date": "2026-02-08",
+      "changes": {
+        "it": [
+          "Animazione sliding nel segmented control: lo sfondo bianco scorre fluidamente tra i tab",
+          "Animazione sliding verticale nella sidebar impostazioni: l'indicatore attivo scorre tra le voci",
+          "Hover migliorato sui tab non attivi con sfondo semitrasparente"
+        ],
+        "en": [
+          "Sliding animation in segmented control: white background smoothly slides between tabs",
+          "Vertical sliding animation in settings sidebar: active indicator slides between items",
+          "Improved hover on inactive tabs with semi-transparent background"
+        ]
+      }
+    },
+    {
       "version": "0.15.0",
       "date": "2026-02-08",
       "changes": {
