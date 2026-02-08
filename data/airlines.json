@@ -1,0 +1,127 @@
+[
+  {
+    "nome_compagnia": "Air Canada",
+    "codice_iata": "AC",
+    "programma_fedelta": "Aeroplan"
+  },
+  {
+    "nome_compagnia": "Air France",
+    "codice_iata": "AF",
+    "programma_fedelta": "Flying Blue"
+  },
+  {
+    "nome_compagnia": "All Nippon Airways",
+    "codice_iata": "NH",
+    "programma_fedelta": "ANA Mileage Club"
+  },
+  {
+    "nome_compagnia": "American Airlines",
+    "codice_iata": "AA",
+    "programma_fedelta": "AAdvantage"
+  },
+  {
+    "nome_compagnia": "Austrian Airlines",
+    "codice_iata": "OS",
+    "programma_fedelta": "Miles & More"
+  },
+  {
+    "nome_compagnia": "British Airways",
+    "codice_iata": "BA",
+    "programma_fedelta": "Executive Club"
+  },
+  {
+    "nome_compagnia": "Brussels Airlines",
+    "codice_iata": "SN",
+    "programma_fedelta": "Miles & More"
+  },
+  {
+    "nome_compagnia": "Cathay Pacific",
+    "codice_iata": "CX",
+    "programma_fedelta": "Asia Miles"
+  },
+  {
+    "nome_compagnia": "Delta Air Lines",
+    "codice_iata": "DL",
+    "programma_fedelta": "SkyMiles"
+  },
+  {
+    "nome_compagnia": "Emirates",
+    "codice_iata": "EK",
+    "programma_fedelta": "Skywards"
+  },
+  {
+    "nome_compagnia": "Finnair",
+    "codice_iata": "AY",
+    "programma_fedelta": "Finnair Plus"
+  },
+  {
+    "nome_compagnia": "Iberia Airlines",
+    "codice_iata": "IB",
+    "programma_fedelta": "Iberia Plus"
+  },
+  {
+    "nome_compagnia": "Ita Airways",
+    "codice_iata": "AZ",
+    "programma_fedelta": "Volare"
+  },
+  {
+    "nome_compagnia": "Japan Airlines",
+    "codice_iata": "JL",
+    "programma_fedelta": "JAL Mileage Bank"
+  },
+  {
+    "nome_compagnia": "Japan Airlines Domestic",
+    "codice_iata": "JL",
+    "programma_fedelta": "JAL Mileage Bank"
+  },
+  {
+    "nome_compagnia": "KLM Royal Dutch Airlines",
+    "codice_iata": "KL",
+    "programma_fedelta": "Flying Blue"
+  },
+  {
+    "nome_compagnia": "Lufthansa",
+    "codice_iata": "LH",
+    "programma_fedelta": "Miles & More"
+  },
+  {
+    "nome_compagnia": "Lufthansa Cargo",
+    "codice_iata": "LH",
+    "programma_fedelta": "Miles & More"
+  },
+  {
+    "nome_compagnia": "Qantas",
+    "codice_iata": "QF",
+    "programma_fedelta": "Qantas Frequent Flyer"
+  },
+  {
+    "nome_compagnia": "Qatar Airways",
+    "codice_iata": "QR",
+    "programma_fedelta": "Privilege Club"
+  },
+  {
+    "nome_compagnia": "Singapore Airlines",
+    "codice_iata": "SQ",
+    "programma_fedelta": "KrisFlyer"
+  },
+  {
+    "nome_compagnia": "Singapore Airlines Cargo",
+    "codice_iata": "SQ",
+    "programma_fedelta": "KrisFlyer"
+  },
+  {
+    "nome_compagnia": "Swiss International Air Lines",
+    "codice_iata": "LX",
+    "programma_fedelta": "Miles & More"
+  },
+  {
+    "nome_compagnia": "Turkish Airlines",
+    "codice_iata": "TK",
+    "programma_fedelta": "Miles&Smiles"
+  },
+  {
+    "nome_compagnia": "United Airlines",
+    "codice_iata": "UA",
+    "programma_fedelta": "MileagePlus"
+  }
+]

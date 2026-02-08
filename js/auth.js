@@ -6,6 +6,7 @@ const auth = {
   supabase: null,
   session: null,
   profile: null,
+  travelers: [],
   needsUsername: false,
   initialized: false,
 
@@ -206,6 +207,194 @@ const auth = {
     });
     if (error) throw error;
     return data;
+  },
+
+  /**
+   * Encrypt sensitive data via server-side function
+   */
+  async encryptData(plainText) {
+    if (!plainText || !this.session) return plainText;
+    try {
+      const response = await fetch('/.netlify/functions/crypto', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.session.access_token}`
+        },
+        body: JSON.stringify({ action: 'encrypt', data: plainText })
+      });
+      const result = await response.json();
+      if (result.success) return result.result;
+      console.error('[auth] encrypt failed:', result.error);
+      return plainText;
+    } catch (error) {
+      console.error('[auth] encrypt error:', error);
+      return plainText;
+    }
+  },
+
+  /**
+   * Decrypt sensitive data via server-side function
+   */
+  async decryptData(encryptedText) {
+    if (!encryptedText || !this.session) return encryptedText;
+    // If it doesn't look encrypted (no colon-separated format), return as-is
+    if (!encryptedText.includes(':')) return encryptedText;
+    try {
+      const response = await fetch('/.netlify/functions/crypto', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.session.access_token}`
+        },
+        body: JSON.stringify({ action: 'decrypt', data: encryptedText })
+      });
+      const result = await response.json();
+      if (result.success) return result.result;
+      console.error('[auth] decrypt failed:', result.error);
+      return encryptedText;
+    } catch (error) {
+      console.error('[auth] decrypt error:', error);
+      return encryptedText;
+    }
+  },
+
+  /**
+   * Load all travelers for the current user
+   */
+  async loadTravelers() {
+    if (!this.session) return [];
+
+    const { data, error } = await this.supabase
+      .from('travelers')
+      .select('*')
+      .eq('user_id', this.session.user.id)
+      .order('sort_order', { ascending: true });
+
+    if (error) {
+      console.error('[auth] Error loading travelers:', error);
+      return [];
+    }
+
+    // Decrypt passport numbers
+    if (data) {
+      for (const traveler of data) {
+        if (traveler.passport_number) {
+          traveler.passport_number = await this.decryptData(traveler.passport_number);
+        }
+      }
+    }
+
+    this.travelers = data || [];
+    return this.travelers;
+  },
+
+  /**
+   * Get the owner traveler, creating one if it doesn't exist
+   */
+  async getOrCreateOwnerTraveler() {
+    if (!this.session) return null;
+
+    // Check if already loaded
+    const existing = this.travelers.find(t => t.is_owner);
+    if (existing) return existing;
+
+    // Load from DB
+    await this.loadTravelers();
+    const owner = this.travelers.find(t => t.is_owner);
+    if (owner) return owner;
+
+    // Create owner traveler from Google metadata
+    const meta = this.session.user.user_metadata || {};
+    const fullName = meta.full_name || meta.name || '';
+    const parts = fullName.split(' ');
+    const firstName = parts[0] || '';
+    const lastName = parts.slice(1).join(' ') || '';
+
+    return this.saveTraveler({
+      is_owner: true,
+      first_name: firstName,
+      last_name: lastName,
+      sort_order: 0
+    });
+  },
+
+  /**
+   * Save (insert or update) a traveler
+   * Encrypts passport_number before saving to database
+   */
+  async saveTraveler(traveler) {
+    if (!this.session) throw new Error('Not authenticated');
+
+    // Encrypt passport_number if present
+    const toSave = { ...traveler };
+    if (toSave.passport_number) {
+      toSave.passport_number = await this.encryptData(toSave.passport_number);
+    }
+
+    if (toSave.id) {
+      // Update existing
+      const { id, user_id, created_at, updated_at, ...updates } = toSave;
+      console.log('[auth] saveTraveler update:', id, Object.keys(updates));
+      const { data, error } = await this.supabase
+        .from('travelers')
+        .update(updates)
+        .eq('id', id)
+        .eq('user_id', this.session.user.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('[auth] saveTraveler error:', error);
+        throw error;
+      }
+
+      console.log('[auth] saveTraveler success');
+      // Update local cache with decrypted value
+      if (data.passport_number) {
+        data.passport_number = await this.decryptData(data.passport_number);
+      }
+      const idx = this.travelers.findIndex(t => t.id === id);
+      if (idx >= 0) this.travelers[idx] = data;
+      return data;
+    } else {
+      // Insert new
+      const { data, error } = await this.supabase
+        .from('travelers')
+        .insert({
+          ...toSave,
+          user_id: this.session.user.id
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      // Decrypt for local cache
+      if (data.passport_number) {
+        data.passport_number = await this.decryptData(data.passport_number);
+      }
+      this.travelers.push(data);
+      return data;
+    }
+  },
+
+  /**
+   * Delete a traveler (companions only, not owner)
+   */
+  async deleteTraveler(id) {
+    if (!this.session) throw new Error('Not authenticated');
+
+    const traveler = this.travelers.find(t => t.id === id);
+    if (traveler?.is_owner) throw new Error('Cannot delete owner traveler');
+
+    const { error } = await this.supabase
+      .from('travelers')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', this.session.user.id);
+
+    if (error) throw error;
+    this.travelers = this.travelers.filter(t => t.id !== id);
   },
 
   /**

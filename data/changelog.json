@@ -1,6 +1,76 @@
 {
   "versions": [
     {
+      "version": "0.14.0",
+      "date": "2026-02-08",
+      "changes": {
+        "it": [
+          "Nuova sezione Viaggiatori nelle impostazioni: gestisci dati passaporto e programmi fedeltà",
+          "Compagni di viaggio: aggiungi e gestisci i dati dei tuoi accompagnatori",
+          "Ricerca compagnia aerea per programmi fedeltà con database filtrato",
+          "Dati passaporto mascherati con opzione mostra/nascondi",
+          "Copia negli appunti per numeri passaporto e tessere fedeltà",
+          "Crittografia AES-256-GCM per dati sensibili (numeri passaporto) nel database",
+          "Persistenza tab attivo nelle impostazioni tramite URL hash"
+        ],
+        "en": [
+          "New Travelers section in settings: manage passport data and loyalty programs",
+          "Travel companions: add and manage your companions' data",
+          "Airline search for loyalty programs with filtered database",
+          "Masked passport data with show/hide toggle",
+          "Copy to clipboard for passport numbers and loyalty cards",
+          "AES-256-GCM encryption for sensitive data (passport numbers) in database",
+          "Active settings tab persistence via URL hash"
+        ]
+      }
+    },
+    {
+      "version": "0.13.0",
+      "date": "2026-02-07",
+      "changes": {
+        "it": [
+          "Nuovo tab Attività: timeline giorno per giorno con voli, hotel e attività in stile calendario",
+          "Attività è il tab predefinito all'apertura del viaggio",
+          "Modale modifica prenotazione: modifica voli e hotel direttamente dall'app",
+          "Validazione campi nella modale di modifica con selezione raggruppata per prenotazione",
+          "Autocompletamento aeroporti: cerca per città o codice IATA con dropdown e fuzzy match",
+          "Database IATA con oltre 4.000 aeroporti mondiali",
+          "Modale scelta tipo (Volo/Hotel/Attività) per aggiunta rapida dal tab Attività",
+          "Menu contestuale per tab: +Voli, +Hotel o scelta tipo a seconda del tab attivo",
+          "Icona modifica accanto al titolo viaggio (rimossa dal menu)",
+          "Menu azioni a 3 punti per voli multi-passeggero su mobile",
+          "Persistenza tab attivo tra operazioni e refresh pagina",
+          "Nuove icone Material Symbols per voli, hotel e calendario",
+          "Retry automatico lato client su errore 429 con Retry-After dall'API Claude",
+          "Sistema codici errore per debugging migliorato",
+          "Rimossi ritardi retry lato server per evitare 502 Bad Gateway",
+          "Fix eliminazione passeggero: rimuove il volo quando tutti i passeggeri sono eliminati",
+          "Fix bug timezone nelle attività: usa formattazione data locale invece di UTC",
+          "Testo upload ottimizzato per dispositivi touch"
+        ],
+        "en": [
+          "New Activities tab: day-by-day timeline with flights, hotels and activities in calendar-style layout",
+          "Activities is the default tab when opening a trip",
+          "Edit booking modal: edit flights and hotels directly from the app",
+          "Form validation in edit modal with booking-grouped selection",
+          "Airport autocomplete: search by city or IATA code with dropdown and fuzzy match",
+          "IATA database with over 4,000 worldwide airports",
+          "Type choice modal (Flight/Hotel/Activity) for quick add from Activities tab",
+          "Context-aware tab menu: +Flights, +Hotels or type choice depending on active tab",
+          "Edit icon next to trip title (removed from menu)",
+          "3-dot action menu for multi-passenger flights on mobile",
+          "Active tab persists across operations and page refresh",
+          "New Material Symbols icons for flights, hotels and calendar",
+          "Automatic client-side retry on 429 errors using Retry-After from Claude API",
+          "Error code system for improved debugging",
+          "Removed server-side retry delays to prevent 502 Bad Gateway",
+          "Fix passenger deletion: removes flight when all passengers are deleted",
+          "Fix timezone bug in activities: uses local date formatting instead of UTC",
+          "Mobile-friendly upload text on touch devices"
+        ]
+      }
+    },
+    {
       "version": "0.12.0",
       "date": "2026-02-07",
       "changes": {

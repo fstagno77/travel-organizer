@@ -19,6 +19,7 @@
   },
   "devDependencies": {
     "jest": "^30.2.0",
-    "nodemon": "^3.1.9"
+    "nodemon": "^3.1.9",
+    "vitepress": "^1.6.4"
   }
 }
