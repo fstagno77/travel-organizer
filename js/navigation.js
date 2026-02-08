@@ -23,11 +23,6 @@ const navigation = {
   getPathPrefix() {
     const path = window.location.pathname;
 
-    // Check if we're in trips subfolder (2 levels deep)
-    if (path.includes('/trips/')) {
-      return '../../';
-    }
-
     // Check if we're in pages subfolder (1 level deep)
     if (path.includes('/pages/')) {
       return '../';

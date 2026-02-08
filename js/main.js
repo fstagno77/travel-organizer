@@ -60,8 +60,6 @@
 
     if (path.includes('changelog.html')) {
       initChangelogPage();
-    } else if (path.includes('/trips/')) {
-      initTripPage();
     } else if (path.endsWith('/') || path.endsWith('index.html')) {
       initHomePage();
     }
@@ -1511,7 +1509,7 @@
       i18n.apply();
       // Add click handler for CTA
       document.getElementById('add-flight-cta')?.addEventListener('click', () => {
-        const tripId = window.location.pathname.split('/trips/')[1]?.split('/')[0];
+        const tripId = new URLSearchParams(window.location.search).get('id');
         if (tripId) showAddBookingModal(tripId);
       });
       return;
@@ -1675,7 +1673,7 @@
       i18n.apply();
       // Add click handler for CTA
       document.getElementById('add-hotel-cta')?.addEventListener('click', () => {
-        const tripId = window.location.pathname.split('/trips/')[1]?.split('/')[0];
+        const tripId = new URLSearchParams(window.location.search).get('id');
         if (tripId) showAddBookingModal(tripId);
       });
       return;

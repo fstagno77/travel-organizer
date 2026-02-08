@@ -27,3 +27,13 @@ build/
 
 # Local Netlify folder
 .netlify
+
+# Legacy server (replaced by Netlify Functions)
+server/
+
+# Legacy static trip pages and index (replaced by Supabase)
+trips/
+data/trips.json
+
+# Deno (not used)
+deno.lock
