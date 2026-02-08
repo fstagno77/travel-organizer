@@ -2294,6 +2294,42 @@
   }
 
   /**
+   * Build a time select (hour:minute) with 15-min steps
+   * @param {string} id - Element ID
+   * @param {string} value - Current value "HH:MM" or ""
+   * @returns {string} HTML
+   */
+  function buildTimeSelect(id, value) {
+    const [selH, selM] = value ? value.split(':') : ['', ''];
+    let hourOpts = '<option value="">--</option>';
+    for (let h = 0; h < 24; h++) {
+      const hh = String(h).padStart(2, '0');
+      hourOpts += `<option value="${hh}"${hh === selH ? ' selected' : ''}>${hh}</option>`;
+    }
+    let minOpts = '<option value="">--</option>';
+    for (const m of ['00', '15', '30', '45']) {
+      minOpts += `<option value="${m}"${m === selM ? ' selected' : ''}>${m}</option>`;
+    }
+    return `<div class="time-select-row" data-time-id="${id}">
+      <select class="form-input time-select-hour" id="${id}-h">${hourOpts}</select>
+      <span class="time-select-sep">:</span>
+      <select class="form-input time-select-min" id="${id}-m">${minOpts}</select>
+    </div>`;
+  }
+
+  /**
+   * Get value from a time select pair
+   * @param {string} id - Base ID
+   * @returns {string|null} "HH:MM" or null
+   */
+  function getTimeSelectValue(id) {
+    const h = document.getElementById(id + '-h')?.value;
+    const m = document.getElementById(id + '-m')?.value;
+    if (h && m) return h + ':' + m;
+    return null;
+  }
+
+  /**
    * Render activity form mode (create/edit)
    * @param {string} date - Pre-filled date
    * @param {Object} activity - Existing activity data (for edit) or empty
@@ -2338,11 +2374,11 @@
       <div class="form-row">
         <div class="form-group">
           <label data-i18n="activity.startTime">${i18n.t('activity.startTime') || 'Start time'}</label>
-          <input type="time" class="form-input" id="activity-start-time" step="900" value="${act.startTime || ''}">
+          ${buildTimeSelect('activity-start-time', act.startTime || '')}
         </div>
         <div class="form-group">
           <label data-i18n="activity.endTime">${i18n.t('activity.endTime') || 'End time'}</label>
-          <input type="time" class="form-input" id="activity-end-time" step="900" value="${act.endTime || ''}">
+          ${buildTimeSelect('activity-end-time', act.endTime || '')}
         </div>
       </div>
       <div class="form-group">
@@ -2356,14 +2392,14 @@
       </div>
       <div class="form-group">
         <label data-i18n="activity.attachments">${i18n.t('activity.attachments') || 'Attachments'}</label>
-        <div id="existing-attachments" class="file-preview-list">${existingAttachmentsHtml}</div>
-        <div id="new-files-preview" class="file-preview-list"></div>
         <input type="file" class="activity-file-input" id="activity-files" multiple accept=".pdf,.jpg,.jpeg,.png,.gif,.webp">
         <div class="file-upload-zone" id="activity-upload-zone">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           <span class="file-upload-zone-text" data-i18n="activity.addFiles">${i18n.t('activity.addFiles') || 'Add files'}</span>
           <span class="file-upload-zone-hint">PDF, JPEG, PNG, GIF, WebP — max 10 MB</span>
         </div>
+        <div id="existing-attachments" class="file-preview-list">${existingAttachmentsHtml}</div>
+        <div id="new-files-preview" class="file-preview-list"></div>
       </div>
     `;
   }
@@ -2694,8 +2730,8 @@
       }
 
       const description = document.getElementById('activity-description').value.trim();
-      const startTime = document.getElementById('activity-start-time').value || null;
-      const endTime = document.getElementById('activity-end-time').value || null;
+      const startTime = getTimeSelectValue('activity-start-time');
+      const endTime = getTimeSelectValue('activity-end-time');
       const urls = collectUrls();
 
       // Validate URLs
