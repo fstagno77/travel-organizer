@@ -504,18 +504,6 @@
       }
     };
 
-    const fileToBase64 = (file) => {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => {
-          const base64 = reader.result.split(',')[1];
-          resolve(base64);
-        };
-        reader.onerror = error => reject(error);
-      });
-    };
-
     const submitBooking = async () => {
       if (files.length === 0) return;
 
@@ -537,12 +525,8 @@
       const phraseController = utils.startLoadingPhrases(phraseElement, 3000);
 
       try {
-        const pdfs = await Promise.all(
-          files.map(async file => ({
-            filename: file.name,
-            content: await fileToBase64(file)
-          }))
-        );
+        // Upload files directly to Storage, then send only paths to backend
+        const pdfs = await pdfUpload.uploadFiles(files);
 
         const response = await utils.authFetch('/.netlify/functions/add-booking', {
           method: 'POST',
@@ -3662,9 +3646,8 @@
     });
 
     try {
-      // Convert file to base64
-      const content = await fileToBase64(file);
-      const pdfs = [{ filename: file.name, content }];
+      // Upload file directly to Storage, then send only path to backend
+      const pdfs = await pdfUpload.uploadFiles([file]);
 
       const response = await utils.authFetch('/.netlify/functions/add-booking', {
         method: 'POST',
@@ -3733,23 +3716,6 @@
         }
       });
     }
-  }
-
-  /**
-   * Convert file to base64
-   * @param {File} file
-   * @returns {Promise<string>}
-   */
-  function fileToBase64(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => {
-        const base64 = reader.result.split(',')[1];
-        resolve(base64);
-      };
-      reader.onerror = error => reject(error);
-    });
   }
 
   /**

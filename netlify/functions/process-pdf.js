@@ -6,7 +6,7 @@
  */
 
 const { authenticateRequest, unauthorizedResponse, getCorsHeaders, handleOptions } = require('./utils/auth');
-const { uploadPdf } = require('./utils/storage');
+const { uploadPdf, downloadPdfAsBase64, moveTmpPdfToTrip, cleanupTmpPdfs } = require('./utils/storage');
 const { processPdfsWithClaude, extractPassengerFromFilename } = require('./utils/pdfProcessor');
 
 exports.handler = async (event, context) => {
@@ -46,14 +46,29 @@ exports.handler = async (event, context) => {
 
     console.log(`Processing ${pdfs.length} PDF file(s)...`);
 
+    // Resolve PDFs: download from Storage if storagePath provided, otherwise use inline content
+    const tmpPaths = []; // Track tmp paths for cleanup
+    const resolvedPdfs = [];
+    for (const pdf of pdfs) {
+      if (pdf.storagePath) {
+        // New flow: PDF was uploaded directly to Storage
+        tmpPaths.push(pdf.storagePath);
+        const content = await downloadPdfAsBase64(pdf.storagePath);
+        resolvedPdfs.push({ filename: pdf.filename, content, storagePath: pdf.storagePath });
+      } else if (pdf.content) {
+        // Legacy flow: base64 inline
+        resolvedPdfs.push({ filename: pdf.filename, content: pdf.content });
+      }
+    }
+
     // Process PDFs using batched Claude API calls to reduce rate limit hits
     const allFlights = [];
     const allHotels = [];
     let metadata = {};
 
-    console.log(`Processing ${pdfs.length} PDFs with batching...`);
+    console.log(`Processing ${resolvedPdfs.length} PDFs with batching...`);
 
-    const results = await processPdfsWithClaude(pdfs);
+    const results = await processPdfsWithClaude(resolvedPdfs);
 
     // Check for rate limit errors
     const rateLimitError = results.find(r => r.error?.isRateLimit);
@@ -207,12 +222,14 @@ exports.handler = async (event, context) => {
       metadata
     });
 
-    // Upload PDFs and link to items (in parallel for speed)
+    // Upload/move PDFs and link to items (in parallel for speed)
     console.log('Uploading PDFs to storage...');
     const uploadPromises = [];
+    const movedTmpPaths = new Set(); // Track which tmp paths were moved (not to clean up later)
 
-    for (let pdfIndex = 0; pdfIndex < pdfs.length; pdfIndex++) {
-      const pdf = pdfs[pdfIndex];
+    for (let pdfIndex = 0; pdfIndex < resolvedPdfs.length; pdfIndex++) {
+      const pdf = resolvedPdfs[pdfIndex];
+      const isFromStorage = !!pdf.storagePath;
 
       // Find passengers that came from this PDF and upload PDF for each flight they're on
       const flightsWithPassengersFromPdf = new Map(); // flight.id -> passengers from this PDF
@@ -225,37 +242,72 @@ exports.handler = async (event, context) => {
         }
       }
 
-      // Upload PDF once per flight and assign pdfPath to passengers from this PDF
+      // Upload/move PDF once per flight and assign pdfPath to passengers from this PDF
+      let firstMoveForThisPdf = true;
       for (const { flight, passengers } of flightsWithPassengersFromPdf.values()) {
-        uploadPromises.push(
-          uploadPdf(pdf.content, tripData.id, `${flight.id}-p${pdfIndex}`)
-            .then(pdfPath => {
-              passengers.forEach(p => {
-                p.pdfPath = pdfPath;
-              });
-              console.log(`Uploaded PDF for ${flight.id}, passengers: ${passengers.map(p => p.name).join(', ')}`);
-            })
-            .catch(err => console.error(`Error uploading PDF for ${flight.id}:`, err))
-        );
+        const itemId = `${flight.id}-p${pdfIndex}`;
+        if (isFromStorage && firstMoveForThisPdf) {
+          // First usage: move from tmp to final location
+          firstMoveForThisPdf = false;
+          movedTmpPaths.add(pdf.storagePath);
+          uploadPromises.push(
+            moveTmpPdfToTrip(pdf.storagePath, tripData.id, itemId)
+              .then(pdfPath => {
+                passengers.forEach(p => { p.pdfPath = pdfPath; });
+                console.log(`Moved PDF for ${flight.id}, passengers: ${passengers.map(p => p.name).join(', ')}`);
+              })
+              .catch(err => console.error(`Error moving PDF for ${flight.id}:`, err))
+          );
+        } else {
+          // Subsequent usages or legacy: upload from base64
+          uploadPromises.push(
+            uploadPdf(pdf.content, tripData.id, itemId)
+              .then(pdfPath => {
+                passengers.forEach(p => { p.pdfPath = pdfPath; });
+                console.log(`Uploaded PDF for ${flight.id}, passengers: ${passengers.map(p => p.name).join(', ')}`);
+              })
+              .catch(err => console.error(`Error uploading PDF for ${flight.id}:`, err))
+          );
+        }
       }
 
       // Hotels remain linked at hotel level
       const hotelsFromPdf = tripData.hotels.filter(h => h._pdfIndex === pdfIndex);
       for (const hotel of hotelsFromPdf) {
-        uploadPromises.push(
-          uploadPdf(pdf.content, tripData.id, hotel.id)
-            .then(pdfPath => {
-              hotel.pdfPath = pdfPath;
-              console.log(`Uploaded PDF for ${hotel.id}: ${pdfPath}`);
-            })
-            .catch(err => console.error(`Error uploading PDF for ${hotel.id}:`, err))
-        );
+        const itemId = hotel.id;
+        if (isFromStorage && firstMoveForThisPdf) {
+          firstMoveForThisPdf = false;
+          movedTmpPaths.add(pdf.storagePath);
+          uploadPromises.push(
+            moveTmpPdfToTrip(pdf.storagePath, tripData.id, itemId)
+              .then(pdfPath => {
+                hotel.pdfPath = pdfPath;
+                console.log(`Moved PDF for ${hotel.id}: ${pdfPath}`);
+              })
+              .catch(err => console.error(`Error moving PDF for ${hotel.id}:`, err))
+          );
+        } else {
+          uploadPromises.push(
+            uploadPdf(pdf.content, tripData.id, itemId)
+              .then(pdfPath => {
+                hotel.pdfPath = pdfPath;
+                console.log(`Uploaded PDF for ${hotel.id}: ${pdfPath}`);
+              })
+              .catch(err => console.error(`Error uploading PDF for ${hotel.id}:`, err))
+          );
+        }
       }
     }
 
     // Wait for all uploads to complete
     if (uploadPromises.length > 0) {
       await Promise.all(uploadPromises);
+    }
+
+    // Clean up any tmp paths that weren't moved (e.g., PDF had no items)
+    const unmoved = tmpPaths.filter(p => !movedTmpPaths.has(p));
+    if (unmoved.length > 0) {
+      await cleanupTmpPdfs(unmoved);
     }
 
     // Clean up temporary markers

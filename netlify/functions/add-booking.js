@@ -6,7 +6,7 @@
  */
 
 const { authenticateRequest, unauthorizedResponse, getCorsHeaders, handleOptions } = require('./utils/auth');
-const { uploadPdf } = require('./utils/storage');
+const { uploadPdf, downloadPdfAsBase64, moveTmpPdfToTrip, cleanupTmpPdfs } = require('./utils/storage');
 const { processPdfsWithClaude, extractPassengerFromFilename } = require('./utils/pdfProcessor');
 
 exports.handler = async (event, context) => {
@@ -54,6 +54,19 @@ exports.handler = async (event, context) => {
 
     console.log(`Adding booking to trip ${tripId}, processing ${pdfs.length} PDF file(s)...`);
 
+    // Resolve PDFs: download from Storage if storagePath provided, otherwise use inline content
+    const tmpPaths = []; // Track tmp paths for cleanup
+    const resolvedPdfs = [];
+    for (const pdf of pdfs) {
+      if (pdf.storagePath) {
+        tmpPaths.push(pdf.storagePath);
+        const content = await downloadPdfAsBase64(pdf.storagePath);
+        resolvedPdfs.push({ filename: pdf.filename, content, storagePath: pdf.storagePath });
+      } else if (pdf.content) {
+        resolvedPdfs.push({ filename: pdf.filename, content: pdf.content });
+      }
+    }
+
     // Get existing trip from Supabase
     const { data: tripRecord, error: fetchError } = await supabase
       .from('trips')
@@ -62,6 +75,8 @@ exports.handler = async (event, context) => {
       .single();
 
     if (fetchError || !tripRecord) {
+      // Clean up tmp files on error
+      if (tmpPaths.length > 0) await cleanupTmpPdfs(tmpPaths);
       return {
         statusCode: 404,
         headers,
@@ -75,9 +90,9 @@ exports.handler = async (event, context) => {
     const newFlights = [];
     const newHotels = [];
 
-    console.log(`Processing ${pdfs.length} PDFs with batching...`);
+    console.log(`Processing ${resolvedPdfs.length} PDFs with batching...`);
 
-    const results = await processPdfsWithClaude(pdfs);
+    const results = await processPdfsWithClaude(resolvedPdfs);
 
     // Check for rate limit errors
     const rateLimitError = results.find(r => r.error?.isRateLimit);
@@ -322,12 +337,25 @@ exports.handler = async (event, context) => {
       id: `hotel-${existingHotelCount + i + 1}`
     }));
 
-    // Upload PDFs and link to items (in parallel for speed)
+    // Upload/move PDFs and link to items (in parallel for speed)
     console.log('Uploading PDFs to storage...');
     const uploadPromises = [];
+    const movedTmpPaths = new Set();
 
-    for (let pdfIndex = 0; pdfIndex < pdfs.length; pdfIndex++) {
-      const pdf = pdfs[pdfIndex];
+    for (let pdfIndex = 0; pdfIndex < resolvedPdfs.length; pdfIndex++) {
+      const pdf = resolvedPdfs[pdfIndex];
+      const isFromStorage = !!pdf.storagePath;
+      let firstMoveForThisPdf = true;
+
+      // Helper: move or upload a PDF for a given item
+      const moveOrUpload = (itemId) => {
+        if (isFromStorage && firstMoveForThisPdf) {
+          firstMoveForThisPdf = false;
+          movedTmpPaths.add(pdf.storagePath);
+          return moveTmpPdfToTrip(pdf.storagePath, tripId, itemId);
+        }
+        return uploadPdf(pdf.content, tripId, itemId);
+      };
 
       // Find passengers that came from this PDF in new flights and upload PDF
       for (const flight of flightsWithIds) {
@@ -335,14 +363,12 @@ exports.handler = async (event, context) => {
           const passengersFromPdf = flight.passengers.filter(p => p._pdfIndex === pdfIndex);
           if (passengersFromPdf.length > 0) {
             uploadPromises.push(
-              uploadPdf(pdf.content, tripId, `${flight.id}-p${pdfIndex}`)
+              moveOrUpload(`${flight.id}-p${pdfIndex}`)
                 .then(pdfPath => {
-                  passengersFromPdf.forEach(p => {
-                    p.pdfPath = pdfPath;
-                  });
-                  console.log(`Uploaded PDF for ${flight.id}, passengers: ${passengersFromPdf.map(p => p.name).join(', ')}`);
+                  passengersFromPdf.forEach(p => { p.pdfPath = pdfPath; });
+                  console.log(`Stored PDF for ${flight.id}, passengers: ${passengersFromPdf.map(p => p.name).join(', ')}`);
                 })
-                .catch(err => console.error(`Error uploading PDF for ${flight.id}:`, err))
+                .catch(err => console.error(`Error storing PDF for ${flight.id}:`, err))
             );
           }
         }
@@ -354,14 +380,12 @@ exports.handler = async (event, context) => {
           const passengersFromPdf = existingFlight.passengers.filter(p => p._pdfIndex === pdfIndex);
           if (passengersFromPdf.length > 0) {
             uploadPromises.push(
-              uploadPdf(pdf.content, tripId, `${existingFlight.id}-p${pdfIndex}`)
+              moveOrUpload(`${existingFlight.id}-p${pdfIndex}`)
                 .then(pdfPath => {
-                  passengersFromPdf.forEach(p => {
-                    p.pdfPath = pdfPath;
-                  });
-                  console.log(`Uploaded PDF for existing ${existingFlight.id}, passengers: ${passengersFromPdf.map(p => p.name).join(', ')}`);
+                  passengersFromPdf.forEach(p => { p.pdfPath = pdfPath; });
+                  console.log(`Stored PDF for existing ${existingFlight.id}, passengers: ${passengersFromPdf.map(p => p.name).join(', ')}`);
                 })
-                .catch(err => console.error(`Error uploading PDF for ${existingFlight.id}:`, err))
+                .catch(err => console.error(`Error storing PDF for ${existingFlight.id}:`, err))
             );
           }
         }
@@ -371,12 +395,12 @@ exports.handler = async (event, context) => {
       const hotelsFromPdf = hotelsWithIds.filter(h => h._pdfIndex === pdfIndex);
       for (const hotel of hotelsFromPdf) {
         uploadPromises.push(
-          uploadPdf(pdf.content, tripId, hotel.id)
+          moveOrUpload(hotel.id)
             .then(pdfPath => {
               hotel.pdfPath = pdfPath;
-              console.log(`Uploaded PDF for ${hotel.id}: ${pdfPath}`);
+              console.log(`Stored PDF for ${hotel.id}: ${pdfPath}`);
             })
-            .catch(err => console.error(`Error uploading PDF for ${hotel.id}:`, err))
+            .catch(err => console.error(`Error storing PDF for ${hotel.id}:`, err))
         );
       }
     }
@@ -384,6 +408,12 @@ exports.handler = async (event, context) => {
     // Wait for all uploads to complete
     if (uploadPromises.length > 0) {
       await Promise.all(uploadPromises);
+    }
+
+    // Clean up any tmp paths that weren't moved
+    const unmoved = tmpPaths.filter(p => !movedTmpPaths.has(p));
+    if (unmoved.length > 0) {
+      await cleanupTmpPdfs(unmoved);
     }
 
     // Clean up temporary markers

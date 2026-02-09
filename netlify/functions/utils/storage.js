@@ -323,6 +323,93 @@ async function getActivityFileSignedUrl(path, expiresIn = 3600) {
   return data.signedUrl;
 }
 
+// ============================================
+// Direct Storage Upload Support Functions
+// ============================================
+
+/**
+ * Download a PDF from Storage and return as base64 string.
+ * Used by process-pdf/add-booking to fetch PDFs uploaded directly by frontend.
+ * @param {string} storagePath - Path in trip-pdfs bucket (e.g., "tmp/user-id/xxx.pdf")
+ * @returns {Promise<string>} Base64 encoded PDF content
+ */
+async function downloadPdfAsBase64(storagePath) {
+  const supabase = getServiceClient();
+
+  const { data, error } = await supabase.storage
+    .from(BUCKET_NAME)
+    .download(storagePath);
+
+  if (error) {
+    console.error('Error downloading PDF from storage:', error);
+    throw error;
+  }
+
+  const buffer = Buffer.from(await data.arrayBuffer());
+  return buffer.toString('base64');
+}
+
+/**
+ * Move a PDF from tmp path to final trip path.
+ * Copies to destination then deletes the tmp file.
+ * @param {string} tmpPath - Current tmp path (e.g., "tmp/user-id/xxx.pdf")
+ * @param {string} tripId - Destination trip ID
+ * @param {string} itemId - Flight or hotel ID (e.g., "flight-1-p0")
+ * @returns {Promise<string>} New storage path
+ */
+async function moveTmpPdfToTrip(tmpPath, tripId, itemId) {
+  const supabase = getServiceClient();
+  const newPath = `trips/${tripId}/${itemId}.pdf`;
+
+  // Download from tmp
+  const { data, error: downloadError } = await supabase.storage
+    .from(BUCKET_NAME)
+    .download(tmpPath);
+
+  if (downloadError) {
+    console.error('Error downloading tmp PDF:', downloadError);
+    throw downloadError;
+  }
+
+  // Upload to trips folder
+  const buffer = Buffer.from(await data.arrayBuffer());
+  const { error: uploadError } = await supabase.storage
+    .from(BUCKET_NAME)
+    .upload(newPath, buffer, {
+      contentType: 'application/pdf',
+      upsert: true
+    });
+
+  if (uploadError) {
+    console.error('Error uploading PDF to trip folder:', uploadError);
+    throw uploadError;
+  }
+
+  // Delete tmp file (non-blocking, best effort)
+  supabase.storage.from(BUCKET_NAME).remove([tmpPath]).catch(err => {
+    console.error('Error cleaning up tmp PDF:', err);
+  });
+
+  return newPath;
+}
+
+/**
+ * Delete tmp PDF files (cleanup on error).
+ * @param {string[]} tmpPaths - Array of tmp storage paths
+ */
+async function cleanupTmpPdfs(tmpPaths) {
+  if (!tmpPaths || tmpPaths.length === 0) return;
+  const supabase = getServiceClient();
+
+  const { error } = await supabase.storage
+    .from(BUCKET_NAME)
+    .remove(tmpPaths);
+
+  if (error) {
+    console.error('Error cleaning up tmp PDFs:', error);
+  }
+}
+
 module.exports = {
   uploadPdf,
   deletePdf,
@@ -334,6 +421,9 @@ module.exports = {
   uploadActivityFile,
   deleteActivityFile,
   getActivityFileSignedUrl,
+  downloadPdfAsBase64,
+  moveTmpPdfToTrip,
+  cleanupTmpPdfs,
   BUCKET_NAME,
   ACTIVITY_BUCKET
 };

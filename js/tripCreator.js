@@ -301,24 +301,6 @@ const tripCreator = {
   },
 
   /**
-   * Convert file to base64
-   * @param {File} file
-   * @returns {Promise<string>}
-   */
-  fileToBase64(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => {
-        // Remove data:application/pdf;base64, prefix
-        const base64 = reader.result.split(',')[1];
-        resolve(base64);
-      };
-      reader.onerror = error => reject(error);
-    });
-  },
-
-  /**
    * Submit files for processing
    */
   async submit() {
@@ -329,13 +311,8 @@ const tripCreator = {
     this.showFooter(false);
 
     try {
-      // Convert files to base64
-      const pdfs = await Promise.all(
-        this.files.map(async file => ({
-          filename: file.name,
-          content: await this.fileToBase64(file)
-        }))
-      );
+      // Upload files directly to Storage, then send only paths to backend
+      const pdfs = await pdfUpload.uploadFiles(this.files);
 
       const response = await utils.authFetch('/.netlify/functions/process-pdf', {
         method: 'POST',
