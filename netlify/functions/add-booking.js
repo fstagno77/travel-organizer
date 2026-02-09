@@ -8,6 +8,8 @@
 const { authenticateRequest, unauthorizedResponse, getCorsHeaders, handleOptions } = require('./utils/auth');
 const { uploadPdf, downloadPdfAsBase64, moveTmpPdfToTrip, cleanupTmpPdfs } = require('./utils/storage');
 const { processPdfsWithClaude, extractPassengerFromFilename } = require('./utils/pdfProcessor');
+const { updateTripDates } = require('./utils/tripDates');
+const { deduplicateFlights, deduplicateHotels } = require('./utils/deduplication');
 
 exports.handler = async (event, context) => {
   const headers = getCorsHeaders();
@@ -161,138 +163,12 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Deduplicate hotels by confirmation number
+    // Deduplicate hotels and flights
     const existingHotels = tripData.hotels || [];
     const existingFlights = tripData.flights || [];
-    const deduplicatedHotels = [];
-    const deduplicatedFlights = [];
-    let skippedHotels = 0;
-    let skippedFlights = 0;
 
-    for (const newHotel of newHotels) {
-      const confirmNum = newHotel.confirmationNumber?.toLowerCase()?.trim();
-      const hotelName = newHotel.name?.toLowerCase()?.trim();
-      const checkIn = newHotel.checkIn?.date;
-      const checkOut = newHotel.checkOut?.date;
-
-      let isDuplicate = false;
-
-      if (confirmNum) {
-        // Primary deduplication: by confirmation number
-        const existingHotel = existingHotels.find(h =>
-          h.confirmationNumber?.toLowerCase()?.trim() === confirmNum
-        );
-        const alreadyInBatch = deduplicatedHotels.find(h =>
-          h.confirmationNumber?.toLowerCase()?.trim() === confirmNum
-        );
-        isDuplicate = !!(existingHotel || alreadyInBatch);
-      } else if (hotelName && checkIn && checkOut) {
-        // Fallback deduplication: by hotel name + check-in date + check-out date
-        const existingHotel = existingHotels.find(h =>
-          h.name?.toLowerCase()?.trim() === hotelName &&
-          h.checkIn?.date === checkIn &&
-          h.checkOut?.date === checkOut
-        );
-        const alreadyInBatch = deduplicatedHotels.find(h =>
-          h.name?.toLowerCase()?.trim() === hotelName &&
-          h.checkIn?.date === checkIn &&
-          h.checkOut?.date === checkOut
-        );
-        isDuplicate = !!(existingHotel || alreadyInBatch);
-      }
-
-      if (isDuplicate) {
-        console.log(`Skipping duplicate hotel: ${confirmNum || hotelName} (${newHotel.name})`);
-        skippedHotels++;
-      } else {
-        deduplicatedHotels.push(newHotel);
-      }
-    }
-
-    // Deduplicate flights by booking reference + flight number + date
-    // When duplicates are found (same flight for different passengers), aggregate passengers
-    for (const newFlight of newFlights) {
-      const bookingRef = newFlight.bookingReference?.toLowerCase()?.trim();
-      const flightNum = newFlight.flightNumber?.toLowerCase()?.trim();
-      const flightDate = newFlight.date;
-
-      // Check if flight with same booking ref, flight number and date exists in trip
-      const existingFlight = existingFlights.find(f =>
-        f.bookingReference?.toLowerCase()?.trim() === bookingRef &&
-        f.flightNumber?.toLowerCase()?.trim() === flightNum &&
-        f.date === flightDate
-      );
-
-      if (existingFlight) {
-        // Flight exists - aggregate passenger if new
-        if (newFlight.passenger) {
-          if (!existingFlight.passengers) {
-            existingFlight.passengers = existingFlight.passenger
-              ? [{ ...existingFlight.passenger, ticketNumber: existingFlight.passenger.ticketNumber || existingFlight.ticketNumber || null }]
-              : [];
-          } else {
-            // Backfill ticketNumber from flight level into existing passengers that lack it
-            existingFlight.passengers.forEach(p => {
-              if (!p.ticketNumber && existingFlight.ticketNumber) {
-                p.ticketNumber = existingFlight.ticketNumber;
-              }
-            });
-          }
-          const alreadyHasPassenger = existingFlight.passengers.some(p =>
-            (p.ticketNumber && newFlight.passenger.ticketNumber && p.ticketNumber === newFlight.passenger.ticketNumber) ||
-            (p.name && newFlight.passenger.name && p.name === newFlight.passenger.name)
-          );
-          if (!alreadyHasPassenger) {
-            existingFlight.passengers.push({ ...newFlight.passenger, ticketNumber: newFlight.passenger.ticketNumber || newFlight.ticketNumber || null, _pdfIndex: newFlight._pdfIndex });
-            existingFlight._needsPdfUpload = true; // Mark that we need to upload PDF for new passenger
-            console.log(`Added passenger ${newFlight.passenger.name} to existing flight ${flightNum} on ${flightDate}`);
-          } else {
-            console.log(`Skipping duplicate flight: ${flightNum} on ${flightDate}`);
-            skippedFlights++;
-          }
-        } else {
-          console.log(`Skipping duplicate flight: ${flightNum} on ${flightDate}`);
-          skippedFlights++;
-        }
-      } else {
-        // Check if already in deduplicatedFlights (from same upload batch)
-        const alreadyAdded = deduplicatedFlights.find(f =>
-          f.bookingReference?.toLowerCase()?.trim() === bookingRef &&
-          f.flightNumber?.toLowerCase()?.trim() === flightNum &&
-          f.date === flightDate
-        );
-        if (!alreadyAdded) {
-          // First occurrence - initialize passengers array with _pdfIndex
-          newFlight.passengers = newFlight.passenger
-            ? [{ ...newFlight.passenger, ticketNumber: newFlight.passenger.ticketNumber || newFlight.ticketNumber || null, _pdfIndex: newFlight._pdfIndex }]
-            : [];
-          deduplicatedFlights.push(newFlight);
-        } else {
-          // Aggregate passenger to flight in batch
-          if (newFlight.passenger) {
-            if (!alreadyAdded.passengers) {
-              alreadyAdded.passengers = alreadyAdded.passenger
-                ? [{ ...alreadyAdded.passenger, ticketNumber: alreadyAdded.passenger.ticketNumber || alreadyAdded.ticketNumber || null, _pdfIndex: alreadyAdded._pdfIndex }]
-                : [];
-            }
-            const alreadyHasPassenger = alreadyAdded.passengers.some(p =>
-              (p.ticketNumber && newFlight.passenger.ticketNumber && p.ticketNumber === newFlight.passenger.ticketNumber) ||
-              (p.name && newFlight.passenger.name && p.name === newFlight.passenger.name)
-            );
-            if (!alreadyHasPassenger) {
-              alreadyAdded.passengers.push({ ...newFlight.passenger, ticketNumber: newFlight.passenger.ticketNumber || newFlight.ticketNumber || null, _pdfIndex: newFlight._pdfIndex });
-              console.log(`Added passenger ${newFlight.passenger.name} to batch flight ${flightNum} on ${flightDate}`);
-            } else {
-              console.log(`Skipping duplicate flight in same batch: ${flightNum}`);
-              skippedFlights++;
-            }
-          } else {
-            console.log(`Skipping duplicate flight in same batch: ${flightNum}`);
-            skippedFlights++;
-          }
-        }
-      }
-    }
+    const { deduplicatedHotels, skippedHotels } = deduplicateHotels(newHotels, existingHotels);
+    const { deduplicatedFlights, skippedFlights } = deduplicateFlights(newFlights, existingFlights);
 
     // Check if any existing flights need PDF upload (new passengers added)
     const existingFlightsWithNewPassengers = existingFlights.filter(f => f._needsPdfUpload);
@@ -493,30 +369,4 @@ exports.handler = async (event, context) => {
     };
   }
 };
-
-/**
- * Update trip dates based on all flights and hotels
- */
-function updateTripDates(tripData) {
-  const dates = [];
-
-  if (tripData.flights) {
-    tripData.flights.forEach(f => {
-      if (f.date) dates.push(new Date(f.date));
-    });
-  }
-
-  if (tripData.hotels) {
-    tripData.hotels.forEach(h => {
-      if (h.checkIn?.date) dates.push(new Date(h.checkIn.date));
-      if (h.checkOut?.date) dates.push(new Date(h.checkOut.date));
-    });
-  }
-
-  if (dates.length > 0) {
-    dates.sort((a, b) => a - b);
-    tripData.startDate = dates[0].toISOString().split('T')[0];
-    tripData.endDate = dates[dates.length - 1].toISOString().split('T')[0];
-  }
-}
 

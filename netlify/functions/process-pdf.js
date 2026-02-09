@@ -8,6 +8,7 @@
 const { authenticateRequest, unauthorizedResponse, getCorsHeaders, handleOptions } = require('./utils/auth');
 const { uploadPdf, downloadPdfAsBase64, moveTmpPdfToTrip, cleanupTmpPdfs } = require('./utils/storage');
 const { processPdfsWithClaude, extractPassengerFromFilename } = require('./utils/pdfProcessor');
+const { deduplicateFlights, deduplicateHotels } = require('./utils/deduplication');
 
 exports.handler = async (event, context) => {
   const headers = getCorsHeaders();
@@ -143,77 +144,9 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Deduplicate hotels by confirmation number or by name + dates (within same upload batch)
-    const deduplicatedHotels = [];
-    for (const hotel of allHotels) {
-      const confirmNum = hotel.confirmationNumber?.toLowerCase()?.trim();
-      const hotelName = hotel.name?.toLowerCase()?.trim();
-      const checkIn = hotel.checkIn?.date;
-      const checkOut = hotel.checkOut?.date;
-
-      let alreadyAdded = false;
-
-      if (confirmNum) {
-        // Primary deduplication: by confirmation number
-        alreadyAdded = deduplicatedHotels.some(h =>
-          h.confirmationNumber?.toLowerCase()?.trim() === confirmNum
-        );
-      } else if (hotelName && checkIn && checkOut) {
-        // Fallback deduplication: by hotel name + check-in date + check-out date
-        alreadyAdded = deduplicatedHotels.some(h =>
-          h.name?.toLowerCase()?.trim() === hotelName &&
-          h.checkIn?.date === checkIn &&
-          h.checkOut?.date === checkOut
-        );
-      }
-
-      if (!alreadyAdded) {
-        deduplicatedHotels.push(hotel);
-      } else {
-        console.log(`Skipping duplicate hotel in batch: ${confirmNum || hotelName}`);
-      }
-    }
-
-    // Deduplicate flights by booking reference + flight number + date
-    // When duplicates are found (same flight for different passengers), aggregate passengers
-    const deduplicatedFlights = [];
-    for (const flight of allFlights) {
-      const bookingRef = flight.bookingReference?.toLowerCase()?.trim();
-      const flightNum = flight.flightNumber?.toLowerCase()?.trim();
-      const flightDate = flight.date;
-
-      const existingFlight = deduplicatedFlights.find(f =>
-        f.bookingReference?.toLowerCase()?.trim() === bookingRef &&
-        f.flightNumber?.toLowerCase()?.trim() === flightNum &&
-        f.date === flightDate
-      );
-
-      if (!existingFlight) {
-        // First occurrence of this flight - initialize passengers array with _pdfIndex
-        flight.passengers = flight.passenger
-          ? [{ ...flight.passenger, ticketNumber: flight.passenger.ticketNumber || flight.ticketNumber || null, _pdfIndex: flight._pdfIndex }]
-          : [];
-        deduplicatedFlights.push(flight);
-      } else {
-        // Duplicate flight found - aggregate passenger info
-        if (flight.passenger) {
-          if (!existingFlight.passengers) {
-            existingFlight.passengers = existingFlight.passenger
-              ? [{ ...existingFlight.passenger, ticketNumber: existingFlight.passenger.ticketNumber || existingFlight.ticketNumber || null, _pdfIndex: existingFlight._pdfIndex }]
-              : [];
-          }
-          // Only add if this passenger isn't already in the list (check by ticketNumber or name)
-          const alreadyHasPassenger = existingFlight.passengers.some(p =>
-            (p.ticketNumber && flight.passenger.ticketNumber && p.ticketNumber === flight.passenger.ticketNumber) ||
-            (p.name && flight.passenger.name && p.name === flight.passenger.name)
-          );
-          if (!alreadyHasPassenger) {
-            existingFlight.passengers.push({ ...flight.passenger, ticketNumber: flight.passenger.ticketNumber || flight.ticketNumber || null, _pdfIndex: flight._pdfIndex });
-            console.log(`Added passenger ${flight.passenger.name} to flight ${flightNum} on ${flightDate}`);
-          }
-        }
-      }
-    }
+    // Deduplicate hotels and flights within the batch
+    const { deduplicatedHotels } = deduplicateHotels(allHotels);
+    const { deduplicatedFlights } = deduplicateFlights(allFlights);
 
     // Generate trip data
     const tripData = createTripFromExtractedData({
