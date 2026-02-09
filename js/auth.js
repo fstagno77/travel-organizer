@@ -102,11 +102,20 @@ const auth = {
     }
 
     // Listen for auth changes
+    // Track whether we already had a session at init time to avoid
+    // infinite reload: Supabase fires SIGNED_IN on every page load
+    // for existing sessions, and handlePostLogin() calls reload().
+    const hadSessionOnInit = !!this.session;
     this.supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('[auth] Auth state changed:', event);
       this.session = session;
 
       if (event === 'SIGNED_IN') {
+        // Skip if this is just Supabase confirming an existing session
+        if (hadSessionOnInit) {
+          console.log('[auth] Skipping SIGNED_IN handler - session already existed at init');
+          return;
+        }
         await this.loadProfile();
         this.handlePostLogin();
       } else if (event === 'SIGNED_OUT') {
