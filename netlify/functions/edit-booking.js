@@ -132,10 +132,43 @@ exports.handler = async (event, context) => {
   }
 };
 
+// Whitelists of allowed top-level fields per booking type
+const ALLOWED_FLIGHT_FIELDS = [
+  'date', 'flightNumber', 'departureTime', 'arrivalTime', 'arrivalDate',
+  'bookingReference', 'ticketNumber', 'seat', 'class', 'cabin', 'baggage', 'status',
+  'airline', 'departureAirport', 'arrivalAirport', 'departureDate',
+  'departure', 'arrival', 'passenger', 'passengers'
+];
+
+const ALLOWED_HOTEL_FIELDS = [
+  'name', 'guestName', 'phone', 'email', 'confirmationNumber', 'roomType',
+  'bookingReference', 'rooms', 'guests', 'notes',
+  'checkIn', 'checkOut', 'address', 'price'
+];
+
+function filterUpdates(updates, allowedFields) {
+  const filtered = {};
+  const blocked = [];
+  for (const key of Object.keys(updates)) {
+    if (allowedFields.includes(key)) {
+      filtered[key] = updates[key];
+    } else {
+      blocked.push(key);
+    }
+  }
+  if (blocked.length > 0) {
+    console.warn('Blocked unauthorized field update:', blocked);
+  }
+  return filtered;
+}
+
 /**
  * Apply updates to an item, handling nested objects
  */
 function applyUpdates(item, updates, type) {
+  const allowedFields = type === 'flight' ? ALLOWED_FLIGHT_FIELDS : ALLOWED_HOTEL_FIELDS;
+  updates = filterUpdates(updates, allowedFields);
+
   if (type === 'flight') {
     // Simple fields
     const simpleFields = ['date', 'flightNumber', 'departureTime', 'arrivalTime', 'bookingReference', 'ticketNumber', 'seat', 'class'];
