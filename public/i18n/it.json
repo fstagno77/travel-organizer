@@ -362,7 +362,8 @@
     "locationError": "Impossibile recuperare i dati del luogo",
     "locationNotFound": "Luogo non trovato",
     "reviews": "recensioni",
-    "openInMaps": "Apri in Google Maps"
+    "openInMaps": "Apri in Google Maps",
+    "navigateTo": "Naviga"
   },
   "pendingBookings": {
     "title": "Prenotazioni in Attesa",

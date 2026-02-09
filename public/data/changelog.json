@@ -1,6 +1,26 @@
 {
   "versions": [
     {
+      "version": "0.16.0",
+      "date": "2026-02-09",
+      "changes": {
+        "it": [
+          "Integrazione Google Maps: incolla un link Google Maps nel campo Nome attività per riconoscimento automatico del luogo",
+          "Scheda luogo con nome, categoria, indirizzo, valutazione e numero recensioni da Google Places",
+          "Cache condivisa Google Places: i luoghi già cercati non richiedono nuove chiamate API",
+          "Link 'Apri in Google Maps' e 'Naviga' (indicazioni stradali) nella scheda luogo",
+          "Risoluzione automatica shortlink Google Maps (goo.gl, maps.app)"
+        ],
+        "en": [
+          "Google Maps integration: paste a Google Maps link in the activity Name field for automatic place recognition",
+          "Place card with name, category, address, rating and review count from Google Places",
+          "Shared Google Places cache: previously searched places don't require new API calls",
+          "'Open in Google Maps' and 'Directions' links in place card",
+          "Automatic Google Maps shortlink resolution (goo.gl, maps.app)"
+        ]
+      }
+    },
+    {
       "version": "0.15.3",
       "date": "2026-02-09",
       "changes": {

@@ -59,6 +59,16 @@
       ? `<div class="place-card-address">${esc(loc.address)}</div>`
       : '';
 
+    const navDest = loc.name
+      ? encodeURIComponent(loc.name + (loc.address ? ', ' + loc.address : ''))
+      : (loc.latitude && loc.longitude ? `${loc.latitude},${loc.longitude}` : null);
+    const navigateHtml = navDest
+      ? `<a href="https://www.google.com/maps/dir/?api=1&destination=${navDest}" target="_blank" rel="noopener noreferrer" class="place-card-maps-link">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+          ${i18n.t('activity.navigateTo') || 'Directions'}
+        </a>`
+      : '';
+
     const mapsLinkHtml = loc.mapsUrl
       ? `<a href="${encodeURI(loc.mapsUrl)}" target="_blank" rel="noopener noreferrer" class="place-card-maps-link">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
@@ -78,7 +88,7 @@
       ${categoryHtml}
       ${addressHtml}
       ${ratingHtml}
-      ${mapsLinkHtml}
+      <div class="place-card-links">${mapsLinkHtml}${navigateHtml}</div>
     </div>`;
   }
 

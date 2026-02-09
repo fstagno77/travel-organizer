@@ -3201,11 +3201,16 @@ input[type="time"].form-input {
   to { transform: rotate(360deg); }
 }
 
+.place-card-links {
+  display: flex;
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-2);
+}
+
 .place-card-maps-link {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  margin-top: var(--spacing-2);
   font-size: var(--font-size-xs);
   color: var(--color-primary);
   text-decoration: none;

@@ -362,7 +362,8 @@
     "locationError": "Could not fetch location data",
     "locationNotFound": "Place not found",
     "reviews": "reviews",
-    "openInMaps": "Open in Google Maps"
+    "openInMaps": "Open in Google Maps",
+    "navigateTo": "Directions"
   },
   "pendingBookings": {
     "title": "Pending Bookings",
