@@ -334,6 +334,7 @@
     "namePlaceholder": "es. Visita museo, o incolla un link Google Maps",
     "description": "Descrizione",
     "descriptionPlaceholder": "Dettagli aggiuntivi...",
+    "time": "Ora",
     "startTime": "Ora inizio",
     "endTime": "Ora fine",
     "date": "Data",

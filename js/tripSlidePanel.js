@@ -163,8 +163,8 @@
     const lang = i18n.getLang();
     const dateStr = activity.date ? utils.formatDate(activity.date, lang) : '-';
     const timeRange = [];
-    if (activity.startTime) timeRange.push(activity.startTime);
-    if (activity.endTime) timeRange.push(activity.endTime);
+    if (activity.startTime) timeRange.push(formatTime24to12(activity.startTime));
+    if (activity.endTime) timeRange.push(formatTime24to12(activity.endTime));
 
     const urlsHtml = activity.urls && activity.urls.length > 0
       ? activity.urls.map(url => {
@@ -201,7 +201,7 @@
       </div>
       ${timeRange.length > 0 ? `
         <div class="activity-view-field">
-          <div class="activity-view-label">${i18n.t('activity.startTime') || 'Time'}</div>
+          <div class="activity-view-label" data-i18n="activity.time">${i18n.t('activity.time') || 'Time'}</div>
           <div class="activity-view-value">${timeRange.join(' – ')}</div>
         </div>
       ` : ''}
@@ -221,39 +221,162 @@
   }
 
   /**
-   * Build a time select (hour:minute) with 15-min steps
+   * Format "HH:MM" (24h) to display string e.g. "4:30PM"
+   */
+  function formatTime24to12(time24) {
+    if (!time24) return '';
+    const [hh, mm] = time24.split(':');
+    const h = parseInt(hh);
+    const period = h >= 12 ? 'PM' : 'AM';
+    const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    return `${h12}:${mm}${period}`;
+  }
+
+  /**
+   * Generate all 96 time options (15-min intervals) as HTML
+   */
+  function generateTimeOptions() {
+    let html = '';
+    for (let h = 0; h < 24; h++) {
+      for (const m of ['00', '15', '30', '45']) {
+        const val = String(h).padStart(2, '0') + ':' + m;
+        html += `<div class="time-picker-option" data-value="${val}">${formatTime24to12(val)}</div>`;
+      }
+    }
+    return html;
+  }
+
+  // Cache generated options HTML (same for all pickers)
+  let _timeOptionsHtml = null;
+  function getTimeOptionsHtml() {
+    if (!_timeOptionsHtml) _timeOptionsHtml = generateTimeOptions();
+    return _timeOptionsHtml;
+  }
+
+  /**
+   * Build a Google Calendar-style time picker
    * @param {string} id - Element ID
    * @param {string} value - Current value "HH:MM" or ""
+   * @param {boolean} disabled - Whether the picker is disabled
    * @returns {string} HTML
    */
-  function buildTimeSelect(id, value) {
-    const [selH, selM] = value ? value.split(':') : ['', ''];
-    let hourOpts = '<option value="">--</option>';
-    for (let h = 0; h < 24; h++) {
-      const hh = String(h).padStart(2, '0');
-      hourOpts += `<option value="${hh}"${hh === selH ? ' selected' : ''}>${hh}</option>`;
-    }
-    let minOpts = '<option value="">--</option>';
-    for (const m of ['00', '15', '30', '45']) {
-      minOpts += `<option value="${m}"${m === selM ? ' selected' : ''}>${m}</option>`;
-    }
-    return `<div class="time-select-row" data-time-id="${id}">
-      <select class="form-input time-select-hour" id="${id}-h">${hourOpts}</select>
-      <span class="time-select-sep">:</span>
-      <select class="form-input time-select-min" id="${id}-m">${minOpts}</select>
+  function buildTimePicker(id, value, disabled) {
+    const displayValue = value ? formatTime24to12(value) : '';
+    const clearHidden = value ? '' : ' hidden';
+    return `<div class="time-picker${disabled ? ' disabled' : ''}" id="${id}" data-value="${value || ''}">
+      <input type="text" class="form-input time-picker-input" readonly
+             placeholder="--:--" value="${displayValue}"${disabled ? ' disabled' : ''}>
+      <button type="button" class="time-picker-clear"${clearHidden} tabindex="-1">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+      <div class="time-picker-dropdown">${getTimeOptionsHtml()}</div>
     </div>`;
   }
 
   /**
-   * Get value from a time select pair
-   * @param {string} id - Base ID
+   * Get value from a time picker
+   * @param {string} id - Element ID
    * @returns {string|null} "HH:MM" or null
    */
-  function getTimeSelectValue(id) {
-    const h = document.getElementById(id + '-h')?.value;
-    const m = document.getElementById(id + '-m')?.value;
-    if (h && m) return h + ':' + m;
-    return null;
+  function getTimePickerValue(id) {
+    const picker = document.getElementById(id);
+    return picker?.dataset.value || null;
+  }
+
+  /**
+   * Initialize Google Calendar-style time pickers with start→end dependency
+   */
+  function initTimePickers() {
+    const startPicker = document.getElementById('activity-start-time');
+    const endPicker = document.getElementById('activity-end-time');
+    if (!startPicker || !endPicker) return;
+
+    function openDropdown(picker) {
+      document.querySelectorAll('.time-picker-dropdown.open').forEach(d => d.classList.remove('open'));
+      const dropdown = picker.querySelector('.time-picker-dropdown');
+      dropdown.classList.add('open');
+      const selected = dropdown.querySelector('.time-picker-option.selected')
+        || dropdown.querySelector('[data-value="12:00"]');
+      if (selected) {
+        setTimeout(() => selected.scrollIntoView({ block: 'center' }), 0);
+      }
+    }
+
+    function closeAllDropdowns() {
+      document.querySelectorAll('.time-picker-dropdown.open').forEach(d => d.classList.remove('open'));
+    }
+
+    function setPickerValue(picker, value) {
+      picker.dataset.value = value || '';
+      const input = picker.querySelector('.time-picker-input');
+      const clearBtn = picker.querySelector('.time-picker-clear');
+      input.value = value ? formatTime24to12(value) : '';
+      if (clearBtn) clearBtn.hidden = !value;
+      picker.querySelectorAll('.time-picker-option').forEach(opt => {
+        opt.classList.toggle('selected', opt.dataset.value === value);
+      });
+    }
+
+    function selectTime(picker, value) {
+      setPickerValue(picker, value);
+      closeAllDropdowns();
+
+      if (picker === startPicker && value) {
+        endPicker.classList.remove('disabled');
+        endPicker.querySelector('.time-picker-input').disabled = false;
+        if (!endPicker.dataset.value) {
+          const [hh, mm] = value.split(':');
+          const endH = (parseInt(hh) + 1) % 24;
+          setPickerValue(endPicker, String(endH).padStart(2, '0') + ':' + mm);
+        }
+      }
+    }
+
+    function clearPicker(picker) {
+      setPickerValue(picker, '');
+      closeAllDropdowns();
+      if (picker === startPicker) {
+        setPickerValue(endPicker, '');
+        endPicker.classList.add('disabled');
+        endPicker.querySelector('.time-picker-input').disabled = true;
+      }
+    }
+
+    [startPicker, endPicker].forEach(picker => {
+      const input = picker.querySelector('.time-picker-input');
+      const dropdown = picker.querySelector('.time-picker-dropdown');
+      const clearBtn = picker.querySelector('.time-picker-clear');
+
+      input.addEventListener('click', () => {
+        if (input.disabled) return;
+        if (dropdown.classList.contains('open')) {
+          closeAllDropdowns();
+        } else {
+          openDropdown(picker);
+        }
+      });
+
+      dropdown.addEventListener('click', (e) => {
+        const option = e.target.closest('.time-picker-option');
+        if (option) selectTime(picker, option.dataset.value);
+      });
+
+      if (clearBtn) {
+        clearBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          clearPicker(picker);
+        });
+      }
+
+      if (picker.dataset.value) {
+        const opt = dropdown.querySelector(`[data-value="${picker.dataset.value}"]`);
+        if (opt) opt.classList.add('selected');
+      }
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.time-picker')) closeAllDropdowns();
+    });
   }
 
   /**
@@ -303,14 +426,12 @@
         <label data-i18n="activity.date">${i18n.t('activity.date') || 'Date'}</label>
         <input type="date" class="form-input" id="activity-date" required value="${date || act.date || ''}">
       </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label data-i18n="activity.startTime">${i18n.t('activity.startTime') || 'Start time'}</label>
-          ${buildTimeSelect('activity-start-time', act.startTime || '')}
-        </div>
-        <div class="form-group">
-          <label data-i18n="activity.endTime">${i18n.t('activity.endTime') || 'End time'}</label>
-          ${buildTimeSelect('activity-end-time', act.endTime || '')}
+      <div class="form-group">
+        <label data-i18n="activity.time">${i18n.t('activity.time') || 'Time'}</label>
+        <div class="time-picker-row">
+          ${buildTimePicker('activity-start-time', act.startTime || '', false)}
+          <span class="time-picker-sep">&ndash;</span>
+          ${buildTimePicker('activity-end-time', act.endTime || '', !act.startTime)}
         </div>
       </div>
       <div class="form-group">
@@ -498,6 +619,9 @@
 
     // Cancel button
     document.getElementById('activity-cancel-btn').addEventListener('click', closePanel);
+
+    // Time pickers (Google Calendar-style)
+    initTimePickers();
 
     // Google Maps URL detection on name field
     const nameInput = document.getElementById('activity-name');
@@ -704,8 +828,8 @@
       }
 
       const description = document.getElementById('activity-description').value.trim();
-      const startTime = getTimeSelectValue('activity-start-time');
-      const endTime = getTimeSelectValue('activity-end-time');
+      const startTime = getTimePickerValue('activity-start-time');
+      const endTime = getTimePickerValue('activity-end-time');
       const urls = collectUrls();
 
       // Validate URLs
