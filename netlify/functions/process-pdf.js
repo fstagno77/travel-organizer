@@ -295,6 +295,14 @@ exports.handler = async (event, context) => {
     };
 
   } catch (error) {
+    // Cleanup temporary PDFs if any were uploaded
+    if (tmpPaths && tmpPaths.length > 0) {
+      try {
+        await cleanupTmpPdfs(tmpPaths);
+      } catch (cleanupErr) {
+        console.error('Failed to cleanup tmp PDFs:', cleanupErr);
+      }
+    }
     console.error('Error processing PDFs:', error);
     const isRateLimit = error.status === 429 || error.message?.includes('rate_limit');
     const retryAfter = error.retryAfter || 30;
