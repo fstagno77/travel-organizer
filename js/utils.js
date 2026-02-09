@@ -166,16 +166,6 @@ const utils = {
   },
 
   /**
-   * Get relative path prefix based on current page depth
-   * @returns {string} Path prefix (e.g., "../" or "")
-   */
-  getPathPrefix() {
-    const depth = window.location.pathname.split('/').filter(p => p).length;
-    if (depth <= 1) return './';
-    return '../'.repeat(depth - 1);
-  },
-
-  /**
    * Check if we're on a specific page
    * @param {string} pageName - Page name to check
    * @returns {boolean}

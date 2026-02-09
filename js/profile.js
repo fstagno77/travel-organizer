@@ -895,7 +895,7 @@
     // Lazy-load airlines data
     if (!airlinesData) {
       try {
-        const response = await fetch('./data/airlines.json');
+        const response = await fetch('/data/airlines.json');
         airlinesData = await response.json();
       } catch (error) {
         console.error('Error loading airlines data:', error);

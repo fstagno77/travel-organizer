@@ -14,7 +14,7 @@ const AirportAutocomplete = (() => {
     if (_airportsData) return _airportsData;
     if (_loadingPromise) return _loadingPromise;
 
-    _loadingPromise = fetch('./data/airports.json')
+    _loadingPromise = fetch('/data/airports.json')
       .then(res => {
         if (!res.ok) throw new Error('Failed to load airports.json');
         return res.json();

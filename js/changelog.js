@@ -14,8 +14,7 @@ const changelog = (function() {
     try {
       changelogList.innerHTML = `<div class="changelog-loading"><span class="spinner"></span></div>`;
 
-      const pathPrefix = i18n.getPathPrefix();
-      const changelogData = await utils.loadJSON(`${pathPrefix}data/changelog.json`);
+      const changelogData = await utils.loadJSON('/data/changelog.json');
 
       renderChangelog(changelogList, changelogData.versions);
     } catch (error) {

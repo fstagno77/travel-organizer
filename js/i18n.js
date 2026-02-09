@@ -38,8 +38,7 @@ const i18n = {
    */
   async load(lang) {
     try {
-      const pathPrefix = this.getPathPrefix();
-      const response = await fetch(`${pathPrefix}i18n/${lang}.json`);
+      const response = await fetch(`/i18n/${lang}.json`);
 
       if (!response.ok) {
         throw new Error(`Failed to load ${lang}.json`);
@@ -67,21 +66,6 @@ const i18n = {
         await this.load(this.defaultLang);
       }
     }
-  },
-
-  /**
-   * Get path prefix for current page depth
-   * @returns {string}
-   */
-  getPathPrefix() {
-    const path = window.location.pathname;
-
-    // Check if we're in pages subfolder (1 level deep)
-    if (path.includes('/pages/')) {
-      return '../';
-    }
-
-    return './';
   },
 
   /**

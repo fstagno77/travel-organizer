@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Personal travel organizer with PDF document processing",
   "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
     "test": "jest"
   },
   "dependencies": {
@@ -12,6 +15,7 @@
     "dotenv": "^16.4.7"
   },
   "devDependencies": {
-    "jest": "^30.2.0"
+    "jest": "^30.2.0",
+    "vite": "^6.4.1"
   }
 }
