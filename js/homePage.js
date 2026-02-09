@@ -395,10 +395,10 @@ const homePage = (function() {
       <div class="trip-card-wrapper">
         <a href="${tripUrl}" class="${cardClass}">
           <div class="trip-card-image" style="${imageStyle}">
-            <span class="trip-card-destination">${utils.escapeHtml(title)}</span>
-          </div>
-          <div class="trip-card-body">
-            <div class="trip-card-dates">${startDate} - ${endDate}</div>
+            <div class="trip-card-overlay">
+              <span class="trip-card-destination">${utils.escapeHtml(title)}</span>
+              <span class="trip-card-dates">${startDate} - ${endDate}</span>
+            </div>
           </div>
         </a>
         <div class="trip-card-menu">
