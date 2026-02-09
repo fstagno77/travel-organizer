@@ -56,3 +56,6 @@ const changelog = (function() {
 
   return { init };
 })();
+
+// Make available globally (required for Vite bundling)
+window.changelog = changelog;
