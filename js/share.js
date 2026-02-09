@@ -127,7 +127,7 @@
           <p class="empty-state-text" data-i18n="trip.loadError">Could not load trip data</p>
         </div>
       `;
-      i18n.apply();
+      i18n.apply(contentContainer);
     }
   }
 
@@ -219,7 +219,7 @@
     initShareButton();
 
     // Apply translations
-    i18n.apply();
+    i18n.apply(container);
   }
 
   /**
@@ -357,7 +357,7 @@
     linkInput.addEventListener('focus', () => linkInput.select());
 
     // Apply translations
-    i18n.apply();
+    i18n.apply(modal);
   }
 
   /**
@@ -385,7 +385,7 @@
           <h3 class="empty-state-title" data-i18n="trip.noFlights">No flights</h3>
         </div>
       `;
-      i18n.apply();
+      i18n.apply(container);
       return;
     }
 
@@ -515,7 +515,7 @@
     container.innerHTML = html;
 
     // Apply translations
-    i18n.apply();
+    i18n.apply(container);
 
     // Initialize toggle buttons
     initFlightToggleButtons();
@@ -534,7 +534,7 @@
           <h3 class="empty-state-title" data-i18n="trip.noHotels">No hotels</h3>
         </div>
       `;
-      i18n.apply();
+      i18n.apply(container);
       return;
     }
 
@@ -675,7 +675,7 @@
     container.innerHTML = html;
 
     // Apply translations
-    i18n.apply();
+    i18n.apply(container);
 
     // Initialize toggle buttons
     initHotelToggleButtons();

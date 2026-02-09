@@ -3,14 +3,42 @@
  * - IATA field: type letters → dropdown with matching codes, selecting fills city too
  * - City field: type 2+ chars → dropdown with matching cities, selecting fills IATA code too
  * Both dropdowns appear below their respective input fields.
+ * Airports data is lazy-loaded on first use from airports.json.
  */
 const AirportAutocomplete = (() => {
   let _searchIndex = null;
+  let _airportsData = null;
+  let _loadingPromise = null;
+
+  async function loadAirports() {
+    if (_airportsData) return _airportsData;
+    if (_loadingPromise) return _loadingPromise;
+
+    _loadingPromise = fetch('./data/airports.json')
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to load airports.json');
+        return res.json();
+      })
+      .then(data => {
+        _airportsData = data;
+        return data;
+      })
+      .catch(err => {
+        console.error('Error loading airports data:', err);
+        _airportsData = {};
+        return _airportsData;
+      })
+      .finally(() => {
+        _loadingPromise = null;
+      });
+
+    return _loadingPromise;
+  }
 
   function getSearchIndex() {
     if (_searchIndex) return _searchIndex;
-    if (typeof AIRPORTS === 'undefined') return [];
-    _searchIndex = Object.entries(AIRPORTS).map(([code, [city, name, country]]) => ({
+    if (!_airportsData) return [];
+    _searchIndex = Object.entries(_airportsData).map(([code, [city, name, country]]) => ({
       code,
       city,
       name,
@@ -169,7 +197,7 @@ const AirportAutocomplete = (() => {
 
   function attach(codeInput, cityInput) {
     if (!codeInput || !cityInput) return;
-    if (typeof AIRPORTS === 'undefined') return;
+    if (!_airportsData) return;
 
     const cityCtrl = attachDropdown(cityInput, searchByCity, (airport) => {
       codeInput.value = airport.code;
@@ -182,18 +210,18 @@ const AirportAutocomplete = (() => {
       if (cityCtrl) cityCtrl.setSkip();
     });
 
-    // Also auto-fill city silently when typing exact 3-letter IATA match
     codeInput.addEventListener('input', () => {
       const val = codeInput.value.trim().toUpperCase();
-      if (val.length === 3 && AIRPORTS[val]) {
-        cityInput.value = AIRPORTS[val][0];
+      if (val.length === 3 && _airportsData[val]) {
+        cityInput.value = _airportsData[val][0];
         if (cityCtrl) cityCtrl.setSkip();
       }
     });
   }
 
-  function init(container) {
+  async function init(container) {
     if (!container) return;
+    await loadAirports();
     attach(
       container.querySelector('input[data-field="departure.code"]'),
       container.querySelector('input[data-field="departure.city"]')

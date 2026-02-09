@@ -64,7 +64,7 @@
           <p data-i18n="auth.notLoggedIn">Not logged in</p>
         </div>
       `;
-      i18n.apply();
+      i18n.apply(container);
       return;
     }
 
@@ -111,7 +111,7 @@
       </div>
     `;
 
-    i18n.apply();
+    i18n.apply(container);
     bindSidebarEvents();
     renderSection(activeSection);
   }
@@ -230,7 +230,7 @@
       </div>
     `;
 
-    i18n.apply();
+    i18n.apply(container);
     bindProfileEvents();
   }
 
@@ -250,7 +250,7 @@
         <span class="form-hint">${i18n.t('common.loading')}</span>
       </div>
     `;
-    i18n.apply();
+    i18n.apply(container);
 
     // Ensure owner traveler exists
     await auth.getOrCreateOwnerTraveler();
@@ -378,7 +378,7 @@
       </div>` : ''}
     `;
 
-    i18n.apply();
+    i18n.apply(container);
     bindTravelersEvents();
   }
 
@@ -1369,7 +1369,7 @@
       </div>
     `;
 
-    i18n.apply();
+    i18n.apply(container);
     bindPreferencesEvents();
   }
 

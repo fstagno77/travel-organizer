@@ -114,7 +114,7 @@
           <p class="empty-state-text" data-i18n="home.noTripsText">Your trips will appear here</p>
         </div>
       `;
-      i18n.apply();
+      i18n.apply(tripsContainer);
     }
   }
 
@@ -412,7 +412,7 @@
       <div class="today-cards">${cardsHtml}</div>
     `;
 
-    i18n.apply();
+    i18n.apply(container);
   }
 
   /**
@@ -533,7 +533,7 @@
           <button class="btn btn-primary empty-state-cta" id="empty-new-trip-btn" data-i18n="trip.new">Nuovo Viaggio</button>
         </div>
       `;
-      i18n.apply();
+      i18n.apply(container);
 
       // Bind click handler for the empty state button
       const emptyBtn = document.getElementById('empty-new-trip-btn');
@@ -585,7 +585,7 @@
     initTripCardMenus();
 
     // Apply translations
-    i18n.apply();
+    i18n.apply(container);
   }
 
   /**
@@ -747,7 +747,7 @@
     submitBtn.addEventListener('click', submitRename);
 
     // Apply translations
-    i18n.apply();
+    i18n.apply(modal);
   }
 
   /**
@@ -882,7 +882,7 @@
     confirmBtn.addEventListener('click', performDelete);
 
     // Apply translations
-    i18n.apply();
+    i18n.apply(modal);
   }
 
   /**
@@ -904,7 +904,7 @@
       changelogList.innerHTML = `
         <div class="changelog-error" data-i18n="common.error">An error occurred</div>
       `;
-      i18n.apply();
+      i18n.apply(changelogList);
     }
   }
 
@@ -967,7 +967,7 @@
           <p class="empty-state-text" data-i18n="trip.loadError">Could not load trip data</p>
         </div>
       `;
-      i18n.apply();
+      i18n.apply(contentContainer);
     }
   }
 
@@ -1086,7 +1086,7 @@
     initSectionMenus(tripData.id);
 
     // Apply translations
-    i18n.apply();
+    i18n.apply(container);
   }
 
   /**
@@ -1373,7 +1373,7 @@
     submitBtn.addEventListener('click', submitBooking);
 
     // Apply translations
-    i18n.apply();
+    i18n.apply(modal);
   }
 
   /**
@@ -1470,7 +1470,7 @@
     linkInput.addEventListener('focus', () => linkInput.select());
 
     // Apply translations
-    i18n.apply();
+    i18n.apply(modal);
   }
 
   /**
@@ -1506,7 +1506,7 @@
           </button>
         </div>
       `;
-      i18n.apply();
+      i18n.apply(container);
       // Add click handler for CTA
       document.getElementById('add-flight-cta')?.addEventListener('click', () => {
         const tripId = new URLSearchParams(window.location.search).get('id');
@@ -1643,7 +1643,7 @@
     container.innerHTML = html;
 
     // Apply translations
-    i18n.apply();
+    i18n.apply(container);
 
     // Initialize toggle buttons
     initFlightToggleButtons();
@@ -1670,7 +1670,7 @@
           </button>
         </div>
       `;
-      i18n.apply();
+      i18n.apply(container);
       // Add click handler for CTA
       document.getElementById('add-hotel-cta')?.addEventListener('click', () => {
         const tripId = new URLSearchParams(window.location.search).get('id');
@@ -1816,7 +1816,7 @@
     container.innerHTML = html;
 
     // Apply translations
-    i18n.apply();
+    i18n.apply(container);
 
     // Initialize toggle buttons
     initHotelToggleButtons();

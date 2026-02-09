@@ -93,7 +93,7 @@
         <a href="./" class="btn btn-primary" data-i18n="common.backHome">Back to home</a>
       </div>
     `;
-    i18n.apply();
+    i18n.apply(content);
   }
 
   /**
@@ -232,7 +232,7 @@
     initMenu(tripData.id);
 
     // Apply translations
-    i18n.apply();
+    i18n.apply(container);
   }
 
   /**
@@ -396,9 +396,8 @@
     `;
 
     document.body.insertAdjacentHTML('beforeend', modalHTML);
-    i18n.apply();
-
     const modal = document.getElementById('add-choice-modal');
+    i18n.apply(modal);
     const closeBtn = document.getElementById('add-choice-close');
 
     // Trigger reflow then add active class for CSS transition
@@ -620,13 +619,13 @@
           </div>
         `;
         modalFooter.style.display = 'none';
-        i18n.apply();
+        i18n.apply(modalBody);
 
         // Retry button - restore upload zone
         document.getElementById('error-retry-btn').addEventListener('click', () => {
           modalBody.innerHTML = originalBodyContent;
           modalFooter.style.display = '';
-          i18n.apply();
+          i18n.apply(modalBody);
 
           // Re-attach event listeners
           const newUploadZone = document.getElementById('add-booking-upload-zone');
@@ -681,7 +680,7 @@
     // Show modal
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
-    i18n.apply();
+    i18n.apply(modal);
   }
 
   /**
@@ -772,7 +771,7 @@
 
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
-    i18n.apply();
+    i18n.apply(modal);
   }
 
   /**
@@ -1032,7 +1031,7 @@
 
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
-    i18n.apply();
+    i18n.apply(modal);
   }
 
   /**
@@ -1541,7 +1540,7 @@
 
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
-    i18n.apply();
+    i18n.apply(modal);
   }
 
   /**
@@ -1637,7 +1636,7 @@
     document.body.style.overflow = 'hidden';
     input.focus();
     input.select();
-    i18n.apply();
+    i18n.apply(modal);
   }
 
   /**
@@ -1700,7 +1699,7 @@
           <span class="quick-upload-text" data-i18n="${i18n.isTouchDevice() ? 'trip.quickUploadHintMobile' : 'trip.quickUploadHint'}">Drop a PDF here to add a booking</span>
         </div>
       `;
-      i18n.apply();
+      i18n.apply(container);
       initQuickUploadCard('quick-upload-flights');
       return;
     }
@@ -1950,7 +1949,7 @@
     `;
 
     container.innerHTML = html + quickUploadCard;
-    i18n.apply();
+    i18n.apply(container);
     initFlightToggleButtons();
     initEditItemButtons();
     initDeleteItemButtons();
@@ -1985,7 +1984,7 @@
           <span class="quick-upload-text" data-i18n="${i18n.isTouchDevice() ? 'trip.quickUploadHintMobile' : 'trip.quickUploadHint'}">Drop a PDF here to add a booking</span>
         </div>
       `;
-      i18n.apply();
+      i18n.apply(container);
       initQuickUploadCard('quick-upload-hotels');
       return;
     }
@@ -2144,7 +2143,7 @@
     `;
 
     container.innerHTML = html + quickUploadCard;
-    i18n.apply();
+    i18n.apply(container);
     initHotelToggleButtons();
     initEditItemButtons();
     initDeleteItemButtons();
@@ -2447,9 +2446,8 @@
     `;
 
     document.body.insertAdjacentHTML('beforeend', panelHTML);
-    i18n.apply();
-
     const panel = document.getElementById('activity-panel');
+    i18n.apply(panel);
     panel.offsetHeight; // force reflow
     panel.classList.add('active');
 
@@ -2806,7 +2804,7 @@
           <p class="empty-state-text" data-i18n="trip.noActivitiesText">Add a booking to see your activities here</p>
         </div>
       `;
-      i18n.apply();
+      i18n.apply(container);
       return;
     }
 
@@ -3033,7 +3031,7 @@
     }).join('');
 
     container.innerHTML = html;
-    i18n.apply();
+    i18n.apply(container);
     initActivityLinks();
     initNewActivityButtons();
     initCustomActivityClicks();
@@ -3396,7 +3394,7 @@
 
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
-    i18n.apply();
+    i18n.apply(modal);
   }
 
   /**
@@ -3537,7 +3535,7 @@
 
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
-    i18n.apply();
+    i18n.apply(modal);
   }
 
   /**

@@ -94,7 +94,7 @@ const tripCreator = {
     const modal = document.getElementById('trip-modal');
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
-    i18n.apply();
+    i18n.apply(modal);
   },
 
   /**
@@ -160,7 +160,7 @@ const tripCreator = {
     `;
 
     this.bindUploadEvents();
-    i18n.apply();
+    i18n.apply(body);
   },
 
   /**
@@ -428,7 +428,7 @@ const tripCreator = {
         <a href="${tripUrl}" class="btn btn-primary" data-i18n="trip.viewTrip">Vai al viaggio</a>
       </div>
     `;
-    i18n.apply();
+    i18n.apply(body);
   },
 
   /**
@@ -455,7 +455,7 @@ const tripCreator = {
       this.reset();
     });
 
-    i18n.apply();
+    i18n.apply(body);
   },
 
   /**
@@ -498,7 +498,7 @@ const tripCreator = {
         </div>
       </div>
     `;
-    i18n.apply();
+    i18n.apply(body);
 
     // Bind skip button
     document.getElementById('skip-photo-btn').addEventListener('click', () => {
@@ -600,7 +600,7 @@ const tripCreator = {
       });
     });
 
-    i18n.apply();
+    i18n.apply(grid);
   },
 
   /**
@@ -660,7 +660,7 @@ const tripCreator = {
         </svg>
         <span data-i18n="trip.loadMorePhotos">Altre foto</span>
       `;
-      i18n.apply();
+      i18n.apply(btn);
     }
   },
 
@@ -683,7 +683,7 @@ const tripCreator = {
         <div class="processing-state-text" data-i18n="trip.uploadingPhoto">Caricamento foto...</div>
       </div>
     `;
-    i18n.apply();
+    i18n.apply(body);
 
     try {
       // Convert to base64
@@ -734,7 +734,7 @@ const tripCreator = {
         <p data-i18n="trip.noPhotosFound">Nessuna foto trovata per questa destinazione</p>
       </div>
     `;
-    i18n.apply();
+    i18n.apply(grid);
   },
 
   /**
@@ -754,7 +754,7 @@ const tripCreator = {
         <div class="processing-state-text" data-i18n="trip.savingPhoto">Salvataggio foto...</div>
       </div>
     `;
-    i18n.apply();
+    i18n.apply(body);
 
     try {
       if (isLastUsed) {

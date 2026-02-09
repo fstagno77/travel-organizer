@@ -110,10 +110,13 @@ const i18n = {
 
   /**
    * Apply translations to all elements with data-i18n attributes
+   * @param {Element|Document} [root=document] - Root element to search within
    */
-  apply() {
+  apply(root) {
+    const scope = root || document;
+
     // Text content
-    document.querySelectorAll('[data-i18n]').forEach(el => {
+    scope.querySelectorAll('[data-i18n]').forEach(el => {
       const key = el.dataset.i18n;
       const translation = this.t(key);
       if (translation !== key) {
@@ -122,7 +125,7 @@ const i18n = {
     });
 
     // Placeholder attribute
-    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    scope.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
       const key = el.dataset.i18nPlaceholder;
       const translation = this.t(key);
       if (translation !== key) {
@@ -131,7 +134,7 @@ const i18n = {
     });
 
     // Title attribute
-    document.querySelectorAll('[data-i18n-title]').forEach(el => {
+    scope.querySelectorAll('[data-i18n-title]').forEach(el => {
       const key = el.dataset.i18nTitle;
       const translation = this.t(key);
       if (translation !== key) {
@@ -140,7 +143,7 @@ const i18n = {
     });
 
     // Aria-label attribute
-    document.querySelectorAll('[data-i18n-aria]').forEach(el => {
+    scope.querySelectorAll('[data-i18n-aria]').forEach(el => {
       const key = el.dataset.i18nAria;
       const translation = this.t(key);
       if (translation !== key) {

@@ -90,7 +90,7 @@
           </button>
         </div>
       `;
-      i18n.apply();
+      i18n.apply(container);
     }
   }
 
@@ -131,7 +131,7 @@
     }).join('');
 
     container.innerHTML = `<div class="pending-bookings-list">${html}</div>`;
-    i18n.apply();
+    i18n.apply(container);
   }
 
   /**
@@ -150,7 +150,7 @@
         <p class="empty-state-text" data-i18n="pendingBookings.noBookingsText">Forward your booking confirmation emails to see them here</p>
       </div>
     `;
-    i18n.apply();
+    i18n.apply(container);
   }
 
   /**
@@ -316,7 +316,7 @@
 
       modal.classList.add('active');
       document.body.style.overflow = 'hidden';
-      i18n.apply();
+      i18n.apply(modal);
 
     } catch (error) {
       console.error('Error loading booking details:', error);
@@ -494,7 +494,7 @@
           <p data-i18n="pendingBookings.noTripsYet">No trips yet. Create a new trip with this booking.</p>
         </div>
       `;
-      i18n.apply();
+      i18n.apply(container);
       return;
     }
 
@@ -514,7 +514,7 @@
     }).join('');
 
     container.innerHTML = html;
-    i18n.apply();
+    i18n.apply(container);
 
     // Add click handlers
     container.querySelectorAll('.trip-selection-item').forEach(item => {
