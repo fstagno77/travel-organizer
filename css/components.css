@@ -1341,13 +1341,13 @@ input[type="time"].form-input {
 
 .trip-card-image {
   position: relative;
-  height: 160px;
+  height: 220px;
   background-color: var(--color-primary);
   background-size: cover;
   background-position: center;
   display: flex;
   align-items: flex-end;
-  padding: var(--spacing-4);
+  padding: var(--spacing-3);
   border-radius: var(--radius-lg);
   overflow: hidden;
 }
@@ -1527,7 +1527,7 @@ input[type="time"].form-input {
 }
 
 .trip-card--past .trip-card-dates {
-  color: var(--color-gray-500);
+  color: rgba(255, 255, 255, 0.85);
 }
 
 /* Section Header & Menu (for trip page) */

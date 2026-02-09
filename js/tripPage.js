@@ -303,6 +303,11 @@
           indicator.style.transition = '';
         });
       });
+      // Recalculate after fonts load (icon font changes button widths)
+      document.fonts.ready.then(() => {
+        const currentActive = document.querySelector('.segmented-control-btn.active[data-tab]');
+        if (currentActive) updateSegmentedIndicator(currentActive);
+      });
     }
   }
 

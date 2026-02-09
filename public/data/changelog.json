@@ -1,6 +1,20 @@
 {
   "versions": [
     {
+      "version": "0.16.2",
+      "date": "2026-02-09",
+      "changes": {
+        "it": [
+          "Nuovo design card viaggio in home: foto con bordi arrotondati e padding uniforme, nome e date sovrapposti alla foto",
+          "Fix indicatore tab che appariva troppo largo al primo caricamento"
+        ],
+        "en": [
+          "New trip card design on home: photo with rounded corners and uniform padding, name and dates overlaid on photo",
+          "Fix tab indicator appearing too wide on first load"
+        ]
+      }
+    },
+    {
       "version": "0.16.0",
       "date": "2026-02-09",
       "changes": {
