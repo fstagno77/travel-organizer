@@ -173,7 +173,7 @@
       <div class="trip-content-header mb-6">
         <div class="segmented-control">
           <div class="segmented-indicator"></div>
-          <button class="segmented-control-btn active" data-tab="activities">
+          <button class="segmented-control-btn" data-tab="activities">
             <span class="material-symbols-outlined" style="font-size: 20px;">calendar_today</span>
             <span data-i18n="trip.activities">Activities</span>
           </button>
@@ -234,7 +234,7 @@
         </div>
       </div>
 
-      <div id="activities-tab" class="tab-content active">
+      <div id="activities-tab" class="tab-content">
         <div id="activities-container"></div>
       </div>
 
@@ -257,9 +257,14 @@
     // Initialize tab switching
     initTabSwitching();
 
-    // Restore last active tab (or default to activities)
-    const savedTab = sessionStorage.getItem('tripActiveTab') || 'activities';
-    switchToTab(savedTab);
+    // Determine which tab to show:
+    // - Page refresh → restore saved tab
+    // - New navigation (opening a trip) → always Activities
+    const navEntry = performance.getEntriesByType('navigation')[0];
+    const isRefresh = navEntry && navEntry.type === 'reload';
+    const savedTab = isRefresh ? sessionStorage.getItem('tripActiveTab') : null;
+    switchToTab(savedTab || 'activities');
+    showIndicator();
 
     // Initialize menu
     initMenu(tripData.id);
@@ -290,25 +295,33 @@
         switchToTab(targetTab);
       });
     });
+  }
 
-    // Position indicator on the initially active tab (no animation)
+  /**
+   * Position indicator on the active tab without animation (call after switchToTab on init)
+   */
+  function showIndicator() {
     const indicator = document.querySelector('.segmented-control > .segmented-indicator');
     const activeBtn = document.querySelector('.segmented-control-btn.active[data-tab]');
-    if (indicator && activeBtn) {
-      indicator.style.transition = 'none';
-      updateSegmentedIndicator(activeBtn);
-      // Re-enable transition after layout
+    if (!indicator || !activeBtn) return;
+
+    // Position without animation, then reveal
+    indicator.style.transition = 'none';
+    updateSegmentedIndicator(activeBtn);
+    indicator.style.opacity = '1';
+
+    // Re-enable transition after layout
+    requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          indicator.style.transition = '';
-        });
+        indicator.style.transition = '';
       });
-      // Recalculate after fonts load (icon font changes button widths)
-      document.fonts.ready.then(() => {
-        const currentActive = document.querySelector('.segmented-control-btn.active[data-tab]');
-        if (currentActive) updateSegmentedIndicator(currentActive);
-      });
-    }
+    });
+
+    // Recalculate after fonts load (icon font changes button widths)
+    document.fonts.ready.then(() => {
+      const currentActive = document.querySelector('.segmented-control-btn.active[data-tab]');
+      if (currentActive) updateSegmentedIndicator(currentActive);
+    });
   }
 
   /**

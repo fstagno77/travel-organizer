@@ -1641,6 +1641,8 @@ input[type="time"].form-input {
   top: var(--spacing-1);
   left: var(--spacing-1);
   height: calc(100% - var(--spacing-1) * 2);
+  width: 0;
+  opacity: 0;
   background-color: var(--color-white);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
