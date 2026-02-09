@@ -37,3 +37,6 @@ data/trips.json
 
 # Deno (not used)
 deno.lock
+
+# Test PDF files (kept locally, not tracked)
+filebooking/
