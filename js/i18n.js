@@ -99,39 +99,22 @@ const i18n = {
   apply(root) {
     const scope = root || document;
 
-    // Text content
-    scope.querySelectorAll('[data-i18n]').forEach(el => {
-      const key = el.dataset.i18n;
-      const translation = this.t(key);
-      if (translation !== key) {
-        el.textContent = translation;
+    scope.querySelectorAll('[data-i18n], [data-i18n-placeholder], [data-i18n-title], [data-i18n-aria]').forEach(el => {
+      if (el.dataset.i18n) {
+        const translation = this.t(el.dataset.i18n);
+        if (translation !== el.dataset.i18n) el.textContent = translation;
       }
-    });
-
-    // Placeholder attribute
-    scope.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
-      const key = el.dataset.i18nPlaceholder;
-      const translation = this.t(key);
-      if (translation !== key) {
-        el.placeholder = translation;
+      if (el.dataset.i18nPlaceholder) {
+        const translation = this.t(el.dataset.i18nPlaceholder);
+        if (translation !== el.dataset.i18nPlaceholder) el.placeholder = translation;
       }
-    });
-
-    // Title attribute
-    scope.querySelectorAll('[data-i18n-title]').forEach(el => {
-      const key = el.dataset.i18nTitle;
-      const translation = this.t(key);
-      if (translation !== key) {
-        el.title = translation;
+      if (el.dataset.i18nTitle) {
+        const translation = this.t(el.dataset.i18nTitle);
+        if (translation !== el.dataset.i18nTitle) el.title = translation;
       }
-    });
-
-    // Aria-label attribute
-    scope.querySelectorAll('[data-i18n-aria]').forEach(el => {
-      const key = el.dataset.i18nAria;
-      const translation = this.t(key);
-      if (translation !== key) {
-        el.setAttribute('aria-label', translation);
+      if (el.dataset.i18nAria) {
+        const translation = this.t(el.dataset.i18nAria);
+        if (translation !== el.dataset.i18nAria) el.setAttribute('aria-label', translation);
       }
     });
   },
