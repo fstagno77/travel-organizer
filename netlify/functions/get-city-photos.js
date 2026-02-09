@@ -34,9 +34,11 @@ async function getLastUsedPhotoForUser(supabase, userId, destination) {
     }
 
     // Fall back to checking user's trips (RLS filters automatically)
+    // Filter by destination in DB using PostgREST JSON operator to avoid loading all trips
     const { data: trips, error } = await supabase
       .from('trips')
-      .select('id, data, updated_at')
+      .select('id, data')
+      .ilike('data->>destination', destination)
       .order('updated_at', { ascending: false });
 
     if (error || !trips) {
@@ -44,12 +46,11 @@ async function getLastUsedPhotoForUser(supabase, userId, destination) {
       return null;
     }
 
-    // Find first trip with matching destination and coverPhoto
+    // Find first trip with matching destination (normalized) and coverPhoto
     for (const trip of trips) {
       const tripData = trip.data;
       if (!tripData || !tripData.coverPhoto || !tripData.coverPhoto.url) continue;
 
-      // Check if destination matches
       const tripDestination = tripData.destination;
       if (tripDestination && normalizeCityName(tripDestination) === normalizedDestination) {
         return {
