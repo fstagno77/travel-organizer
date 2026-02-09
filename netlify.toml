@@ -12,6 +12,12 @@
 [functions."add-booking"]
   timeout = 60
 
+[functions."process-email"]
+  timeout = 60
+
+[functions."pending-bookings"]
+  timeout = 45
+
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
