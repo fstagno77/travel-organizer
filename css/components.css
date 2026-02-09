@@ -2785,9 +2785,9 @@ input[type="time"].form-input {
 /* Toast Notifications */
 .toast-notification {
   position: fixed;
-  bottom: var(--spacing-6);
+  top: var(--spacing-6);
   left: 50%;
-  transform: translateX(-50%) translateY(100px);
+  transform: translateX(-50%) translateY(-100px);
   display: flex;
   align-items: center;
   gap: var(--spacing-3);

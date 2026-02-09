@@ -1,6 +1,18 @@
 {
   "versions": [
     {
+      "version": "0.15.3",
+      "date": "2026-02-09",
+      "changes": {
+        "it": [
+          "Notifiche toast spostate in alto alla pagina per maggiore visibilità"
+        ],
+        "en": [
+          "Toast notifications moved to top of page for better visibility"
+        ]
+      }
+    },
+    {
       "version": "0.15.2",
       "date": "2026-02-08",
       "changes": {
