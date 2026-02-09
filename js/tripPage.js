@@ -2484,7 +2484,11 @@
 
     // Delete button
     document.getElementById('activity-delete-btn').addEventListener('click', async () => {
-      if (!confirm(i18n.t('activity.deleteConfirm') || 'Are you sure you want to delete this activity?')) return;
+      const confirmed = await utils.showConfirm(
+        i18n.t('activity.deleteConfirm') || 'Are you sure you want to delete this activity?',
+        { confirmText: i18n.t('modal.delete') || 'Elimina', variant: 'danger' }
+      );
+      if (!confirmed) return;
 
       const deleteBtn = document.getElementById('activity-delete-btn');
       deleteBtn.disabled = true;

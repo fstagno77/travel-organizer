@@ -558,7 +558,11 @@
       await navigation.refreshPendingCount();
 
       // Optionally redirect to the trip
-      if (confirm(i18n.t('pendingBookings.viewTrip'))) {
+      const goToTrip = await utils.showConfirm(i18n.t('pendingBookings.viewTrip'), {
+        confirmText: i18n.t('trip.viewTrip') || 'Vai al viaggio',
+        cancelText: i18n.t('modal.cancel') || 'Annulla'
+      });
+      if (goToTrip) {
         window.location.href = `trip.html?id=${tripId}`;
       }
     } catch (error) {
@@ -605,9 +609,11 @@
    * Dismiss a pending booking
    */
   async function dismissBooking(bookingId) {
-    if (!confirm(i18n.t('pendingBookings.dismissConfirm'))) {
-      return;
-    }
+    const confirmed = await utils.showConfirm(i18n.t('pendingBookings.dismissConfirm'), {
+      confirmText: i18n.t('modal.dismiss') || 'Ignora',
+      variant: 'danger'
+    });
+    if (!confirmed) return;
 
     try {
       const response = await utils.authFetch('/.netlify/functions/pending-bookings/dismiss', {

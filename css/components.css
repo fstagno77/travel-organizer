@@ -2187,6 +2187,26 @@ input[type="time"].form-input {
   background-color: var(--color-gray-50);
 }
 
+/* Confirm Dialog Modal */
+.modal-confirm {
+  max-width: 400px;
+}
+
+.modal-confirm .modal-body-only {
+  padding: var(--spacing-6) var(--spacing-5) var(--spacing-4);
+}
+
+.modal-confirm .modal-body p {
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-700);
+  line-height: var(--line-height-relaxed);
+  margin: 0;
+}
+
+.modal-confirm .modal-footer {
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
 /* Quick Upload Card (inline) */
 .quick-upload-card {
   display: flex;

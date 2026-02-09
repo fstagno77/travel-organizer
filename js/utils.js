@@ -271,6 +271,81 @@ const utils = {
    * @param {string} type - 'error' or 'success' (default: 'error')
    * @param {number} duration - Duration in ms (default: 4000)
    */
+  /**
+   * Show a custom confirm dialog (replaces native confirm())
+   * @param {string} message - Confirmation message
+   * @param {object} options - Options
+   * @param {string} options.title - Modal title (default: empty)
+   * @param {string} options.confirmText - Confirm button text
+   * @param {string} options.cancelText - Cancel button text
+   * @param {string} options.variant - 'danger' or 'primary' (default: 'primary')
+   * @returns {Promise<boolean>} Resolves true if confirmed, false if cancelled
+   */
+  showConfirm(message, options = {}) {
+    return new Promise((resolve) => {
+      const {
+        title = '',
+        confirmText = i18n.t('modal.confirm') || 'OK',
+        cancelText = i18n.t('modal.cancel') || 'Annulla',
+        variant = 'primary'
+      } = options;
+
+      const btnClass = variant === 'danger' ? 'btn-danger' : 'btn-primary';
+      const modalHTML = `
+        <div class="modal-overlay active" id="confirm-dialog">
+          <div class="modal modal-confirm">
+            ${title ? `
+            <div class="modal-header">
+              <h2>${title}</h2>
+              <button class="modal-close" id="confirm-dialog-close">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>` : ''}
+            <div class="modal-body${title ? '' : ' modal-body-only'}">
+              <p>${message}</p>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-secondary" id="confirm-dialog-cancel">${cancelText}</button>
+              <button class="btn ${btnClass}" id="confirm-dialog-confirm">${confirmText}</button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      document.body.insertAdjacentHTML('beforeend', modalHTML);
+      document.body.style.overflow = 'hidden';
+
+      const modal = document.getElementById('confirm-dialog');
+      const cancelBtn = document.getElementById('confirm-dialog-cancel');
+      const confirmBtn = document.getElementById('confirm-dialog-confirm');
+      const closeBtn = document.getElementById('confirm-dialog-close');
+
+      const cleanup = (result) => {
+        modal.remove();
+        document.body.style.overflow = '';
+        document.removeEventListener('keydown', escHandler);
+        resolve(result);
+      };
+
+      const escHandler = (e) => {
+        if (e.key === 'Escape') cleanup(false);
+      };
+
+      cancelBtn.addEventListener('click', () => cleanup(false));
+      confirmBtn.addEventListener('click', () => cleanup(true));
+      if (closeBtn) closeBtn.addEventListener('click', () => cleanup(false));
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) cleanup(false);
+      });
+      document.addEventListener('keydown', escHandler);
+
+      confirmBtn.focus();
+    });
+  },
+
   showToast(message, type = 'error', duration = 4000) {
     // Remove existing toast if any
     const existingToast = document.querySelector('.toast-notification');

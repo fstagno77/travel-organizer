@@ -99,7 +99,11 @@
     "create": "Crea Viaggio",
     "retry": "Riprova",
     "save": "Salva",
-    "add": "Aggiungi"
+    "add": "Aggiungi",
+    "confirm": "Conferma",
+    "ok": "OK",
+    "delete": "Elimina",
+    "dismiss": "Ignora"
   },
   "flight": {
     "terminal": "Terminal",

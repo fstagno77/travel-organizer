@@ -99,7 +99,11 @@
     "create": "Create Trip",
     "retry": "Try again",
     "save": "Save",
-    "add": "Add"
+    "add": "Add",
+    "confirm": "Confirm",
+    "ok": "OK",
+    "delete": "Delete",
+    "dismiss": "Dismiss"
   },
   "flight": {
     "terminal": "Terminal",
