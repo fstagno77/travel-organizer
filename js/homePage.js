@@ -211,10 +211,10 @@ const homePage = (function() {
         <div class="today-flight-header">
           <div class="today-flight-departure">
             <span class="material-icons-outlined today-flight-icon">flight_takeoff</span>
-            <span class="today-flight-time">${depTime}</span>
+            <span class="today-flight-time">${utils.escapeHtml(depTime)}</span>
           </div>
           <a href="${trackingUrl}" target="_blank" rel="noopener" class="today-flight-number">
-            ${flight.flightNumber}
+            ${utils.escapeHtml(flight.flightNumber)}
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
               <polyline points="15 3 21 3 21 9"></polyline>
@@ -224,18 +224,18 @@ const homePage = (function() {
         </div>
         <div class="today-flight-main">
           <div class="today-flight-location">
-            <span class="today-flight-city">${depCity}</span>
-            <span class="today-flight-airport">${depAirport}</span>
+            <span class="today-flight-city">${utils.escapeHtml(depCity)}</span>
+            <span class="today-flight-airport">${utils.escapeHtml(depAirport)}</span>
           </div>
           <div class="today-flight-terminal">
             <span class="today-flight-label" data-i18n="flight.terminal">Terminal</span>
-            <span class="today-flight-value">${terminal}</span>
+            <span class="today-flight-value">${utils.escapeHtml(terminal)}</span>
           </div>
         </div>
         <div class="today-flight-secondary">
           <span class="material-icons-outlined today-flight-landing-icon">flight_land</span>
-          <span class="today-flight-dest">${arrCity}</span>
-          <span class="today-flight-arr-time">${arrTime}${nextDayIndicator}</span>
+          <span class="today-flight-dest">${utils.escapeHtml(arrCity)}</span>
+          <span class="today-flight-arr-time">${utils.escapeHtml(arrTime)}${nextDayIndicator}</span>
         </div>
         <a href="${detailsUrl}" class="today-flight-details-link">
           <span data-i18n="home.flightDetails">Details</span>
@@ -295,18 +295,18 @@ const homePage = (function() {
         <div class="today-hotel-header">
           <div class="today-hotel-status">
             <span class="material-icons-outlined today-hotel-icon">${statusIcon}</span>
-            <span class="today-hotel-time">${statusTime || statusText}</span>
+            <span class="today-hotel-time">${utils.escapeHtml(statusTime || statusText)}</span>
           </div>
-          ${showConfirmation ? `<span class="today-hotel-confirmation">${confirmation}</span>` : ''}
+          ${showConfirmation ? `<span class="today-hotel-confirmation">${utils.escapeHtml(confirmation)}</span>` : ''}
         </div>
         <div class="today-hotel-main">
-          <div class="today-hotel-name">${hotelName}</div>
-          <div class="today-hotel-city">${address}</div>
+          <div class="today-hotel-name">${utils.escapeHtml(hotelName)}</div>
+          <div class="today-hotel-city">${utils.escapeHtml(address)}</div>
         </div>
         <div class="today-hotel-secondary">
           <a href="${mapsUrl}" target="_blank" rel="noopener" class="today-hotel-maps-link">
             <span class="material-icons-outlined">location_on</span>
-            <span class="today-hotel-address">${hotel.address?.fullAddress || address}</span>
+            <span class="today-hotel-address">${utils.escapeHtml(hotel.address?.fullAddress || address)}</span>
           </a>
         </div>
         <a href="${detailsUrl}" class="today-hotel-details-link">
@@ -395,7 +395,7 @@ const homePage = (function() {
       <div class="trip-card-wrapper">
         <a href="${tripUrl}" class="${cardClass}">
           <div class="trip-card-image" style="${imageStyle}">
-            <span class="trip-card-destination">${title}</span>
+            <span class="trip-card-destination">${utils.escapeHtml(title)}</span>
           </div>
           <div class="trip-card-body">
             <div class="trip-card-dates">${startDate} - ${endDate}</div>
@@ -410,7 +410,7 @@ const homePage = (function() {
             </svg>
           </button>
           <div class="trip-card-dropdown" data-trip-id="${trip.id}">
-            <button class="trip-card-dropdown-item" data-action="changePhoto" data-trip-id="${trip.id}" data-trip-destination="${trip.destination || ''}">
+            <button class="trip-card-dropdown-item" data-action="changePhoto" data-trip-id="${trip.id}" data-trip-destination="${utils.escapeHtml(trip.destination || '')}">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
                 <circle cx="8.5" cy="8.5" r="1.5"></circle>
@@ -428,14 +428,14 @@ const homePage = (function() {
               </svg>
               <span data-i18n="trip.share">Condividi</span>
             </button>
-            <button class="trip-card-dropdown-item" data-action="rename" data-trip-id="${trip.id}" data-trip-name="${title}">
+            <button class="trip-card-dropdown-item" data-action="rename" data-trip-id="${trip.id}" data-trip-name="${utils.escapeHtml(title)}">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
               </svg>
               <span data-i18n="trip.rename">Rinomina</span>
             </button>
-            <button class="trip-card-dropdown-item trip-card-dropdown-item--danger" data-action="delete" data-trip-id="${trip.id}" data-trip-name="${title}">
+            <button class="trip-card-dropdown-item trip-card-dropdown-item--danger" data-action="delete" data-trip-id="${trip.id}" data-trip-name="${utils.escapeHtml(title)}">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="3 6 5 6 21 6"></polyline>
                 <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -609,7 +609,7 @@ const homePage = (function() {
           <div class="modal-body">
             <div class="form-group">
               <label for="rename-input" data-i18n="trip.newName">Nuovo nome</label>
-              <input type="text" id="rename-input" class="form-input" value="${currentName}" autofocus>
+              <input type="text" id="rename-input" class="form-input" value="${utils.escapeHtml(currentName)}" autofocus>
             </div>
           </div>
           <div class="modal-footer">
@@ -759,7 +759,7 @@ const homePage = (function() {
           </div>
           <div class="modal-body">
             <p data-i18n="trip.deleteConfirm">Sei sicuro di voler eliminare questo viaggio?</p>
-            <p class="text-muted mt-2"><strong>${tripName || ''}</strong></p>
+            <p class="text-muted mt-2"><strong>${utils.escapeHtml(tripName || '')}</strong></p>
           </div>
           <div class="modal-footer">
             <button class="btn btn-secondary" id="delete-cancel" data-i18n="modal.cancel">Annulla</button>

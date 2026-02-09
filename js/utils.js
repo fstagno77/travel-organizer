@@ -380,5 +380,15 @@ const utils = {
   }
 };
 
+/**
+ * Escape HTML to prevent XSS
+ */
+utils.escapeHtml = function(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+};
+
 // Make available globally
 window.utils = utils;

@@ -340,7 +340,7 @@
         <div class="details-section">
           <div class="details-row">
             <span class="details-label">${lang === 'it' ? 'Volo' : 'Flight'}</span>
-            <span class="details-value">${flight.airline || ''} ${flight.flightNumber || ''}</span>
+            <span class="details-value">${escapeHtml(flight.airline || '')} ${escapeHtml(flight.flightNumber || '')}</span>
           </div>
           <div class="details-row">
             <span class="details-label">${lang === 'it' ? 'Data' : 'Date'}</span>
@@ -348,21 +348,21 @@
           </div>
           <div class="details-row">
             <span class="details-label">${lang === 'it' ? 'Partenza' : 'Departure'}</span>
-            <span class="details-value">${flight.departure?.city || flight.departure?.code || '—'} ${flight.departureTime ? `(${flight.departureTime})` : ''}</span>
+            <span class="details-value">${escapeHtml(flight.departure?.city || flight.departure?.code || '—')} ${flight.departureTime ? `(${escapeHtml(flight.departureTime)})` : ''}</span>
           </div>
           <div class="details-row">
             <span class="details-label">${lang === 'it' ? 'Arrivo' : 'Arrival'}</span>
-            <span class="details-value">${flight.arrival?.city || flight.arrival?.code || '—'} ${flight.arrivalTime ? `(${flight.arrivalTime})` : ''}</span>
+            <span class="details-value">${escapeHtml(flight.arrival?.city || flight.arrival?.code || '—')} ${flight.arrivalTime ? `(${escapeHtml(flight.arrivalTime)})` : ''}</span>
           </div>
           ${flight.bookingReference ? `
           <div class="details-row">
             <span class="details-label">${lang === 'it' ? 'Riferimento' : 'Reference'}</span>
-            <span class="details-value">${flight.bookingReference}</span>
+            <span class="details-value">${escapeHtml(flight.bookingReference)}</span>
           </div>` : ''}
           ${flight.passenger ? `
           <div class="details-row">
             <span class="details-label">${lang === 'it' ? 'Passeggero' : 'Passenger'}</span>
-            <span class="details-value">${flight.passenger}</span>
+            <span class="details-value">${escapeHtml(flight.passenger)}</span>
           </div>` : ''}
         </div>
       `;
@@ -372,25 +372,25 @@
         <div class="details-section">
           <div class="details-row">
             <span class="details-label">${lang === 'it' ? 'Hotel' : 'Hotel'}</span>
-            <span class="details-value">${hotel.name || '—'}</span>
+            <span class="details-value">${escapeHtml(hotel.name || '—')}</span>
           </div>
           ${hotel.address?.fullAddress || hotel.address?.city ? `
           <div class="details-row">
             <span class="details-label">${lang === 'it' ? 'Indirizzo' : 'Address'}</span>
-            <span class="details-value">${hotel.address?.fullAddress || hotel.address?.city || '—'}</span>
+            <span class="details-value">${escapeHtml(hotel.address?.fullAddress || hotel.address?.city || '—')}</span>
           </div>` : ''}
           ${hotel.phone ? `
           <div class="details-row">
             <span class="details-label">${lang === 'it' ? 'Telefono' : 'Phone'}</span>
-            <span class="details-value">${hotel.phone}</span>
+            <span class="details-value">${escapeHtml(hotel.phone)}</span>
           </div>` : ''}
           <div class="details-row">
             <span class="details-label">${lang === 'it' ? 'Check-in' : 'Check-in'}</span>
-            <span class="details-value">${formatDateShort(hotel.checkIn?.date)} ${hotel.checkIn?.time ? `(${hotel.checkIn.time})` : ''}</span>
+            <span class="details-value">${formatDateShort(hotel.checkIn?.date)} ${hotel.checkIn?.time ? `(${escapeHtml(hotel.checkIn.time)})` : ''}</span>
           </div>
           <div class="details-row">
             <span class="details-label">${lang === 'it' ? 'Check-out' : 'Check-out'}</span>
-            <span class="details-value">${formatDateShort(hotel.checkOut?.date)} ${hotel.checkOut?.time ? `(${hotel.checkOut.time})` : ''}</span>
+            <span class="details-value">${formatDateShort(hotel.checkOut?.date)} ${hotel.checkOut?.time ? `(${escapeHtml(hotel.checkOut.time)})` : ''}</span>
           </div>
           ${hotel.nights ? `
           <div class="details-row">
@@ -410,12 +410,12 @@
           ${hotel.confirmationNumber ? `
           <div class="details-row">
             <span class="details-label">${lang === 'it' ? 'Conferma' : 'Confirmation'}</span>
-            <span class="details-value">${hotel.confirmationNumber}</span>
+            <span class="details-value">${escapeHtml(hotel.confirmationNumber)}</span>
           </div>` : ''}
           ${hotel.guestName ? `
           <div class="details-row">
             <span class="details-label">${lang === 'it' ? 'Intestatario' : 'Guest'}</span>
-            <span class="details-value">${hotel.guestName}</span>
+            <span class="details-value">${escapeHtml(hotel.guestName)}</span>
           </div>` : ''}
         </div>
       `;

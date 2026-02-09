@@ -201,11 +201,11 @@
       <div class="settings-card">
         <div class="profile-header">
           <div class="profile-avatar-large">
-            <span class="profile-avatar-text">${initial}</span>
+            <span class="profile-avatar-text">${escapeHtml(initial)}</span>
           </div>
           <div class="profile-header-info">
             <div class="profile-username-row">
-              <span class="profile-username">@${profile.username}</span>
+              <span class="profile-username">@${escapeHtml(profile.username)}</span>
               <button class="profile-edit-btn" id="edit-username-btn" title="${i18n.t('profile.changeUsername') || 'Modifica username'}">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
@@ -213,7 +213,7 @@
                 </svg>
               </button>
             </div>
-            <span class="profile-email">${profile.email}</span>
+            <span class="profile-email">${escapeHtml(profile.email)}</span>
           </div>
         </div>
       </div>
@@ -281,7 +281,7 @@
     const optionsHTML = travelers.map(t => {
       const name = `${t.first_name} ${t.last_name}`.trim() || '—';
       const badge = t.is_owner ? ` <span class="travelers-select-badge">${i18n.t('travelers.you')}</span>` : '';
-      return `<button class="travelers-select-option ${t.id === selected.id ? 'active' : ''}" data-traveler-id="${t.id}">${name}${badge}</button>`;
+      return `<button class="travelers-select-option ${t.id === selected.id ? 'active' : ''}" data-traveler-id="${t.id}">${escapeHtml(name)}${badge}</button>`;
     }).join('');
 
     // Passport fields
@@ -303,7 +303,7 @@
       <div class="travelers-header">
         <div class="travelers-select-wrapper">
           <button class="travelers-select-btn" id="travelers-select-btn">
-            <span class="travelers-select-name">${displayName || '—'}${youBadge ? ' ' : ''}${youBadge}</span>
+            <span class="travelers-select-name">${escapeHtml(displayName || '—')}${youBadge ? ' ' : ''}${youBadge}</span>
             <svg class="travelers-select-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="6 9 12 15 18 9"></polyline>
             </svg>
@@ -324,7 +324,7 @@
       <!-- Name display with edit -->
       <div class="settings-card travelers-card">
         <div class="travelers-name-display">
-          <span class="travelers-name-text">${displayName || '—'}</span>
+          <span class="travelers-name-text">${escapeHtml(displayName || '—')}</span>
           <button class="profile-edit-btn" id="edit-name-btn" title="${i18n.t('travelers.edit')}">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>

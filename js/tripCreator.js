@@ -251,7 +251,7 @@ const tripCreator = {
           </svg>
         </div>
         <div class="file-item-info">
-          <div class="file-item-name">${file.name}</div>
+          <div class="file-item-name">${utils.escapeHtml(file.name)}</div>
           <div class="file-item-size">${this.formatFileSize(file.size)}</div>
         </div>
         <button class="file-item-remove" data-index="${index}">
@@ -423,7 +423,7 @@ const tripCreator = {
           </svg>
         </div>
         <div class="result-state-title" data-i18n="trip.error">Errore durante l'elaborazione</div>
-        <div class="result-state-text">${message}</div>
+        <div class="result-state-text">${utils.escapeHtml(message)}</div>
         <button class="btn btn-secondary" id="retry-btn" data-i18n="modal.retry">Riprova</button>
       </div>
     `;
@@ -445,7 +445,7 @@ const tripCreator = {
       <div class="photo-selection-state">
         <h3 class="photo-selection-title">
           <span data-i18n="trip.selectPhoto">Scegli una foto per</span>
-          <span class="photo-selection-destination">${destination}</span>
+          <span class="photo-selection-destination">${utils.escapeHtml(destination)}</span>
         </h3>
         <div class="photo-selection-loading" id="photo-loading">
           <span class="spinner"></span>
@@ -563,7 +563,7 @@ const tripCreator = {
               data-is-last-used="${photo.isLastUsed || false}">
         <img src="${photo.previewUrl}" alt="Option ${index + 1}" loading="lazy">
         ${photo.isLastUsed ? `<span class="photo-option-badge" data-i18n="trip.lastUsedPhoto">Ultima usata</span>` : ''}
-        ${photo.attribution ? `<div class="photo-option-attribution">${photo.attribution.photographerName || ''}</div>` : ''}
+        ${photo.attribution ? `<div class="photo-option-attribution">${utils.escapeHtml(photo.attribution.photographerName || '')}</div>` : ''}
       </button>
     `).join('');
 

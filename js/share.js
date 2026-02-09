@@ -6,6 +6,8 @@
 (async function() {
   'use strict';
 
+  const esc = (text) => utils.escapeHtml(text);
+
   /**
    * Initialize the shared view
    */
@@ -412,9 +414,9 @@
       return `
         <div class="flight-card${isPast ? ' past' : ''}">
           <div class="flight-card-header">
-            <span class="flight-date">${formattedDate}</span>
+            <span class="flight-date">${esc(formattedDate)}</span>
             <a href="${trackingUrl}" target="_blank" rel="noopener" class="flight-number-link">
-              ${flight.flightNumber}
+              ${esc(flight.flightNumber)}
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
                 <polyline points="15 3 21 3 21 9"></polyline>
@@ -426,24 +428,24 @@
           <div class="flight-card-body">
             <div class="flight-route">
               <div class="flight-endpoint">
-                <div class="flight-time">${flight.departureTime}</div>
+                <div class="flight-time">${esc(flight.departureTime)}</div>
                 <div class="flight-airport">
-                  <span class="flight-airport-code">${flight.departure.code}</span>
+                  <span class="flight-airport-code">${esc(flight.departure.code)}</span>
                 </div>
-                <div class="flight-airport">${flight.departure.city}</div>
+                <div class="flight-airport">${esc(flight.departure.city)}</div>
               </div>
 
               <div class="flight-arrow">
-                <div class="flight-duration">${duration}</div>
+                <div class="flight-duration">${esc(duration)}</div>
                 <div class="flight-arrow-line"></div>
               </div>
 
               <div class="flight-endpoint">
-                <div class="flight-time">${flight.arrivalTime}${flight.arrivalNextDay ? ' +1' : ''}</div>
+                <div class="flight-time">${esc(flight.arrivalTime)}${flight.arrivalNextDay ? ' +1' : ''}</div>
                 <div class="flight-airport">
-                  <span class="flight-airport-code">${flight.arrival.code}</span>
+                  <span class="flight-airport-code">${esc(flight.arrival.code)}</span>
                 </div>
-                <div class="flight-airport">${flight.arrival.city}</div>
+                <div class="flight-airport">${esc(flight.arrival.city)}</div>
               </div>
             </div>
 
@@ -461,8 +463,8 @@
               <div class="flight-detail-item">
                 <span class="flight-detail-label" data-i18n="flight.bookingRef">Booking Reference</span>
                 <span class="flight-detail-value-wrapper">
-                  <span class="flight-detail-value">${flight.bookingReference || '-'}</span>
-                  ${flight.bookingReference ? `<button class="btn-copy-value" data-copy="${flight.bookingReference}" title="Copy">
+                  <span class="flight-detail-value">${esc(flight.bookingReference || '-')}</span>
+                  ${flight.bookingReference ? `<button class="btn-copy-value" data-copy="${esc(flight.bookingReference)}" title="Copy">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                       <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
@@ -473,8 +475,8 @@
               <div class="flight-detail-item">
                 <span class="flight-detail-label" data-i18n="flight.ticketNumber">Ticket Number</span>
                 <span class="flight-detail-value-wrapper">
-                  <span class="flight-detail-value">${flight.ticketNumber || '-'}</span>
-                  ${flight.ticketNumber ? `<button class="btn-copy-value" data-copy="${flight.ticketNumber}" title="Copy">
+                  <span class="flight-detail-value">${esc(flight.ticketNumber || '-')}</span>
+                  ${flight.ticketNumber ? `<button class="btn-copy-value" data-copy="${esc(flight.ticketNumber)}" title="Copy">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                       <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
@@ -484,27 +486,27 @@
               </div>
               <div class="flight-detail-item">
                 <span class="flight-detail-label" data-i18n="flight.seat">Seat</span>
-                <span class="flight-detail-value">${flight.seat || '-'}</span>
+                <span class="flight-detail-value">${esc(flight.seat || '-')}</span>
               </div>
               <div class="flight-detail-item">
                 <span class="flight-detail-label" data-i18n="flight.class">Class</span>
-                <span class="flight-detail-value">${flight.class || '-'}</span>
+                <span class="flight-detail-value">${esc(flight.class || '-')}</span>
               </div>
               <div class="flight-detail-item">
                 <span class="flight-detail-label" data-i18n="flight.departureTerminal">Departure Terminal</span>
-                <span class="flight-detail-value">${flight.departure.terminal || '-'}</span>
+                <span class="flight-detail-value">${esc(flight.departure.terminal || '-')}</span>
               </div>
               <div class="flight-detail-item">
                 <span class="flight-detail-label" data-i18n="flight.arrivalTerminal">Arrival Terminal</span>
-                <span class="flight-detail-value">${flight.arrival.terminal || '-'}</span>
+                <span class="flight-detail-value">${esc(flight.arrival.terminal || '-')}</span>
               </div>
               <div class="flight-detail-item">
                 <span class="flight-detail-label" data-i18n="flight.duration">Flight Duration</span>
-                <span class="flight-detail-value">${duration}</span>
+                <span class="flight-detail-value">${esc(duration)}</span>
               </div>
               <div class="flight-detail-item">
                 <span class="flight-detail-label" data-i18n="flight.frequentFlyer">Frequent Flyer</span>
-                <span class="flight-detail-value">${flight.frequentFlyer || '-'}</span>
+                <span class="flight-detail-value">${esc(flight.frequentFlyer || '-')}</span>
               </div>
             </div>
           </div>
@@ -573,10 +575,10 @@
       return `
         <div class="hotel-card">
           <div class="hotel-card-header">
-            <h3>${hotel.name}</h3>
+            <h3>${esc(hotel.name)}</h3>
             <div class="hotel-confirmation">
               <span class="hotel-confirmation-label" data-i18n="hotel.confirmation">Confirmation</span>
-              <span class="hotel-confirmation-number">${hotel.confirmationNumber}</span>
+              <span class="hotel-confirmation-number">${esc(hotel.confirmationNumber)}</span>
             </div>
           </div>
 
@@ -586,7 +588,7 @@
                 <div class="hotel-date-label" data-i18n="hotel.checkIn">Check-in</div>
                 <div class="hotel-date-day">${checkInDay}</div>
                 <div class="hotel-date-month">${checkInMonth}</div>
-                <div class="hotel-date-time">${i18n.t('common.from')} ${hotel.checkIn.time}</div>
+                <div class="hotel-date-time">${i18n.t('common.from')} ${esc(hotel.checkIn.time)}</div>
               </div>
 
               <div class="hotel-nights">
@@ -598,7 +600,7 @@
                 <div class="hotel-date-label" data-i18n="hotel.checkOut">Check-out</div>
                 <div class="hotel-date-day">${checkOutDay}</div>
                 <div class="hotel-date-month">${checkOutMonth}</div>
-                <div class="hotel-date-time">${i18n.t('common.until')} ${hotel.checkOut.time}</div>
+                <div class="hotel-date-time">${i18n.t('common.until')} ${esc(hotel.checkOut.time)}</div>
               </div>
             </div>
 
@@ -608,7 +610,7 @@
                   <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                   <circle cx="12" cy="10" r="3"></circle>
                 </svg>
-                <span class="hotel-address-text">${hotel.address.fullAddress}</span>
+                <span class="hotel-address-text">${esc(hotel.address.fullAddress)}</span>
               </a>
             </div>
           </div>
@@ -624,27 +626,27 @@
             <div class="hotel-details-grid">
               <div class="hotel-detail-item">
                 <span class="hotel-detail-label" data-i18n="hotel.roomType">Room type</span>
-                <span class="hotel-detail-value">${roomType}</span>
+                <span class="hotel-detail-value">${esc(roomType)}</span>
               </div>
               <div class="hotel-detail-item">
                 <span class="hotel-detail-label" data-i18n="hotel.guests">Guests</span>
-                <span class="hotel-detail-value">${utils.formatGuests(hotel.guests, lang)}</span>
+                <span class="hotel-detail-value">${esc(utils.formatGuests(hotel.guests, lang))}</span>
               </div>
               <div class="hotel-detail-item">
                 <span class="hotel-detail-label" data-i18n="hotel.guestName">Guest name</span>
-                <span class="hotel-detail-value">${hotel.guestName}</span>
+                <span class="hotel-detail-value">${esc(hotel.guestName)}</span>
               </div>
               <div class="hotel-detail-item">
                 <span class="hotel-detail-label" data-i18n="hotel.phone">Phone</span>
-                <span class="hotel-detail-value"><a href="tel:${hotel.phone}">${hotel.phone}</a></span>
+                <span class="hotel-detail-value"><a href="tel:${esc(hotel.phone)}">${esc(hotel.phone)}</a></span>
               </div>
               <div class="hotel-detail-item">
                 <span class="hotel-detail-label" data-i18n="hotel.pin">PIN code</span>
-                <span class="hotel-detail-value">${hotel.pinCode || '-'}</span>
+                <span class="hotel-detail-value">${esc(hotel.pinCode || '-')}</span>
               </div>
               <div class="hotel-detail-item">
                 <span class="hotel-detail-label" data-i18n="hotel.price">Total price</span>
-                <span class="hotel-detail-value">~${hotel.price.total.currency} ${hotel.price.total.value}</span>
+                <span class="hotel-detail-value">~${esc(hotel.price.total.currency)} ${esc(hotel.price.total.value)}</span>
               </div>
               <div class="hotel-detail-item">
                 <span class="hotel-detail-label" data-i18n="hotel.payment">Payment</span>
@@ -659,12 +661,12 @@
               ${notes ? `
               <div class="hotel-detail-item">
                 <span class="hotel-detail-label" data-i18n="hotel.notes">Notes</span>
-                <span class="hotel-detail-value">${notes}</span>
+                <span class="hotel-detail-value">${esc(notes)}</span>
               </div>
               ` : ''}
               <div class="hotel-detail-item">
                 <span class="hotel-detail-label" data-i18n="hotel.source">Booked on</span>
-                <span class="hotel-detail-value">${hotel.source}</span>
+                <span class="hotel-detail-value">${esc(hotel.source)}</span>
               </div>
             </div>
           </div>
