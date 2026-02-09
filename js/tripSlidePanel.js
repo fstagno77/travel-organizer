@@ -5,6 +5,82 @@
   'use strict';
 
   const esc = (text) => utils.escapeHtml(text);
+  const GMAPS_REGEX = /https?:\/\/(www\.)?(google\.\w+\/maps|maps\.google\.\w+|maps\.app\.goo\.gl|goo\.gl\/maps)\S*/i;
+
+  /**
+   * Check if a string contains a Google Maps URL
+   */
+  function extractGoogleMapsUrl(text) {
+    const match = text.match(GMAPS_REGEX);
+    return match ? match[0] : null;
+  }
+
+  /**
+   * Render star rating like Google Maps
+   * @param {number} rating - e.g. 4.5
+   * @returns {string} star characters
+   */
+  function renderStars(rating) {
+    if (!rating) return '';
+    const full = Math.floor(rating);
+    const half = rating - full >= 0.3 && rating - full < 0.8;
+    const empty = 5 - full - (half ? 1 : 0);
+    return '\u2605'.repeat(full) + (half ? '\u00BD' : '') + '\u2606'.repeat(empty);
+  }
+
+  /**
+   * Format review count with locale separator (e.g. 2408 → "2.408")
+   */
+  function formatReviewCount(count) {
+    if (!count) return '0';
+    return count.toLocaleString('it-IT');
+  }
+
+  /**
+   * Build place card HTML (used in both form and view modes)
+   * @param {Object} loc - location data
+   * @param {boolean} removable - show X button
+   * @returns {string} HTML
+   */
+  function buildPlaceCardHtml(loc, removable) {
+    const ratingHtml = loc.rating
+      ? `<div class="place-card-rating">
+          <span class="place-card-stars">${renderStars(loc.rating)}</span>
+          <span class="place-card-rating-value">${loc.rating}</span>
+          <span class="place-card-reviews">(${formatReviewCount(loc.reviewCount)} ${i18n.t('activity.reviews') || 'reviews'})</span>
+        </div>`
+      : '';
+
+    const categoryHtml = loc.category
+      ? `<div class="place-card-category">${esc(loc.category)}</div>`
+      : '';
+
+    const addressHtml = loc.address
+      ? `<div class="place-card-address">${esc(loc.address)}</div>`
+      : '';
+
+    const mapsLinkHtml = loc.mapsUrl
+      ? `<a href="${encodeURI(loc.mapsUrl)}" target="_blank" rel="noopener noreferrer" class="place-card-maps-link">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          ${i18n.t('activity.openInMaps') || 'Open in Google Maps'}
+        </a>`
+      : '';
+
+    const removeHtml = removable
+      ? `<button class="place-card-remove" type="button" id="place-card-remove-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>`
+      : '';
+
+    return `<div class="place-card">
+      ${removeHtml}
+      <div class="place-card-name">${esc(loc.name || '')}</div>
+      ${categoryHtml}
+      ${addressHtml}
+      ${ratingHtml}
+      ${mapsLinkHtml}
+    </div>`;
+  }
 
   /**
    * Convert a File to base64 string
@@ -99,11 +175,16 @@
         }).join('')}</div>`
       : `<span class="activity-view-value--muted" data-i18n="activity.noAttachments">${i18n.t('activity.noAttachments') || 'No attachments'}</span>`;
 
+    const locationViewHtml = activity.location
+      ? `<div class="activity-view-field">${buildPlaceCardHtml(activity.location, false)}</div>`
+      : '';
+
     return `
       <div class="activity-view-field">
         <div class="activity-view-label" data-i18n="activity.name">${i18n.t('activity.name') || 'Name'}</div>
         <div class="activity-view-value">${esc(activity.name)}</div>
       </div>
+      ${locationViewHtml}
       <div class="activity-view-field">
         <div class="activity-view-label" data-i18n="activity.date">${i18n.t('activity.date') || 'Date'}</div>
         <div class="activity-view-value">${dateStr}</div>
@@ -198,10 +279,15 @@
       </div>
     `).join('');
 
+    const existingLocationHtml = act.location
+      ? buildPlaceCardHtml(act.location, true)
+      : '';
+
     return `
       <div class="form-group">
         <label data-i18n="activity.name">${i18n.t('activity.name') || 'Name'}</label>
         <input type="text" class="form-input" id="activity-name" maxlength="100" required value="${esc(act.name || '')}" placeholder="${i18n.t('activity.namePlaceholder') || 'e.g. Museum visit, Restaurant...'}">
+        <div id="activity-place-card">${existingLocationHtml}</div>
       </div>
       <div class="form-group">
         <label data-i18n="activity.date">${i18n.t('activity.date') || 'Date'}</label>
@@ -398,9 +484,85 @@
     const isCreate = mode === 'create';
     let newFiles = []; // Track newly selected files
     let removedAttachmentPaths = []; // Track removed existing attachments
+    let locationData = activity?.location || null; // Track Google Maps location
 
     // Cancel button
     document.getElementById('activity-cancel-btn').addEventListener('click', closePanel);
+
+    // Google Maps URL detection on name field
+    const nameInput = document.getElementById('activity-name');
+    const placeCardContainer = document.getElementById('activity-place-card');
+
+    function showPlaceCard(loc) {
+      locationData = loc;
+      placeCardContainer.innerHTML = buildPlaceCardHtml(loc, true);
+      // Wire up remove button
+      const removeBtn = placeCardContainer.querySelector('#place-card-remove-btn');
+      if (removeBtn) {
+        removeBtn.addEventListener('click', () => {
+          locationData = null;
+          placeCardContainer.innerHTML = '';
+          nameInput.value = '';
+          nameInput.focus();
+        });
+      }
+    }
+
+    async function fetchGoogleMapsData(url) {
+      // Show loading state
+      placeCardContainer.innerHTML = `<div class="place-card-loading"><div class="spinner-sm"></div><span>${i18n.t('activity.locationLoading') || 'Loading place...'}</span></div>`;
+      nameInput.value = '';
+
+      try {
+        const response = await utils.authFetch('/.netlify/functions/google-maps-proxy', {
+          method: 'POST',
+          body: JSON.stringify({ url })
+        });
+        const result = await response.json();
+
+        if (!result.success) {
+          placeCardContainer.innerHTML = '';
+          utils.showToast(i18n.t('activity.locationError') || 'Could not fetch location data', 'error');
+          return;
+        }
+
+        const data = result.data;
+        if (!data.name && !data.address) {
+          placeCardContainer.innerHTML = '';
+          utils.showToast(i18n.t('activity.locationNotFound') || 'Place not found', 'error');
+          return;
+        }
+
+        data.mapsUrl = url;
+        nameInput.value = data.name || '';
+        showPlaceCard(data);
+      } catch (error) {
+        console.error('Google Maps fetch error:', error);
+        placeCardContainer.innerHTML = '';
+        utils.showToast(i18n.t('activity.locationError') || 'Could not fetch location data', 'error');
+      }
+    }
+
+    nameInput.addEventListener('input', () => {
+      const val = nameInput.value.trim();
+      const mapsUrl = extractGoogleMapsUrl(val);
+      if (mapsUrl) {
+        fetchGoogleMapsData(mapsUrl);
+      }
+    });
+
+    // Wire up existing place card remove button (edit mode with existing location)
+    if (locationData) {
+      const existingRemoveBtn = placeCardContainer.querySelector('#place-card-remove-btn');
+      if (existingRemoveBtn) {
+        existingRemoveBtn.addEventListener('click', () => {
+          locationData = null;
+          placeCardContainer.innerHTML = '';
+          nameInput.value = '';
+          nameInput.focus();
+        });
+      }
+    }
 
     // URL management
     document.getElementById('activity-add-url-btn').addEventListener('click', () => {
@@ -562,7 +724,7 @@
         const body = {
           action: isCreate ? 'create' : 'update',
           tripId: window.tripPage.currentTripData.id,
-          activity: { name, description, date: activityDate, startTime, endTime, urls }
+          activity: { name, description, date: activityDate, startTime, endTime, urls, location: locationData }
         };
 
         if (!isCreate) {
@@ -604,7 +766,6 @@
     // Focus name input on create
     if (isCreate) {
       setTimeout(() => {
-        const nameInput = document.getElementById('activity-name');
         if (nameInput) nameInput.focus();
       }, 300);
     }

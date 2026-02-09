@@ -331,7 +331,7 @@
     "viewTitle": "Attivit\u00e0",
     "editTitle": "Modifica Attivit\u00e0",
     "name": "Nome",
-    "namePlaceholder": "es. Visita museo, Ristorante...",
+    "namePlaceholder": "es. Visita museo, o incolla un link Google Maps",
     "description": "Descrizione",
     "descriptionPlaceholder": "Dettagli aggiuntivi...",
     "startTime": "Ora inizio",
@@ -357,7 +357,12 @@
     "nameRequired": "Il nome \u00e8 obbligatorio",
     "noDescription": "Nessuna descrizione",
     "noLinks": "Nessun link",
-    "noAttachments": "Nessun allegato"
+    "noAttachments": "Nessun allegato",
+    "locationLoading": "Caricamento luogo...",
+    "locationError": "Impossibile recuperare i dati del luogo",
+    "locationNotFound": "Luogo non trovato",
+    "reviews": "recensioni",
+    "openInMaps": "Apri in Google Maps"
   },
   "pendingBookings": {
     "title": "Prenotazioni in Attesa",

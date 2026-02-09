@@ -3109,6 +3109,112 @@ input[type="time"].form-input {
   gap: var(--spacing-6);
 }
 
+/* Place card (Google Maps location) */
+.place-card {
+  position: relative;
+  margin-top: var(--spacing-2);
+  padding: var(--spacing-3);
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--border-radius-lg);
+  background-color: var(--color-gray-50);
+}
+
+.place-card-remove {
+  position: absolute;
+  top: var(--spacing-2);
+  right: var(--spacing-2);
+  background: none;
+  border: none;
+  color: var(--color-gray-400);
+  cursor: pointer;
+  padding: var(--spacing-1);
+  line-height: 1;
+  border-radius: var(--border-radius);
+}
+
+.place-card-remove:hover {
+  color: var(--color-gray-700);
+  background-color: var(--color-gray-200);
+}
+
+.place-card-name {
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-800);
+  padding-right: var(--spacing-6);
+}
+
+.place-card-category {
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-500);
+  text-transform: capitalize;
+  margin-top: 2px;
+}
+
+.place-card-address {
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-600);
+  margin-top: var(--spacing-1);
+}
+
+.place-card-rating {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  margin-top: var(--spacing-1);
+  font-size: var(--font-size-xs);
+}
+
+.place-card-stars {
+  color: #fbbc04;
+  letter-spacing: -1px;
+}
+
+.place-card-rating-value {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-gray-700);
+}
+
+.place-card-reviews {
+  color: var(--color-gray-500);
+}
+
+.place-card-loading {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  margin-top: var(--spacing-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-500);
+}
+
+.place-card-loading .spinner-sm {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--color-gray-200);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.place-card-maps-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: var(--spacing-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.place-card-maps-link:hover {
+  text-decoration: underline;
+}
+
 /* Form additions for panel */
 .form-group {
   margin-bottom: var(--spacing-4);

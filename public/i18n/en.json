@@ -331,7 +331,7 @@
     "viewTitle": "Activity",
     "editTitle": "Edit Activity",
     "name": "Name",
-    "namePlaceholder": "e.g. Museum visit, Restaurant...",
+    "namePlaceholder": "e.g. Museum visit, or paste a Google Maps link",
     "description": "Description",
     "descriptionPlaceholder": "Additional details...",
     "startTime": "Start time",
@@ -357,7 +357,12 @@
     "nameRequired": "Name is required",
     "noDescription": "No description",
     "noLinks": "No links",
-    "noAttachments": "No attachments"
+    "noAttachments": "No attachments",
+    "locationLoading": "Loading place...",
+    "locationError": "Could not fetch location data",
+    "locationNotFound": "Place not found",
+    "reviews": "reviews",
+    "openInMaps": "Open in Google Maps"
   },
   "pendingBookings": {
     "title": "Pending Bookings",
