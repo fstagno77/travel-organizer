@@ -26,6 +26,7 @@ const homePage = (function() {
     try {
       // Load trips from Supabase with authentication
       let allTrips = [];
+      let todayTrips = [];
 
       try {
         const response = await utils.authFetch('/.netlify/functions/get-trips');
@@ -33,16 +34,19 @@ const homePage = (function() {
         if (result.success && result.trips) {
           allTrips = result.trips;
         }
+        if (result.todayTrips) {
+          todayTrips = result.todayTrips;
+        }
       } catch (e) {
         console.log('Could not load trips from database');
       }
 
-      // Render today section
+      // Render today section using todayTrips (with flights/hotels data)
       if (todayContainer) {
-        renderTodaySection(todayContainer, allTrips);
+        renderTodaySection(todayContainer, todayTrips);
       }
 
-      // Render trips
+      // Render trips (summary only, no full data)
       renderTrips(tripsContainer, allTrips);
     } catch (error) {
       console.error('Error loading trips:', error);
@@ -87,18 +91,18 @@ const homePage = (function() {
 
   /**
    * Get the current flight for today
-   * @param {Array} trips - All trips
+   * @param {Array} todayTrips - Trips active today (with flights/hotels data)
    * @returns {object|null} - Flight data with trip info or null
    */
-  function getTodayFlight(trips) {
+  function getTodayFlight(todayTrips) {
     const now = new Date();
     const today = now.toISOString().split('T')[0];
 
-    // Collect all flights from all trips that are relevant for today
+    // Collect all flights from today's trips
     let todayFlights = [];
 
-    for (const trip of trips) {
-      const flights = trip.data?.flights || [];
+    for (const trip of todayTrips) {
+      const flights = trip.flights || [];
 
       for (const flight of flights) {
         const flightDate = flight.date;
@@ -153,15 +157,15 @@ const homePage = (function() {
 
   /**
    * Get the current hotel for today
-   * @param {Array} trips - All trips
+   * @param {Array} todayTrips - Trips active today (with flights/hotels data)
    * @returns {object|null} - Hotel data with trip info or null
    */
-  function getTodayHotel(trips) {
+  function getTodayHotel(todayTrips) {
     const now = new Date();
     const today = now.toISOString().split('T')[0];
 
-    for (const trip of trips) {
-      const hotels = trip.data?.hotels || [];
+    for (const trip of todayTrips) {
+      const hotels = trip.hotels || [];
 
       for (const hotel of hotels) {
         const checkInDate = hotel.checkIn?.date;

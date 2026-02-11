@@ -45,7 +45,9 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Extract trip data and format for frontend
+    const today = new Date().toISOString().split('T')[0];
+
+    // Extract summary-only trip data for frontend
     const trips = data.map(row => ({
       id: row.data.id,
       folder: row.data.id,
@@ -55,14 +57,33 @@ exports.handler = async (event, context) => {
       endDate: row.data.endDate,
       route: row.data.route,
       color: '#0066cc',
-      coverPhoto: row.data.coverPhoto || null,
-      data: row.data // Include full data for today's flight feature
+      coverPhoto: row.data.coverPhoto || null
     }));
+
+    // Filter today's trips server-side: today between startDate and endDate+1 day
+    const todayTrips = data
+      .filter(row => {
+        const start = row.data.startDate;
+        const end = row.data.endDate;
+        if (!start || !end) return false;
+        // Include +1 day after endDate for hotel checkout
+        const endPlusOne = new Date(end);
+        endPlusOne.setDate(endPlusOne.getDate() + 1);
+        const endPlusOneStr = endPlusOne.toISOString().split('T')[0];
+        return today >= start && today <= endPlusOneStr;
+      })
+      .map(row => ({
+        id: row.data.id,
+        title: row.data.title,
+        color: '#0066cc',
+        flights: row.data.flights || [],
+        hotels: row.data.hotels || []
+      }));
 
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ success: true, trips })
+      body: JSON.stringify({ success: true, trips, todayTrips })
     };
 
   } catch (error) {
