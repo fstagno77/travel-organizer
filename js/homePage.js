@@ -5,6 +5,7 @@ const homePage = (function() {
   'use strict';
 
   const CACHE_KEY = 'trips_cache';
+  const PAST_TRIPS_PAGE_SIZE = 6;
 
   /**
    * Invalidate the trips cache in sessionStorage
@@ -550,18 +551,67 @@ const homePage = (function() {
       html += `<div class="grid md:grid-cols-2 lg:grid-cols-3">${upcomingHtml}</div>`;
     }
 
-    // Render past trips (always with separator line if past trips exist)
+    // Render past trips with pagination
     if (pastTrips.length > 0) {
-      const pastHtml = pastTrips.map(trip => renderTripCard(trip, lang, true, cardIndex++)).join('');
+      const initialPast = pastTrips.slice(0, PAST_TRIPS_PAGE_SIZE);
+      const pastHtml = initialPast.map(trip => renderTripCard(trip, lang, true, cardIndex++)).join('');
+      const remaining = pastTrips.length - PAST_TRIPS_PAGE_SIZE;
+
       html += `
         <div class="past-trips-section">
           <h3 class="past-trips-title" data-i18n="home.pastTrips">Viaggi passati</h3>
-          <div class="grid md:grid-cols-2 lg:grid-cols-3">${pastHtml}</div>
+          <div class="grid md:grid-cols-2 lg:grid-cols-3" id="past-trips-grid">${pastHtml}</div>
+          ${remaining > 0 ? `
+            <div class="past-trips-load-more">
+              <button class="btn btn-secondary" id="load-more-past-trips">
+                <span data-i18n="home.loadMoreTrips">${i18n.t('home.loadMoreTrips') || 'Mostra altri viaggi'}</span> (${remaining})
+              </button>
+            </div>
+          ` : ''}
         </div>
       `;
     }
 
     container.innerHTML = html;
+
+    // Bind load-more button
+    if (pastTrips.length > PAST_TRIPS_PAGE_SIZE) {
+      let shown = PAST_TRIPS_PAGE_SIZE;
+      const loadMoreBtn = document.getElementById('load-more-past-trips');
+      const pastGrid = document.getElementById('past-trips-grid');
+
+      if (loadMoreBtn && pastGrid) {
+        loadMoreBtn.addEventListener('click', () => {
+          const nextBatch = pastTrips.slice(shown, shown + PAST_TRIPS_PAGE_SIZE);
+          const fragment = document.createDocumentFragment();
+          const tempDiv = document.createElement('div');
+
+          nextBatch.forEach(trip => {
+            tempDiv.innerHTML = renderTripCard(trip, lang, true, cardIndex++);
+            const wrapper = tempDiv.firstElementChild;
+            fragment.appendChild(wrapper);
+          });
+
+          pastGrid.appendChild(fragment);
+          shown += nextBatch.length;
+
+          // Lazy load new cards
+          initCoverLazyLoad(pastGrid);
+          // Init menus on new cards
+          initTripCardMenus();
+          // Apply translations on new cards
+          i18n.apply(pastGrid);
+
+          // Update or remove button
+          const remaining = pastTrips.length - shown;
+          if (remaining > 0) {
+            loadMoreBtn.innerHTML = `<span data-i18n="home.loadMoreTrips">${i18n.t('home.loadMoreTrips') || 'Mostra altri viaggi'}</span> (${remaining})`;
+          } else {
+            loadMoreBtn.closest('.past-trips-load-more').remove();
+          }
+        });
+      }
+    }
 
     // Lazy load cover images for cards outside the initial viewport
     initCoverLazyLoad(container);

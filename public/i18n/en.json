@@ -18,7 +18,8 @@
     "pastTrips": "Past trips",
     "noFlightToday": "No trip scheduled",
     "flightDetails": "Details",
-    "toDestination": "To"
+    "toDestination": "To",
+    "loadMoreTrips": "Show more trips"
   },
   "trip": {
     "new": "New Trip",

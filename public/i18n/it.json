@@ -18,7 +18,8 @@
     "pastTrips": "Viaggi passati",
     "noFlightToday": "Nessun viaggio programmato",
     "flightDetails": "Dettagli",
-    "toDestination": "A"
+    "toDestination": "A",
+    "loadMoreTrips": "Mostra altri viaggi"
   },
   "trip": {
     "new": "Nuovo Viaggio",
