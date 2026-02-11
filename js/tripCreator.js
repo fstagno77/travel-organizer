@@ -109,6 +109,7 @@ const tripCreator = {
     // refresh the page so the new trip appears
     const tripCreatedStates = ['photoSelection', 'success'];
     if (tripCreatedStates.includes(this.state) && this.pendingTripData) {
+      if (window.homePage) homePage.invalidateCache();
       window.location.reload();
     }
   },
@@ -828,6 +829,7 @@ const tripCreator = {
   showSuccess() {
     if (this.isChangingPhoto) {
       // Close modal and refresh page when changing photo
+      if (window.homePage) homePage.invalidateCache();
       this.close();
       this.reset();
       window.location.reload();

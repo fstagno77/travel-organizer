@@ -4,6 +4,15 @@
 const homePage = (function() {
   'use strict';
 
+  const CACHE_KEY = 'trips_cache';
+
+  /**
+   * Invalidate the trips cache in sessionStorage
+   */
+  function invalidateCache() {
+    try { sessionStorage.removeItem(CACHE_KEY); } catch (e) { /* ignore */ }
+  }
+
   /**
    * Initialize homepage
    */
@@ -23,8 +32,25 @@ const homePage = (function() {
       return;
     }
 
+    // Stale-while-revalidate: render cached data immediately if available
+    let cachedJson = null;
     try {
-      // Load trips from Supabase with authentication
+      cachedJson = sessionStorage.getItem(CACHE_KEY);
+    } catch (e) { /* ignore */ }
+
+    if (cachedJson) {
+      try {
+        const cached = JSON.parse(cachedJson);
+        if (todayContainer) renderTodaySection(todayContainer, cached.todayTrips || []);
+        renderTrips(tripsContainer, cached.trips || []);
+      } catch (e) {
+        // Corrupted cache, remove it
+        invalidateCache();
+      }
+    }
+
+    // Fetch fresh data in parallel
+    try {
       let allTrips = [];
       let todayTrips = [];
 
@@ -39,17 +65,23 @@ const homePage = (function() {
         }
       } catch (e) {
         console.log('Could not load trips from database');
+        // If we already rendered from cache, keep that view
+        if (cachedJson) return;
       }
 
-      // Render today section using todayTrips (with flights/hotels data)
-      if (todayContainer) {
-        renderTodaySection(todayContainer, todayTrips);
-      }
+      // Save fresh data to cache
+      const freshJson = JSON.stringify({ trips: allTrips, todayTrips });
+      try { sessionStorage.setItem(CACHE_KEY, freshJson); } catch (e) { /* ignore */ }
 
-      // Render trips (summary only, no full data)
-      renderTrips(tripsContainer, allTrips);
+      // Only re-render if data changed (or no cache existed)
+      if (freshJson !== cachedJson) {
+        if (todayContainer) renderTodaySection(todayContainer, todayTrips);
+        renderTrips(tripsContainer, allTrips);
+      }
     } catch (error) {
       console.error('Error loading trips:', error);
+      // If we already rendered from cache, keep that view
+      if (cachedJson) return;
       tripsContainer.innerHTML = `
         <div class="empty-state">
           <div class="empty-state-icon">✈️</div>
@@ -376,9 +408,10 @@ const homePage = (function() {
    * @param {object} trip
    * @param {string} lang
    * @param {boolean} isPast
+   * @param {number} index - Card position in render order (for eager/lazy loading)
    * @returns {string}
    */
-  function renderTripCard(trip, lang, isPast) {
+  function renderTripCard(trip, lang, isPast, index) {
     const title = trip.title[lang] || trip.title.en || trip.title.it;
     const startDate = utils.formatDate(trip.startDate, lang, { month: 'short', day: 'numeric' });
     const endDate = utils.formatDate(trip.endDate, lang, { month: 'short', day: 'numeric', year: 'numeric' });
@@ -388,17 +421,22 @@ const homePage = (function() {
     // All trips now use dynamic page
     const tripUrl = `trip.html?id=${trip.id}`;
 
-    // Cover photo styling (show for all trips, past trips will have grayscale via CSS)
+    // Cover photo: first 3 cards eager, rest lazy via data-bg
     const coverPhoto = trip.coverPhoto;
-    let imageStyle = `background-color: ${bgColor}`;
+    let imageStyle = `background-color: ${coverPhoto?.color || bgColor}`;
+    let dataBg = '';
     if (coverPhoto?.url) {
-      imageStyle = `background-image: url('${coverPhoto.url}'); background-color: ${coverPhoto.color || bgColor}`;
+      if (index < 3) {
+        imageStyle = `background-image: url('${coverPhoto.url}'); background-color: ${coverPhoto.color || bgColor}`;
+      } else {
+        dataBg = ` data-bg="${utils.escapeHtml(coverPhoto.url)}"`;
+      }
     }
 
     return `
       <div class="trip-card-wrapper">
         <a href="${tripUrl}" class="${cardClass}">
-          <div class="trip-card-image" style="${imageStyle}">
+          <div class="trip-card-image" style="${imageStyle}"${dataBg}>
             <div class="trip-card-overlay">
               <span class="trip-card-destination">${utils.escapeHtml(title)}</span>
               <span class="trip-card-dates">${startDate} - ${endDate}</span>
@@ -504,16 +542,17 @@ const homePage = (function() {
     pastTrips.sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
 
     let html = '';
+    let cardIndex = 0;
 
     // Render upcoming trips
     if (upcomingTrips.length > 0) {
-      const upcomingHtml = upcomingTrips.map(trip => renderTripCard(trip, lang, false)).join('');
+      const upcomingHtml = upcomingTrips.map(trip => renderTripCard(trip, lang, false, cardIndex++)).join('');
       html += `<div class="grid md:grid-cols-2 lg:grid-cols-3">${upcomingHtml}</div>`;
     }
 
     // Render past trips (always with separator line if past trips exist)
     if (pastTrips.length > 0) {
-      const pastHtml = pastTrips.map(trip => renderTripCard(trip, lang, true)).join('');
+      const pastHtml = pastTrips.map(trip => renderTripCard(trip, lang, true, cardIndex++)).join('');
       html += `
         <div class="past-trips-section">
           <h3 class="past-trips-title" data-i18n="home.pastTrips">Viaggi passati</h3>
@@ -524,11 +563,36 @@ const homePage = (function() {
 
     container.innerHTML = html;
 
+    // Lazy load cover images for cards outside the initial viewport
+    initCoverLazyLoad(container);
+
     // Initialize dropdown menus
     initTripCardMenus();
 
     // Apply translations
     i18n.apply(container);
+  }
+
+  /**
+   * Lazy load cover images using IntersectionObserver
+   * @param {HTMLElement} container
+   */
+  function initCoverLazyLoad(container) {
+    const lazyCards = container.querySelectorAll('.trip-card-image[data-bg]');
+    if (lazyCards.length === 0) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const el = entry.target;
+          el.style.backgroundImage = `url('${el.dataset.bg}')`;
+          el.removeAttribute('data-bg');
+          observer.unobserve(el);
+        }
+      });
+    }, { rootMargin: '200px' });
+
+    lazyCards.forEach(card => observer.observe(card));
   }
 
   /**
@@ -662,7 +726,7 @@ const homePage = (function() {
         }
 
         closeModal();
-        // Refresh homepage
+        invalidateCache();
         init();
       } catch (error) {
         console.error('Error renaming trip:', error);
@@ -801,7 +865,7 @@ const homePage = (function() {
         }
 
         closeModal();
-        // Reload trips
+        invalidateCache();
         init();
       } catch (error) {
         console.error('Error deleting trip:', error);
@@ -925,7 +989,7 @@ const homePage = (function() {
     i18n.apply(modal);
   }
 
-  return { init };
+  return { init, invalidateCache };
 })();
 
 // Make available globally (required for Vite bundling)

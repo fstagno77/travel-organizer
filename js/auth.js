@@ -410,6 +410,7 @@ const auth = {
    * Sign out
    */
   async signOut() {
+    try { sessionStorage.clear(); } catch (e) { /* ignore */ }
     await this.supabase.auth.signOut();
   },
 
