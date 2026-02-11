@@ -6,6 +6,10 @@ const homePage = (function() {
 
   const CACHE_KEY = 'trips_cache';
   const PAST_TRIPS_PAGE_SIZE = 6;
+  const PHASE1_UPCOMING_COUNT = 3;
+
+  let renderGeneration = 0;
+  let documentClickBound = false;
 
   /**
    * Invalidate the trips cache in sessionStorage
@@ -532,6 +536,7 @@ const homePage = (function() {
     if (tripsHeader) tripsHeader.style.display = '';
 
     const lang = i18n.getLang();
+    const generation = ++renderGeneration;
 
     // Separate upcoming and past trips
     const upcomingTrips = trips.filter(t => !isTripPast(t));
@@ -542,25 +547,56 @@ const homePage = (function() {
     // Sort past by start date (most recent first)
     pastTrips.sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
 
-    let html = '';
     let cardIndex = 0;
 
-    // Render upcoming trips
+    // --- Phase 1: above-the-fold (first 3 upcoming cards) ---
+    const phase1Upcoming = upcomingTrips.slice(0, PHASE1_UPCOMING_COUNT);
+    const phase2Upcoming = upcomingTrips.slice(PHASE1_UPCOMING_COUNT);
+
+    let phase1Html = '';
     if (upcomingTrips.length > 0) {
-      const upcomingHtml = upcomingTrips.map(trip => renderTripCard(trip, lang, false, cardIndex++)).join('');
-      html += `<div class="grid md:grid-cols-2 lg:grid-cols-3">${upcomingHtml}</div>`;
+      const cardsHtml = phase1Upcoming.map(trip => renderTripCard(trip, lang, false, cardIndex++)).join('');
+      phase1Html = `<div class="grid md:grid-cols-2 lg:grid-cols-3" id="upcoming-trips-grid">${cardsHtml}</div>`;
     }
 
-    // Render past trips with pagination
-    if (pastTrips.length > 0) {
-      const initialPast = pastTrips.slice(0, PAST_TRIPS_PAGE_SIZE);
-      const pastHtml = initialPast.map(trip => renderTripCard(trip, lang, true, cardIndex++)).join('');
-      const remaining = pastTrips.length - PAST_TRIPS_PAGE_SIZE;
+    container.innerHTML = phase1Html;
+    initCoverLazyLoad(container);
+    initTripCardMenus();
+    i18n.apply(container);
 
-      html += `
-        <div class="past-trips-section">
+    // --- Phase 2: remaining cards via requestAnimationFrame ---
+    const hasPhase2 = phase2Upcoming.length > 0 || pastTrips.length > 0;
+    if (!hasPhase2) return;
+
+    requestAnimationFrame(() => {
+      // Abort if a newer renderTrips call has started
+      if (generation !== renderGeneration) return;
+
+      // Append remaining upcoming cards
+      if (phase2Upcoming.length > 0) {
+        const upcomingGrid = document.getElementById('upcoming-trips-grid');
+        if (upcomingGrid) {
+          const fragment = document.createDocumentFragment();
+          const tempDiv = document.createElement('div');
+          phase2Upcoming.forEach(trip => {
+            tempDiv.innerHTML = renderTripCard(trip, lang, false, cardIndex++);
+            fragment.appendChild(tempDiv.firstElementChild);
+          });
+          upcomingGrid.appendChild(fragment);
+        }
+      }
+
+      // Append past trips section
+      if (pastTrips.length > 0) {
+        const initialPast = pastTrips.slice(0, PAST_TRIPS_PAGE_SIZE);
+        const pastCardsHtml = initialPast.map(trip => renderTripCard(trip, lang, true, cardIndex++)).join('');
+        const remaining = pastTrips.length - PAST_TRIPS_PAGE_SIZE;
+
+        const pastSection = document.createElement('div');
+        pastSection.className = 'past-trips-section';
+        pastSection.innerHTML = `
           <h3 class="past-trips-title" data-i18n="home.pastTrips">Viaggi passati</h3>
-          <div class="grid md:grid-cols-2 lg:grid-cols-3" id="past-trips-grid">${pastHtml}</div>
+          <div class="grid md:grid-cols-2 lg:grid-cols-3" id="past-trips-grid">${pastCardsHtml}</div>
           ${remaining > 0 ? `
             <div class="past-trips-load-more">
               <button class="btn btn-secondary" id="load-more-past-trips">
@@ -568,59 +604,49 @@ const homePage = (function() {
               </button>
             </div>
           ` : ''}
-        </div>
-      `;
-    }
+        `;
+        container.appendChild(pastSection);
 
-    container.innerHTML = html;
+        // Bind load-more button
+        if (pastTrips.length > PAST_TRIPS_PAGE_SIZE) {
+          let shown = PAST_TRIPS_PAGE_SIZE;
+          const loadMoreBtn = document.getElementById('load-more-past-trips');
+          const pastGrid = document.getElementById('past-trips-grid');
 
-    // Bind load-more button
-    if (pastTrips.length > PAST_TRIPS_PAGE_SIZE) {
-      let shown = PAST_TRIPS_PAGE_SIZE;
-      const loadMoreBtn = document.getElementById('load-more-past-trips');
-      const pastGrid = document.getElementById('past-trips-grid');
+          if (loadMoreBtn && pastGrid) {
+            loadMoreBtn.addEventListener('click', () => {
+              const nextBatch = pastTrips.slice(shown, shown + PAST_TRIPS_PAGE_SIZE);
+              const fragment = document.createDocumentFragment();
+              const tempDiv = document.createElement('div');
 
-      if (loadMoreBtn && pastGrid) {
-        loadMoreBtn.addEventListener('click', () => {
-          const nextBatch = pastTrips.slice(shown, shown + PAST_TRIPS_PAGE_SIZE);
-          const fragment = document.createDocumentFragment();
-          const tempDiv = document.createElement('div');
+              nextBatch.forEach(trip => {
+                tempDiv.innerHTML = renderTripCard(trip, lang, true, cardIndex++);
+                fragment.appendChild(tempDiv.firstElementChild);
+              });
 
-          nextBatch.forEach(trip => {
-            tempDiv.innerHTML = renderTripCard(trip, lang, true, cardIndex++);
-            const wrapper = tempDiv.firstElementChild;
-            fragment.appendChild(wrapper);
-          });
+              pastGrid.appendChild(fragment);
+              shown += nextBatch.length;
 
-          pastGrid.appendChild(fragment);
-          shown += nextBatch.length;
+              initCoverLazyLoad(pastGrid);
+              initTripCardMenus();
+              i18n.apply(pastGrid);
 
-          // Lazy load new cards
-          initCoverLazyLoad(pastGrid);
-          // Init menus on new cards
-          initTripCardMenus();
-          // Apply translations on new cards
-          i18n.apply(pastGrid);
-
-          // Update or remove button
-          const remaining = pastTrips.length - shown;
-          if (remaining > 0) {
-            loadMoreBtn.innerHTML = `<span data-i18n="home.loadMoreTrips">${i18n.t('home.loadMoreTrips') || 'Mostra altri viaggi'}</span> (${remaining})`;
-          } else {
-            loadMoreBtn.closest('.past-trips-load-more').remove();
+              const newRemaining = pastTrips.length - shown;
+              if (newRemaining > 0) {
+                loadMoreBtn.innerHTML = `<span data-i18n="home.loadMoreTrips">${i18n.t('home.loadMoreTrips') || 'Mostra altri viaggi'}</span> (${newRemaining})`;
+              } else {
+                loadMoreBtn.closest('.past-trips-load-more').remove();
+              }
+            });
           }
-        });
+        }
       }
-    }
 
-    // Lazy load cover images for cards outside the initial viewport
-    initCoverLazyLoad(container);
-
-    // Initialize dropdown menus
-    initTripCardMenus();
-
-    // Apply translations
-    i18n.apply(container);
+      // Initialize Phase 2 cards
+      initCoverLazyLoad(container);
+      initTripCardMenus();
+      i18n.apply(container);
+    });
   }
 
   /**
@@ -649,9 +675,8 @@ const homePage = (function() {
    * Initialize trip card dropdown menus
    */
   function initTripCardMenus() {
-    const menuBtns = document.querySelectorAll('.trip-card-menu-btn');
-
-    menuBtns.forEach(btn => {
+    document.querySelectorAll('.trip-card-menu-btn:not([data-menu-init])').forEach(btn => {
+      btn.setAttribute('data-menu-init', '1');
       btn.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -669,7 +694,8 @@ const homePage = (function() {
     });
 
     // Handle dropdown actions
-    document.querySelectorAll('.trip-card-dropdown-item').forEach(item => {
+    document.querySelectorAll('.trip-card-dropdown-item:not([data-menu-init])').forEach(item => {
+      item.setAttribute('data-menu-init', '1');
       item.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -694,12 +720,15 @@ const homePage = (function() {
       });
     });
 
-    // Close dropdowns when clicking outside
-    document.addEventListener('click', () => {
-      document.querySelectorAll('.trip-card-dropdown.active').forEach(d => {
-        d.classList.remove('active');
+    // Close dropdowns when clicking outside (bind once)
+    if (!documentClickBound) {
+      documentClickBound = true;
+      document.addEventListener('click', () => {
+        document.querySelectorAll('.trip-card-dropdown.active').forEach(d => {
+          d.classList.remove('active');
+        });
       });
-    });
+    }
   }
 
   /**
