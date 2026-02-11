@@ -1,6 +1,20 @@
 {
   "versions": [
     {
+      "version": "0.16.3",
+      "date": "2026-02-11",
+      "changes": {
+        "it": [
+          "Rendering progressivo della home: le prime card appaiono istantaneamente, le restanti vengono caricate nel frame successivo senza bloccare il main thread",
+          "Ottimizzazione performance: payload leggero dal backend, cache stale-while-revalidate, lazy loading immagini, paginazione viaggi passati"
+        ],
+        "en": [
+          "Progressive home rendering: first cards appear instantly, remaining cards load in the next frame without blocking the main thread",
+          "Performance optimization: light backend payload, stale-while-revalidate cache, image lazy loading, past trips pagination"
+        ]
+      }
+    },
+    {
       "version": "0.16.2",
       "date": "2026-02-09",
       "changes": {
