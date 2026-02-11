@@ -56,13 +56,6 @@
         ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(hotel.address.fullAddress)}`
         : '#';
       const nightsLabel = hotel.nights === 1 ? i18n.t('hotel.night') : i18n.t('hotel.nights');
-      // Support both roomType (single) and roomTypes (array) formats
-      let roomType = '-';
-      if (hotel.roomTypes && Array.isArray(hotel.roomTypes)) {
-        roomType = hotel.roomTypes.map(rt => rt[lang] || rt.en || rt).join(', ');
-      } else if (hotel.roomType) {
-        roomType = hotel.roomType[lang] || hotel.roomType.en || hotel.roomType;
-      }
 
       return `
         <div class="hotel-card" data-id="${hotel.id}">
@@ -112,7 +105,46 @@
             </svg>
           </button>
 
-          <div class="hotel-details" id="hotel-details-${index}">
+          <div class="hotel-details" id="hotel-details-${index}" data-hotel-index="${index}"></div>
+        </div>
+      `;
+    }).join('');
+
+    // Add quick upload card at the end
+    const quickUploadCard = `
+      <div class="quick-upload-card" id="quick-upload-hotels">
+        <input type="file" class="quick-upload-input" accept=".pdf" hidden>
+        <svg class="quick-upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="17 8 12 3 7 8"></polyline>
+          <line x1="12" y1="3" x2="12" y2="15"></line>
+        </svg>
+        <div class="quick-upload-spinner"></div>
+        <span class="quick-upload-text" data-i18n="trip.quickUploadHint">Drop a PDF here to add a booking</span>
+      </div>
+    `;
+
+    container.innerHTML = html + quickUploadCard;
+    // Store sorted hotels for lazy detail rendering
+    window.tripHotels._hotels = sortedHotels;
+    i18n.apply(container);
+    window.tripPage.initQuickUploadCard('quick-upload-hotels');
+  }
+
+  /**
+   * Generate hotel details HTML (lazy — called on first expand)
+   */
+  function renderHotelDetails(hotel, index) {
+    const lang = i18n.getLang();
+    // Support both roomType (single) and roomTypes (array) formats
+    let roomType = '-';
+    if (hotel.roomTypes && Array.isArray(hotel.roomTypes)) {
+      roomType = hotel.roomTypes.map(rt => rt[lang] || rt.en || rt).join(', ');
+    } else if (hotel.roomType) {
+      roomType = hotel.roomType[lang] || hotel.roomType.en || hotel.roomType;
+    }
+
+    return `
             <div class="hotel-details-grid">
               <div class="hotel-detail-item">
                 <span class="hotel-detail-label" data-i18n="hotel.roomType">Room type</span>
@@ -169,52 +201,7 @@
               </svg>
               <span data-i18n="hotel.delete">Delete hotel</span>
             </button>
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    // Add quick upload card at the end
-    const quickUploadCard = `
-      <div class="quick-upload-card" id="quick-upload-hotels">
-        <input type="file" class="quick-upload-input" accept=".pdf" hidden>
-        <svg class="quick-upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-          <polyline points="17 8 12 3 7 8"></polyline>
-          <line x1="12" y1="3" x2="12" y2="15"></line>
-        </svg>
-        <div class="quick-upload-spinner"></div>
-        <span class="quick-upload-text" data-i18n="trip.quickUploadHint">Drop a PDF here to add a booking</span>
-      </div>
     `;
-
-    container.innerHTML = html + quickUploadCard;
-    i18n.apply(container);
-    initHotelToggleButtons();
-    window.tripPage.initEditItemButtons();
-    window.tripPage.initDeleteItemButtons();
-    window.tripPage.initPdfDownloadButtons();
-    window.tripPage.initQuickUploadCard('quick-upload-hotels');
-  }
-
-  /**
-   * Initialize hotel toggle buttons
-   */
-  function initHotelToggleButtons() {
-    document.querySelectorAll('.hotel-toggle-details').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const index = btn.dataset.hotelIndex;
-        const details = document.getElementById(`hotel-details-${index}`);
-        const isActive = details.classList.toggle('active');
-        btn.classList.toggle('active', isActive);
-
-        const textSpan = btn.querySelector('span[data-i18n]');
-        if (textSpan) {
-          textSpan.dataset.i18n = isActive ? 'hotel.hideDetails' : 'hotel.showDetails';
-          textSpan.textContent = i18n.t(textSpan.dataset.i18n);
-        }
-      });
-    });
   }
 
   /**
@@ -352,6 +339,7 @@
 
   window.tripHotels = {
     render: renderHotels,
+    renderDetails: renderHotelDetails,
     buildEditForm: buildHotelEditForm,
     collectUpdates: collectHotelUpdates
   };

@@ -141,7 +141,37 @@
             </svg>
           </button>
 
-          <div class="flight-details" id="flight-details-${index}">
+          <div class="flight-details" id="flight-details-${index}" data-flight-index="${index}"></div>
+        </div>
+      `;
+    }).join('');
+
+    // Add quick upload card at the end
+    const quickUploadCard = `
+      <div class="quick-upload-card" id="quick-upload-flights">
+        <input type="file" class="quick-upload-input" accept=".pdf" hidden>
+        <svg class="quick-upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="17 8 12 3 7 8"></polyline>
+          <line x1="12" y1="3" x2="12" y2="15"></line>
+        </svg>
+        <div class="quick-upload-spinner"></div>
+        <span class="quick-upload-text" data-i18n="trip.quickUploadHint">Drop a PDF here to add a booking</span>
+      </div>
+    `;
+
+    container.innerHTML = html + quickUploadCard;
+    // Store sorted flights for lazy detail rendering
+    window.tripFlights._flights = sortedFlights;
+    i18n.apply(container);
+    window.tripPage.initQuickUploadCard('quick-upload-flights');
+  }
+
+  /**
+   * Generate flight details HTML (lazy — called on first expand)
+   */
+  function renderFlightDetails(flight, index) {
+    return `
             ${flight.passengers && flight.passengers.length > 1 ? `
             <!-- Multiple passengers view -->
             <div class="flight-passengers-section">
@@ -297,205 +327,7 @@
               </svg>
               <span data-i18n="flight.delete">Delete flight</span>
             </button>
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    // Add quick upload card at the end
-    const quickUploadCard = `
-      <div class="quick-upload-card" id="quick-upload-flights">
-        <input type="file" class="quick-upload-input" accept=".pdf" hidden>
-        <svg class="quick-upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-          <polyline points="17 8 12 3 7 8"></polyline>
-          <line x1="12" y1="3" x2="12" y2="15"></line>
-        </svg>
-        <div class="quick-upload-spinner"></div>
-        <span class="quick-upload-text" data-i18n="trip.quickUploadHint">Drop a PDF here to add a booking</span>
-      </div>
     `;
-
-    container.innerHTML = html + quickUploadCard;
-    i18n.apply(container);
-    initFlightToggleButtons();
-    window.tripPage.initEditItemButtons();
-    window.tripPage.initDeleteItemButtons();
-    window.tripPage.initPdfDownloadButtons();
-    initSmallPdfButtons();
-    initDeletePassengerButtons();
-    initPassengerMenus();
-    initCopyValueButtons();
-    window.tripPage.initQuickUploadCard('quick-upload-flights');
-  }
-
-  /**
-   * Initialize flight toggle buttons
-   */
-  function initFlightToggleButtons() {
-    document.querySelectorAll('.flight-toggle-details').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const index = btn.dataset.flightIndex;
-        const details = document.getElementById(`flight-details-${index}`);
-        const isActive = details.classList.toggle('active');
-        btn.classList.toggle('active', isActive);
-
-        const textSpan = btn.querySelector('span[data-i18n]');
-        if (textSpan) {
-          textSpan.dataset.i18n = isActive ? 'flight.hideDetails' : 'flight.showDetails';
-          textSpan.textContent = i18n.t(textSpan.dataset.i18n);
-        }
-      });
-    });
-  }
-
-  /**
-   * Initialize small PDF download buttons (for multi-passenger view)
-   */
-  function initSmallPdfButtons() {
-    document.querySelectorAll('.btn-download-pdf-small').forEach(btn => {
-      // Remove existing listeners by cloning
-      const newBtn = btn.cloneNode(true);
-      btn.parentNode.replaceChild(newBtn, btn);
-
-      newBtn.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        const pdfPath = newBtn.dataset.pdfPath;
-
-        // Show loading state
-        newBtn.disabled = true;
-        const svg = newBtn.querySelector('svg');
-        if (svg) svg.style.opacity = '0.5';
-
-        // Pre-open window for Safari iOS
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-        let newWindow = null;
-        if (isIOS) {
-          newWindow = window.open('about:blank', '_blank');
-        }
-
-        try {
-          const response = await utils.authFetch(`/.netlify/functions/get-pdf-url?path=${encodeURIComponent(pdfPath)}`);
-          const result = await response.json();
-
-          if (result.success && result.url) {
-            if (newWindow) {
-              newWindow.location.href = result.url;
-            } else {
-              window.open(result.url, '_blank');
-            }
-          } else {
-            if (newWindow) newWindow.close();
-            throw new Error(result.error || 'Failed to get PDF URL');
-          }
-        } catch (error) {
-          console.error('Error downloading PDF:', error);
-          if (newWindow) newWindow.close();
-          alert(i18n.t('common.downloadError') || 'Error downloading PDF');
-        } finally {
-          newBtn.disabled = false;
-          if (svg) svg.style.opacity = '1';
-        }
-      });
-    });
-  }
-
-  /**
-   * Initialize delete passenger buttons
-   */
-  function initDeletePassengerButtons() {
-    document.querySelectorAll('.btn-delete-passenger').forEach(btn => {
-      // Remove existing listeners by cloning
-      const newBtn = btn.cloneNode(true);
-      btn.parentNode.replaceChild(newBtn, btn);
-
-      newBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const passengerName = newBtn.dataset.passengerName;
-        const bookingRef = newBtn.dataset.bookingRef;
-        showDeletePassengerModal(passengerName, bookingRef);
-      });
-    });
-  }
-
-  /**
-   * Initialize 3-dot passenger menus (mobile only)
-   */
-  function initPassengerMenus() {
-    document.querySelectorAll('.btn-passenger-menu').forEach(btn => {
-      const newBtn = btn.cloneNode(true);
-      btn.parentNode.replaceChild(newBtn, btn);
-
-      newBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const dropdown = newBtn.nextElementSibling;
-        const wasActive = dropdown.classList.contains('active');
-
-        // Close all open passenger menus
-        document.querySelectorAll('.passenger-menu-dropdown.active').forEach(d => {
-          d.classList.remove('active');
-        });
-
-        if (!wasActive) {
-          dropdown.classList.add('active');
-        }
-      });
-    });
-
-    document.querySelectorAll('.passenger-menu-item').forEach(item => {
-      item.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        const action = item.dataset.action;
-        const dropdown = item.closest('.passenger-menu-dropdown');
-        dropdown?.classList.remove('active');
-
-        if (action === 'download-pdf') {
-          const pdfPath = item.dataset.pdfPath;
-          if (!pdfPath) return;
-
-          item.style.opacity = '0.5';
-          item.style.pointerEvents = 'none';
-
-          const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-          let newWindow = null;
-          if (isIOS) {
-            newWindow = window.open('about:blank', '_blank');
-          }
-
-          try {
-            const response = await utils.authFetch(`/.netlify/functions/get-pdf-url?path=${encodeURIComponent(pdfPath)}`);
-            const result = await response.json();
-
-            if (result.success && result.url) {
-              if (newWindow) {
-                newWindow.location.href = result.url;
-              } else {
-                window.open(result.url, '_blank');
-              }
-            } else {
-              if (newWindow) newWindow.close();
-              throw new Error(result.error || 'Failed to get PDF URL');
-            }
-          } catch (error) {
-            console.error('Error downloading PDF:', error);
-            if (newWindow) newWindow.close();
-            alert(i18n.t('common.downloadError') || 'Error downloading PDF');
-          } finally {
-            item.style.opacity = '';
-            item.style.pointerEvents = '';
-          }
-        } else if (action === 'delete-passenger') {
-          showDeletePassengerModal(item.dataset.passengerName, item.dataset.bookingRef);
-        }
-      });
-    });
-
-    // Close on outside click
-    document.addEventListener('click', () => {
-      document.querySelectorAll('.passenger-menu-dropdown.active').forEach(d => {
-        d.classList.remove('active');
-      });
-    });
   }
 
   /**
@@ -594,36 +426,6 @@
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
     i18n.apply(modal);
-  }
-
-  /**
-   * Initialize copy value buttons
-   */
-  function initCopyValueButtons() {
-    document.querySelectorAll('.btn-copy-value').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const value = btn.dataset.copy;
-        if (!value) return;
-
-        try {
-          await navigator.clipboard.writeText(value);
-          btn.classList.add('copied');
-          setTimeout(() => btn.classList.remove('copied'), 1500);
-        } catch (err) {
-          // Fallback for older browsers
-          const textArea = document.createElement('textarea');
-          textArea.value = value;
-          textArea.style.position = 'fixed';
-          textArea.style.opacity = '0';
-          document.body.appendChild(textArea);
-          textArea.select();
-          document.execCommand('copy');
-          document.body.removeChild(textArea);
-          btn.classList.add('copied');
-          setTimeout(() => btn.classList.remove('copied'), 1500);
-        }
-      });
-    });
   }
 
   /**
@@ -784,6 +586,8 @@
 
   window.tripFlights = {
     render: renderFlights,
+    renderDetails: renderFlightDetails,
+    showDeletePassengerModal: showDeletePassengerModal,
     buildEditForm: buildFlightEditForm,
     collectUpdates: collectFlightUpdates
   };

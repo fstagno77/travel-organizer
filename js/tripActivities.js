@@ -251,63 +251,6 @@
 
     container.innerHTML = html;
     i18n.apply(container);
-    initActivityLinks();
-    initNewActivityButtons();
-    initCustomActivityClicks();
-  }
-
-  /**
-   * Initialize activity link click handlers
-   */
-  function initActivityLinks() {
-    document.querySelectorAll('.activity-item-link').forEach(link => {
-      link.addEventListener('click', (e) => {
-        e.preventDefault();
-        const tab = link.dataset.tab;
-        const itemId = link.dataset.itemId;
-        if (tab) {
-          window.tripPage.switchToTab(tab);
-          if (itemId) {
-            setTimeout(() => {
-              const card = document.querySelector(`[data-id="${itemId}"]`);
-              if (card) {
-                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                card.classList.add('highlight-card');
-                setTimeout(() => card.classList.remove('highlight-card'), 1500);
-              }
-            }, 100);
-          }
-        }
-      });
-    });
-  }
-
-  /**
-   * Initialize "New activity" button click handlers
-   */
-  function initNewActivityButtons() {
-    document.querySelectorAll('.activity-new-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const date = btn.dataset.date;
-        window.tripSlidePanel.show('create', date, null);
-      });
-    });
-  }
-
-  /**
-   * Initialize custom activity click handlers (opens view panel)
-   */
-  function initCustomActivityClicks() {
-    document.querySelectorAll('.activity-item-link--custom').forEach(link => {
-      link.addEventListener('click', (e) => {
-        e.preventDefault();
-        const activityId = link.dataset.activityId;
-        const activity = window.tripPage.currentTripData.activities?.find(a => a.id === activityId);
-        if (activity) {
-          window.tripSlidePanel.show('view', null, activity);
-        }
-      });
-    });
   }
 
   window.tripActivities = {

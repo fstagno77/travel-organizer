@@ -15,6 +15,7 @@
   }
 
   let currentTripData = null;
+  let tabRendered = { activities: false, flights: false, hotels: false };
 
   // ===========================
   // Shared API exposed to modules
@@ -26,9 +27,6 @@
     escAttr,
     loadTripFromUrl,
     switchToTab,
-    initEditItemButtons,
-    initDeleteItemButtons,
-    initPdfDownloadButtons,
     initQuickUploadCard,
   };
 
@@ -54,17 +52,24 @@
         }
       }
 
-      // Initialize navigation (header, footer)
-      await navigation.init();
+      // Initialize navigation - only header is critical before trip render
+      await navigation.loadHeader();
+      navigation.setActiveNavLink();
 
-      // Re-apply translations after navigation is loaded
+      // Re-apply translations after header is loaded
       i18n.apply();
+
+      // Fire-and-forget: footer is not critical
+      navigation.loadFooter();
 
       // Load trip data from URL parameter (requires auth)
       if (!auth?.requireAuth()) {
         return;
       }
       await loadTripFromUrl();
+
+      // Start pending bookings polling after trip is rendered (non-blocking)
+      setTimeout(() => navigation.startPendingBookingsPolling(), 0);
 
     } catch (error) {
       console.error('Error initializing trip page:', error);
@@ -249,10 +254,8 @@
 
     container.innerHTML = html;
 
-    // Delegate rendering to tab modules
-    window.tripFlights.render(document.getElementById('flights-container'), tripData.flights);
-    window.tripHotels.render(document.getElementById('hotels-container'), tripData.hotels);
-    window.tripActivities.render(document.getElementById('activities-container'), tripData);
+    // Reset tab render state
+    tabRendered = { activities: false, flights: false, hotels: false };
 
     // Initialize tab switching
     initTabSwitching();
@@ -263,14 +266,277 @@
     const navEntry = performance.getEntriesByType('navigation')[0];
     const isRefresh = navEntry && navEntry.type === 'reload';
     const savedTab = isRefresh ? sessionStorage.getItem('tripActiveTab') : null;
-    switchToTab(savedTab || 'activities');
+    const activeTab = savedTab || 'activities';
+
+    // Render only the active tab (lazy rendering — others rendered on first access)
+    renderTab(activeTab);
+    switchToTab(activeTab);
     showIndicator();
 
     // Initialize menu
     initMenu(tripData.id);
 
+    // Setup event delegation on tab containers
+    setupEventDelegation();
+
     // Apply translations
     i18n.apply(container);
+  }
+
+  // ===========================
+  // Event delegation
+  // ===========================
+
+  /**
+   * Handle PDF download (shared by flights and hotels)
+   */
+  async function handlePdfDownload(pdfPath, btn) {
+    if (!pdfPath) return;
+    btn.disabled = true;
+    const originalContent = btn.innerHTML;
+    const svg = btn.querySelector('svg');
+    if (svg) svg.style.opacity = '0.5';
+
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    let newWindow = null;
+    if (isIOS) {
+      newWindow = window.open('about:blank', '_blank');
+    }
+
+    try {
+      const response = await utils.authFetch(`/.netlify/functions/get-pdf-url?path=${encodeURIComponent(pdfPath)}`);
+      const result = await response.json();
+
+      if (result.success && result.url) {
+        if (newWindow) {
+          newWindow.location.href = result.url;
+        } else {
+          window.open(result.url, '_blank');
+        }
+      } else {
+        if (newWindow) newWindow.close();
+        throw new Error(result.error || 'Failed to get PDF URL');
+      }
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      if (newWindow) newWindow.close();
+      alert(i18n.t('common.downloadError') || 'Error downloading PDF');
+    } finally {
+      btn.disabled = false;
+      if (svg) svg.style.opacity = '1';
+      // Restore content for large PDF buttons that replaced innerHTML
+      if (btn.classList.contains('btn-download-pdf')) {
+        btn.innerHTML = originalContent;
+      }
+    }
+  }
+
+  /**
+   * Handle copy to clipboard
+   */
+  async function handleCopyValue(btn) {
+    const value = btn.dataset.copy;
+    if (!value) return;
+
+    try {
+      await navigator.clipboard.writeText(value);
+    } catch (err) {
+      const textArea = document.createElement('textarea');
+      textArea.value = value;
+      textArea.style.position = 'fixed';
+      textArea.style.opacity = '0';
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+    }
+    btn.classList.add('copied');
+    setTimeout(() => btn.classList.remove('copied'), 1500);
+  }
+
+  /**
+   * Handle toggle details (flights or hotels) with lazy rendering
+   */
+  function handleToggleDetails(btn, type) {
+    const isFlightToggle = type === 'flight';
+    const indexAttr = isFlightToggle ? 'flightIndex' : 'hotelIndex';
+    const index = btn.dataset[indexAttr];
+    const detailsId = isFlightToggle ? `flight-details-${index}` : `hotel-details-${index}`;
+    const details = document.getElementById(detailsId);
+    if (!details) return;
+
+    // Lazy render details on first expand
+    if (!details.dataset.rendered) {
+      const items = isFlightToggle ? window.tripFlights._flights : window.tripHotels._hotels;
+      const renderFn = isFlightToggle ? window.tripFlights.renderDetails : window.tripHotels.renderDetails;
+      if (items && items[index] && renderFn) {
+        details.innerHTML = renderFn(items[index], index);
+        details.dataset.rendered = 'true';
+        i18n.apply(details);
+      }
+    }
+
+    const isActive = details.classList.toggle('active');
+    btn.classList.toggle('active', isActive);
+
+    const textSpan = btn.querySelector('span[data-i18n]');
+    if (textSpan) {
+      const hideKey = isFlightToggle ? 'flight.hideDetails' : 'hotel.hideDetails';
+      const showKey = isFlightToggle ? 'flight.showDetails' : 'hotel.showDetails';
+      textSpan.dataset.i18n = isActive ? hideKey : showKey;
+      textSpan.textContent = i18n.t(textSpan.dataset.i18n);
+    }
+  }
+
+  /**
+   * Setup delegated event listeners on tab containers
+   */
+  function setupEventDelegation() {
+    const flightsContainer = document.getElementById('flights-container');
+    const hotelsContainer = document.getElementById('hotels-container');
+    const activitiesContainer = document.getElementById('activities-container');
+
+    // --- Flights container delegation ---
+    if (flightsContainer) {
+      flightsContainer.addEventListener('click', (e) => {
+        const target = e.target;
+
+        // Toggle details
+        const toggleBtn = target.closest('.flight-toggle-details');
+        if (toggleBtn) { handleToggleDetails(toggleBtn, 'flight'); return; }
+
+        // Edit item
+        const editBtn = target.closest('.btn-edit-item[data-type="flight"]');
+        if (editBtn) { e.stopPropagation(); openEditPanelForItem('flight', editBtn.dataset.id); return; }
+
+        // Delete item
+        const deleteBtn = target.closest('.btn-delete-item[data-type="flight"]');
+        if (deleteBtn) { e.stopPropagation(); showDeleteItemModal('flight', deleteBtn.dataset.id); return; }
+
+        // Download PDF (large button)
+        const pdfBtn = target.closest('.btn-download-pdf');
+        if (pdfBtn) { e.stopPropagation(); handlePdfDownload(pdfBtn.dataset.pdfPath, pdfBtn); return; }
+
+        // Download PDF (small, multi-passenger)
+        const smallPdfBtn = target.closest('.btn-download-pdf-small');
+        if (smallPdfBtn) { e.stopPropagation(); handlePdfDownload(smallPdfBtn.dataset.pdfPath, smallPdfBtn); return; }
+
+        // Delete passenger
+        const delPassBtn = target.closest('.btn-delete-passenger');
+        if (delPassBtn) {
+          e.stopPropagation();
+          window.tripFlights.showDeletePassengerModal(delPassBtn.dataset.passengerName, delPassBtn.dataset.bookingRef);
+          return;
+        }
+
+        // Passenger menu toggle
+        const menuBtn = target.closest('.btn-passenger-menu');
+        if (menuBtn) {
+          e.stopPropagation();
+          const dropdown = menuBtn.nextElementSibling;
+          const wasActive = dropdown?.classList.contains('active');
+          document.querySelectorAll('.passenger-menu-dropdown.active').forEach(d => d.classList.remove('active'));
+          if (!wasActive && dropdown) dropdown.classList.add('active');
+          return;
+        }
+
+        // Passenger menu item
+        const menuItem = target.closest('.passenger-menu-item');
+        if (menuItem) {
+          e.stopPropagation();
+          const action = menuItem.dataset.action;
+          const dropdown = menuItem.closest('.passenger-menu-dropdown');
+          dropdown?.classList.remove('active');
+
+          if (action === 'download-pdf') {
+            handlePdfDownload(menuItem.dataset.pdfPath, menuItem);
+          } else if (action === 'delete-passenger') {
+            window.tripFlights.showDeletePassengerModal(menuItem.dataset.passengerName, menuItem.dataset.bookingRef);
+          }
+          return;
+        }
+
+        // Copy value
+        const copyBtn = target.closest('.btn-copy-value');
+        if (copyBtn) { handleCopyValue(copyBtn); return; }
+      });
+    }
+
+    // --- Hotels container delegation ---
+    if (hotelsContainer) {
+      hotelsContainer.addEventListener('click', (e) => {
+        const target = e.target;
+
+        // Toggle details
+        const toggleBtn = target.closest('.hotel-toggle-details');
+        if (toggleBtn) { handleToggleDetails(toggleBtn, 'hotel'); return; }
+
+        // Edit item
+        const editBtn = target.closest('.btn-edit-item[data-type="hotel"]');
+        if (editBtn) { e.stopPropagation(); openEditPanelForItem('hotel', editBtn.dataset.id); return; }
+
+        // Delete item
+        const deleteBtn = target.closest('.btn-delete-item[data-type="hotel"]');
+        if (deleteBtn) { e.stopPropagation(); showDeleteItemModal('hotel', deleteBtn.dataset.id); return; }
+
+        // Download PDF
+        const pdfBtn = target.closest('.btn-download-pdf');
+        if (pdfBtn) { e.stopPropagation(); handlePdfDownload(pdfBtn.dataset.pdfPath, pdfBtn); return; }
+      });
+    }
+
+    // --- Activities container delegation ---
+    if (activitiesContainer) {
+      activitiesContainer.addEventListener('click', (e) => {
+        const target = e.target;
+
+        // Activity link (navigate to flights/hotels tab)
+        const activityLink = target.closest('.activity-item-link:not(.activity-item-link--custom)');
+        if (activityLink) {
+          e.preventDefault();
+          const tab = activityLink.dataset.tab;
+          const itemId = activityLink.dataset.itemId;
+          if (tab) {
+            switchToTab(tab);
+            if (itemId) {
+              setTimeout(() => {
+                const card = document.querySelector(`[data-id="${itemId}"]`);
+                if (card) {
+                  card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  card.classList.add('highlight-card');
+                  setTimeout(() => card.classList.remove('highlight-card'), 1500);
+                }
+              }, 100);
+            }
+          }
+          return;
+        }
+
+        // Custom activity link (open slide panel)
+        const customLink = target.closest('.activity-item-link--custom');
+        if (customLink) {
+          e.preventDefault();
+          const activityId = customLink.dataset.activityId;
+          const activity = currentTripData?.activities?.find(a => a.id === activityId);
+          if (activity) {
+            window.tripSlidePanel.show('view', null, activity);
+          }
+          return;
+        }
+
+        // New activity button
+        const newBtn = target.closest('.activity-new-btn');
+        if (newBtn) {
+          window.tripSlidePanel.show('create', newBtn.dataset.date, null);
+          return;
+        }
+      });
+    }
+
+    // Close passenger menus on outside click (once per setup)
+    document.addEventListener('click', () => {
+      document.querySelectorAll('.passenger-menu-dropdown.active').forEach(d => d.classList.remove('active'));
+    });
   }
 
   // ===========================
@@ -325,10 +591,28 @@
   }
 
   /**
+   * Render a tab's content if not already rendered (lazy rendering)
+   * @param {string} tabName - 'flights', 'hotels', or 'activities'
+   */
+  function renderTab(tabName) {
+    if (tabRendered[tabName] || !currentTripData) return;
+    if (tabName === 'activities') {
+      window.tripActivities.render(document.getElementById('activities-container'), currentTripData);
+    } else if (tabName === 'flights') {
+      window.tripFlights.render(document.getElementById('flights-container'), currentTripData.flights);
+    } else if (tabName === 'hotels') {
+      window.tripHotels.render(document.getElementById('hotels-container'), currentTripData.hotels);
+    }
+    tabRendered[tabName] = true;
+  }
+
+  /**
    * Switch to a specific tab
    * @param {string} tabName - 'flights', 'hotels', or 'activities'
    */
   function switchToTab(tabName) {
+    // Lazy render the tab if needed
+    renderTab(tabName);
     const tabs = document.querySelectorAll('.segmented-control-btn');
 
     tabs.forEach(t => t.classList.remove('active'));
@@ -1392,45 +1676,6 @@
     document.body.style.overflow = 'hidden';
   }
 
-  // ===========================
-  // Shared card init helpers (used by flights + hotels)
-  // ===========================
-
-  /**
-   * Initialize edit item buttons
-   */
-  function initEditItemButtons() {
-    document.querySelectorAll('.btn-edit-item').forEach(btn => {
-      const newBtn = btn.cloneNode(true);
-      btn.parentNode.replaceChild(newBtn, btn);
-
-      newBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const type = newBtn.dataset.type;
-        const id = newBtn.dataset.id;
-        openEditPanelForItem(type, id);
-      });
-    });
-  }
-
-  /**
-   * Initialize delete item buttons
-   */
-  function initDeleteItemButtons() {
-    document.querySelectorAll('.btn-delete-item').forEach(btn => {
-      // Remove existing listeners by cloning
-      const newBtn = btn.cloneNode(true);
-      btn.parentNode.replaceChild(newBtn, btn);
-
-      newBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const type = newBtn.dataset.type;
-        const id = newBtn.dataset.id;
-        showDeleteItemModal(type, id);
-      });
-    });
-  }
-
   /**
    * Show delete item confirmation modal
    * @param {string} type - 'flight' or 'hotel'
@@ -1570,60 +1815,6 @@
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
     i18n.apply(modal);
-  }
-
-  /**
-   * Initialize PDF download buttons
-   */
-  function initPdfDownloadButtons() {
-    document.querySelectorAll('.btn-download-pdf').forEach(btn => {
-      // Remove existing listeners by cloning
-      const newBtn = btn.cloneNode(true);
-      btn.parentNode.replaceChild(newBtn, btn);
-
-      newBtn.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        const pdfPath = newBtn.dataset.pdfPath;
-
-        // Show loading state
-        const originalContent = newBtn.innerHTML;
-        newBtn.disabled = true;
-        newBtn.innerHTML = '<span class="spinner spinner-sm"></span>';
-
-        // Pre-open window for Safari iOS (must be synchronous with user click)
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-        let newWindow = null;
-        if (isIOS) {
-          newWindow = window.open('about:blank', '_blank');
-        }
-
-        try {
-          const response = await utils.authFetch(`/.netlify/functions/get-pdf-url?path=${encodeURIComponent(pdfPath)}`);
-          const result = await response.json();
-
-          if (result.success && result.url) {
-            if (newWindow) {
-              // iOS: redirect the pre-opened window
-              newWindow.location.href = result.url;
-            } else {
-              // Other browsers: open normally
-              window.open(result.url, '_blank');
-            }
-          } else {
-            if (newWindow) newWindow.close();
-            throw new Error(result.error || 'Failed to get PDF URL');
-          }
-        } catch (error) {
-          console.error('Error downloading PDF:', error);
-          if (newWindow) newWindow.close();
-          alert(i18n.t('common.downloadError') || 'Error downloading PDF');
-        } finally {
-          // Restore button state
-          newBtn.disabled = false;
-          newBtn.innerHTML = originalContent;
-        }
-      });
-    });
   }
 
   // ===========================
