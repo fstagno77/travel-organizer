@@ -404,10 +404,23 @@
           throw new Error(result.error || 'Failed to remove passenger');
         }
 
-        const activeTab = document.querySelector('.segmented-control-btn.active')?.dataset.tab;
         closeModal();
-        await window.tripPage.loadTripFromUrl();
-        if (activeTab) window.tripPage.switchToTab(activeTab);
+
+        // Optimistic update: remove passenger from local data
+        for (const f of (currentTripData.flights || [])) {
+          if (f.bookingReference?.toLowerCase()?.trim() === bookingRef?.toLowerCase()?.trim()) {
+            f.passengers = (f.passengers || []).filter(p =>
+              p.name?.toLowerCase()?.trim() !== passengerName?.toLowerCase()?.trim()
+            );
+          }
+        }
+        // Remove flights with 0 passengers
+        currentTripData.flights = (currentTripData.flights || []).filter(f =>
+          !f.passengers || f.passengers.length > 0
+        );
+        window.tripPage.currentTripData = currentTripData;
+
+        window.tripPage.rerenderCurrentTab();
       } catch (error) {
         console.error('Error removing passenger:', error);
         alert(i18n.t('common.deleteError') || 'Error removing passenger');

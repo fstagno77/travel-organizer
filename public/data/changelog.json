@@ -1,6 +1,26 @@
 {
   "versions": [
     {
+      "version": "0.17.0",
+      "date": "2026-02-11",
+      "changes": {
+        "it": [
+          "Code splitting: tripSlidePanel, airportAutocomplete e pdfUpload caricati on-demand, bundle iniziale ridotto del 20%",
+          "Font self-hosted: Inter, Material Icons e Material Symbols serviti localmente, nessuna dipendenza da Google Fonts CDN",
+          "Update ottimistico: le operazioni di cancellazione aggiornano la UI istantaneamente senza ricaricare dal server",
+          "Supabase SDK bundlato via Vite: eliminata dipendenza dal CDN jsDelivr, versionamento fisso",
+          "Metriche performance RUM: TTFB, FCP, tempo di caricamento trip e rendering tab (solo in development)"
+        ],
+        "en": [
+          "Code splitting: tripSlidePanel, airportAutocomplete and pdfUpload loaded on-demand, initial bundle reduced by 20%",
+          "Self-hosted fonts: Inter, Material Icons and Material Symbols served locally, no Google Fonts CDN dependency",
+          "Optimistic updates: delete operations update the UI instantly without re-fetching from server",
+          "Supabase SDK bundled via Vite: eliminated jsDelivr CDN dependency, fixed versioning",
+          "RUM performance metrics: TTFB, FCP, trip load time and tab render time (development only)"
+        ]
+      }
+    },
+    {
       "version": "0.16.3",
       "date": "2026-02-11",
       "changes": {

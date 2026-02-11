@@ -1,4 +1,6 @@
 // Entry point for index.html
+import '../perf.js';
+import '../supabaseClient.js';
 import '../utils.js';
 import '../i18n.js';
 import '../auth.js';

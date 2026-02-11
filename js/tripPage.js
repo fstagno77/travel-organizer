@@ -23,12 +23,36 @@
 
   window.tripPage = {
     get currentTripData() { return currentTripData; },
+    set currentTripData(v) { currentTripData = v; },
     esc,
     escAttr,
     loadTripFromUrl,
     switchToTab,
+    rerenderCurrentTab,
     initQuickUploadCard,
   };
+
+  // ===========================
+  // Lazy-loaded modules
+  // ===========================
+
+  async function loadSlidePanel() {
+    if (!window.tripSlidePanel) {
+      await import('./tripSlidePanel.js');
+    }
+    return window.tripSlidePanel;
+  }
+
+  /**
+   * Re-render the current tab and reset activities (which derives from flights+hotels)
+   */
+  function rerenderCurrentTab() {
+    const activeTab = document.querySelector('.segmented-control-btn.active')?.dataset.tab || 'flights';
+    // Reset the active tab and activities (since activities depends on flights+hotels)
+    tabRendered[activeTab] = false;
+    tabRendered.activities = false;
+    renderTab(activeTab);
+  }
 
   // ===========================
   // Init
@@ -106,6 +130,7 @@
       console.log('Rendering trip...');
       renderTrip(result.tripData);
       console.log('Trip rendered successfully');
+      if (typeof window.__perfMarkTripLoaded === 'function') window.__perfMarkTripLoaded();
     } catch (error) {
       console.error('Error loading trip:', error);
       console.error('Error stack:', error.stack);
@@ -487,7 +512,7 @@
 
     // --- Activities container delegation ---
     if (activitiesContainer) {
-      activitiesContainer.addEventListener('click', (e) => {
+      activitiesContainer.addEventListener('click', async (e) => {
         const target = e.target;
 
         // Activity link (navigate to flights/hotels tab)
@@ -519,7 +544,8 @@
           const activityId = customLink.dataset.activityId;
           const activity = currentTripData?.activities?.find(a => a.id === activityId);
           if (activity) {
-            window.tripSlidePanel.show('view', null, activity);
+            const sp = await loadSlidePanel();
+            sp.show('view', null, activity);
           }
           return;
         }
@@ -527,7 +553,8 @@
         // New activity button
         const newBtn = target.closest('.activity-new-btn');
         if (newBtn) {
-          window.tripSlidePanel.show('create', newBtn.dataset.date, null);
+          const sp = await loadSlidePanel();
+          sp.show('create', newBtn.dataset.date, null);
           return;
         }
       });
@@ -596,6 +623,7 @@
    */
   function renderTab(tabName) {
     if (tabRendered[tabName] || !currentTripData) return;
+    const t0 = performance.now();
     if (tabName === 'activities') {
       window.tripActivities.render(document.getElementById('activities-container'), currentTripData);
     } else if (tabName === 'flights') {
@@ -604,6 +632,9 @@
       window.tripHotels.render(document.getElementById('hotels-container'), currentTripData.hotels);
     }
     tabRendered[tabName] = true;
+    if (typeof window.__perfMarkTabRender === 'function') {
+      window.__perfMarkTabRender(performance.now() - t0);
+    }
   }
 
   /**
@@ -756,7 +787,7 @@
     });
 
     modal.querySelectorAll('.add-choice-block').forEach(block => {
-      block.addEventListener('click', () => {
+      block.addEventListener('click', async () => {
         const choice = block.dataset.choice;
         if (choice === 'flight' || choice === 'hotel') {
           closeModal();
@@ -768,7 +799,8 @@
           const defaultDate = (currentTripData && todayStr >= currentTripData.startDate && todayStr <= currentTripData.endDate)
             ? todayStr
             : (currentTripData?.startDate || todayStr);
-          window.tripSlidePanel.show('create', defaultDate, null);
+          const sp = await loadSlidePanel();
+          sp.show('create', defaultDate, null);
         }
       });
     });
@@ -870,6 +902,7 @@
 
       try {
         // Upload files directly to Storage, then send only paths to backend
+        await import('./pdfUpload.js');
         const pdfs = await pdfUpload.uploadFiles(files);
 
         const response = await utils.authFetch('/.netlify/functions/add-booking', {
@@ -1318,6 +1351,18 @@
             if (!response.ok) {
               throw new Error('Failed to delete passenger');
             }
+            // Optimistic update: remove passenger from local data
+            for (const f of (currentTripData?.flights || [])) {
+              if (f.bookingReference?.toLowerCase()?.trim() === bookingRef?.toLowerCase()?.trim()) {
+                f.passengers = (f.passengers || []).filter(p =>
+                  p.name?.toLowerCase()?.trim() !== passengerName?.toLowerCase()?.trim()
+                );
+              }
+            }
+            // Remove flights with 0 passengers
+            currentTripData.flights = (currentTripData.flights || []).filter(f =>
+              !f.passengers || f.passengers.length > 0
+            );
           } else {
             // Delete entire items
             const ids = cb.value.split(',');
@@ -1334,13 +1379,19 @@
                 throw new Error('Failed to delete booking');
               }
             }
+            // Optimistic update: remove items from local data
+            const deleteType = cb.dataset.type;
+            const deleteIds = new Set(ids);
+            if (deleteType === 'flight') {
+              currentTripData.flights = (currentTripData.flights || []).filter(f => !deleteIds.has(f.id));
+            } else {
+              currentTripData.hotels = (currentTripData.hotels || []).filter(h => !deleteIds.has(h.id));
+            }
           }
         }
 
-        const activeTab = document.querySelector('.segmented-control-btn.active')?.dataset.tab;
         closeModal();
-        await loadTripFromUrl();
-        if (activeTab) switchToTab(activeTab);
+        rerenderCurrentTab();
         utils.showToast(i18n.t('trip.deleteBookingSuccess') || 'Bookings deleted', 'success');
       } catch (error) {
         console.error('Error deleting bookings:', error);
@@ -1594,8 +1645,12 @@
     const cancelBtn = document.getElementById('edit-panel-cancel');
     const saveBtn = document.getElementById('edit-panel-save');
 
-    if (type === 'flight' && typeof AirportAutocomplete !== 'undefined') {
-      AirportAutocomplete.init(panelBody);
+    if (type === 'flight') {
+      import('./airportAutocomplete.js').then(() => {
+        if (typeof AirportAutocomplete !== 'undefined') {
+          AirportAutocomplete.init(panelBody);
+        }
+      });
     }
 
     const closePanel = () => {
@@ -1763,12 +1818,15 @@
 
         closeModal();
 
-        // Check if this was the last booking
-        const remainingFlights = (currentTripData.flights || []).filter(f => f.id !== itemId);
-        const remainingHotels = (currentTripData.hotels || []).filter(h => h.id !== itemId);
+        // Optimistic update: remove item from local data
+        if (type === 'flight') {
+          currentTripData.flights = (currentTripData.flights || []).filter(f => f.id !== itemId);
+        } else {
+          currentTripData.hotels = (currentTripData.hotels || []).filter(h => h.id !== itemId);
+        }
 
-        if (remainingFlights.length === 0 && remainingHotels.length === 0) {
-          // No more bookings - delete the trip and redirect to home
+        // Check if this was the last booking
+        if ((currentTripData.flights || []).length === 0 && (currentTripData.hotels || []).length === 0) {
           try {
             await utils.authFetch(`/.netlify/functions/delete-trip?id=${encodeURIComponent(currentTripData.id)}`, {
               method: 'DELETE'
@@ -1780,10 +1838,7 @@
           return;
         }
 
-        // Get current tab to restore after reload
-        const currentTab = document.querySelector('.segmented-control-btn.active')?.dataset.tab || 'flights';
-
-        // Animate card removal
+        // Animate card removal, then re-render tab
         const card = document.querySelector(`.${type}-card[data-id="${itemId}"]`);
         if (card) {
           card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
@@ -1792,11 +1847,7 @@
           await new Promise(resolve => setTimeout(resolve, 300));
         }
 
-        // Reload trip data
-        await loadTripFromUrl();
-
-        // Restore tab
-        switchToTab(currentTab);
+        rerenderCurrentTab();
       } catch (error) {
         console.error('Error deleting item:', error);
         utils.showToast(i18n.t('common.error') || 'Error deleting', 'error');
@@ -1896,6 +1947,7 @@
 
     try {
       // Upload file directly to Storage, then send only path to backend
+      await import('./pdfUpload.js');
       const pdfs = await pdfUpload.uploadFiles([file]);
 
       const response = await utils.authFetch('/.netlify/functions/add-booking', {
