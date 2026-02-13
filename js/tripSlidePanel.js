@@ -189,11 +189,20 @@
       ? `<div class="activity-view-field">${buildPlaceCardHtml(activity.location, false)}</div>`
       : '';
 
+    const addressText = activity.address || (activity.location ? activity.location.address : '');
+    const addressViewHtml = addressText
+      ? `<div class="activity-view-field">
+           <div class="activity-view-label" data-i18n="activity.address">${i18n.t('activity.address') || 'Address'}</div>
+           <div class="activity-view-value">${esc(addressText)}</div>
+         </div>`
+      : '';
+
     return `
       <div class="activity-view-field">
         <div class="activity-view-label" data-i18n="activity.name">${i18n.t('activity.name') || 'Name'}</div>
         <div class="activity-view-value">${esc(activity.name)}</div>
       </div>
+      ${addressViewHtml}
       ${locationViewHtml}
       <div class="activity-view-field">
         <div class="activity-view-label" data-i18n="activity.date">${i18n.t('activity.date') || 'Date'}</div>
@@ -260,11 +269,60 @@
    * @param {boolean} disabled - Whether the picker is disabled
    * @returns {string} HTML
    */
+  /**
+   * Parse a user-typed time string into "HH:MM" (24h) format.
+   * Accepts: "14:30", "2:30PM", "2:30 pm", "14.30", "230pm", "9", "9pm", "930", etc.
+   * @returns {string|null} "HH:MM" or null if invalid
+   */
+  function parseTimeInput(raw) {
+    if (!raw) return null;
+    const s = raw.trim().toLowerCase();
+    if (!s) return null;
+
+    let hours, minutes;
+    const isPM = /p/.test(s);
+    const isAM = /a/.test(s);
+    const digits = s.replace(/[^0-9:.\-]/g, '');
+
+    // Try "H:MM" or "HH:MM" or "H.MM" or "HH.MM"
+    const colonMatch = digits.match(/^(\d{1,2})[:.](\d{2})$/);
+    if (colonMatch) {
+      hours = parseInt(colonMatch[1]);
+      minutes = parseInt(colonMatch[2]);
+    } else {
+      // Pure digits: 1-4 digits
+      const nums = digits.replace(/[^0-9]/g, '');
+      if (nums.length === 1 || nums.length === 2) {
+        // "9" → 9:00, "14" → 14:00
+        hours = parseInt(nums);
+        minutes = 0;
+      } else if (nums.length === 3) {
+        // "930" → 9:30
+        hours = parseInt(nums[0]);
+        minutes = parseInt(nums.substring(1));
+      } else if (nums.length === 4) {
+        // "1430" → 14:30
+        hours = parseInt(nums.substring(0, 2));
+        minutes = parseInt(nums.substring(2));
+      } else {
+        return null;
+      }
+    }
+
+    // Apply AM/PM
+    if (isPM && hours < 12) hours += 12;
+    if (isAM && hours === 12) hours = 0;
+
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+
+    return String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
+  }
+
   function buildTimePicker(id, value, disabled) {
     const displayValue = value ? formatTime24to12(value) : '';
     const clearHidden = value ? '' : ' hidden';
     return `<div class="time-picker${disabled ? ' disabled' : ''}" id="${id}" data-value="${value || ''}">
-      <input type="text" class="form-input time-picker-input" readonly
+      <input type="text" class="form-input time-picker-input"
              placeholder="--:--" value="${displayValue}"${disabled ? ' disabled' : ''}>
       <button type="button" class="time-picker-clear"${clearHidden} tabindex="-1">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -347,13 +405,45 @@
       const dropdown = picker.querySelector('.time-picker-dropdown');
       const clearBtn = picker.querySelector('.time-picker-clear');
 
-      input.addEventListener('click', () => {
-        if (input.disabled) return;
-        if (dropdown.classList.contains('open')) {
-          closeAllDropdowns();
+      // Commit typed value: parse, validate, and apply
+      function commitTypedValue() {
+        const parsed = parseTimeInput(input.value);
+        if (parsed) {
+          selectTime(picker, parsed);
+        } else if (input.value.trim() === '') {
+          clearPicker(picker);
         } else {
-          openDropdown(picker);
+          // Invalid input — revert to previous value
+          input.value = picker.dataset.value ? formatTime24to12(picker.dataset.value) : '';
         }
+      }
+
+      input.addEventListener('focus', () => {
+        if (input.disabled) return;
+        input.select();
+        openDropdown(picker);
+      });
+
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          closeAllDropdowns();
+          commitTypedValue();
+          input.blur();
+        } else if (e.key === 'Escape') {
+          closeAllDropdowns();
+          input.value = picker.dataset.value ? formatTime24to12(picker.dataset.value) : '';
+          input.blur();
+        }
+      });
+
+      input.addEventListener('blur', () => {
+        // Small delay to allow dropdown click to fire first
+        setTimeout(() => {
+          if (!dropdown.classList.contains('open')) {
+            commitTypedValue();
+          }
+        }, 150);
       });
 
       dropdown.addEventListener('click', (e) => {
@@ -420,6 +510,10 @@
       <div class="form-group">
         <label data-i18n="activity.name">${i18n.t('activity.name') || 'Name'}</label>
         <input type="text" class="form-input" id="activity-name" maxlength="100" required value="${esc(act.name || '')}" placeholder="${i18n.t('activity.namePlaceholder') || 'e.g. Museum visit, Restaurant...'}">
+      </div>
+      <div class="form-group">
+        <label data-i18n="activity.address">${i18n.t('activity.address') || 'Address'}</label>
+        <input type="text" class="form-input" id="activity-address" value="${esc(act.address || (act.location ? act.location.address : '') || '')}" placeholder="${i18n.t('activity.addressPlaceholder') || 'e.g. Via Roma 1, or paste a Google Maps link'}">
         <div id="activity-place-card">${existingLocationHtml}</div>
       </div>
       <div class="form-group">
@@ -623,8 +717,9 @@
     // Time pickers (Google Calendar-style)
     initTimePickers();
 
-    // Google Maps URL detection on name field
+    // Google Maps URL detection on address field
     const nameInput = document.getElementById('activity-name');
+    const addressInput = document.getElementById('activity-address');
     const placeCardContainer = document.getElementById('activity-place-card');
 
     function showPlaceCard(loc) {
@@ -636,8 +731,8 @@
         removeBtn.addEventListener('click', () => {
           locationData = null;
           placeCardContainer.innerHTML = '';
-          nameInput.value = '';
-          nameInput.focus();
+          addressInput.value = '';
+          addressInput.focus();
         });
       }
     }
@@ -645,7 +740,7 @@
     async function fetchGoogleMapsData(url) {
       // Show loading state
       placeCardContainer.innerHTML = `<div class="place-card-loading"><div class="spinner-sm"></div><span>${i18n.t('activity.locationLoading') || 'Loading place...'}</span></div>`;
-      nameInput.value = '';
+      addressInput.value = '';
 
       try {
         const response = await utils.authFetch('/.netlify/functions/google-maps-proxy', {
@@ -668,7 +763,7 @@
         }
 
         data.mapsUrl = url;
-        nameInput.value = data.name || '';
+        addressInput.value = data.address || '';
         showPlaceCard(data);
       } catch (error) {
         console.error('Google Maps fetch error:', error);
@@ -677,11 +772,15 @@
       }
     }
 
-    nameInput.addEventListener('input', () => {
-      const val = nameInput.value.trim();
+    addressInput.addEventListener('input', () => {
+      const val = addressInput.value.trim();
       const mapsUrl = extractGoogleMapsUrl(val);
       if (mapsUrl) {
         fetchGoogleMapsData(mapsUrl);
+      } else if (locationData) {
+        // User is typing plain text over a previously resolved location
+        locationData = null;
+        placeCardContainer.innerHTML = '';
       }
     });
 
@@ -692,8 +791,8 @@
         existingRemoveBtn.addEventListener('click', () => {
           locationData = null;
           placeCardContainer.innerHTML = '';
-          nameInput.value = '';
-          nameInput.focus();
+          addressInput.value = '';
+          addressInput.focus();
         });
       }
     }
@@ -827,6 +926,7 @@
         return;
       }
 
+      const address = document.getElementById('activity-address').value.trim();
       const description = document.getElementById('activity-description').value.trim();
       const startTime = getTimePickerValue('activity-start-time');
       const endTime = getTimePickerValue('activity-end-time');
@@ -858,7 +958,7 @@
         const body = {
           action: isCreate ? 'create' : 'update',
           tripId: window.tripPage.currentTripData.id,
-          activity: { name, description, date: activityDate, startTime, endTime, urls, location: locationData }
+          activity: { name, address, description, date: activityDate, startTime, endTime, urls, location: locationData }
         };
 
         if (!isCreate) {

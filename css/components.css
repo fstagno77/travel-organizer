@@ -2045,6 +2045,282 @@ input[type="time"].form-input {
   background-color: var(--color-gray-50);
 }
 
+/* ==============================
+   Activities View Switcher
+   ============================== */
+
+.activity-view-switcher {
+  display: flex;
+  gap: var(--spacing-1);
+  margin-bottom: var(--spacing-4);
+  background-color: var(--color-gray-100);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-1);
+  width: fit-content;
+}
+
+.activity-view-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-gray-500);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.activity-view-btn:hover:not(.active):not([disabled]) {
+  background-color: rgba(0, 0, 0, 0.06);
+  color: var(--color-gray-700);
+}
+
+.activity-view-btn.active {
+  background-color: var(--color-white);
+  color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.activity-view-btn[disabled] {
+  color: var(--color-gray-300);
+  cursor: not-allowed;
+}
+
+.activity-view-btn svg {
+  display: block;
+}
+
+/* ==============================
+   Activities Card View
+   ============================== */
+
+.activity-day--cards {
+  display: flex;
+  gap: var(--spacing-5);
+  margin-bottom: var(--spacing-5);
+}
+
+.activity-day--cards .activity-day-header {
+  flex-shrink: 0;
+  width: 72px;
+  padding-top: var(--spacing-3);
+}
+
+.activity-card-row {
+  display: flex;
+  gap: var(--spacing-3);
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  padding-bottom: var(--spacing-2);
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.activity-card-row::-webkit-scrollbar {
+  height: 4px;
+}
+
+.activity-card-row::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.activity-card-row::-webkit-scrollbar-thumb {
+  background: var(--color-gray-200);
+  border-radius: 2px;
+}
+
+@media (max-width: 640px) {
+  .activity-day--cards {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .activity-day--cards .activity-day-header {
+    width: auto;
+    display: flex;
+    align-items: baseline;
+    gap: var(--spacing-2);
+    padding-bottom: var(--spacing-2);
+  }
+
+  .activity-day--cards .activity-day-number {
+    font-size: 1.5rem;
+  }
+}
+
+/* Card Base */
+.activity-card {
+  display: flex;
+  flex-direction: column;
+  width: 260px;
+  min-width: 260px;
+  flex-shrink: 0;
+  background: var(--color-white);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  scroll-snap-align: start;
+}
+
+.activity-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Card Header */
+.activity-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-2) var(--spacing-3);
+  color: var(--color-white);
+  min-height: 44px;
+}
+
+.activity-card-header--flight {
+  background: var(--color-primary);
+}
+
+.activity-card-header--hotel {
+  background: var(--color-success);
+}
+
+.activity-card-header--custom {
+  background: var(--color-warning);
+}
+
+.activity-card-header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.activity-card-icon {
+  font-size: 18px;
+  color: var(--color-white);
+}
+
+.activity-card-time {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-white);
+  line-height: 1;
+}
+
+.activity-card-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--spacing-1) var(--spacing-2);
+  background: rgba(255, 255, 255, 0.15);
+  color: var(--color-white);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+/* Card Body */
+.activity-card-body {
+  padding: var(--spacing-3);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.activity-card-title {
+  display: block;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-gray-800);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.activity-card-subtitle {
+  display: block;
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-500);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.activity-card-detail {
+  display: block;
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-400);
+  margin-top: 2px;
+}
+
+/* Card Footer */
+.activity-card-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  padding: var(--spacing-2) var(--spacing-3);
+  background: var(--color-gray-50);
+  border-top: 1px solid var(--color-gray-100);
+  color: var(--color-gray-500);
+  font-size: var(--font-size-xs);
+  min-height: 32px;
+}
+
+.activity-card-footer:empty {
+  display: none;
+}
+
+.activity-card-footer-icon {
+  font-size: 14px;
+  color: var(--color-gray-400);
+}
+
+.activity-card-footer-text {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--color-gray-600);
+}
+
+.activity-card-footer-meta {
+  color: var(--color-gray-400);
+  white-space: nowrap;
+}
+
+/* Add Activity Card (+) */
+.activity-card--add {
+  min-width: 60px;
+  max-width: 60px;
+  background: var(--color-gray-50);
+  border: 2px dashed var(--color-gray-200);
+  box-shadow: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-gray-400);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  margin-top: 0;
+  padding: 0;
+}
+
+.activity-card--add:hover {
+  border-color: var(--color-gray-400);
+  color: var(--color-gray-600);
+  background: var(--color-gray-100);
+  transform: none;
+  box-shadow: none;
+}
+
 /* Highlight card animation (for activity link navigation) */
 @keyframes highlightPulse {
   0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }

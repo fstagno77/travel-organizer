@@ -101,8 +101,8 @@ CREATE INDEX IF NOT EXISTS idx_email_processing_log_email_from ON public.email_p
 CREATE INDEX IF NOT EXISTS idx_email_processing_log_created_at ON public.email_processing_log(created_at);
 CREATE INDEX IF NOT EXISTS idx_email_processing_log_status ON public.email_processing_log(status);
 
--- No RLS on this table - it's for admin/debugging only, accessed via service role
--- If you want users to see their own logs, add RLS policies similar to pending_bookings
+-- RLS enabled with no public policies - only service role can access
+ALTER TABLE public.email_processing_log ENABLE ROW LEVEL SECURITY;
 
 -- ============================================
 -- PHASE 3: Add index on profiles.email for fast lookup

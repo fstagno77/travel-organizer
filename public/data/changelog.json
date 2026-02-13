@@ -1,6 +1,24 @@
 {
   "versions": [
     {
+      "version": "0.18.0",
+      "date": "2026-02-13",
+      "changes": {
+        "it": [
+          "Nuovo campo Indirizzo nelle attività: separato dal nome, accetta testo libero o link Google Maps",
+          "Orario personalizzato: ora puoi digitare un orario libero oltre a scegliere dalla lista (es. 14:30, 2:30pm, 930)",
+          "Vista schede attività: nuova visualizzazione a card compatte con switcher lista/schede",
+          "Abilitato RLS sulla tabella email_processing_log per maggiore sicurezza"
+        ],
+        "en": [
+          "New Address field in activities: separated from name, accepts free text or Google Maps links",
+          "Custom time input: you can now type a free-form time in addition to picking from the list (e.g. 14:30, 2:30pm, 930)",
+          "Activity card view: new compact card layout with list/card view switcher",
+          "Enabled RLS on email_processing_log table for improved security"
+        ]
+      }
+    },
+    {
       "version": "0.17.0",
       "date": "2026-02-11",
       "changes": {

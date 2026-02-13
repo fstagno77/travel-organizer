@@ -181,6 +181,7 @@ async function handleCreate(tripData, tripId, activity, attachments) {
   const newActivity = {
     id,
     name: activity.name.trim(),
+    address: (activity.address || '').trim(),
     description: (activity.description || '').trim(),
     date: activity.date,
     startTime: activity.startTime || null,
@@ -249,6 +250,7 @@ async function handleUpdate(tripData, tripId, activityId, activity, attachments,
       }
       existing.name = activity.name.trim();
     }
+    if (activity.address !== undefined) existing.address = (activity.address || '').trim();
     if (activity.description !== undefined) existing.description = (activity.description || '').trim();
     if (activity.date !== undefined) existing.date = activity.date;
     if (activity.startTime !== undefined) existing.startTime = activity.startTime || null;
