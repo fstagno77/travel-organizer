@@ -3730,7 +3730,7 @@ input[type="time"].form-input {
 }
 
 @media (max-width: 640px) {
-  .activity-card--add {
+  .activity-card.activity-card--add {
     width: 100%;
     min-width: 100%;
     max-width: 100%;
