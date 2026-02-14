@@ -1208,8 +1208,9 @@
 /* Modal container */
 .trip-modal {
   background: linear-gradient(to bottom right, #f8fafc, #eff6ff, #eef2ff);
-  border-radius: 0;
-  height: 100vh;
+  border-radius: 1.25rem 1.25rem 0 0;
+  height: calc(100vh - 20px);
+  margin-top: 20px;
   display: flex;
   flex-direction: column;
   padding: 30px 10px 0;
@@ -1217,12 +1218,6 @@
   will-change: transform, translate;
   animation: tripModalSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
   transition: translate var(--transition-normal);
-}
-
-@media (min-width: 768px) {
-  .trip-modal {
-    border-radius: 1.25rem 1.25rem 0 0;
-  }
 }
 
 body.slide-panel-open .trip-modal {
