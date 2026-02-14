@@ -1208,7 +1208,7 @@
 /* Modal container */
 .trip-modal {
   background: linear-gradient(to bottom right, #f8fafc, #eff6ff, #eef2ff);
-  border-radius: 1.25rem 1.25rem 0 0;
+  border-radius: 0;
   height: 100vh;
   display: flex;
   flex-direction: column;
@@ -1217,6 +1217,12 @@
   will-change: transform, translate;
   animation: tripModalSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
   transition: translate var(--transition-normal);
+}
+
+@media (min-width: 768px) {
+  .trip-modal {
+    border-radius: 1.25rem 1.25rem 0 0;
+  }
 }
 
 body.slide-panel-open .trip-modal {
