@@ -454,6 +454,7 @@
       const addCardBtn = `
         <button class="activity-card activity-card--add activity-new-btn" data-date="${date}">
           ${icons.plusCircle}
+          <span class="activity-card-add-label">Aggiungi attivit\u00e0</span>
         </button>
       `;
 

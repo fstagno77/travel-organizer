@@ -3730,6 +3730,29 @@ input[type="time"].form-input {
   box-shadow: none;
 }
 
+.activity-card-add-label {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .activity-card--add {
+    width: 100%;
+    min-width: 100%;
+    max-width: 100%;
+    min-height: auto;
+    height: auto;
+    flex-direction: row;
+    padding: var(--spacing-3) var(--spacing-4);
+    gap: var(--spacing-2);
+  }
+
+  .activity-card-add-label {
+    display: inline;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+  }
+}
+
 /* ==============================
    Calendar View (monthly grid)
    ============================== */
