@@ -33,6 +33,7 @@
   },
   "trip": {
     "new": "Nuovo Viaggio",
+    "newShort": "Viaggio",
     "createTitle": "Crea nuovo viaggio",
     "uploadHint": "Trascina qui i PDF o clicca per selezionare",
     "uploadHintMobile": "Tocca per selezionare un PDF",

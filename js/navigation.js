@@ -127,7 +127,8 @@ const navigation = {
     const ctaBtn = isAuthenticated ? `
       <button class="header-cta-btn" id="new-trip-btn">
         ${plusSvg}
-        <span data-i18n="trip.new">Nuovo Viaggio</span>
+        <span class="header-cta-label-full" data-i18n="trip.new">Nuovo Viaggio</span>
+        <span class="header-cta-label-short" data-i18n="trip.newShort">Viaggio</span>
       </button>
     ` : '';
 

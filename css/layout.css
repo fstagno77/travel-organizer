@@ -205,6 +205,23 @@ main {
   height: 18px;
 }
 
+/* Mobile: show short label, hide full label */
+.header-cta-label-short {
+  display: inline;
+}
+.header-cta-label-full {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .header-cta-label-short {
+    display: none;
+  }
+  .header-cta-label-full {
+    display: inline;
+  }
+}
+
 .header-nav {
   display: none;
   align-items: center;

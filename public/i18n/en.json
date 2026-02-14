@@ -33,6 +33,7 @@
   },
   "trip": {
     "new": "New Trip",
+    "newShort": "Trip",
     "createTitle": "Create new trip",
     "uploadHint": "Drop PDF files here or click to select",
     "uploadHintMobile": "Tap to select a PDF",
