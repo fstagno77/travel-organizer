@@ -3732,13 +3732,17 @@ input[type="time"].form-input {
 @media (max-width: 640px) {
   .activity-card.activity-card--add {
     width: 100%;
-    min-width: 100%;
+    min-width: 0;
     max-width: 100%;
-    min-height: auto;
     height: auto;
+    min-height: 0;
     flex-direction: row;
+    align-self: auto;
     padding: var(--spacing-3) var(--spacing-4);
     gap: var(--spacing-2);
+    border: 1.5px dashed var(--color-gray-300);
+    box-shadow: none;
+    background: transparent;
   }
 
   .activity-card-add-label {
