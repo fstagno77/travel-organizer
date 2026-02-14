@@ -1,6 +1,28 @@
 {
   "versions": [
     {
+      "version": "0.19.0",
+      "date": "2026-02-14",
+      "changes": {
+        "it": [
+          "Nuovo design pagina viaggio: layout a modale full-screen con angoli arrotondati superiori",
+          "Hero fotografica: la foto di copertina del viaggio diventa l'header con titolo e date centrati",
+          "Tab bar floating: Attività, Voli e Hotel in una pillola bianca sovrapposta alla foto",
+          "Menu tre puntini integrato nella tab bar con opzione Rinomina",
+          "Pulsante chiudi (X) in alto a destra sulla foto per tornare alla pagina precedente",
+          "Rimossa la barra di navigazione dalla pagina viaggio per un'esperienza più immersiva"
+        ],
+        "en": [
+          "New trip page design: full-screen modal layout with rounded top corners",
+          "Photo hero: trip cover photo becomes the header with centered title and dates",
+          "Floating tab bar: Activities, Flights and Hotels in a white pill overlapping the photo",
+          "Three-dot menu integrated in the tab bar with Rename option",
+          "Close button (X) on the top right of the photo to go back to previous page",
+          "Removed navigation bar from trip page for a more immersive experience"
+        ]
+      }
+    },
+    {
       "version": "0.18.0",
       "date": "2026-02-13",
       "changes": {

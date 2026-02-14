@@ -76,24 +76,23 @@
         }
       }
 
-      // Initialize navigation - only header is critical before trip render
-      await navigation.loadHeader();
-      navigation.setActiveNavLink();
-
-      // Re-apply translations after header is loaded
+      // Apply translations
       i18n.apply();
 
-      // Fire-and-forget: footer is not critical
-      navigation.loadFooter();
+      // Initialize close button
+      document.getElementById('trip-close-btn')?.addEventListener('click', () => {
+        if (document.referrer && new URL(document.referrer).origin === window.location.origin) {
+          history.back();
+        } else {
+          window.location.href = '/';
+        }
+      });
 
       // Load trip data from URL parameter (requires auth)
       if (!auth?.requireAuth()) {
         return;
       }
       await loadTripFromUrl();
-
-      // Start pending bookings polling after trip is rendered (non-blocking)
-      setTimeout(() => navigation.startPendingBookingsPolling(), 0);
 
     } catch (error) {
       console.error('Error initializing trip page:', error);
@@ -172,21 +171,17 @@
     const titleEl = document.getElementById('trip-title');
     titleEl.textContent = title;
 
-    // Add rename icon next to title
-    const renameBtn = document.createElement('button');
-    renameBtn.className = 'trip-title-edit-btn';
-    renameBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-    </svg>`;
-    renameBtn.addEventListener('click', () => showRenameModal(tripData.id));
-    titleEl.appendChild(renameBtn);
-
     // Update dates
     if (tripData.startDate && tripData.endDate) {
       const start = utils.formatDate(tripData.startDate, lang, { month: 'short', day: 'numeric' });
       const end = utils.formatDate(tripData.endDate, lang, { month: 'short', day: 'numeric', year: 'numeric' });
       document.getElementById('trip-dates').textContent = `${start} - ${end}`;
+    }
+
+    // Set hero background image from cover photo
+    const hero = document.getElementById('trip-hero');
+    if (tripData.coverPhoto?.url) {
+      hero.style.backgroundImage = `url('${tripData.coverPhoto.url}')`;
     }
 
     // Render content
@@ -199,23 +194,23 @@
    * @param {Object} tripData
    */
   function renderTripContent(container, tripData) {
-    const html = `
-      <div class="trip-content-header mb-6">
-        <div class="segmented-control">
-          <div class="segmented-indicator"></div>
-          <button class="segmented-control-btn" data-tab="activities">
-            <span class="material-symbols-outlined" style="font-size: 20px;">calendar_today</span>
-            <span data-i18n="trip.activities">Activities</span>
-          </button>
-          <button class="segmented-control-btn" data-tab="flights">
-            <span class="material-symbols-outlined" style="font-size: 20px;">travel</span>
-            <span data-i18n="trip.flights">Flights</span>
-          </button>
-          <button class="segmented-control-btn" data-tab="hotels">
-            <span class="material-symbols-outlined" style="font-size: 20px;">bed</span>
-            <span data-i18n="trip.hotels">Hotels</span>
-          </button>
-        </div>
+    // Render floating tab bar inside hero
+    const heroTabs = document.getElementById('trip-hero-tabs');
+    heroTabs.innerHTML = `
+      <div class="segmented-control">
+        <div class="segmented-indicator"></div>
+        <button class="segmented-control-btn" data-tab="activities">
+          <span class="material-symbols-outlined" style="font-size: 20px;">calendar_today</span>
+          <span data-i18n="trip.activities">Activities</span>
+        </button>
+        <button class="segmented-control-btn" data-tab="flights">
+          <span class="material-symbols-outlined" style="font-size: 20px;">travel</span>
+          <span data-i18n="trip.flights">Flights</span>
+        </button>
+        <button class="segmented-control-btn" data-tab="hotels">
+          <span class="material-symbols-outlined" style="font-size: 20px;">bed</span>
+          <span data-i18n="trip.hotels">Hotels</span>
+        </button>
         <div class="section-menu" id="content-menu">
           <button class="section-menu-btn" id="content-menu-btn">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -225,6 +220,13 @@
             </svg>
           </button>
           <div class="section-dropdown" id="content-dropdown">
+            <button class="section-dropdown-item" data-action="rename">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+              <span data-i18n="trip.rename">Rinomina</span>
+            </button>
             <button class="section-dropdown-item" data-action="add-booking">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -263,7 +265,9 @@
           </div>
         </div>
       </div>
+    `;
 
+    const html = `
       <div id="activities-tab" class="tab-content">
         <div id="activities-container"></div>
       </div>
@@ -306,6 +310,7 @@
 
     // Apply translations
     i18n.apply(container);
+    i18n.apply(heroTabs);
   }
 
   // ===========================
@@ -700,7 +705,9 @@
         const action = item.dataset.action;
         dropdown?.classList.remove('active');
 
-        if (action === 'delete') {
+        if (action === 'rename') {
+          showRenameModal(tripId);
+        } else if (action === 'delete') {
           deleteTrip(tripId);
         } else if (action === 'delete-booking') {
           showDeleteBookingModal(tripId);
