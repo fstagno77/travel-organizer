@@ -2921,6 +2921,10 @@ input[type="time"].form-input {
   background: rgb(203 213 225);
 }
 
+.activity-header-add-btn .activity-header-add-icon {
+  display: none;
+}
+
 .activity-header-add-btn:hover {
   background: var(--color-primary-dark);
 }
@@ -2935,8 +2939,24 @@ input[type="time"].form-input {
     flex-wrap: wrap;
   }
   .activity-header-add-btn {
-    flex: 1;
+    flex: none !important;
+    width: 36px;
+    height: 36px;
+    padding: 0 !important;
+    border-radius: 10px !important;
     justify-content: center;
+    margin-left: auto;
+  }
+  .activity-header-add-btn::before {
+    display: none;
+  }
+  .activity-header-add-btn .activity-header-add-label {
+    display: none;
+  }
+  .activity-header-add-btn .activity-header-add-icon {
+    display: block;
+    width: 20px;
+    height: 20px;
   }
   .activity-dropdown {
     position: fixed;
