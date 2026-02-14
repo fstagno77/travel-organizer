@@ -18,7 +18,6 @@ export default defineConfig({
         login: resolve(__dirname, 'login.html'),
         profile: resolve(__dirname, 'profile.html'),
         'pending-bookings': resolve(__dirname, 'pending-bookings.html'),
-        changelog: resolve(__dirname, 'changelog.html'),
         share: resolve(__dirname, 'share.html'),
       },
       output: {

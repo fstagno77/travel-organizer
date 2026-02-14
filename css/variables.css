@@ -8,8 +8,8 @@
   --breakpoint-xl: 1200px;
 
   /* Colors - Primary */
-  --color-primary: #0066cc;
-  --color-primary-dark: #004c99;
+  --color-primary: #2163f6;
+  --color-primary-dark: #1a50c7;
   --color-primary-light: #e6f0fa;
 
   /* Colors - Secondary */
@@ -25,11 +25,20 @@
   --color-gray-200: #e5e7eb;
   --color-gray-300: #d1d5db;
   --color-gray-400: #9ca3af;
-  --color-gray-500: #6b7280;
+  --color-gray-500: #566378;
   --color-gray-600: #4b5563;
   --color-gray-700: #374151;
   --color-gray-800: #1f2937;
   --color-gray-900: #111827;
+
+  /* Colors - Hotel green theme (base: #2e9568) */
+  --color-hotel-50: #edf7f2;
+  --color-hotel-100: #d1ebdf;
+  --color-hotel-200: #a3d7bf;
+  --color-hotel-300: #6bbf9a;
+  --color-hotel-600: #2e9568;
+  --color-hotel-700: #257a56;
+  --color-hotel-800: #1c5f43;
 
   /* Colors - Semantic */
   --color-success: #10b981;

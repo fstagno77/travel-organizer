@@ -30,6 +30,7 @@
     switchToTab,
     rerenderCurrentTab,
     initQuickUploadCard,
+    loadSlidePanel,
   };
 
   // ===========================
@@ -59,10 +60,48 @@
   // ===========================
 
   /**
+   * Pre-populate hero from cached trip data (instant, no network)
+   */
+  function preloadHeroFromCache() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tripId = urlParams.get('id');
+    if (!tripId) return;
+
+    try {
+      const cached = JSON.parse(sessionStorage.getItem('trips_cache'));
+      if (!cached?.trips) return;
+      const trip = cached.trips.find(t => t.id === tripId);
+      if (!trip) return;
+
+      const lang = document.documentElement.lang || 'it';
+      const hero = document.getElementById('trip-hero');
+      const titleEl = document.getElementById('trip-title');
+      const datesEl = document.getElementById('trip-dates');
+
+      if (trip.coverPhoto?.url && hero) {
+        hero.style.backgroundImage = `url('${trip.coverPhoto.url}')`;
+      }
+      if (trip.title && titleEl) {
+        titleEl.textContent = trip.title[lang] || trip.title.en || trip.title.it || '';
+      }
+      if (trip.startDate && trip.endDate && datesEl) {
+        const start = utils.formatDate(trip.startDate, lang, { month: 'short', day: 'numeric' });
+        const end = utils.formatDate(trip.endDate, lang, { month: 'short', day: 'numeric', year: 'numeric' });
+        datesEl.textContent = `${start} - ${end}`;
+      }
+    } catch (e) {
+      // Cache miss or parse error — no problem, API will fill it
+    }
+  }
+
+  /**
    * Initialize the trip page
    */
   async function init() {
     try {
+      // Pre-populate hero instantly from homepage cache (before any async work)
+      preloadHeroFromCache();
+
       // Initialize i18n first
       await i18n.init();
 
@@ -79,14 +118,24 @@
       // Apply translations
       i18n.apply();
 
-      // Initialize close button
+      // Initialize close button with slide-out animation
       document.getElementById('trip-close-btn')?.addEventListener('click', () => {
-        if (document.referrer && new URL(document.referrer).origin === window.location.origin) {
-          history.back();
-        } else {
-          window.location.href = '/';
-        }
+        const modal = document.querySelector('.trip-modal');
+        document.body.classList.add('closing');
+        modal.classList.add('closing');
+        modal.addEventListener('animationend', () => {
+          if (document.referrer && new URL(document.referrer).origin === window.location.origin) {
+            history.back();
+          } else {
+            window.location.href = '/';
+          }
+        }, { once: true });
       });
+
+      // Initialize trip creator (for "Change photo" feature)
+      if (window.tripCreator) {
+        window.tripCreator.init();
+      }
 
       // Load trip data from URL parameter (requires auth)
       if (!auth?.requireAuth()) {
@@ -227,12 +276,13 @@
               </svg>
               <span data-i18n="trip.rename">Rinomina</span>
             </button>
-            <button class="section-dropdown-item" data-action="add-booking">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
+            <button class="section-dropdown-item" data-action="change-photo">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                <polyline points="21 15 16 10 5 21"></polyline>
               </svg>
-              <span data-i18n="modal.add">Add</span>
+              <span data-i18n="trip.changePhoto">Cambia foto</span>
             </button>
             <button class="section-dropdown-item" data-action="share">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -245,7 +295,7 @@
               <span data-i18n="trip.share">Share</span>
             </button>
             <div class="section-dropdown-divider"></div>
-            <button class="section-dropdown-item section-dropdown-item--danger" data-action="delete-booking">
+            <button class="section-dropdown-item" data-action="delete-booking">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="12" r="10"></circle>
                 <line x1="15" y1="9" x2="9" y2="15"></line>
@@ -512,6 +562,14 @@
         // Download PDF
         const pdfBtn = target.closest('.btn-download-pdf');
         if (pdfBtn) { e.stopPropagation(); handlePdfDownload(pdfBtn.dataset.pdfPath, pdfBtn); return; }
+
+        // Copy value
+        const copyBtn = target.closest('.btn-copy-value');
+        if (copyBtn) { handleCopyValue(copyBtn); return; }
+
+        // Header confirmation copy
+        const confBtn = target.closest('.hotel-header-confirmation');
+        if (confBtn) { e.preventDefault(); handleCopyValue(confBtn); return; }
       });
     }
 
@@ -668,12 +726,10 @@
     try { sessionStorage.setItem('tripActiveTab', tabName); } catch(e) {}
 
     // Show/hide menu items based on active tab
-    const addBookingItem = document.querySelector('[data-action="add-booking"]');
     const deleteBookingItem = document.querySelector('[data-action="delete-booking"]');
     const menuDivider = deleteBookingItem?.previousElementSibling;
     const isActivities = tabName === 'activities';
 
-    if (addBookingItem) addBookingItem.style.display = '';
     if (deleteBookingItem) deleteBookingItem.style.display = isActivities ? 'none' : '';
     if (menuDivider?.classList.contains('section-dropdown-divider')) {
       menuDivider.style.display = isActivities ? 'none' : '';
@@ -711,19 +767,10 @@
           deleteTrip(tripId);
         } else if (action === 'delete-booking') {
           showDeleteBookingModal(tripId);
-        } else if (action === 'add-booking') {
-          const activeTab = document.querySelector('.segmented-control-btn.active')?.dataset.tab;
-          if (activeTab === 'activities') {
-            showAddChoiceModal(tripId);
-          } else if (activeTab === 'flights') {
-            showAddBookingModal(tripId, 'flight');
-          } else if (activeTab === 'hotels') {
-            showAddBookingModal(tripId, 'hotel');
-          } else {
-            showAddBookingModal(tripId);
-          }
         } else if (action === 'share') {
           showShareModal(tripId);
+        } else if (action === 'change-photo') {
+          changePhoto(tripId);
         }
       });
     });
@@ -1049,6 +1096,15 @@
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
     i18n.apply(modal);
+  }
+
+  /**
+   * Change trip cover photo
+   * @param {string} tripId
+   */
+  function changePhoto(tripId) {
+    if (!currentTripData?.destination || !window.tripCreator) return;
+    window.tripCreator.openPhotoSelection(tripId, currentTripData.destination, currentTripData);
   }
 
   /**
@@ -1615,7 +1671,10 @@
    */
   function showEditBookingPanel(type, item, tripId) {
     const existingPanel = document.getElementById('edit-booking-panel');
-    if (existingPanel) existingPanel.remove();
+    if (existingPanel) {
+      existingPanel.remove();
+      document.body.classList.remove('slide-panel-open');
+    }
 
     const formHTML = type === 'flight'
       ? window.tripFlights.buildEditForm(item)
@@ -1654,14 +1713,26 @@
 
     if (type === 'flight') {
       import('./airportAutocomplete.js').then(() => {
-        if (typeof AirportAutocomplete !== 'undefined') {
-          AirportAutocomplete.init(panelBody);
+        if (window.AirportAutocomplete) {
+          window.AirportAutocomplete.init(panelBody);
         }
       });
     }
 
+    let outsideClickHandler = null;
+    let escapeHandler = null;
+
     const closePanel = () => {
       panel.classList.remove('active');
+      document.body.classList.remove('slide-panel-open');
+      if (outsideClickHandler) {
+        document.removeEventListener('click', outsideClickHandler);
+        outsideClickHandler = null;
+      }
+      if (escapeHandler) {
+        document.removeEventListener('keydown', escapeHandler);
+        escapeHandler = null;
+      }
       setTimeout(() => panel.remove(), 300);
       document.body.style.overflow = '';
     };
@@ -1726,14 +1797,27 @@
 
     closeBtn.addEventListener('click', closePanel);
     cancelBtn.addEventListener('click', closePanel);
-    panel.addEventListener('click', (e) => {
-      if (e.target === panel) closePanel();
-    });
     saveBtn.addEventListener('click', performSave);
+
+    // Close on click outside the panel
+    outsideClickHandler = (e) => {
+      const slidePanel = panel.querySelector('.slide-panel');
+      if (slidePanel && !slidePanel.contains(e.target)) {
+        closePanel();
+      }
+    };
+    setTimeout(() => document.addEventListener('click', outsideClickHandler), 10);
+
+    // Close on Escape key
+    escapeHandler = (e) => {
+      if (e.key === 'Escape') closePanel();
+    };
+    document.addEventListener('keydown', escapeHandler);
 
     // Trigger animation
     requestAnimationFrame(() => {
       panel.classList.add('active');
+      document.body.classList.add('slide-panel-open');
     });
     document.body.style.overflow = 'hidden';
   }

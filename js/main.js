@@ -54,9 +54,7 @@
   function initPageSpecific() {
     const path = window.location.pathname;
 
-    if (path.includes('changelog.html') && typeof changelog !== 'undefined') {
-      changelog.init();
-    } else if ((path.endsWith('/') || path.endsWith('index.html')) && typeof homePage !== 'undefined') {
+    if ((path.endsWith('/') || path.endsWith('index.html')) && typeof homePage !== 'undefined') {
       homePage.init();
     }
   }

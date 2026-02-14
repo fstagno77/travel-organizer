@@ -1,6 +1,50 @@
 {
   "versions": [
     {
+      "version": "0.20.0",
+      "date": "2026-02-14",
+      "changes": {
+        "it": [
+          "Homepage rinnovata: card 'In Corso' per il viaggio attuale con eventi di oggi (voli, hotel, attività)",
+          "Nuovo header home con gradiente, logo Travel Flow e icone effetto vetro (glassmorphism)",
+          "Sezioni 'Prossimi Viaggi' e 'Viaggi Passati' con contatori e sottotitoli",
+          "Sistema categorie attività: ristorante, museo, escursione, tour, trasporto, shopping e altro",
+          "Selettore categoria nel pannello creazione/modifica attività con chip colorati",
+          "Filtro attività per categoria con pillole colorate e toggle seleziona/deseleziona",
+          "Barra di ricerca attività con dropdown integrato nell'header",
+          "Nuovo layout card hotel: data header, griglia check-in/check-out con icone, numero conferma copiabile",
+          "Icone servizi hotel: WiFi, colazione, parcheggio, piscina, palestra",
+          "Freccia volo SVG con colore primario e animazione espansione dettagli",
+          "Pulsanti azione volo (modifica/elimina) affiancati",
+          "Animazione slide-in/out per apertura e chiusura pagina viaggio",
+          "Opzione 'Cambia foto' nel menu tre puntini del viaggio",
+          "Pre-caricamento istantaneo hero dalla cache homepage",
+          "Il pannello laterale sposta la modale viaggio a sinistra con transizione fluida",
+          "Chiusura pannello laterale con click esterno o tasto Escape",
+          "Sfondo gradiente nella modale viaggio"
+        ],
+        "en": [
+          "Redesigned homepage: 'In Progress' card for current trip with today's events (flights, hotels, activities)",
+          "New home header with gradient, Travel Flow logo and glassmorphism icons",
+          "Upcoming Trips and Past Trips sections with counters and subtitles",
+          "Activity categories system: restaurant, museum, excursion, tour, transport, shopping and more",
+          "Category selector in activity create/edit panel with colored chips",
+          "Activity filter by category with colored pills and select/deselect toggle",
+          "Activity search bar with dropdown integrated in header",
+          "New hotel card layout: date header, check-in/check-out grid with icons, copyable confirmation number",
+          "Hotel amenity icons: WiFi, breakfast, parking, pool, gym",
+          "SVG flight arrow with primary color and animated details expansion",
+          "Side-by-side flight action buttons (edit/delete)",
+          "Slide-in/out animation for trip page open and close",
+          "'Change photo' option in trip three-dot menu",
+          "Instant hero pre-loading from homepage cache",
+          "Slide panel pushes trip modal to the left with smooth transition",
+          "Close slide panel by clicking outside or pressing Escape",
+          "Gradient background in trip modal"
+        ]
+      }
+    },
+    {
       "version": "0.19.0",
       "date": "2026-02-14",
       "changes": {

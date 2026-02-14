@@ -22,6 +22,7 @@
   <link rel="stylesheet" href="css/layout.css">
   <link rel="stylesheet" href="css/utilities.css">
   <link rel="stylesheet" href="css/auth.css">
+  <link rel="stylesheet" href="css/changelog.css">
 
   <!-- Fonts (self-hosted) -->
   <link rel="stylesheet" href="./css/fonts.css">
@@ -30,8 +31,8 @@
   <div class="page-wrapper">
     <div id="header-placeholder"></div>
 
-    <main>
-      <div class="container">
+    <main class="home-main">
+      <div class="home-container">
         <!-- Today Section -->
         <section class="section today-section">
           <div id="today-container">
@@ -39,19 +40,12 @@
           </div>
         </section>
 
-        <!-- Trips Section -->
-        <section class="section">
-          <header class="section-header">
-            <h1 class="section-title" data-i18n="home.title">My Trips</h1>
-          </header>
-
-          <div id="trips-container">
-            <!-- Trips will be loaded dynamically -->
-            <div class="text-center py-6">
-              <span class="spinner"></span>
-            </div>
+        <!-- Trips rendered dynamically by JS (Prossimi Viaggi + Viaggi Passati) -->
+        <div id="trips-container">
+          <div class="text-center py-6">
+            <span class="spinner"></span>
           </div>
-        </section>
+        </div>
       </div>
     </main>
 

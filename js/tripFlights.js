@@ -50,6 +50,7 @@
    * @param {Array} flights
    */
   function renderFlights(container, flights) {
+    if (!container) return;
     if (!flights || flights.length === 0) {
       container.innerHTML = `
         <div class="empty-state">
@@ -117,7 +118,12 @@
 
               <div class="flight-arrow">
                 <div class="flight-duration">${esc(duration)}</div>
-                <div class="flight-arrow-line"></div>
+                <div class="flight-arrow-line">
+                  <svg class="flight-arrow-svg" viewBox="0 0 40 12" fill="none">
+                    <line x1="0" y1="6" x2="32" y2="6" stroke="var(--color-primary)" stroke-width="2"/>
+                    <polygon points="30,1 39,6 30,11" fill="var(--color-primary)"/>
+                  </svg>
+                </div>
               </div>
 
               <div class="flight-endpoint">
@@ -175,7 +181,10 @@
             ${flight.passengers && flight.passengers.length > 1 ? `
             <!-- Multiple passengers view -->
             <div class="flight-passengers-section">
-              <span class="flight-detail-label" data-i18n="flight.passengers">Passengers</span>
+              <div class="flight-section-header">
+                <span class="material-icons-outlined flight-section-icon">person_outline</span>
+                <span class="flight-detail-label" data-i18n="flight.passengers">Passeggeri</span>
+              </div>
               <div class="flight-passengers-list">
                 ${flight.passengers.map((p, pIndex) => `
                   <div class="flight-passenger-item" data-passenger-index="${pIndex}">
@@ -268,6 +277,10 @@
             </div>
             ` : `
             <!-- Single passenger view -->
+            <div class="flight-section-header">
+              <span class="material-icons-outlined flight-section-icon">person_outline</span>
+              <span class="flight-detail-label" data-i18n="flight.bookingDetails">Dettagli Prenotazione</span>
+            </div>
             <div class="flight-details-grid">
               <div class="flight-detail-item">
                 <span class="flight-detail-label" data-i18n="flight.bookingRef">Booking Reference</span>
@@ -309,24 +322,26 @@
                 <polyline points="7 10 12 15 17 10"></polyline>
                 <line x1="12" y1="15" x2="12" y2="3"></line>
               </svg>
-              <span data-i18n="flight.downloadPdf">Download PDF</span>
+              <span data-i18n="flight.booking">Prenotazione</span>
             </button>
             ` : ''}
             `}
-            <button class="btn-edit-item" data-type="flight" data-id="${flight.id}">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-              </svg>
-              <span data-i18n="flight.edit">Modifica volo</span>
-            </button>
-            <button class="btn-delete-item" data-type="flight" data-id="${flight.id}">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="3 6 5 6 21 6"></polyline>
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-              </svg>
-              <span data-i18n="flight.delete">Delete flight</span>
-            </button>
+            <div class="flight-detail-actions">
+              <button class="btn-edit-item" data-type="flight" data-id="${flight.id}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+                <span data-i18n="flight.edit">Modifica volo</span>
+              </button>
+              <button class="btn-delete-item" data-type="flight" data-id="${flight.id}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+                <span data-i18n="flight.delete">Elimina volo</span>
+              </button>
+            </div>
     `;
   }
 

@@ -9,17 +9,26 @@
     "changelog": "Changelog"
   },
   "home": {
-    "title": "I Miei Viaggi",
+    "title": "Prossimi Viaggi",
     "subtitle": "Tutti i tuoi viaggi in un unico posto",
+    "tripsPlanned": "viaggi pianificati",
+    "tripPlanned": "viaggio pianificato",
     "noTrips": "Nessun viaggio",
     "noTripsText": "I tuoi viaggi appariranno qui",
     "emptyTitle": "Il tuo viaggio inizia da qui!",
     "emptyText": "Raccogli le ricevute in PDF dei tuoi voli e hotel e crea il tuo primo viaggio.",
-    "pastTrips": "Viaggi passati",
+    "currentTrip": "In Corso",
+    "currentSubtitle": "Il tuo viaggio attuale",
+    "todayLabel": "Oggi",
+    "goToTrip": "Vai al viaggio",
+    "pastTrips": "Viaggi Passati",
+    "pastSubtitle": "I tuoi ricordi",
     "noFlightToday": "Nessun viaggio programmato",
     "flightDetails": "Dettagli",
     "toDestination": "A",
-    "loadMoreTrips": "Mostra altri viaggi"
+    "loadMoreTrips": "Mostra altri viaggi",
+    "days": "giorni",
+    "day": "giorno"
   },
   "trip": {
     "new": "Nuovo Viaggio",

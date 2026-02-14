@@ -512,6 +512,23 @@
         <input type="text" class="form-input" id="activity-name" maxlength="100" required value="${esc(act.name || '')}" placeholder="${i18n.t('activity.namePlaceholder') || 'e.g. Museum visit, Restaurant...'}">
       </div>
       <div class="form-group">
+        <label>Categoria</label>
+        <div class="activity-category-picker" id="activity-category-picker">
+          ${window.activityCategories.CATEGORY_ORDER
+            .filter(k => k !== 'volo' && k !== 'hotel')
+            .map(key => {
+              const cat = window.activityCategories.CATEGORIES[key];
+              const label = window.activityCategories.getCategoryLabel(cat);
+              const isActive = (act.category || '') === key;
+              return `<button type="button" class="activity-category-chip ${isActive ? 'active' : ''}"
+                              data-category="${key}" style="--chip-gradient: ${cat.gradient}; --chip-color: ${cat.color}">
+                        <span class="activity-category-chip-icon">${cat.svg}</span>
+                        ${label}
+                      </button>`;
+            }).join('')}
+        </div>
+      </div>
+      <div class="form-group">
         <label data-i18n="activity.address">${i18n.t('activity.address') || 'Address'}</label>
         <input type="text" class="form-input" id="activity-address" value="${esc(act.address || (act.location ? act.location.address : '') || '')}" placeholder="${i18n.t('activity.addressPlaceholder') || 'e.g. Via Roma 1, or paste a Google Maps link'}">
         <div id="activity-place-card">${existingLocationHtml}</div>
@@ -560,7 +577,10 @@
   function showActivityPanel(mode, date, activity) {
     // Remove existing panel
     const existing = document.getElementById('activity-panel');
-    if (existing) existing.remove();
+    if (existing) {
+      existing.remove();
+      document.body.classList.remove('slide-panel-open');
+    }
 
     const isView = mode === 'view';
     const isCreate = mode === 'create';
@@ -612,17 +632,42 @@
     i18n.apply(panel);
     panel.offsetHeight; // force reflow
     panel.classList.add('active');
+    document.body.classList.add('slide-panel-open');
 
     // Close handlers
+    let outsideClickHandler = null;
+    let escapeHandler = null;
+
     const closePanel = () => {
       panel.classList.remove('active');
+      document.body.classList.remove('slide-panel-open');
+      if (outsideClickHandler) {
+        document.removeEventListener('click', outsideClickHandler);
+        outsideClickHandler = null;
+      }
+      if (escapeHandler) {
+        document.removeEventListener('keydown', escapeHandler);
+        escapeHandler = null;
+      }
       setTimeout(() => panel.remove(), 250);
     };
 
+    // Close on click outside the panel
+    outsideClickHandler = (e) => {
+      const slidePanel = panel.querySelector('.slide-panel');
+      if (slidePanel && !slidePanel.contains(e.target)) {
+        closePanel();
+      }
+    };
+    setTimeout(() => document.addEventListener('click', outsideClickHandler), 10);
+
+    // Close on Escape key
+    escapeHandler = (e) => {
+      if (e.key === 'Escape') closePanel();
+    };
+    document.addEventListener('keydown', escapeHandler);
+
     document.getElementById('activity-panel-close').addEventListener('click', closePanel);
-    panel.addEventListener('click', (e) => {
-      if (e.target === panel) closePanel();
-    });
 
     // Mode-specific handlers
     if (isView) {
@@ -717,8 +762,44 @@
     // Time pickers (Google Calendar-style)
     initTimePickers();
 
-    // Google Maps URL detection on address field
+    // Category picker
+    let selectedCategory = activity?.category || null;
+    const categoryPicker = document.getElementById('activity-category-picker');
+
+    if (categoryPicker) {
+      categoryPicker.addEventListener('click', (e) => {
+        const chip = e.target.closest('.activity-category-chip');
+        if (!chip) return;
+        // Toggle: if already active, deselect; otherwise select
+        const wasActive = chip.classList.contains('active');
+        categoryPicker.querySelectorAll('.activity-category-chip').forEach(c => c.classList.remove('active'));
+        if (!wasActive) {
+          chip.classList.add('active');
+          selectedCategory = chip.dataset.category;
+        } else {
+          selectedCategory = null;
+        }
+      });
+    }
+
+    // Auto-categorize on name blur
     const nameInput = document.getElementById('activity-name');
+    if (nameInput && categoryPicker) {
+      nameInput.addEventListener('blur', () => {
+        if (selectedCategory) return; // don't override manual selection
+        const detected = window.activityCategories.detectCategory(nameInput.value);
+        if (detected !== 'luogo') {
+          categoryPicker.querySelectorAll('.activity-category-chip').forEach(c => c.classList.remove('active'));
+          const chip = categoryPicker.querySelector(`[data-category="${detected}"]`);
+          if (chip) {
+            chip.classList.add('active');
+            selectedCategory = detected;
+          }
+        }
+      });
+    }
+
+    // Google Maps URL detection on address field
     const addressInput = document.getElementById('activity-address');
     const placeCardContainer = document.getElementById('activity-place-card');
 
@@ -958,7 +1039,7 @@
         const body = {
           action: isCreate ? 'create' : 'update',
           tripId: window.tripPage.currentTripData.id,
-          activity: { name, address, description, date: activityDate, startTime, endTime, urls, location: locationData }
+          activity: { name, address, description, date: activityDate, startTime, endTime, urls, location: locationData, category: selectedCategory }
         };
 
         if (!isCreate) {

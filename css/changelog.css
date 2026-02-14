@@ -1,107 +1,121 @@
-/* Changelog CSS - Stili specifici per la pagina changelog */
+/* Changelog Modal */
 
-.changelog-page {
-  background-color: var(--color-gray-100);
-  min-height: 100vh;
-}
-
-.changelog-back-link {
-  display: inline-flex;
+.changelog-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
   align-items: center;
-  gap: var(--spacing-2);
-  color: var(--color-primary);
-  font-weight: var(--font-weight-medium);
-  margin-bottom: var(--spacing-6);
-  transition: color var(--transition-fast);
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0);
+  backdrop-filter: blur(0);
+  -webkit-backdrop-filter: blur(0);
+  transition: background-color 0.3s ease, backdrop-filter 0.3s ease;
+  padding: var(--spacing-4);
 }
 
-.changelog-back-link:hover {
-  color: var(--color-primary-dark);
+.changelog-modal-overlay.active {
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 
-.changelog-header {
-  margin-bottom: var(--spacing-8);
-}
-
-.changelog-title {
-  font-size: var(--font-size-3xl);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-gray-900);
-}
-
-@media (min-width: 768px) {
-  .changelog-title {
-    font-size: var(--font-size-4xl);
-  }
-}
-
-.changelog-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-4);
-}
-
-.changelog-card {
+.changelog-modal {
   background-color: var(--color-white);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
+  border-radius: var(--radius-xl, 1rem);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  max-width: 480px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
   padding: var(--spacing-5);
+  transform: translateY(20px) scale(0.95);
+  opacity: 0;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
 }
 
-@media (min-width: 768px) {
-  .changelog-card {
-    padding: var(--spacing-6);
-  }
+.changelog-modal-overlay.active .changelog-modal {
+  transform: translateY(0) scale(1);
+  opacity: 1;
 }
 
-.changelog-card-header {
+.changelog-modal-header {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--spacing-3);
+  align-items: flex-start;
+  justify-content: space-between;
   margin-bottom: var(--spacing-4);
 }
 
-.changelog-version {
+.changelog-modal-version {
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-bold);
   color: var(--color-primary);
 }
 
-.changelog-date {
+.changelog-modal-date {
+  display: block;
   font-size: var(--font-size-sm);
   color: var(--color-gray-400);
+  margin-top: var(--spacing-1);
 }
 
-.changelog-changes {
-  list-style-type: disc;
-  padding-left: var(--spacing-5);
-  margin: 0;
-}
-
-.changelog-changes li {
-  font-size: var(--font-size-sm);
-  color: var(--color-gray-700);
-  margin-bottom: var(--spacing-2);
-  line-height: var(--line-height-relaxed);
-}
-
-.changelog-changes li:last-child {
-  margin-bottom: 0;
-}
-
-/* Loading state */
-.changelog-loading {
+.changelog-modal-close {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--spacing-12);
-  color: var(--color-gray-500);
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: none;
+  color: var(--color-gray-400);
+  border-radius: var(--radius-full, 9999px);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+  flex-shrink: 0;
 }
 
-/* Error state */
-.changelog-error {
-  text-align: center;
-  padding: var(--spacing-8);
-  color: var(--color-error);
+.changelog-modal-close:hover {
+  background-color: var(--color-gray-100);
+  color: var(--color-gray-700);
+}
+
+.changelog-modal-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.changelog-modal-list li {
+  position: relative;
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-700);
+  line-height: var(--line-height-relaxed);
+  padding: var(--spacing-2) 0;
+  border-bottom: 1px solid var(--color-gray-100);
+}
+
+.changelog-modal-list li:last-child {
+  border-bottom: none;
+}
+
+/* Footer changelog button */
+.footer-changelog-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  transition: color var(--transition-fast);
+}
+
+.footer-changelog-btn:hover {
+  color: var(--color-primary);
+}
+
+.footer-changelog-btn .footer-separator {
+  margin: 0 var(--spacing-2);
 }

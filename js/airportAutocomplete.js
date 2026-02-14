@@ -5,7 +5,7 @@
  * Both dropdowns appear below their respective input fields.
  * Airports data is lazy-loaded on first use from airports.json.
  */
-const AirportAutocomplete = (() => {
+window.AirportAutocomplete = (() => {
   let _searchIndex = null;
   let _airportsData = null;
   let _loadingPromise = null;
@@ -232,5 +232,11 @@ const AirportAutocomplete = (() => {
     );
   }
 
-  return { init };
+  function getAirportName(code) {
+    if (!_airportsData || !code) return null;
+    const entry = _airportsData[code.toUpperCase()];
+    return entry ? entry[1] : null;
+  }
+
+  return { init, loadAirports, getAirportName };
 })();

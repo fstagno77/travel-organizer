@@ -188,7 +188,8 @@ async function handleCreate(tripData, tripId, activity, attachments) {
     endTime: activity.endTime || null,
     urls: (activity.urls || []).filter(u => u && u.trim()),
     attachments: [],
-    location: activity.location || null
+    location: activity.location || null,
+    category: activity.category || null
   };
 
   // Upload attachments
@@ -257,6 +258,7 @@ async function handleUpdate(tripData, tripId, activityId, activity, attachments,
     if (activity.endTime !== undefined) existing.endTime = activity.endTime || null;
     if (activity.urls !== undefined) existing.urls = (activity.urls || []).filter(u => u && u.trim());
     if (activity.location !== undefined) existing.location = activity.location || null;
+    if (activity.category !== undefined) existing.category = activity.category || null;
   }
 
   // Remove deleted attachments

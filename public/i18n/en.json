@@ -9,17 +9,26 @@
     "changelog": "Changelog"
   },
   "home": {
-    "title": "My Trips",
+    "title": "Upcoming Trips",
     "subtitle": "All your trips in one place",
+    "tripsPlanned": "trips planned",
+    "tripPlanned": "trip planned",
     "noTrips": "No trips yet",
     "noTripsText": "Your trips will appear here",
     "emptyTitle": "Your journey starts here!",
     "emptyText": "Collect your flight and hotel PDF receipts and create your first trip",
-    "pastTrips": "Past trips",
+    "currentTrip": "In Progress",
+    "currentSubtitle": "Your current trip",
+    "todayLabel": "Today",
+    "goToTrip": "Go to trip",
+    "pastTrips": "Past Trips",
+    "pastSubtitle": "Your memories",
     "noFlightToday": "No trip scheduled",
     "flightDetails": "Details",
     "toDestination": "To",
-    "loadMoreTrips": "Show more trips"
+    "loadMoreTrips": "Show more trips",
+    "days": "days",
+    "day": "day"
   },
   "trip": {
     "new": "New Trip",

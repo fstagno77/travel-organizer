@@ -31,7 +31,7 @@
   -webkit-font-smoothing: antialiased;
 }
 
-/* Material Symbols Outlined (subset: bed, calendar_today, event, travel) */
+/* Material Symbols Outlined (subset: bed, calendar_today, event, location_on, restaurant, train, travel) */
 @font-face {
   font-family: 'Material Symbols Outlined';
   font-style: normal;

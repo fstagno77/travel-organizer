@@ -12,6 +12,20 @@ const homePage = (function() {
   let documentClickBound = false;
 
   /**
+   * Get today's date, optionally overridden by ?testDate=YYYY-MM-DD query param
+   * @returns {Date}
+   */
+  function getToday() {
+    const params = new URLSearchParams(window.location.search);
+    const testDate = params.get('testDate');
+    if (testDate && /^\d{4}-\d{2}-\d{2}$/.test(testDate)) {
+      const d = new Date(testDate + 'T00:00:00');
+      if (!isNaN(d.getTime())) return d;
+    }
+    return new Date();
+  }
+
+  /**
    * Invalidate the trips cache in sessionStorage
    */
   function invalidateCache() {
@@ -23,16 +37,11 @@ const homePage = (function() {
    */
   async function init() {
     console.log('[homePage] init() called');
-    const todayContainer = document.getElementById('today-container');
     const tripsContainer = document.getElementById('trips-container');
     if (!tripsContainer) return;
 
-    console.log('[homePage] auth object:', auth);
-    console.log('[homePage] isAuthenticated:', auth?.isAuthenticated());
-
     // Check if user is authenticated - redirect to login page if not
     if (!auth?.isAuthenticated()) {
-      console.log('[homePage] User not authenticated, redirecting to login page');
       window.location.href = './login.html';
       return;
     }
@@ -46,10 +55,8 @@ const homePage = (function() {
     if (cachedJson) {
       try {
         const cached = JSON.parse(cachedJson);
-        if (todayContainer) renderTodaySection(todayContainer, cached.todayTrips || []);
-        renderTrips(tripsContainer, cached.trips || []);
+        renderTrips(tripsContainer, cached.trips || [], cached.todayTrips || []);
       } catch (e) {
-        // Corrupted cache, remove it
         invalidateCache();
       }
     }
@@ -70,7 +77,6 @@ const homePage = (function() {
         }
       } catch (e) {
         console.log('Could not load trips from database');
-        // If we already rendered from cache, keep that view
         if (cachedJson) return;
       }
 
@@ -80,12 +86,10 @@ const homePage = (function() {
 
       // Only re-render if data changed (or no cache existed)
       if (freshJson !== cachedJson) {
-        if (todayContainer) renderTodaySection(todayContainer, todayTrips);
-        renderTrips(tripsContainer, allTrips);
+        renderTrips(tripsContainer, allTrips, todayTrips);
       }
     } catch (error) {
       console.error('Error loading trips:', error);
-      // If we already rendered from cache, keep that view
       if (cachedJson) return;
       tripsContainer.innerHTML = `
         <div class="empty-state">
@@ -104,7 +108,7 @@ const homePage = (function() {
    * @returns {string}
    */
   function formatTodayDate(lang) {
-    const date = new Date();
+    const date = getToday();
     const formatted = date.toLocaleDateString(lang === 'it' ? 'it-IT' : 'en-US', {
       weekday: 'long',
       day: 'numeric',
@@ -401,11 +405,250 @@ const homePage = (function() {
    * @returns {boolean}
    */
   function isTripPast(trip) {
-    const today = new Date();
+    const today = getToday();
     today.setHours(0, 0, 0, 0);
     const endDate = new Date(trip.endDate);
     endDate.setHours(0, 0, 0, 0);
     return endDate < today;
+  }
+
+  /**
+   * Check if a trip is currently active (today is between start and end)
+   * @param {object} trip
+   * @returns {boolean}
+   */
+  function isTripCurrent(trip) {
+    const today = getToday();
+    today.setHours(0, 0, 0, 0);
+    const startDate = new Date(trip.startDate);
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date(trip.endDate);
+    endDate.setHours(0, 0, 0, 0);
+    return startDate <= today && today <= endDate;
+  }
+
+  /**
+   * Collect today's events from todayTrips data for a specific trip
+   * @param {string} tripId
+   * @param {Array} todayTrips
+   * @param {string} lang
+   * @returns {Array} - Array of event objects { type, time, title, subtitle, location }
+   */
+  function collectTodayEvents(tripId, todayTrips, lang) {
+    const today = getToday().toISOString().split('T')[0];
+    const events = [];
+
+    const tripData = todayTrips.find(t => t.id === tripId);
+    if (!tripData) return events;
+
+    // Flights
+    const flights = tripData.flights || [];
+    for (const flight of flights) {
+      const isToday = flight.date === today;
+      const arrivesToday = flight.arrivalNextDay && getNextDay(flight.date) === today;
+      if (isToday || arrivesToday) {
+        const depCity = flight.departure?.city || '';
+        const arrCity = flight.arrival?.city || '';
+        events.push({
+          type: 'flight',
+          time: flight.departureTime || '',
+          title: `${depCity} → ${arrCity}`,
+          subtitle: flight.flightNumber || '',
+          location: flight.departure?.airport || ''
+        });
+      }
+    }
+
+    // Hotels
+    const hotels = tripData.hotels || [];
+    for (const hotel of hotels) {
+      const checkInDate = hotel.checkIn?.date;
+      const checkOutDate = hotel.checkOut?.date;
+      if (!checkInDate || !checkOutDate) continue;
+
+      const checkOutPlusOne = getNextDay(checkOutDate);
+      if (today >= checkInDate && today <= checkOutPlusOne) {
+        const isCheckIn = checkInDate === today;
+        const isCheckOut = checkOutDate === today || checkOutPlusOne === today;
+        let statusLabel;
+        if (isCheckIn) statusLabel = i18n.t('hotel.checkIn') || 'Check-in';
+        else if (isCheckOut) statusLabel = i18n.t('hotel.checkOut') || 'Check-out';
+        else statusLabel = i18n.t('hotel.stay') || 'Soggiorno';
+
+        events.push({
+          type: 'hotel',
+          time: isCheckIn ? (hotel.checkIn?.time || '15:00') : (isCheckOut ? (hotel.checkOut?.time || '12:00') : ''),
+          title: hotel.name || 'Hotel',
+          subtitle: statusLabel,
+          location: hotel.address?.city || ''
+        });
+      }
+    }
+
+    // Custom activities for today
+    const activities = tripData.activities || [];
+    for (const activity of activities) {
+      if (activity.date === today) {
+        events.push({
+          type: 'activity',
+          time: activity.startTime || '',
+          title: activity.name || '',
+          subtitle: '',
+          location: activity.address || ''
+        });
+      }
+    }
+
+    // Sort: no-time first, then by time
+    events.sort((a, b) => {
+      if (!a.time && b.time) return -1;
+      if (a.time && !b.time) return 1;
+      if (a.time && b.time) return a.time.localeCompare(b.time);
+      return 0;
+    });
+
+    return events;
+  }
+
+  /**
+   * Get color config for event type
+   * @param {string} type
+   * @returns {object}
+   */
+  function getEventTypeColors(type) {
+    const colors = {
+      flight:   { bg: 'linear-gradient(135deg, #eff6ff, #eef2ff)', border: '#bfdbfe', icon: 'linear-gradient(135deg, #3b82f6, #4f46e5)', iconName: 'flight' },
+      hotel:    { bg: 'linear-gradient(135deg, #ecfdf5, #f0fdfa)', border: '#a7f3d0', icon: 'linear-gradient(135deg, #34d399, #14b8a6)', iconName: 'bed' },
+      activity: { bg: 'linear-gradient(135deg, #faf5ff, #faf5ff)', border: '#e9d5ff', icon: 'linear-gradient(135deg, #a855f7, #7c3aed)', iconName: 'local_activity' }
+    };
+    return colors[type] || colors.activity;
+  }
+
+  /**
+   * Render the "In Corso" featured card for the current trip
+   * @param {object} trip
+   * @param {Array} todayTrips
+   * @param {string} lang
+   * @returns {string}
+   */
+  function renderCurrentTripCard(trip, todayTrips, lang) {
+    const title = trip.title[lang] || trip.title.en || trip.title.it;
+    const startDate = utils.formatDate(trip.startDate, lang, { month: 'short', day: 'numeric' });
+    const endDate = utils.formatDate(trip.endDate, lang, { month: 'short', day: 'numeric', year: 'numeric' });
+    const days = getTripDuration(trip.startDate, trip.endDate);
+    const dayLabel = days === 1 ? (i18n.t('home.day') || 'giorno') : (i18n.t('home.days') || 'giorni');
+    const tripUrl = `trip.html?id=${trip.id}`;
+    const todayStr = formatTodayDate(lang);
+
+    // Collect today's events
+    const todayEvents = collectTodayEvents(trip.id, todayTrips, lang);
+
+    // Render event cards
+    let eventsHtml = '';
+    if (todayEvents.length > 0) {
+      eventsHtml = todayEvents.map(event => {
+        const colors = getEventTypeColors(event.type);
+        return `
+          <div class="current-event-card" style="background: ${colors.bg}; border-color: ${colors.border}">
+            <div class="current-event-icon" style="background: ${colors.icon}">
+              <span class="material-icons-outlined" style="font-size: 16px; color: white">${colors.iconName}</span>
+            </div>
+            <div class="current-event-info">
+              ${event.time ? `<span class="current-event-time">${utils.escapeHtml(event.time)}</span>` : ''}
+              <span class="current-event-title">${utils.escapeHtml(event.title)}</span>
+              ${event.subtitle ? `<span class="current-event-subtitle">${utils.escapeHtml(event.subtitle)}</span>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    const headerHtml = renderSectionHeader(
+      i18n.t('home.currentTrip') || 'In Corso',
+      i18n.t('home.currentSubtitle') || 'Il tuo viaggio attuale',
+      'current'
+    );
+
+    return `
+      <section class="home-section">
+        ${headerHtml}
+        <a href="${tripUrl}" class="current-trip-card">
+          <div class="current-trip-header">
+            <div class="current-trip-info">
+              <h3 class="current-trip-title">${utils.escapeHtml(title)}</h3>
+              <div class="current-trip-meta">
+                <div class="current-trip-meta-item">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                  </svg>
+                  <span>${startDate} - ${endDate}</span>
+                </div>
+                <div class="current-trip-meta-item">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                  </svg>
+                  <span>${days} ${dayLabel}</span>
+                </div>
+              </div>
+            </div>
+            <div class="current-trip-arrow">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <polyline points="12 5 19 12 12 19"></polyline>
+              </svg>
+            </div>
+          </div>
+          ${todayEvents.length > 0 ? `
+            <div class="current-trip-today">
+              <h4 class="current-trip-today-label">${i18n.t('home.todayLabel') || 'Oggi'} &middot; ${todayStr}</h4>
+              <div class="current-trip-events">${eventsHtml}</div>
+            </div>
+          ` : ''}
+          <div class="current-trip-cta">
+            <span>${i18n.t('home.goToTrip') || 'Vai al viaggio'}</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+          </div>
+        </a>
+      </section>
+    `;
+  }
+
+  /**
+   * Calculate trip duration in days
+   * @param {string} startDate
+   * @param {string} endDate
+   * @returns {number}
+   */
+  function getTripDuration(startDate, endDate) {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    return Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+  }
+
+  /**
+   * Render a section header with colored bar
+   * @param {string} title
+   * @param {string} subtitle
+   * @param {string} variant - 'upcoming', 'past'
+   * @returns {string}
+   */
+  function renderSectionHeader(title, subtitle, variant) {
+    return `
+      <div class="home-section-header">
+        <div class="home-section-bar home-section-bar--${variant}"></div>
+        <div>
+          <h2 class="home-section-title">${utils.escapeHtml(title)}</h2>
+          <p class="home-section-subtitle">${utils.escapeHtml(subtitle)}</p>
+        </div>
+      </div>
+    `;
   }
 
   /**
@@ -422,6 +665,13 @@ const homePage = (function() {
     const endDate = utils.formatDate(trip.endDate, lang, { month: 'short', day: 'numeric', year: 'numeric' });
     const cardClass = isPast ? 'trip-card trip-card--past' : 'trip-card';
     const bgColor = isPast ? 'var(--color-gray-400)' : (trip.color || 'var(--color-primary)');
+
+    // Trip duration
+    const days = getTripDuration(trip.startDate, trip.endDate);
+    const dayLabel = days === 1
+      ? (i18n.t('home.day') || 'giorno')
+      : (i18n.t('home.days') || 'giorni');
+    const durationText = `${days} ${dayLabel}`;
 
     // All trips now use dynamic page
     const tripUrl = `trip.html?id=${trip.id}`;
@@ -443,56 +693,27 @@ const homePage = (function() {
         <a href="${tripUrl}" class="${cardClass}">
           <div class="trip-card-image" style="${imageStyle}"${dataBg}>
             <div class="trip-card-overlay">
-              <span class="trip-card-destination">${utils.escapeHtml(title)}</span>
-              <span class="trip-card-dates">${startDate} - ${endDate}</span>
+              <h3 class="trip-card-destination">${utils.escapeHtml(title)}</h3>
             </div>
           </div>
-        </a>
-        <div class="trip-card-menu">
-          <button class="trip-card-menu-btn" data-trip-id="${trip.id}">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="5" r="1"></circle>
-              <circle cx="12" cy="12" r="1"></circle>
-              <circle cx="12" cy="19" r="1"></circle>
+          <div class="trip-card-content">
+            <div class="trip-card-info">
+              <svg class="trip-card-calendar-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+              <span class="trip-card-dates">${startDate} - ${endDate}</span>
+              <span class="trip-card-dot">&middot;</span>
+              <span class="trip-card-duration">${durationText}</span>
+            </div>
+            <svg class="trip-card-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
             </svg>
-          </button>
-          <div class="trip-card-dropdown" data-trip-id="${trip.id}">
-            <button class="trip-card-dropdown-item" data-action="changePhoto" data-trip-id="${trip.id}" data-trip-destination="${utils.escapeHtml(trip.destination || '')}">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                <polyline points="21 15 16 10 5 21"></polyline>
-              </svg>
-              <span data-i18n="trip.changePhoto">Cambia foto</span>
-            </button>
-            <button class="trip-card-dropdown-item" data-action="share" data-trip-id="${trip.id}">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="18" cy="5" r="3"></circle>
-                <circle cx="6" cy="12" r="3"></circle>
-                <circle cx="18" cy="19" r="3"></circle>
-                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-              </svg>
-              <span data-i18n="trip.share">Condividi</span>
-            </button>
-            <button class="trip-card-dropdown-item" data-action="rename" data-trip-id="${trip.id}" data-trip-name="${utils.escapeHtml(title)}">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-              </svg>
-              <span data-i18n="trip.rename">Rinomina</span>
-            </button>
-            <button class="trip-card-dropdown-item trip-card-dropdown-item--danger" data-action="delete" data-trip-id="${trip.id}" data-trip-name="${utils.escapeHtml(title)}">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="3 6 5 6 21 6"></polyline>
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                <line x1="10" y1="11" x2="10" y2="17"></line>
-                <line x1="14" y1="11" x2="14" y2="17"></line>
-              </svg>
-              <span data-i18n="trip.delete">Elimina</span>
-            </button>
           </div>
-        </div>
+        </a>
       </div>
     `;
   }
@@ -501,17 +722,14 @@ const homePage = (function() {
    * Render trips list
    * @param {HTMLElement} container
    * @param {Array} trips
+   * @param {Array} todayTrips - Trips with detailed flight/hotel data for today
    */
-  function renderTrips(container, trips) {
-    // Get the today section and trips header
+  function renderTrips(container, trips, todayTrips) {
+    // Hide old today section (replaced by In Corso)
     const todaySection = document.querySelector('.today-section');
-    const tripsHeader = container.parentElement?.querySelector('.section-header');
+    if (todaySection) todaySection.style.display = 'none';
 
     if (!trips || trips.length === 0) {
-      // Hide today section and trips header when no trips
-      if (todaySection) todaySection.style.display = 'none';
-      if (tripsHeader) tripsHeader.style.display = 'none';
-
       container.innerHTML = `
         <div class="empty-state">
           <h3 class="empty-state-title" data-i18n="home.emptyTitle">Il tuo viaggio inizia da qui!</h3>
@@ -521,7 +739,6 @@ const homePage = (function() {
       `;
       i18n.apply(container);
 
-      // Bind click handler for the empty state button
       const emptyBtn = document.getElementById('empty-new-trip-btn');
       if (emptyBtn) {
         emptyBtn.addEventListener('click', () => {
@@ -531,15 +748,13 @@ const homePage = (function() {
       return;
     }
 
-    // Show today section and trips header when there are trips
-    if (todaySection) todaySection.style.display = '';
-    if (tripsHeader) tripsHeader.style.display = '';
-
     const lang = i18n.getLang();
     const generation = ++renderGeneration;
+    todayTrips = todayTrips || [];
 
-    // Separate upcoming and past trips
-    const upcomingTrips = trips.filter(t => !isTripPast(t));
+    // Separate into 3 categories: current, upcoming (future), past
+    const currentTrips = trips.filter(t => isTripCurrent(t));
+    const upcomingTrips = trips.filter(t => !isTripCurrent(t) && !isTripPast(t));
     const pastTrips = trips.filter(t => isTripPast(t));
 
     // Sort upcoming by start date (closest first)
@@ -549,14 +764,34 @@ const homePage = (function() {
 
     let cardIndex = 0;
 
-    // --- Phase 1: above-the-fold (first 3 upcoming cards) ---
+    // --- Phase 1: In Corso + first 3 upcoming cards ---
+    let phase1Html = '';
+
+    // Render "In Corso" section (first current trip)
+    if (currentTrips.length > 0) {
+      phase1Html += renderCurrentTripCard(currentTrips[0], todayTrips, lang);
+    }
+
+    // Render "Prossimi Viaggi" section
     const phase1Upcoming = upcomingTrips.slice(0, PHASE1_UPCOMING_COUNT);
     const phase2Upcoming = upcomingTrips.slice(PHASE1_UPCOMING_COUNT);
 
-    let phase1Html = '';
     if (upcomingTrips.length > 0) {
+      const countLabel = upcomingTrips.length === 1
+        ? `1 ${i18n.t('home.tripPlanned') || 'viaggio pianificato'}`
+        : `${upcomingTrips.length} ${i18n.t('home.tripsPlanned') || 'viaggi pianificati'}`;
+      const headerHtml = renderSectionHeader(
+        i18n.t('home.title') || 'Prossimi Viaggi',
+        countLabel,
+        'upcoming'
+      );
       const cardsHtml = phase1Upcoming.map(trip => renderTripCard(trip, lang, false, cardIndex++)).join('');
-      phase1Html = `<div class="grid md:grid-cols-2 lg:grid-cols-3" id="upcoming-trips-grid">${cardsHtml}</div>`;
+      phase1Html += `
+        <section class="home-section">
+          ${headerHtml}
+          <div class="grid md:grid-cols-2 lg:grid-cols-3" id="upcoming-trips-grid">${cardsHtml}</div>
+        </section>
+      `;
     }
 
     container.innerHTML = phase1Html;
@@ -592,10 +827,16 @@ const homePage = (function() {
         const pastCardsHtml = initialPast.map(trip => renderTripCard(trip, lang, true, cardIndex++)).join('');
         const remaining = pastTrips.length - PAST_TRIPS_PAGE_SIZE;
 
-        const pastSection = document.createElement('div');
-        pastSection.className = 'past-trips-section';
+        const pastHeaderHtml = renderSectionHeader(
+          i18n.t('home.pastTrips') || 'Viaggi Passati',
+          i18n.t('home.pastSubtitle') || 'I tuoi ricordi',
+          'past'
+        );
+
+        const pastSection = document.createElement('section');
+        pastSection.className = 'home-section past-trips-section';
         pastSection.innerHTML = `
-          <h3 class="past-trips-title" data-i18n="home.pastTrips">Viaggi passati</h3>
+          ${pastHeaderHtml}
           <div class="grid md:grid-cols-2 lg:grid-cols-3" id="past-trips-grid">${pastCardsHtml}</div>
           ${remaining > 0 ? `
             <div class="past-trips-load-more">
