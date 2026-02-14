@@ -437,7 +437,8 @@ const homePage = (function() {
    * @returns {Array} - Array of event objects { type, time, title, subtitle, location }
    */
   function collectTodayEvents(tripId, todayTrips, lang) {
-    const today = getToday().toISOString().split('T')[0];
+    const d = getToday();
+    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     const events = [];
     const cats = window.activityCategories;
 
