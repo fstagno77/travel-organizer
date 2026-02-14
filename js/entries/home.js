@@ -6,6 +6,7 @@ import '../i18n.js';
 import '../auth.js';
 import '../changelog.js';
 import '../navigation.js';
+import '../activityCategories.js';
 import '../homePage.js';
 import '../main.js';
 import '../pdfUpload.js';

@@ -45,7 +45,13 @@ exports.handler = async (event, context) => {
       };
     }
 
-    const today = new Date().toISOString().split('T')[0];
+    // Allow testDate override for frontend testing (read-only, no DB writes)
+    const params = event.queryStringParameters || {};
+    const testDateParam = params.testDate;
+    let today = new Date().toISOString().split('T')[0];
+    if (testDateParam && /^\d{4}-\d{2}-\d{2}$/.test(testDateParam)) {
+      today = testDateParam;
+    }
 
     // Extract summary-only trip data for frontend
     const trips = data.map(row => ({
@@ -77,7 +83,8 @@ exports.handler = async (event, context) => {
         title: row.data.title,
         color: '#0066cc',
         flights: row.data.flights || [],
-        hotels: row.data.hotels || []
+        hotels: row.data.hotels || [],
+        activities: row.data.activities || []
       }));
 
     return {

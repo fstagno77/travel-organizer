@@ -28,7 +28,8 @@
     "toDestination": "A",
     "loadMoreTrips": "Mostra altri viaggi",
     "days": "giorni",
-    "day": "giorno"
+    "day": "giorno",
+    "viewFullItinerary": "Visualizza Itinerario Completo"
   },
   "trip": {
     "new": "Nuovo Viaggio",

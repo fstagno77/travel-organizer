@@ -67,7 +67,7 @@ main {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  height: 100px;
+  height: 90px;
 }
 
 .header-inner--three > :first-child {
@@ -118,7 +118,7 @@ main {
 }
 
 .header-logo-img {
-  height: 100px;
+  height: 80px;
   width: auto;
   display: block;
 }

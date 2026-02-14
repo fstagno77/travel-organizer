@@ -67,7 +67,9 @@ const homePage = (function() {
       let todayTrips = [];
 
       try {
-        const response = await utils.authFetch('/.netlify/functions/get-trips');
+        const testDate = new URLSearchParams(window.location.search).get('testDate');
+        const tripsUrl = testDate ? `/.netlify/functions/get-trips?testDate=${encodeURIComponent(testDate)}` : '/.netlify/functions/get-trips';
+        const response = await utils.authFetch(tripsUrl);
         const result = await response.json();
         if (result.success && result.trips) {
           allTrips = result.trips;
@@ -437,6 +439,7 @@ const homePage = (function() {
   function collectTodayEvents(tripId, todayTrips, lang) {
     const today = getToday().toISOString().split('T')[0];
     const events = [];
+    const cats = window.activityCategories;
 
     const tripData = todayTrips.find(t => t.id === tripId);
     if (!tripData) return events;
@@ -449,12 +452,14 @@ const homePage = (function() {
       if (isToday || arrivesToday) {
         const depCity = flight.departure?.city || '';
         const arrCity = flight.arrival?.city || '';
+        const cat = cats?.CATEGORIES?.volo;
         events.push({
           type: 'flight',
           time: flight.departureTime || '',
           title: `${depCity} → ${arrCity}`,
-          subtitle: flight.flightNumber || '',
-          location: flight.departure?.airport || ''
+          description: flight.flightNumber || '',
+          location: flight.departure?.airport || '',
+          category: cat || null
         });
       }
     }
@@ -475,12 +480,14 @@ const homePage = (function() {
         else if (isCheckOut) statusLabel = i18n.t('hotel.checkOut') || 'Check-out';
         else statusLabel = i18n.t('hotel.stay') || 'Soggiorno';
 
+        const cat = cats?.CATEGORIES?.hotel;
         events.push({
           type: 'hotel',
           time: isCheckIn ? (hotel.checkIn?.time || '15:00') : (isCheckOut ? (hotel.checkOut?.time || '12:00') : ''),
           title: hotel.name || 'Hotel',
-          subtitle: statusLabel,
-          location: hotel.address?.city || ''
+          description: statusLabel,
+          location: hotel.address?.city || hotel.address?.fullAddress || '',
+          category: cat || null
         });
       }
     }
@@ -489,12 +496,15 @@ const homePage = (function() {
     const activities = tripData.activities || [];
     for (const activity of activities) {
       if (activity.date === today) {
+        const catKey = cats?.detectCategory?.(activity.name, activity.description) || 'luogo';
+        const cat = cats?.CATEGORIES?.[activity.category || catKey];
         events.push({
           type: 'activity',
           time: activity.startTime || '',
           title: activity.name || '',
-          subtitle: '',
-          location: activity.address || ''
+          description: activity.description || '',
+          location: activity.address || '',
+          category: cat || null
         });
       }
     }
@@ -525,6 +535,30 @@ const homePage = (function() {
   }
 
   /**
+   * Get destination cities string for a trip
+   * @param {object} trip
+   * @param {Array} todayTrips
+   * @returns {string}
+   */
+  function getTripDestinations(trip, todayTrips) {
+    // Use trip.destination if it's a string
+    if (trip.destination && typeof trip.destination === 'string') return trip.destination;
+    // Derive from route array
+    if (Array.isArray(trip.route) && trip.route.length > 0) return trip.route.join(', ');
+    // Derive from todayTrips flight/hotel cities
+    const tripData = todayTrips.find(t => t.id === trip.id);
+    if (!tripData) return '';
+    const cities = new Set();
+    for (const flight of (tripData.flights || [])) {
+      if (flight.arrival?.city) cities.add(flight.arrival.city);
+    }
+    for (const hotel of (tripData.hotels || [])) {
+      if (hotel.address?.city) cities.add(hotel.address.city);
+    }
+    return Array.from(cities).join(', ');
+  }
+
+  /**
    * Render the "In Corso" featured card for the current trip
    * @param {object} trip
    * @param {Array} todayTrips
@@ -540,23 +574,42 @@ const homePage = (function() {
     const tripUrl = `trip.html?id=${trip.id}`;
     const todayStr = formatTodayDate(lang);
 
+    // Build destination cities string from trip data
+    const destinationStr = getTripDestinations(trip, todayTrips);
+
     // Collect today's events
     const todayEvents = collectTodayEvents(trip.id, todayTrips, lang);
 
-    // Render event cards
+    // Render event cards with category colors
     let eventsHtml = '';
     if (todayEvents.length > 0) {
       eventsHtml = todayEvents.map(event => {
-        const colors = getEventTypeColors(event.type);
+        const cat = event.category;
+        const bg = cat?.cardBg || 'linear-gradient(135deg, #faf5ff, #faf5ff)';
+        const border = cat?.cardBorder || '#e9d5ff';
+        const iconGradient = cat?.gradient || 'linear-gradient(135deg, #a855f7, #7c3aed)';
+        const iconHtml = cat?.svg || '<span class="material-symbols-outlined">location_on</span>';
+
         return `
-          <div class="current-event-card" style="background: ${colors.bg}; border-color: ${colors.border}">
-            <div class="current-event-icon" style="background: ${colors.icon}">
-              <span class="material-icons-outlined" style="font-size: 16px; color: white">${colors.iconName}</span>
+          <div class="current-event-card" style="background: ${bg}; border-color: ${border}">
+            <div class="current-event-icon" style="background: ${iconGradient}">
+              <span style="color: white; display: flex; align-items: center; justify-content: center">${iconHtml}</span>
             </div>
             <div class="current-event-info">
-              ${event.time ? `<span class="current-event-time">${utils.escapeHtml(event.time)}</span>` : ''}
-              <span class="current-event-title">${utils.escapeHtml(event.title)}</span>
-              ${event.subtitle ? `<span class="current-event-subtitle">${utils.escapeHtml(event.subtitle)}</span>` : ''}
+              <div class="current-event-header-row">
+                ${event.time ? `<span class="current-event-time">${utils.escapeHtml(event.time)}</span><span class="current-event-dot">&middot;</span>` : ''}
+                <span class="current-event-title">${utils.escapeHtml(event.title)}</span>
+              </div>
+              ${event.description ? `<span class="current-event-description">${utils.escapeHtml(event.description)}</span>` : ''}
+              ${event.location ? `
+                <div class="current-event-location">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                    <circle cx="12" cy="10" r="3"></circle>
+                  </svg>
+                  <span>${utils.escapeHtml(event.location)}</span>
+                </div>
+              ` : ''}
             </div>
           </div>
         `;
@@ -576,6 +629,15 @@ const homePage = (function() {
           <div class="current-trip-header">
             <div class="current-trip-info">
               <h3 class="current-trip-title">${utils.escapeHtml(title)}</h3>
+              ${destinationStr ? `
+                <div class="current-trip-destination">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                    <circle cx="12" cy="10" r="3"></circle>
+                  </svg>
+                  <span>${utils.escapeHtml(destinationStr)}</span>
+                </div>
+              ` : ''}
               <div class="current-trip-meta">
                 <div class="current-trip-meta-item">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -609,7 +671,7 @@ const homePage = (function() {
             </div>
           ` : ''}
           <div class="current-trip-cta">
-            <span>${i18n.t('home.goToTrip') || 'Vai al viaggio'}</span>
+            <span>${i18n.t('home.viewFullItinerary') || 'Visualizza Itinerario Completo'}</span>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="5" y1="12" x2="19" y2="12"></line>
               <polyline points="12 5 19 12 12 19"></polyline>
