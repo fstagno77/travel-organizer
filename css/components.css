@@ -1326,7 +1326,8 @@
 /* Dark backdrop behind modal */
 .trip-modal-page {
   background: rgba(0, 0, 0, 0.5);
-  min-height: 100dvh;
+  position: fixed;
+  inset: 0;
   overflow: hidden;
   animation: tripBackdropIn 0.4s ease both;
 }
@@ -1349,7 +1350,7 @@
 .trip-modal {
   background: linear-gradient(to bottom right, #f8fafc, #eff6ff, #eef2ff);
   border-radius: 1rem 1rem 0 0;
-  height: calc(100vh - 30px);
+  height: calc(100% - 30px);
   margin-top: 30px;
   display: flex;
   flex-direction: column;
@@ -5946,7 +5947,7 @@ input[type="time"].form-input {
   }
 
   .trip-modal {
-    min-height: calc(100dvh - 10px);
+    height: calc(100% - 10px);
     margin-top: 10px;
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
