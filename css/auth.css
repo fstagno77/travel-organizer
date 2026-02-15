@@ -1403,7 +1403,7 @@
   flex-direction: column;
   align-items: center;
   min-height: 100vh;
-  padding: 6vh var(--spacing-6) calc(var(--spacing-4) + 32px);
+  padding: calc(6vh + env(safe-area-inset-top, 0px)) var(--spacing-6) calc(var(--spacing-4) + 32px);
   position: relative;
 }
 
