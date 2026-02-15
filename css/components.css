@@ -2752,6 +2752,40 @@ input[type="time"].form-input {
 }
 
 /* ==============================
+   Section Header (Voli, Hotel)
+   ============================== */
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-4);
+}
+
+.section-header-title {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-gray-800);
+  margin: 0;
+}
+
+.section-header-cta {
+  gap: var(--spacing-2);
+}
+
+.section-header-cta svg {
+  width: 20px;
+  height: 20px;
+}
+
+@media (max-width: 359px) {
+  .section-header-cta .section-header-cta-label {
+    display: none;
+  }
+}
+
+/* ==============================
    Activities Header
    ============================== */
 

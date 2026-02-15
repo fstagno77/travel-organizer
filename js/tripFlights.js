@@ -166,11 +166,30 @@
       </div>
     `;
 
-    container.innerHTML = html + quickUploadCard;
+    const plusSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>`;
+
+    const sectionHeader = `
+      <div class="section-header">
+        <h2 class="section-header-title">I miei voli</h2>
+        <button class="section-header-cta btn btn-primary" id="flights-add-booking-btn">
+          ${plusSvg}
+          <span class="section-header-cta-label">Prenotazione</span>
+        </button>
+      </div>
+    `;
+
+    container.innerHTML = sectionHeader + html + quickUploadCard;
     // Store sorted flights for lazy detail rendering
     window.tripFlights._flights = sortedFlights;
     i18n.apply(container);
     window.tripPage.initQuickUploadCard('quick-upload-flights');
+
+    // Connect CTA to quick upload file picker
+    const addBtn = document.getElementById('flights-add-booking-btn');
+    const uploadInput = container.querySelector('#quick-upload-flights .quick-upload-input');
+    if (addBtn && uploadInput) {
+      addBtn.addEventListener('click', () => uploadInput.click());
+    }
   }
 
   /**
