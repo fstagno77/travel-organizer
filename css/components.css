@@ -3910,6 +3910,7 @@ input[type="time"].form-input {
   height: auto;
   min-height: 140px;
   align-self: stretch;
+  margin-top: 0;
   border: 2px dashed rgb(203 213 225);
   border-radius: 0.75rem;
   background: transparent;
@@ -4728,15 +4729,18 @@ input[type="time"].form-input {
   align-items: center;
   gap: var(--spacing-3);
   padding: var(--spacing-3) var(--spacing-4);
-  border: 1px solid var(--color-gray-200);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--color-gray-100);
+  border-radius: var(--radius-lg);
   cursor: pointer;
-  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+  transition: background-color var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
   user-select: none;
+  background-color: var(--color-gray-50);
 }
 
 .manage-booking-item:hover {
-  background-color: var(--color-gray-50);
+  background-color: var(--color-white);
+  border-color: var(--color-gray-200);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 .manage-booking-item.selected {
@@ -4793,17 +4797,18 @@ input[type="time"].form-input {
 }
 
 .manage-edit-item-header {
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-base);
   font-weight: var(--font-weight-semibold);
-  color: var(--color-gray-800);
-  padding: var(--spacing-2) 0;
+  color: var(--color-gray-900);
+  padding: var(--spacing-1) 0 var(--spacing-3);
   margin-bottom: var(--spacing-2);
+  border-bottom: 2px solid var(--color-gray-100);
 }
 
 .manage-edit-divider {
   border: none;
-  border-top: 1px solid var(--color-gray-200);
-  margin: var(--spacing-4) 0;
+  border-top: 1px solid var(--color-gray-100);
+  margin: var(--spacing-5) 0;
 }
 
 .edit-booking-field--checkbox {
@@ -5130,19 +5135,31 @@ input[type="time"].form-input {
 .edit-booking-form {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-4);
+  gap: 0;
 }
 
 .edit-booking-section {
-  border: 1px solid var(--color-gray-200);
-  border-radius: var(--radius-md);
-  padding: var(--spacing-4);
+  border: none;
+  border-radius: 0;
+  padding: var(--spacing-4) 0;
+  border-bottom: 1px solid var(--color-gray-100);
+}
+
+.edit-booking-section:first-child {
+  padding-top: 0;
+}
+
+.edit-booking-section:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
 .edit-booking-section-title {
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
-  color: var(--color-gray-900);
+  color: var(--color-gray-400);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   margin-bottom: var(--spacing-3);
   display: flex;
   align-items: center;
@@ -5152,7 +5169,7 @@ input[type="time"].form-input {
 .edit-booking-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--spacing-3);
+  gap: var(--spacing-3) var(--spacing-4);
 }
 
 @media (max-width: 480px) {
@@ -5179,13 +5196,17 @@ input[type="time"].form-input {
 
 .edit-booking-field input {
   width: 100%;
-  padding: var(--spacing-2) var(--spacing-3);
+  padding: 10px var(--spacing-3);
   font-size: var(--font-size-sm);
-  border: 1px solid var(--color-gray-300);
+  border: 1px solid var(--color-gray-200);
   border-radius: var(--radius-md);
-  background-color: var(--color-white);
-  transition: border-color var(--transition-fast);
+  background-color: var(--color-gray-50);
+  transition: border-color var(--transition-fast), background-color var(--transition-fast);
   box-sizing: border-box;
+}
+
+.edit-booking-field input:hover {
+  border-color: var(--color-gray-300);
 }
 
 .edit-booking-field input[type="date"],
@@ -5198,7 +5219,8 @@ input[type="time"].form-input {
 .edit-booking-field input:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb, 59, 130, 246), 0.15);
+  background-color: var(--color-white);
+  box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb, 59, 130, 246), 0.12);
 }
 
 .edit-booking-field input:invalid:not(:placeholder-shown) {
@@ -5206,9 +5228,9 @@ input[type="time"].form-input {
 }
 
 .edit-booking-passenger {
-  border-top: 1px solid var(--color-gray-100);
+  border-top: 1px dashed var(--color-gray-200);
   padding-top: var(--spacing-3);
-  margin-top: var(--spacing-2);
+  margin-top: var(--spacing-3);
 }
 
 .edit-booking-passenger:first-child {
@@ -5220,7 +5242,7 @@ input[type="time"].form-input {
 .edit-booking-passenger-title {
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
-  color: var(--color-gray-700);
+  color: var(--color-gray-600);
   margin-bottom: var(--spacing-2);
 }
 
@@ -5295,7 +5317,7 @@ input[type="time"].form-input {
 .slide-panel-overlay {
   position: fixed;
   inset: 0;
-  background-color: transparent;
+  background-color: rgba(0, 0, 0, 0.15);
   z-index: 1000;
   opacity: 0;
   visibility: hidden;
@@ -5317,7 +5339,7 @@ input[type="time"].form-input {
   bottom: 0;
   width: 420px;
   max-width: 100%;
-  background: linear-gradient(to bottom right, #f8fafc, #eff6ff, #eef2ff);
+  background-color: #ffffff;
   box-shadow: var(--shadow-xl);
   display: flex;
   flex-direction: column;
@@ -5334,7 +5356,7 @@ input[type="time"].form-input {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--spacing-4) var(--spacing-5);
+  padding: var(--spacing-5) var(--spacing-5) var(--spacing-4);
   border-bottom: 1px solid var(--color-gray-100);
   flex-shrink: 0;
 }
@@ -5359,7 +5381,7 @@ input[type="time"].form-input {
   gap: var(--spacing-3);
   padding: var(--spacing-4) var(--spacing-5);
   border-top: 1px solid var(--color-gray-100);
-  background-color: var(--color-gray-50);
+  background-color: var(--color-white);
   flex-shrink: 0;
 }
 
