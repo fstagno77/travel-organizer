@@ -1349,8 +1349,8 @@
 .trip-modal {
   background: linear-gradient(to bottom right, #f8fafc, #eff6ff, #eef2ff);
   border-radius: 1rem 1rem 0 0;
-  height: calc(100vh - 48px);
-  margin-top: 48px;
+  height: calc(100vh - 30px);
+  margin-top: 30px;
   display: flex;
   flex-direction: column;
   padding: 30px 10px 0;
@@ -5946,7 +5946,7 @@ input[type="time"].form-input {
   }
 
   .trip-modal {
-    height: calc(100vh - 20px);
-    margin-top: 20px;
+    height: calc(100vh - 10px);
+    margin-top: 10px;
   }
 }
