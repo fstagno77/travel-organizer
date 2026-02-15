@@ -1726,6 +1726,7 @@ img.login-logo-img {
     padding: var(--spacing-4);
     justify-content: flex-start;
     padding-top: var(--spacing-10);
+    padding-bottom: 140px;
   }
 
   .login-tagline {
@@ -1745,8 +1746,12 @@ img.login-logo-img {
   }
 
   .login-stats {
+    position: fixed;
+    bottom: 36px;
+    left: var(--spacing-4);
+    right: var(--spacing-4);
     gap: var(--spacing-3);
-    margin-top: auto;
+    margin-top: 0;
   }
 
   .login-stat-card {
