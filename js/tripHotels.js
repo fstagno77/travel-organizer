@@ -208,11 +208,13 @@
     i18n.apply(container);
     window.tripPage.initQuickUploadCard('quick-upload-hotels');
 
-    // Connect CTA to quick upload file picker
+    // Connect CTA to add-booking modal
     const addBtn = document.getElementById('hotels-add-booking-btn');
-    const uploadInput = container.querySelector('#quick-upload-hotels .quick-upload-input');
-    if (addBtn && uploadInput) {
-      addBtn.addEventListener('click', () => uploadInput.click());
+    if (addBtn) {
+      addBtn.addEventListener('click', () => {
+        const tripId = window.tripPage.currentTripData?.id;
+        if (tripId) window.tripPage.showAddBookingModal(tripId, 'hotel');
+      });
     }
   }
 

@@ -173,38 +173,161 @@
 }
 
 .flight-card-body {
-  padding: var(--spacing-5);
+  padding: var(--spacing-6);
 }
 
-.flight-route {
+/* Flight title section (like hotel name) */
+.flight-title-section {
+  margin-bottom: var(--spacing-2);
+}
+
+.flight-title {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-gray-900);
+  margin: 0;
+  line-height: var(--line-height-tight);
+}
+
+/* Departure airport location with map link */
+.flight-departure-location {
+  margin-bottom: var(--spacing-6);
+}
+
+.flight-location-link {
   display: flex;
   align-items: center;
+  gap: var(--spacing-2);
+  color: var(--color-gray-600);
+  transition: color var(--transition-fast);
+  font-size: var(--font-size-sm);
+}
+
+.flight-location-link:hover {
+  color: var(--color-primary);
+}
+
+.flight-location-link svg {
+  flex-shrink: 0;
+  color: var(--color-gray-500);
+  transition: color var(--transition-fast);
+}
+
+.flight-location-link:hover svg {
+  color: var(--color-primary);
+}
+
+/* Flight route */
+.flight-route {
+  display: flex;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: var(--spacing-4);
-  margin-bottom: var(--spacing-4);
+  gap: var(--spacing-2);
 }
 
 .flight-endpoint {
-  flex: 1;
+  flex: 0 0 auto;
   text-align: center;
+  min-width: 60px;
 }
 
 .flight-endpoint:first-child {
   text-align: left;
 }
 
-.flight-endpoint:first-child .flight-time {
-  justify-content: flex-start;
-}
-
 .flight-endpoint:last-child {
   text-align: right;
 }
 
-.flight-endpoint:last-child .flight-time {
+/* Large airport code */
+.flight-airport-code-lg {
+  font-size: 2rem;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-gray-900);
+  letter-spacing: 0.05em;
+  line-height: 1;
+}
+
+/* Smaller time with icon */
+.flight-time-sm {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-500);
+  margin-top: var(--spacing-2);
+}
+
+.flight-endpoint:first-child .flight-time-sm {
+  justify-content: flex-start;
+}
+
+.flight-endpoint:last-child .flight-time-sm {
   justify-content: flex-end;
 }
 
+.flight-time-icon-sm {
+  font-size: 16px;
+  color: var(--color-gray-500);
+}
+
+.flight-next-day {
+  font-size: var(--font-size-xs);
+  color: var(--color-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.flight-terminal {
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-500);
+  margin-top: var(--spacing-1);
+}
+
+/* Curved arc between airports */
+.flight-arc {
+  flex: 0 0 160px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.flight-arc-line {
+  position: relative;
+  width: 160px;
+}
+
+.flight-arc-img {
+  width: 160px;
+  height: auto;
+  display: block;
+}
+
+.flight-arc-plane {
+  position: absolute;
+  right: -4px;
+  bottom: -9px;
+  width: 26px;
+  height: 26px;
+  background: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  z-index: 1;
+}
+
+.flight-arc-plane svg {
+  transform: rotate(120deg);
+}
+
+.flight-duration {
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-500);
+  margin-top: 2px;
+}
+
+/* Legacy flight styles (used by share.js) */
 .flight-time {
   display: flex;
   align-items: center;
@@ -217,12 +340,6 @@
 .flight-time-icon {
   font-size: 20px;
   color: var(--color-gray-900);
-}
-
-.flight-terminal {
-  font-size: var(--font-size-xs);
-  color: var(--color-gray-500);
-  margin-top: var(--spacing-1);
 }
 
 .flight-airport {
@@ -251,18 +368,9 @@
   justify-content: center;
 }
 
-.flight-arrow-line::after {
-  display: none;
-}
-
 .flight-arrow-svg {
   width: 80px;
   height: 12px;
-}
-
-.flight-duration {
-  font-size: var(--font-size-xs);
-  color: var(--color-gray-500);
 }
 
 .flight-info {
@@ -673,6 +781,34 @@
   }
   .passenger-menu-wrapper {
     display: block !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .flight-card-body {
+    padding: var(--spacing-4);
+  }
+
+  .flight-title {
+    font-size: var(--font-size-xl);
+  }
+
+  .flight-airport-code-lg {
+    font-size: 1.5rem;
+  }
+
+  .flight-arc {
+    min-width: 60px;
+  }
+
+  .flight-arc-plane {
+    width: 26px;
+    height: 26px;
+  }
+
+  .flight-arc-plane svg {
+    width: 16px;
+    height: 16px;
   }
 }
 

@@ -7,6 +7,15 @@
   const esc = (text) => utils.escapeHtml(text);
   const escAttr = (val) => window.tripPage.escAttr(val);
 
+  /** Convert "REGGIO DI CALABRIA" → "Reggio di Calabria" */
+  const IT_LOWERCASE = new Set(['di','del','della','delle','dei','degli','dello','da','nel','nella','nelle','nei','negli','nello','al','alla','alle','agli','allo','sul','sulla','sulle','sui','sugli','in','a','e','le','la','il','lo','i','gli']);
+  function toTitleCase(str) {
+    if (!str) return '';
+    return str.toLowerCase().replace(/\S+/g, (word, offset) =>
+      offset > 0 && IT_LOWERCASE.has(word) ? word : word.charAt(0).toUpperCase() + word.slice(1)
+    );
+  }
+
   /**
    * Check if a flight is in the past (based on arrival time)
    * @param {Object} flight
@@ -88,6 +97,16 @@
       const duration = flight.duration ? utils.formatDuration(flight.duration, lang) : '';
       const isPast = isFlightPast(flight);
 
+      const depCity = toTitleCase(flight.departure?.city || '');
+      const arrCity = toTitleCase(flight.arrival?.city || '');
+      const depCode = flight.departure?.code || '';
+      const arrCode = flight.arrival?.code || '';
+      const depAirportRaw = flight.departure?.airport || window.AirportAutocomplete?.getAirportName(depCode) || '';
+      const depAirport = toTitleCase(depAirportRaw);
+      const depMapsUrl = depAirportRaw
+        ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(depAirportRaw)}`
+        : '#';
+
       return `
         <div class="flight-card${isPast ? ' past' : ''}" data-id="${flight.id}">
           <div class="flight-card-header">
@@ -103,38 +122,47 @@
           </div>
 
           <div class="flight-card-body">
+            <div class="flight-title-section">
+              <h3 class="flight-title">Da ${esc(depCity)} a ${esc(arrCity)}</h3>
+            </div>
+
+            ${depAirport ? `
+            <div class="flight-departure-location">
+              <a href="${depMapsUrl}" target="_blank" rel="noopener" class="flight-location-link">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                <span>${esc(depAirport)}</span>
+              </a>
+            </div>
+            ` : ''}
+
             <div class="flight-route">
               <div class="flight-endpoint">
-                <div class="flight-time">
-                  <span class="material-icons-outlined flight-time-icon">flight_takeoff</span>
+                <div class="flight-airport-code-lg">${esc(depCode)}</div>
+                <div class="flight-time-sm">
+                  <span class="material-icons-outlined flight-time-icon-sm">flight_takeoff</span>
                   ${esc(flight.departureTime)}
                 </div>
-                <div class="flight-airport">
-                  <span class="flight-airport-code">${esc(flight.departure?.code || '')}</span>
-                </div>
-                <div class="flight-airport">${esc(flight.departure?.city || '')}</div>
                 ${flight.departure?.terminal ? `<div class="flight-terminal">Terminal ${esc(flight.departure.terminal)}</div>` : ''}
               </div>
 
-              <div class="flight-arrow">
-                <div class="flight-duration">${esc(duration)}</div>
-                <div class="flight-arrow-line">
-                  <svg class="flight-arrow-svg" viewBox="0 0 40 12" fill="none">
-                    <line x1="0" y1="6" x2="32" y2="6" stroke="var(--color-primary)" stroke-width="2"/>
-                    <polygon points="30,1 39,6 30,11" fill="var(--color-primary)"/>
-                  </svg>
+              <div class="flight-arc">
+                <div class="flight-arc-line">
+                  <img class="flight-arc-img" src="/img/flight-arc.svg" alt="" />
+                  <div class="flight-arc-plane">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--color-primary)">
+                      <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
+                    </svg>
+                  </div>
                 </div>
+                ${duration ? `<div class="flight-duration">${esc(duration)}</div>` : ''}
               </div>
 
               <div class="flight-endpoint">
-                <div class="flight-time">
-                  <span class="material-icons-outlined flight-time-icon">flight_land</span>
-                  ${esc(flight.arrivalTime)}${flight.arrivalNextDay ? ' +1' : ''}
+                <div class="flight-airport-code-lg">${esc(arrCode)}</div>
+                <div class="flight-time-sm">
+                  ${esc(flight.arrivalTime)}${flight.arrivalNextDay ? ' <span class="flight-next-day">+1</span>' : ''}
+                  <span class="material-icons-outlined flight-time-icon-sm">flight_land</span>
                 </div>
-                <div class="flight-airport">
-                  <span class="flight-airport-code">${esc(flight.arrival?.code || '')}</span>
-                </div>
-                <div class="flight-airport">${esc(flight.arrival?.city || '')}</div>
                 ${flight.arrival?.terminal ? `<div class="flight-terminal">Terminal ${esc(flight.arrival.terminal)}</div>` : ''}
               </div>
             </div>
@@ -185,11 +213,13 @@
     i18n.apply(container);
     window.tripPage.initQuickUploadCard('quick-upload-flights');
 
-    // Connect CTA to quick upload file picker
+    // Connect CTA to add-booking modal
     const addBtn = document.getElementById('flights-add-booking-btn');
-    const uploadInput = container.querySelector('#quick-upload-flights .quick-upload-input');
-    if (addBtn && uploadInput) {
-      addBtn.addEventListener('click', () => uploadInput.click());
+    if (addBtn) {
+      addBtn.addEventListener('click', () => {
+        const tripId = window.tripPage.currentTripData?.id;
+        if (tripId) window.tripPage.showAddBookingModal(tripId, 'flight');
+      });
     }
   }
 

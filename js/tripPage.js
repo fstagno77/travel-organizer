@@ -31,6 +31,7 @@
     rerenderCurrentTab,
     initQuickUploadCard,
     loadSlidePanel,
+    showAddBookingModal,
   };
 
   // ===========================
