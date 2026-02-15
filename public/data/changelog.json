@@ -1,6 +1,24 @@
 {
   "versions": [
     {
+      "version": "0.21.0",
+      "date": "2026-02-15",
+      "changes": {
+        "it": [
+          "Nuovi pulsanti Aggiungi e Modifica prenotazione nell'header delle sezioni Voli e Hotel",
+          "Pulsante Modifica con stile outline (bordo e testo colorato, sfondo trasparente)",
+          "Tema colore verde per i pulsanti della sezione Hotel",
+          "Rimossa voce 'Gestisci prenotazione' dal menu tre puntini"
+        ],
+        "en": [
+          "New Add and Edit booking buttons in Flights and Hotels section headers",
+          "Edit button with outline style (colored border and text, transparent background)",
+          "Green color theme for Hotels section buttons",
+          "Removed 'Manage booking' item from three-dot menu"
+        ]
+      }
+    },
+    {
       "version": "0.20.0",
       "date": "2026-02-14",
       "changes": {
