@@ -2837,15 +2837,7 @@ input[type="time"].form-input {
 }
 
 .activity-dropdown-arrow {
-  position: absolute;
-  top: -0.5rem;
-  right: 0.75rem;
-  width: 1rem;
-  height: 1rem;
-  background: white;
-  border-left: 1px solid rgb(226 232 240);
-  border-top: 1px solid rgb(226 232 240);
-  transform: rotate(45deg);
+  display: none;
 }
 
 /* Search input inside dropdown */
