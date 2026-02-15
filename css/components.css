@@ -2312,6 +2312,10 @@ input[type="time"].form-input {
   color: var(--color-primary);
 }
 
+.segmented-control-btn[data-tab="activities"].active {
+  color: var(--color-gray-800);
+}
+
 .segmented-control-btn[data-tab="hotels"].active {
   color: var(--color-hotel-600);
 }
@@ -2773,14 +2777,13 @@ input[type="time"].form-input {
   gap: var(--spacing-2);
 }
 
-/* Button container (white pill with shadow) */
+/* Button container */
 .activity-btn-container {
   position: relative;
-  background: white;
-  border-radius: 0.75rem;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgb(226 232 240);
-  padding: 0.25rem;
+  background: var(--color-white);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-1);
+  box-shadow: var(--shadow-sm);
 }
 
 .activity-header-btn {
@@ -2795,7 +2798,7 @@ input[type="time"].form-input {
   background: transparent;
   cursor: pointer;
   border: none;
-  color: rgb(15 23 42);
+  color: var(--color-gray-600);
 }
 
 .activity-header-btn:hover {
@@ -2912,14 +2915,14 @@ input[type="time"].form-input {
   position: relative;
 }
 
+@media (min-width: 641px) {
+  .activity-header-add-btn {
+    margin-left: var(--spacing-6);
+  }
+}
+
 .activity-header-add-btn::before {
-  content: '';
-  position: absolute;
-  left: calc(-1 * var(--spacing-2) - var(--spacing-2) / 2);
-  top: 15%;
-  height: 70%;
-  width: 1px;
-  background: rgb(203 213 225);
+  display: none;
 }
 
 .activity-header-add-btn svg {
@@ -2963,9 +2966,18 @@ input[type="time"].form-input {
   .activity-dropdown {
     position: fixed;
     top: auto;
-    right: var(--spacing-4);
-    left: var(--spacing-4);
+    bottom: 0;
+    left: 0;
+    right: 0;
     width: auto;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    margin-top: 0;
+    padding: var(--spacing-5) var(--spacing-4) var(--spacing-6);
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.15);
+    z-index: 100;
+  }
+  .activity-dropdown .activity-dropdown-arrow {
+    display: none;
   }
 }
 
@@ -3334,11 +3346,10 @@ input[type="time"].form-input {
   display: flex;
   align-items: center;
   gap: 2px;
-  background: white;
-  border-radius: 0.75rem;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgb(226 232 240);
-  padding: 0.25rem;
+  background: var(--color-white);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-1);
+  box-shadow: var(--shadow-sm);
 }
 
 .activity-view-btn {
@@ -3352,7 +3363,7 @@ input[type="time"].form-input {
   align-items: center;
   justify-content: center;
   transition: all 0.2s;
-  color: rgb(71 85 105);
+  color: var(--color-gray-600);
 }
 
 .activity-view-btn:hover:not(.active):not([disabled]) {
