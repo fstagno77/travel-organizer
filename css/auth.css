@@ -1728,7 +1728,7 @@ img.login-logo-img {
     margin-bottom: var(--spacing-6);
   }
 
-  .login-logo-img {
+  img.login-logo-img {
     width: 300px;
     max-width: 85%;
     margin-bottom: var(--spacing-4);
