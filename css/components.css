@@ -2852,7 +2852,7 @@ input[type="time"].form-input {
   padding: 0.5rem 2rem 0.5rem 0.75rem;
   border: 1px solid rgb(203 213 225);
   border-radius: 0.5rem;
-  font-size: 0.875rem;
+  font-size: 1rem;
   line-height: 1.25rem;
   outline: none;
   box-sizing: border-box;
