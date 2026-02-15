@@ -3623,6 +3623,7 @@ input[type="time"].form-input {
   .activity-day--cards {
     flex-direction: column;
     gap: 0;
+    overflow: hidden;
   }
 
   .activity-day--cards .activity-day-sidebar {
@@ -3635,6 +3636,10 @@ input[type="time"].form-input {
 
   .activity-day--cards .activity-day-number {
     font-size: 1.5rem;
+  }
+
+  .activity-day--cards .activity-card-row {
+    max-width: 100%;
   }
 }
 
@@ -4737,6 +4742,16 @@ input[type="time"].form-input {
 .manage-booking-item.selected {
   border-color: var(--color-primary);
   background-color: var(--color-primary-light, rgba(59, 130, 246, 0.05));
+}
+
+.manage-booking-actions {
+  display: flex;
+  gap: var(--spacing-2);
+  padding: var(--spacing-2) 0 var(--spacing-1);
+}
+
+.manage-booking-actions .btn {
+  flex: 1;
 }
 
 .manage-booking-item-label {
