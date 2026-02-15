@@ -1326,7 +1326,7 @@
 /* Dark backdrop behind modal */
 .trip-modal-page {
   background: rgba(0, 0, 0, 0.5);
-  min-height: 100vh;
+  min-height: 100dvh;
   overflow: hidden;
   animation: tripBackdropIn 0.4s ease both;
 }
@@ -5946,7 +5946,7 @@ input[type="time"].form-input {
   }
 
   .trip-modal {
-    height: calc(100vh - 10px);
+    height: calc(100dvh - 10px);
     margin-top: 10px;
   }
 }
