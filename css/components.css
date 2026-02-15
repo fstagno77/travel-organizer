@@ -876,7 +876,7 @@
 }
 
 .flight-toggle-details:hover {
-  background-color: var(--color-gray-50);
+  background-color: transparent;
 }
 
 .flight-toggle-details svg {
@@ -2720,8 +2720,7 @@ input[type="time"].form-input {
 }
 
 .hotel-toggle-details:hover {
-  color: var(--color-hotel-700);
-  background-color: var(--color-hotel-50);
+  background-color: transparent;
 }
 
 .hotel-toggle-details svg {
