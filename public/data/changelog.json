@@ -1,6 +1,26 @@
 {
   "versions": [
     {
+      "version": "0.22.0",
+      "date": "2026-02-15",
+      "changes": {
+        "it": [
+          "Pannelli in-modal: attività, gestione e modifica prenotazione si aprono come card flottante dentro la modale viaggio",
+          "Overlay scuro sulla modale viaggio quando un pannello è aperto",
+          "Pannello con angoli arrotondati, ombra e margini interni alla modale",
+          "Pulsante chiudi (X) in alto a destra nei pannelli",
+          "Rimosso vecchio sistema overlay esterno che spostava la modale a sinistra"
+        ],
+        "en": [
+          "In-modal panels: activity, manage and edit booking panels open as floating cards inside the trip modal",
+          "Dark overlay on trip modal when a panel is open",
+          "Panel with rounded corners, shadow and margins inside the modal",
+          "Close button (X) in the top right corner of panels",
+          "Removed old external overlay system that shifted the modal to the left"
+        ]
+      }
+    },
+    {
       "version": "0.21.0",
       "date": "2026-02-15",
       "changes": {

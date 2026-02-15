@@ -568,22 +568,29 @@
     `;
   }
 
+  // Track active escape handler for cleanup
+  let _escapeHandler = null;
+
   /**
-   * Show the activity slide-in panel
+   * Show the activity panel as an in-modal page (slides within the trip modal)
    * @param {'create'|'view'|'edit'} mode
    * @param {string|null} date - YYYY-MM-DD for create mode
    * @param {Object|null} activity - Existing activity for view/edit
    */
   function showActivityPanel(mode, date, activity) {
-    // Remove existing panel
-    const existing = document.getElementById('activity-panel');
-    if (existing) {
-      existing.remove();
-      document.body.classList.remove('slide-panel-open');
-    }
+    const slider = document.getElementById('modal-page-slider');
+    const mainPage = document.getElementById('modal-page-main');
+    const activityPage = document.getElementById('modal-page-activity');
+
+    if (!slider || !activityPage) return;
 
     const isView = mode === 'view';
     const isCreate = mode === 'create';
+
+    // Save scroll position of main page (only on first navigation, not re-renders)
+    const alreadyAtActivity = slider.classList.contains('at-activity');
+    const savedScrollTop = alreadyAtActivity ? (slider._savedScrollTop || 0) : mainPage.scrollTop;
+    if (!alreadyAtActivity) slider._savedScrollTop = savedScrollTop;
 
     const titleKey = isCreate ? 'activity.createTitle' : isView ? 'activity.viewTitle' : 'activity.editTitle';
     const titleDefault = isCreate ? 'New Activity' : isView ? 'Activity' : 'Edit Activity';
@@ -605,86 +612,64 @@
       ? renderActivityViewMode(activity)
       : renderActivityFormMode(date, activity);
 
-    const panelHTML = `
-      <div class="slide-panel-overlay" id="activity-panel">
-        <div class="slide-panel">
-          <div class="slide-panel-header">
-            <h2 data-i18n="${titleKey}">${i18n.t(titleKey) || titleDefault}</h2>
-            <button class="modal-close" id="activity-panel-close">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
-          </div>
-          <div class="slide-panel-body">
-            ${bodyHtml}
-          </div>
-          <div class="slide-panel-footer">
-            ${footerHtml}
-          </div>
-        </div>
+    // Render into the activity page slot (no overlay, no body append)
+    activityPage.innerHTML = `
+      <div class="slide-panel-header">
+        <h2 data-i18n="${titleKey}">${i18n.t(titleKey) || titleDefault}</h2>
+        <button class="activity-panel-close" id="activity-panel-close" aria-label="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="slide-panel-body">
+        ${bodyHtml}
+      </div>
+      <div class="slide-panel-footer">
+        ${footerHtml}
       </div>
     `;
 
-    document.body.insertAdjacentHTML('beforeend', panelHTML);
-    const panel = document.getElementById('activity-panel');
-    i18n.apply(panel);
-    panel.offsetHeight; // force reflow
-    panel.classList.add('active');
-    document.body.classList.add('slide-panel-open');
+    i18n.apply(activityPage);
 
-    // Close handlers
-    let outsideClickHandler = null;
-    let escapeHandler = null;
+    // Slide to activity page
+    requestAnimationFrame(() => {
+      slider.classList.add('at-activity');
+      activityPage.scrollTop = 0;
+    });
 
-    const closePanel = () => {
-      panel.classList.remove('active');
-      document.body.classList.remove('slide-panel-open');
-      if (outsideClickHandler) {
-        document.removeEventListener('click', outsideClickHandler);
-        outsideClickHandler = null;
-      }
-      if (escapeHandler) {
-        document.removeEventListener('keydown', escapeHandler);
-        escapeHandler = null;
-      }
-      setTimeout(() => panel.remove(), 250);
+    // Navigate back function
+    const navigateBack = (onComplete) => {
+      slider.classList.remove('at-activity');
+      activityPage.addEventListener('transitionend', function onEnd(e) {
+        if (e.target !== activityPage) return;
+        activityPage.removeEventListener('transitionend', onEnd);
+        activityPage.innerHTML = '';
+        delete slider._savedScrollTop;
+        mainPage.scrollTop = savedScrollTop;
+        if (onComplete) onComplete();
+      }, { once: false });
     };
 
-    // Close on click outside the panel
-    outsideClickHandler = (e) => {
-      const slidePanel = panel.querySelector('.slide-panel');
-      if (slidePanel && !slidePanel.contains(e.target)) {
-        closePanel();
-      }
-    };
-    setTimeout(() => document.addEventListener('click', outsideClickHandler), 10);
-
-    // Close on Escape key
-    escapeHandler = (e) => {
-      if (e.key === 'Escape') closePanel();
-    };
-    document.addEventListener('keydown', escapeHandler);
-
-    document.getElementById('activity-panel-close').addEventListener('click', closePanel);
+    // Close button handler
+    document.getElementById('activity-panel-close').addEventListener('click', () => navigateBack());
 
     // Mode-specific handlers
     if (isView) {
-      initViewModeHandlers(activity, closePanel);
+      initViewModeHandlers(activity, navigateBack);
     } else {
-      initFormModeHandlers(mode, date, activity, closePanel);
+      initFormModeHandlers(mode, date, activity, navigateBack);
     }
   }
 
   /**
    * Initialize view mode handlers (edit, delete, attachment downloads)
    */
-  function initViewModeHandlers(activity, closePanel) {
-    // Edit button
+  function initViewModeHandlers(activity, navigateBack) {
+    // Edit button — re-render in place (no close+reopen needed)
     document.getElementById('activity-edit-btn').addEventListener('click', () => {
-      closePanel();
-      setTimeout(() => showActivityPanel('edit', null, activity), 300);
+      showActivityPanel('edit', null, activity);
     });
 
     // Delete button
@@ -711,12 +696,11 @@
         const result = await response.json();
         if (!result.success) throw new Error(result.error);
 
-        closePanel();
-        setTimeout(async () => {
+        navigateBack(async () => {
           await window.tripPage.loadTripFromUrl();
           window.tripPage.switchToTab('activities');
           utils.showToast(i18n.t('activity.deleteSuccess') || 'Activity deleted', 'success');
-        }, 300);
+        });
       } catch (error) {
         console.error('Error deleting activity:', error);
         utils.showToast(i18n.t('activity.deleteError') || 'Error deleting activity', 'error');
@@ -750,14 +734,14 @@
   /**
    * Initialize form mode handlers (save, URL management, file previews)
    */
-  function initFormModeHandlers(mode, date, activity, closePanel) {
+  function initFormModeHandlers(mode, date, activity, navigateBack) {
     const isCreate = mode === 'create';
     let newFiles = []; // Track newly selected files
     let removedAttachmentPaths = []; // Track removed existing attachments
     let locationData = activity?.location || null; // Track Google Maps location
 
     // Cancel button
-    document.getElementById('activity-cancel-btn').addEventListener('click', closePanel);
+    document.getElementById('activity-cancel-btn').addEventListener('click', () => navigateBack());
 
     // Time pickers (Google Calendar-style)
     initTimePickers();
@@ -1059,14 +1043,13 @@
         const result = await response.json();
         if (!result.success) throw new Error(result.error);
 
-        closePanel();
-        setTimeout(async () => {
+        navigateBack(async () => {
           await window.tripPage.loadTripFromUrl();
           window.tripPage.switchToTab('activities');
           const msgKey = isCreate ? 'activity.createSuccess' : 'activity.updateSuccess';
           const msgDefault = isCreate ? 'Activity created' : 'Activity updated';
           utils.showToast(i18n.t(msgKey) || msgDefault, 'success');
-        }, 300);
+        });
 
       } catch (error) {
         console.error('Error saving activity:', error);

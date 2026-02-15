@@ -123,6 +123,13 @@
       // Initialize close button with slide-out animation
       document.getElementById('trip-close-btn')?.addEventListener('click', () => {
         const modal = document.querySelector('.trip-modal');
+        // Reset in-modal page slider if active
+        const slider = document.getElementById('modal-page-slider');
+        if (slider) {
+          slider.classList.remove('at-activity');
+          const activityPage = document.getElementById('modal-page-activity');
+          if (activityPage) activityPage.innerHTML = '';
+        }
         document.body.classList.add('closing');
         modal.classList.add('closing');
         modal.addEventListener('animationend', () => {
@@ -1633,11 +1640,14 @@
    * Show slide-in panel to manage bookings (edit or delete)
    */
   function showManageBookingPanel(tripId) {
-    const existingPanel = document.getElementById('manage-booking-panel');
-    if (existingPanel) {
-      existingPanel.remove();
-      document.body.classList.remove('slide-panel-open');
-    }
+    const slider = document.getElementById('modal-page-slider');
+    const mainPage = document.getElementById('modal-page-main');
+    const activityPage = document.getElementById('modal-page-activity');
+    if (!slider || !activityPage) return;
+
+    const alreadyOpen = slider.classList.contains('at-activity');
+    const savedScrollTop = alreadyOpen ? (slider._savedScrollTop || 0) : mainPage.scrollTop;
+    if (!alreadyOpen) slider._savedScrollTop = savedScrollTop;
 
     const currentTab = document.querySelector('.segmented-control-btn.active')?.dataset.tab || 'flights';
     const type = currentTab === 'hotels' ? 'hotel' : 'flight';
@@ -1735,56 +1745,47 @@
       listHTML += '</div>';
     }
 
-    const panelHTML = `
-      <div class="slide-panel-overlay" id="manage-booking-panel">
-        <div class="slide-panel">
-          <div class="slide-panel-header">
-            <h2 id="manage-panel-title">${i18n.t('trip.manageBookingTitle') || 'Gestisci prenotazione'}</h2>
-            <button class="modal-close" id="manage-panel-close">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
-          </div>
-          <div class="slide-panel-body" id="manage-panel-body">
-            ${listHTML}
-          </div>
-          <div class="slide-panel-footer" id="manage-panel-footer">
-            <button class="btn btn-secondary" id="manage-close-btn">${i18n.t('modal.close') || 'Chiudi'}</button>
-          </div>
-        </div>
+    activityPage.innerHTML = `
+      <div class="slide-panel-header">
+        <h2 id="manage-panel-title">${i18n.t('trip.manageBookingTitle') || 'Gestisci prenotazione'}</h2>
+        <button class="activity-panel-close" id="manage-panel-close" aria-label="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="slide-panel-body" id="manage-panel-body">
+        ${listHTML}
+      </div>
+      <div class="slide-panel-footer" id="manage-panel-footer">
+        <button class="btn btn-secondary" id="manage-close-btn">${i18n.t('modal.close') || 'Chiudi'}</button>
       </div>
     `;
 
-    document.body.insertAdjacentHTML('beforeend', panelHTML);
+    requestAnimationFrame(() => {
+      slider.classList.add('at-activity');
+      activityPage.scrollTop = 0;
+    });
 
-    const panel = document.getElementById('manage-booking-panel');
     const panelBody = document.getElementById('manage-panel-body');
     const panelTitle = document.getElementById('manage-panel-title');
     const panelFooter = document.getElementById('manage-panel-footer');
-    const closeBtn = document.getElementById('manage-panel-close');
-    const closePanelBtn = document.getElementById('manage-close-btn');
 
-    let outsideClickHandler = null;
-    let escapeHandler = null;
-
-    const closePanel = () => {
-      panel.classList.remove('active');
-      document.body.classList.remove('slide-panel-open');
-      if (outsideClickHandler) {
-        document.removeEventListener('click', outsideClickHandler);
-        outsideClickHandler = null;
-      }
-      if (escapeHandler) {
-        document.removeEventListener('keydown', escapeHandler);
-        escapeHandler = null;
-      }
-      setTimeout(() => panel.remove(), 300);
-      document.body.style.overflow = '';
+    const closePanel = (onComplete) => {
+      slider.classList.remove('at-activity');
+      activityPage.addEventListener('transitionend', function onEnd(e) {
+        if (e.target !== activityPage) return;
+        activityPage.removeEventListener('transitionend', onEnd);
+        activityPage.innerHTML = '';
+        delete slider._savedScrollTop;
+        mainPage.scrollTop = savedScrollTop;
+        if (onComplete) onComplete();
+      }, { once: false });
     };
 
-    closePanelBtn.addEventListener('click', closePanel);
+    document.getElementById('manage-panel-close').addEventListener('click', () => closePanel());
+    document.getElementById('manage-close-btn').addEventListener('click', () => closePanel());
 
     // Remove existing action buttons
     const removeActions = () => {
@@ -1793,9 +1794,9 @@
     };
 
     // Card click selection → show action buttons below card
-    panel.querySelectorAll('.manage-booking-item').forEach(card => {
+    activityPage.querySelectorAll('.manage-booking-item').forEach(card => {
       card.addEventListener('click', () => {
-        panel.querySelectorAll('.manage-booking-item').forEach(c => c.classList.remove('selected'));
+        activityPage.querySelectorAll('.manage-booking-item').forEach(c => c.classList.remove('selected'));
         card.classList.add('selected');
         removeActions();
 
@@ -1873,16 +1874,15 @@
       panelBody.innerHTML = formHTML;
 
       // Add back button to header
-      const header = panel.querySelector('.slide-panel-header');
+      const header = activityPage.querySelector('.slide-panel-header');
       const backBtn = document.createElement('button');
       backBtn.className = 'manage-back-btn';
       backBtn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>`;
       header.insertBefore(backBtn, panelTitle);
 
       backBtn.addEventListener('click', () => {
-        // Return to selection view
-        closePanel();
-        setTimeout(() => showManageBookingPanel(tripId), 300);
+        // Return to selection view (re-render in place)
+        showManageBookingPanel(tripId);
       });
 
       // Init airport autocomplete for flights
@@ -1900,7 +1900,7 @@
         <button class="btn btn-primary" id="manage-save-btn">${i18n.t('modal.save') || 'Salva'}</button>
       `;
 
-      document.getElementById('manage-cancel-btn').addEventListener('click', closePanel);
+      document.getElementById('manage-cancel-btn').addEventListener('click', () => closePanel());
 
       document.getElementById('manage-save-btn').addEventListener('click', async () => {
         const saveBtn = document.getElementById('manage-save-btn');
@@ -1964,9 +1964,10 @@
           }
 
           const activeTab = document.querySelector('.segmented-control-btn.active')?.dataset.tab;
-          closePanel();
-          await loadTripFromUrl();
-          if (activeTab) switchToTab(activeTab);
+          closePanel(async () => {
+            await loadTripFromUrl();
+            if (activeTab) switchToTab(activeTab);
+          });
           utils.showToast(i18n.t('trip.editBookingSuccess') || 'Prenotazione aggiornata', 'success');
         } catch (error) {
           console.error('Error editing booking:', error);
@@ -1994,8 +1995,7 @@
 
       document.getElementById('manage-delete-cancel').addEventListener('click', (e) => {
         e.stopPropagation();
-        closePanel();
-        setTimeout(() => showManageBookingPanel(tripId), 300);
+        showManageBookingPanel(tripId);
       });
 
       document.getElementById('manage-delete-confirm').addEventListener('click', async (e) => {
@@ -2053,8 +2053,7 @@
             }
           }
 
-          closePanel();
-          rerenderCurrentTab();
+          closePanel(() => rerenderCurrentTab());
           utils.showToast(i18n.t('trip.deleteBookingSuccess') || 'Prenotazione eliminata', 'success');
         } catch (error) {
           console.error('Error deleting booking:', error);
@@ -2064,29 +2063,6 @@
         }
       });
     }
-
-    // Close handlers
-    closeBtn.addEventListener('click', closePanel);
-
-    outsideClickHandler = (e) => {
-      const slidePanel = panel.querySelector('.slide-panel');
-      if (slidePanel && !slidePanel.contains(e.target)) {
-        closePanel();
-      }
-    };
-    setTimeout(() => document.addEventListener('click', outsideClickHandler), 10);
-
-    escapeHandler = (e) => {
-      if (e.key === 'Escape') closePanel();
-    };
-    document.addEventListener('keydown', escapeHandler);
-
-    // Trigger animation
-    requestAnimationFrame(() => {
-      panel.classList.add('active');
-      document.body.classList.add('slide-panel-open');
-    });
-    document.body.style.overflow = 'hidden';
   }
 
   // ===========================
@@ -2117,45 +2093,44 @@
    * Show slide-in panel with edit booking form for a single item
    */
   function showEditBookingPanel(type, item, tripId) {
-    const existingPanel = document.getElementById('edit-booking-panel');
-    if (existingPanel) {
-      existingPanel.remove();
-      document.body.classList.remove('slide-panel-open');
-    }
+    const slider = document.getElementById('modal-page-slider');
+    const mainPage = document.getElementById('modal-page-main');
+    const activityPage = document.getElementById('modal-page-activity');
+    if (!slider || !activityPage) return;
+
+    const alreadyOpen = slider.classList.contains('at-activity');
+    const savedScrollTop = alreadyOpen ? (slider._savedScrollTop || 0) : mainPage.scrollTop;
+    if (!alreadyOpen) slider._savedScrollTop = savedScrollTop;
 
     const formHTML = type === 'flight'
       ? window.tripFlights.buildEditForm(item)
       : window.tripHotels.buildEditForm(item);
 
-    const panelHTML = `
-      <div class="slide-panel-overlay" id="edit-booking-panel">
-        <div class="slide-panel">
-          <div class="slide-panel-header">
-            <h2>${i18n.t('trip.editBookingTitle') || 'Modifica prenotazione'}</h2>
-            <button class="modal-close" id="edit-panel-close">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
-          </div>
-          <div class="slide-panel-body">
-            ${formHTML}
-          </div>
-          <div class="slide-panel-footer">
-            <button class="btn btn-secondary" id="edit-panel-cancel">${i18n.t('modal.cancel') || 'Annulla'}</button>
-            <button class="btn btn-primary" id="edit-panel-save">${i18n.t('modal.save') || 'Salva'}</button>
-          </div>
-        </div>
+    activityPage.innerHTML = `
+      <div class="slide-panel-header">
+        <h2>${i18n.t('trip.editBookingTitle') || 'Modifica prenotazione'}</h2>
+        <button class="activity-panel-close" id="edit-panel-close" aria-label="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="slide-panel-body">
+        ${formHTML}
+      </div>
+      <div class="slide-panel-footer">
+        <button class="btn btn-secondary" id="edit-panel-cancel">${i18n.t('modal.cancel') || 'Annulla'}</button>
+        <button class="btn btn-primary" id="edit-panel-save">${i18n.t('modal.save') || 'Salva'}</button>
       </div>
     `;
 
-    document.body.insertAdjacentHTML('beforeend', panelHTML);
+    requestAnimationFrame(() => {
+      slider.classList.add('at-activity');
+      activityPage.scrollTop = 0;
+    });
 
-    const panel = document.getElementById('edit-booking-panel');
-    const panelBody = panel.querySelector('.slide-panel-body');
-    const closeBtn = document.getElementById('edit-panel-close');
-    const cancelBtn = document.getElementById('edit-panel-cancel');
+    const panelBody = activityPage.querySelector('.slide-panel-body');
     const saveBtn = document.getElementById('edit-panel-save');
 
     if (type === 'flight') {
@@ -2166,22 +2141,16 @@
       });
     }
 
-    let outsideClickHandler = null;
-    let escapeHandler = null;
-
-    const closePanel = () => {
-      panel.classList.remove('active');
-      document.body.classList.remove('slide-panel-open');
-      if (outsideClickHandler) {
-        document.removeEventListener('click', outsideClickHandler);
-        outsideClickHandler = null;
-      }
-      if (escapeHandler) {
-        document.removeEventListener('keydown', escapeHandler);
-        escapeHandler = null;
-      }
-      setTimeout(() => panel.remove(), 300);
-      document.body.style.overflow = '';
+    const closePanel = (onComplete) => {
+      slider.classList.remove('at-activity');
+      activityPage.addEventListener('transitionend', function onEnd(e) {
+        if (e.target !== activityPage) return;
+        activityPage.removeEventListener('transitionend', onEnd);
+        activityPage.innerHTML = '';
+        delete slider._savedScrollTop;
+        mainPage.scrollTop = savedScrollTop;
+        if (onComplete) onComplete();
+      }, { once: false });
     };
 
     const performSave = async () => {
@@ -2230,9 +2199,10 @@
         }
 
         const activeTab = document.querySelector('.segmented-control-btn.active')?.dataset.tab;
-        closePanel();
-        await loadTripFromUrl();
-        if (activeTab) switchToTab(activeTab);
+        closePanel(async () => {
+          await loadTripFromUrl();
+          if (activeTab) switchToTab(activeTab);
+        });
         utils.showToast(i18n.t('trip.editBookingSuccess') || 'Booking updated', 'success');
       } catch (error) {
         console.error('Error editing booking:', error);
@@ -2242,31 +2212,9 @@
       }
     };
 
-    closeBtn.addEventListener('click', closePanel);
-    cancelBtn.addEventListener('click', closePanel);
+    document.getElementById('edit-panel-close').addEventListener('click', () => closePanel());
+    document.getElementById('edit-panel-cancel').addEventListener('click', () => closePanel());
     saveBtn.addEventListener('click', performSave);
-
-    // Close on click outside the panel
-    outsideClickHandler = (e) => {
-      const slidePanel = panel.querySelector('.slide-panel');
-      if (slidePanel && !slidePanel.contains(e.target)) {
-        closePanel();
-      }
-    };
-    setTimeout(() => document.addEventListener('click', outsideClickHandler), 10);
-
-    // Close on Escape key
-    escapeHandler = (e) => {
-      if (e.key === 'Escape') closePanel();
-    };
-    document.addEventListener('keydown', escapeHandler);
-
-    // Trigger animation
-    requestAnimationFrame(() => {
-      panel.classList.add('active');
-      document.body.classList.add('slide-panel-open');
-    });
-    document.body.style.overflow = 'hidden';
   }
 
   /**

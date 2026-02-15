@@ -1178,7 +1178,8 @@
 }
 
 .today-flight-details-link:hover {
-  background: var(--color-gray-50);
+  text-decoration: underline;
+  color: var(--color-primary);
 }
 
 /* Today Cards Container - same grid as trip cards */
@@ -1315,7 +1316,8 @@
 }
 
 .today-hotel-details-link:hover {
-  background: var(--color-gray-50);
+  text-decoration: underline;
+  color: var(--color-primary);
 }
 
 /* Trip Header */
@@ -1325,25 +1327,10 @@
 
 /* Dark backdrop behind modal */
 .trip-modal-page {
-  background: rgba(0, 0, 0, 0.5);
+  background: linear-gradient(to top, #0D47A1, #1557E0, #2163F6);
   position: fixed;
   inset: 0;
   overflow: hidden;
-  animation: tripBackdropIn 0.4s ease both;
-}
-
-.trip-modal-page.closing {
-  animation: tripBackdropOut 0.3s ease both;
-}
-
-@keyframes tripBackdropIn {
-  from { background: transparent; }
-  to { background: rgba(0, 0, 0, 0.5); }
-}
-
-@keyframes tripBackdropOut {
-  from { background: rgba(0, 0, 0, 0.5); }
-  to { background: transparent; }
 }
 
 /* Modal container */
@@ -1355,19 +1342,30 @@
   display: flex;
   flex-direction: column;
   padding: 30px 10px 0;
-  overflow-y: auto;
+  overflow: hidden;
+  position: relative;
   will-change: transform, translate;
   animation: tripModalSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
   transition: translate var(--transition-normal);
 }
 
-body.slide-panel-open .trip-modal {
-  translate: -210px 0;
+.trip-modal::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0);
+  pointer-events: none;
+  transition: background 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 15;
+  border-radius: inherit;
 }
 
-body.slide-panel-open {
-  overflow-x: hidden;
+.trip-modal:has(.at-activity)::after {
+  background: rgba(0, 0, 0, 0.6);
+  pointer-events: auto;
 }
+
+
 
 .trip-modal.closing {
   animation: tripModalSlideOut 0.3s cubic-bezier(0.4, 0, 1, 1) both;
@@ -1391,8 +1389,78 @@ body.slide-panel-open {
   }
 }
 
+/* In-modal page slider (main content ↔ activity panel) */
+.modal-page-slider {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+.modal-page--main {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+
+.modal-page--activity {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  width: 420px;
+  max-width: calc(100% - 3rem);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  transform: translateX(calc(100% + 1.5rem));
+  transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  background: var(--color-white);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  border-radius: 1rem;
+  z-index: 20;
+}
+
+.modal-page-slider.at-activity .modal-page--main {
+  pointer-events: none;
+}
+
+.modal-page-slider.at-activity .modal-page--activity {
+  transform: translateX(0);
+}
+
+@media (max-width: 768px) {
+  .modal-page--activity {
+    width: 100%;
+  }
+}
+
+.activity-panel-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--color-gray-500);
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.activity-panel-close:hover {
+  color: var(--color-gray-900);
+  background: var(--color-gray-100);
+}
+
 /* Content container matches hero width */
-.trip-modal > main > .container {
+.modal-page--main > main > .container {
   max-width: var(--container-max-width);
   width: calc(100% - var(--container-padding) * 2);
   padding-left: 0;
