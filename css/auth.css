@@ -1725,7 +1725,7 @@ img.login-logo-img {
   .login-container {
     padding: var(--spacing-4);
     justify-content: flex-start;
-    padding-top: var(--spacing-10);
+    padding-top: calc(var(--spacing-10) + env(safe-area-inset-top, 0px));
     padding-bottom: 140px;
   }
 
