@@ -43,8 +43,8 @@
 }
 
 .btn-outline:hover {
-  background-color: var(--color-primary);
-  color: var(--color-white);
+  color: var(--color-primary-dark);
+  border-color: var(--color-primary-dark);
 }
 
 .btn-danger {
@@ -871,6 +871,10 @@
   transition: background-color var(--transition-fast);
 }
 
+.flight-toggle-details:hover span {
+  text-decoration: underline;
+}
+
 .flight-toggle-details:hover {
   background-color: var(--color-gray-50);
 }
@@ -1321,7 +1325,7 @@
 
 /* Dark backdrop behind modal */
 .trip-modal-page {
-  background-color: transparent;
+  background: rgba(0, 0, 0, 0.5);
   min-height: 100vh;
   overflow: hidden;
   animation: tripBackdropIn 0.4s ease both;
@@ -1332,21 +1336,21 @@
 }
 
 @keyframes tripBackdropIn {
-  from { background-color: transparent; }
-  to { background-color: rgba(0, 0, 0, 0.5); }
+  from { background: transparent; }
+  to { background: rgba(0, 0, 0, 0.5); }
 }
 
 @keyframes tripBackdropOut {
-  from { background-color: rgba(0, 0, 0, 0.5); }
-  to { background-color: transparent; }
+  from { background: rgba(0, 0, 0, 0.5); }
+  to { background: transparent; }
 }
 
 /* Modal container */
 .trip-modal {
   background: linear-gradient(to bottom right, #f8fafc, #eff6ff, #eef2ff);
-  border-radius: 1.25rem 1.25rem 0 0;
-  height: calc(100vh - 20px);
-  margin-top: 20px;
+  border-radius: 1rem 1rem 0 0;
+  height: calc(100vh - 48px);
+  margin-top: 48px;
   display: flex;
   flex-direction: column;
   padding: 30px 10px 0;
@@ -2642,6 +2646,10 @@ input[type="time"].form-input {
   transition: background-color var(--transition-fast), color var(--transition-fast);
 }
 
+.hotel-toggle-details:hover span {
+  text-decoration: underline;
+}
+
 .hotel-toggle-details:hover {
   color: var(--color-hotel-700);
   background-color: var(--color-hotel-50);
@@ -2906,6 +2914,18 @@ input[type="time"].form-input {
   margin: 0;
 }
 
+.section-header-label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-gray-500);
+}
+
+.section-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
 .section-header-cta {
   gap: var(--spacing-2);
 }
@@ -2913,6 +2933,38 @@ input[type="time"].form-input {
 .section-header-cta svg {
   width: 20px;
   height: 20px;
+}
+
+.btn-outline {
+  background-color: transparent;
+  color: var(--color-primary);
+  border: 1.5px solid var(--color-primary);
+}
+
+.btn-outline:hover {
+  color: var(--color-primary-dark);
+  border-color: var(--color-primary-dark);
+}
+
+.btn-hotel {
+  background-color: var(--color-hotel-600);
+  color: var(--color-white);
+}
+
+.btn-hotel:hover {
+  background-color: var(--color-hotel-700);
+  color: var(--color-white);
+}
+
+.btn-hotel-outline {
+  background-color: transparent;
+  color: var(--color-hotel-600);
+  border: 1.5px solid var(--color-hotel-600);
+}
+
+.btn-hotel-outline:hover {
+  color: var(--color-hotel-700);
+  border-color: var(--color-hotel-700);
 }
 
 /* Responsive: full label on desktop, short on mobile */
@@ -4758,6 +4810,33 @@ input[type="time"].form-input {
   flex: 1;
 }
 
+.manage-booking-flights {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: var(--spacing-1);
+}
+
+.manage-booking-flight-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-500);
+}
+
+.manage-booking-flight-num {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-gray-600);
+  min-width: 52px;
+}
+
+.manage-booking-flight-date {
+  margin-left: auto;
+  color: var(--color-gray-400);
+  white-space: nowrap;
+}
+
 .manage-booking-item-label {
   font-size: var(--font-size-sm);
   color: var(--color-gray-700);
@@ -4796,19 +4875,29 @@ input[type="time"].form-input {
   margin-right: auto;
 }
 
+.manage-edit-item {
+  background-color: var(--color-gray-50);
+  border: 1px solid var(--color-gray-100);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-4) var(--spacing-4) var(--spacing-3);
+  margin-bottom: var(--spacing-4);
+}
+
+.manage-edit-item:last-child {
+  margin-bottom: 0;
+}
+
 .manage-edit-item-header {
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
   color: var(--color-gray-900);
-  padding: var(--spacing-1) 0 var(--spacing-3);
-  margin-bottom: var(--spacing-2);
-  border-bottom: 2px solid var(--color-gray-100);
+  padding: 0 0 var(--spacing-3);
+  margin-bottom: var(--spacing-3);
+  border-bottom: 1px solid var(--color-gray-200);
 }
 
 .manage-edit-divider {
-  border: none;
-  border-top: 1px solid var(--color-gray-100);
-  margin: var(--spacing-5) 0;
+  display: none;
 }
 
 .edit-booking-field--checkbox {
@@ -5142,7 +5231,7 @@ input[type="time"].form-input {
   border: none;
   border-radius: 0;
   padding: var(--spacing-4) 0;
-  border-bottom: 1px solid var(--color-gray-100);
+  border-bottom: 1px solid var(--color-gray-200);
 }
 
 .edit-booking-section:first-child {
@@ -5200,7 +5289,7 @@ input[type="time"].form-input {
   font-size: var(--font-size-sm);
   border: 1px solid var(--color-gray-200);
   border-radius: var(--radius-md);
-  background-color: var(--color-gray-50);
+  background-color: var(--color-white);
   transition: border-color var(--transition-fast), background-color var(--transition-fast);
   box-sizing: border-box;
 }
@@ -5381,7 +5470,7 @@ input[type="time"].form-input {
   gap: var(--spacing-3);
   padding: var(--spacing-4) var(--spacing-5);
   border-top: 1px solid var(--color-gray-100);
-  background-color: var(--color-white);
+  background-color: var(--color-gray-50);
   flex-shrink: 0;
 }
 

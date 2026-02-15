@@ -32,6 +32,7 @@
     initQuickUploadCard,
     loadSlidePanel,
     showAddBookingModal,
+    showManageBookingPanel,
   };
 
   // ===========================
@@ -296,13 +297,6 @@
               <span data-i18n="trip.share">Share</span>
             </button>
             <div class="section-dropdown-divider"></div>
-            <button class="section-dropdown-item" data-action="manage-booking">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-              </svg>
-              <span data-i18n="trip.manageBookingMenu">Gestisci prenotazione</span>
-            </button>
             <button class="section-dropdown-item section-dropdown-item--danger" data-action="delete">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="3 6 5 6 21 6"></polyline>
@@ -725,15 +719,6 @@
     // Persist active tab for page refresh
     try { sessionStorage.setItem('tripActiveTab', tabName); } catch(e) {}
 
-    // Show/hide menu items based on active tab
-    const manageBookingItem = document.querySelector('[data-action="manage-booking"]');
-    const menuDivider = manageBookingItem?.previousElementSibling;
-    const isActivities = tabName === 'activities';
-
-    if (manageBookingItem) manageBookingItem.style.display = isActivities ? 'none' : '';
-    if (menuDivider?.classList.contains('section-dropdown-divider')) {
-      menuDivider.style.display = isActivities ? 'none' : '';
-    }
   }
 
   // ===========================
@@ -765,8 +750,6 @@
           showRenameModal(tripId);
         } else if (action === 'delete') {
           deleteTrip(tripId);
-        } else if (action === 'manage-booking') {
-          showManageBookingPanel(tripId);
         } else if (action === 'share') {
           showShareModal(tripId);
         } else if (action === 'change-photo') {
@@ -1682,11 +1665,17 @@
         let sublabel = '';
 
         if (type === 'flight') {
-          sublabel = groupItems.map(f => {
+          const flightLines = groupItems.map(f => {
             const dep = f.departure?.code || '???';
             const arr = f.arrival?.code || '???';
-            return `${esc(f.flightNumber || '')} ${esc(dep)} → ${esc(arr)}`;
-          }).join(', ');
+            const date = f.date || '';
+            const time = f.departureTime || '';
+            return `<div class="manage-booking-flight-row">
+              <span class="manage-booking-flight-num">${esc(f.flightNumber || '')}</span>
+              <span>${esc(dep)} → ${esc(arr)}</span>
+              ${date ? `<span class="manage-booking-flight-date">${date}${time ? ' ' + time : ''}</span>` : ''}
+            </div>`;
+          }).join('');
 
           const nameSet = new Set();
           for (const f of groupItems) {
@@ -1704,7 +1693,7 @@
                 <div class="manage-booking-item" data-value="${itemIds}" data-type="${type}" data-mode="booking" data-passenger="${esc(name)}" data-ref="${esc(ref)}">
                   <span class="manage-booking-item-label">
                     <span><strong>${esc(ref)}</strong> &middot; ${esc(name)}</span>
-                    <span class="manage-booking-item-sub">${sublabel}</span>
+                    <div class="manage-booking-flights">${flightLines}</div>
                   </span>
                 </div>`;
             }
@@ -1714,12 +1703,20 @@
               <div class="manage-booking-item" data-value="${itemIds}" data-type="${type}" data-mode="booking" data-ref="${esc(ref)}">
                 <span class="manage-booking-item-label">
                   <span><strong>${esc(ref)}</strong>${name ? ` &middot; ${esc(name)}` : ''}</span>
-                  <span class="manage-booking-item-sub">${sublabel}</span>
+                  <div class="manage-booking-flights">${flightLines}</div>
                 </span>
               </div>`;
           }
         } else {
-          sublabel = groupItems.map(h => esc(h.name || 'Hotel')).join(', ');
+          const hotelLines = groupItems.map(h => {
+            const checkIn = h.checkIn?.date || '';
+            const checkOut = h.checkOut?.date || '';
+            return `<div class="manage-booking-flight-row">
+              <span>${esc(h.name || 'Hotel')}</span>
+              ${checkIn ? `<span class="manage-booking-flight-date">${checkIn}${checkOut ? ' → ' + checkOut : ''}</span>` : ''}
+            </div>`;
+          }).join('');
+
           const nameSet = new Set();
           for (const h of groupItems) {
             if (h.guestName) nameSet.add(h.guestName);
@@ -1730,7 +1727,7 @@
             <div class="manage-booking-item" data-value="${itemIds}" data-type="${type}" data-mode="booking" data-ref="${esc(ref)}">
               <span class="manage-booking-item-label">
                 <span><strong>${esc(ref)}</strong>${names ? ` &middot; ${esc(names)}` : ''}</span>
-                <span class="manage-booking-item-sub">${sublabel}</span>
+                <div class="manage-booking-flights">${hotelLines}</div>
               </span>
             </div>`;
         }
@@ -1804,7 +1801,7 @@
 
         const actionsHTML = `
           <div class="manage-booking-actions">
-            <button class="btn btn-primary btn-sm" id="manage-edit-btn">${i18n.t('trip.editBooking') || 'Modifica'}</button>
+            <button class="btn btn-outline btn-sm" id="manage-edit-btn">${i18n.t('trip.editBooking') || 'Modifica'}</button>
             <button class="btn btn-outline-danger btn-sm" id="manage-delete-btn">${i18n.t('trip.deleteBooking') || 'Elimina'}</button>
           </div>
         `;
@@ -1843,9 +1840,19 @@
       // Build edit forms for all items in the booking
       let formHTML = '';
       if (selectedItems.length === 1) {
-        formHTML = selectedType === 'flight'
-          ? window.tripFlights.buildFullEditForm(selectedItems[0])
-          : window.tripHotels.buildFullEditForm(selectedItems[0]);
+        const item = selectedItems[0];
+        const itemLabel = selectedType === 'flight'
+          ? `${item.flightNumber || ''} ${item.departure?.code || ''} → ${item.arrival?.code || ''}`
+          : (item.name || 'Hotel');
+        const form = selectedType === 'flight'
+          ? window.tripFlights.buildFullEditForm(item)
+          : window.tripHotels.buildFullEditForm(item);
+        formHTML = `
+          <div class="manage-edit-item" data-item-id="${item.id}">
+            <div class="manage-edit-item-header">${esc(itemLabel)}</div>
+            ${form}
+          </div>
+        `;
       } else {
         formHTML = selectedItems.map((item, idx) => {
           const itemLabel = selectedType === 'flight'
@@ -1860,7 +1867,7 @@
               ${form}
             </div>
           `;
-        }).join('<hr class="manage-edit-divider">');
+        }).join('');
       }
 
       panelBody.innerHTML = formHTML;
@@ -1893,10 +1900,7 @@
         <button class="btn btn-primary" id="manage-save-btn">${i18n.t('modal.save') || 'Salva'}</button>
       `;
 
-      document.getElementById('manage-cancel-btn').addEventListener('click', () => {
-        closePanel();
-        setTimeout(() => showManageBookingPanel(tripId), 300);
-      });
+      document.getElementById('manage-cancel-btn').addEventListener('click', closePanel);
 
       document.getElementById('manage-save-btn').addEventListener('click', async () => {
         const saveBtn = document.getElementById('manage-save-btn');
