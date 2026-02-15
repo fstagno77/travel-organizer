@@ -136,14 +136,15 @@ exports.handler = async (event, context) => {
 const ALLOWED_FLIGHT_FIELDS = [
   'date', 'flightNumber', 'departureTime', 'arrivalTime', 'arrivalDate',
   'bookingReference', 'ticketNumber', 'seat', 'class', 'cabin', 'baggage', 'status',
-  'airline', 'departureAirport', 'arrivalAirport', 'departureDate',
+  'airline', 'operatedBy', 'duration', 'arrivalNextDay',
+  'departureAirport', 'arrivalAirport', 'departureDate',
   'departure', 'arrival', 'passenger', 'passengers'
 ];
 
 const ALLOWED_HOTEL_FIELDS = [
   'name', 'guestName', 'phone', 'email', 'confirmationNumber', 'roomType',
-  'bookingReference', 'rooms', 'guests', 'notes',
-  'checkIn', 'checkOut', 'address', 'price'
+  'bookingReference', 'rooms', 'guests', 'notes', 'nights', 'bedTypes', 'pinCode',
+  'checkIn', 'checkOut', 'address', 'price', 'breakfast', 'payment', 'cancellation'
 ];
 
 function filterUpdates(updates, allowedFields) {
@@ -171,7 +172,7 @@ function applyUpdates(item, updates, type) {
 
   if (type === 'flight') {
     // Simple fields
-    const simpleFields = ['date', 'flightNumber', 'departureTime', 'arrivalTime', 'bookingReference', 'ticketNumber', 'seat', 'class'];
+    const simpleFields = ['date', 'flightNumber', 'departureTime', 'arrivalTime', 'bookingReference', 'ticketNumber', 'seat', 'class', 'airline', 'operatedBy', 'duration', 'arrivalNextDay', 'baggage', 'status'];
     for (const field of simpleFields) {
       if (updates[field] !== undefined) {
         item[field] = updates[field];
@@ -204,7 +205,7 @@ function applyUpdates(item, updates, type) {
     }
   } else if (type === 'hotel') {
     // Simple fields
-    const simpleFields = ['name', 'guestName', 'phone', 'confirmationNumber', 'roomType'];
+    const simpleFields = ['name', 'guestName', 'phone', 'confirmationNumber', 'roomType', 'rooms', 'nights', 'bedTypes', 'pinCode'];
     for (const field of simpleFields) {
       if (updates[field] !== undefined) {
         item[field] = updates[field];
@@ -229,12 +230,53 @@ function applyUpdates(item, updates, type) {
       Object.assign(item.address, updates.address);
     }
 
-    // Nested: price
+    // Nested: price (total, room, tax)
     if (updates.price) {
       if (!item.price) item.price = {};
       if (updates.price.total) {
         if (!item.price.total) item.price.total = {};
         Object.assign(item.price.total, updates.price.total);
+      }
+      if (updates.price.room) {
+        if (!item.price.room) item.price.room = {};
+        Object.assign(item.price.room, updates.price.room);
+      }
+      if (updates.price.tax) {
+        if (!item.price.tax) item.price.tax = {};
+        Object.assign(item.price.tax, updates.price.tax);
+      }
+    }
+
+    // Nested: breakfast
+    if (updates.breakfast) {
+      if (!item.breakfast) item.breakfast = {};
+      Object.assign(item.breakfast, updates.breakfast);
+    }
+
+    // Nested: payment
+    if (updates.payment) {
+      if (!item.payment) item.payment = {};
+      Object.assign(item.payment, updates.payment);
+    }
+
+    // Nested: cancellation
+    if (updates.cancellation) {
+      if (!item.cancellation) item.cancellation = {};
+      Object.assign(item.cancellation, updates.cancellation);
+    }
+
+    // Nested: guests
+    if (updates.guests) {
+      if (!item.guests) item.guests = {};
+      if (updates.guests.adults !== undefined) {
+        item.guests.adults = parseInt(updates.guests.adults, 10) || 0;
+      }
+      if (updates.guests.childrenCount !== undefined) {
+        const count = parseInt(updates.guests.childrenCount, 10) || 0;
+        item.guests.children = item.guests.children || [];
+        while (item.guests.children.length < count) item.guests.children.push({});
+        if (item.guests.children.length > count) item.guests.children = item.guests.children.slice(0, count);
+        item.guests.total = (item.guests.adults || 0) + count;
       }
     }
   }

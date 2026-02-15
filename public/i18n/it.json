@@ -107,7 +107,13 @@
     "addHotelTitle": "Aggiungi Hotel",
     "editBookingTitle": "Modifica prenotazione",
     "editBookingSuccess": "Prenotazione modificata",
-    "editError": "Errore durante la modifica"
+    "editError": "Errore durante la modifica",
+    "manageBookingMenu": "Gestisci prenotazione",
+    "manageBookingTitle": "Gestisci prenotazione",
+    "editBooking": "Modifica",
+    "deleteBooking": "Elimina",
+    "confirmDelete": "Confermi l'eliminazione?",
+    "confirmDeleteBtn": "Elimina"
   },
   "modal": {
     "cancel": "Annulla",
@@ -151,7 +157,13 @@
     "iataCode": "Codice IATA",
     "city": "Città",
     "passengerName": "Nome",
-    "passengerType": "Tipo"
+    "passengerType": "Tipo",
+    "airline": "Compagnia aerea",
+    "operatedBy": "Operato da",
+    "airport": "Aeroporto",
+    "arrivalNextDay": "Arrivo giorno dopo (+1)",
+    "baggage": "Bagaglio",
+    "status": "Stato"
   },
   "passenger": {
     "deleteTitle": "Rimuovi passeggero",
@@ -196,7 +208,25 @@
     "priceInfo": "Prezzo",
     "currency": "Valuta",
     "amount": "Importo",
-    "fullAddress": "Indirizzo completo"
+    "fullAddress": "Indirizzo completo",
+    "bedTypes": "Tipo letto",
+    "pinCode": "PIN",
+    "rooms": "Camere",
+    "adults": "Adulti",
+    "children": "Bambini",
+    "guestsInfo": "Ospiti",
+    "breakfastInfo": "Colazione",
+    "breakfastIncluded": "Colazione inclusa",
+    "breakfastType": "Tipo colazione",
+    "street": "Via",
+    "city": "Città",
+    "postalCode": "CAP",
+    "country": "Paese",
+    "totalAmount": "Totale",
+    "roomPrice": "Camera",
+    "taxAmount": "Tasse",
+    "paymentInfo": "Pagamento",
+    "paymentMethod": "Metodo pagamento"
   },
   "changelog": {
     "title": "Changelog",

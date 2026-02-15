@@ -11,7 +11,12 @@
   const airportName = (code) => window.AirportAutocomplete?.getAirportName(code) || '';
 
   function getViewMode() {
-    try { return sessionStorage.getItem(VIEW_MODE_KEY) || 'list'; } catch(e) { return 'list'; }
+    try {
+      const mode = sessionStorage.getItem(VIEW_MODE_KEY) || 'list';
+      // Calendar view is hidden on mobile — fallback to list
+      if (mode === 'calendar' && window.innerWidth <= 640) return 'list';
+      return mode;
+    } catch(e) { return 'list'; }
   }
 
   function setViewMode(mode) {

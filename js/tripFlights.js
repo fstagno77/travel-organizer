@@ -662,11 +662,202 @@
     return updates;
   }
 
+  /**
+   * Build full edit form with ALL flight fields (for manage booking panel)
+   */
+  function buildFullFlightEditForm(flight) {
+    const isMultiPax = flight.passengers && flight.passengers.length > 1;
+
+    let passengersHTML = '';
+    if (isMultiPax) {
+      passengersHTML = flight.passengers.map((p, i) => `
+        <div class="edit-booking-passenger">
+          <div class="edit-booking-grid">
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.passengerName') || 'Nome'}</label>
+              <input type="text" data-field="passengers.${i}.name" value="${escAttr(p.name)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.passengerType') || 'Tipo'}</label>
+              <input type="text" data-field="passengers.${i}.type" value="${escAttr(p.type)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.ticketNumber') || 'Biglietto'}</label>
+              <input type="text" data-field="passengers.${i}.ticketNumber" value="${escAttr(p.ticketNumber)}">
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    return `
+      <div class="edit-booking-form">
+        <div class="edit-booking-section">
+          <div class="edit-booking-section-title">
+            ${i18n.t('flight.flightInfo') || 'Volo'}
+          </div>
+          <div class="edit-booking-grid">
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.date') || 'Data'}</label>
+              <input type="date" data-field="date" value="${escAttr(flight.date)}" required>
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.flightNumber') || 'Numero volo'}</label>
+              <input type="text" data-field="flightNumber" value="${escAttr(flight.flightNumber)}" pattern="[A-Za-z0-9]{2,8}" placeholder="es. AZ1154">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.airline') || 'Compagnia'}</label>
+              <input type="text" data-field="airline" value="${escAttr(flight.airline)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.operatedBy') || 'Operato da'}</label>
+              <input type="text" data-field="operatedBy" value="${escAttr(flight.operatedBy)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.departureTime') || 'Partenza'}</label>
+              <input type="time" data-field="departureTime" value="${escAttr(flight.departureTime)}" required>
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.arrivalTime') || 'Arrivo'}</label>
+              <input type="time" data-field="arrivalTime" value="${escAttr(flight.arrivalTime)}" required>
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.duration') || 'Durata'}</label>
+              <input type="text" data-field="duration" value="${escAttr(flight.duration)}" placeholder="es. 09:30">
+            </div>
+            <div class="edit-booking-field edit-booking-field--checkbox">
+              <label>
+                <input type="checkbox" data-field="arrivalNextDay" ${flight.arrivalNextDay ? 'checked' : ''}>
+                ${i18n.t('flight.arrivalNextDay') || 'Arrivo giorno dopo (+1)'}
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="edit-booking-section">
+          <div class="edit-booking-section-title">
+            ${i18n.t('flight.departureInfo') || 'Partenza'}
+          </div>
+          <div class="edit-booking-grid">
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.iataCode') || 'IATA'}</label>
+              <input type="text" data-field="departure.code" value="${escAttr(flight.departure?.code)}" maxlength="3" pattern="[A-Za-z]{3}" style="text-transform:uppercase" placeholder="es. FCO">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.city') || 'Città'}</label>
+              <input type="text" data-field="departure.city" value="${escAttr(flight.departure?.city)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.airport') || 'Aeroporto'}</label>
+              <input type="text" data-field="departure.airport" value="${escAttr(flight.departure?.airport)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.terminal') || 'Terminal'}</label>
+              <input type="text" data-field="departure.terminal" value="${escAttr(flight.departure?.terminal)}">
+            </div>
+          </div>
+        </div>
+
+        <div class="edit-booking-section">
+          <div class="edit-booking-section-title">
+            ${i18n.t('flight.arrivalInfo') || 'Arrivo'}
+          </div>
+          <div class="edit-booking-grid">
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.iataCode') || 'IATA'}</label>
+              <input type="text" data-field="arrival.code" value="${escAttr(flight.arrival?.code)}" maxlength="3" pattern="[A-Za-z]{3}" style="text-transform:uppercase" placeholder="es. NRT">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.city') || 'Città'}</label>
+              <input type="text" data-field="arrival.city" value="${escAttr(flight.arrival?.city)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.airport') || 'Aeroporto'}</label>
+              <input type="text" data-field="arrival.airport" value="${escAttr(flight.arrival?.airport)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.terminal') || 'Terminal'}</label>
+              <input type="text" data-field="arrival.terminal" value="${escAttr(flight.arrival?.terminal)}">
+            </div>
+          </div>
+        </div>
+
+        <div class="edit-booking-section">
+          <div class="edit-booking-section-title">
+            ${i18n.t('flight.bookingInfo') || 'Prenotazione'}
+          </div>
+          <div class="edit-booking-grid">
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.bookingRef') || 'Riferimento'}</label>
+              <input type="text" data-field="bookingReference" value="${escAttr(flight.bookingReference)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.class') || 'Classe'}</label>
+              <input type="text" data-field="class" value="${escAttr(flight.class)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.baggage') || 'Bagaglio'}</label>
+              <input type="text" data-field="baggage" value="${escAttr(flight.baggage)}" placeholder="es. 1PC">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.status') || 'Stato'}</label>
+              <input type="text" data-field="status" value="${escAttr(flight.status)}" placeholder="es. OK">
+            </div>
+            ${!isMultiPax ? `
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.seat') || 'Posto'}</label>
+              <input type="text" data-field="seat" value="${escAttr(flight.seat)}" placeholder="es. 12A">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.ticketNumber') || 'Biglietto'}</label>
+              <input type="text" data-field="ticketNumber" value="${escAttr(flight.ticketNumber)}">
+            </div>
+            ` : ''}
+          </div>
+          ${passengersHTML}
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Collect full flight form values (handles checkboxes too)
+   */
+  function collectFullFlightUpdates(formView) {
+    const updates = {};
+    formView.querySelectorAll('input[data-field]').forEach(input => {
+      const field = input.dataset.field;
+      const val = input.type === 'checkbox' ? input.checked : input.value.trim();
+
+      if (field.startsWith('passengers.')) {
+        const parts = field.split('.');
+        const idx = parseInt(parts[1], 10);
+        const prop = parts[2];
+        if (!updates.passengers) updates.passengers = [];
+        while (updates.passengers.length <= idx) updates.passengers.push({});
+        updates.passengers[idx][prop] = val;
+      } else if (field.startsWith('departure.')) {
+        const prop = field.split('.')[1];
+        if (!updates.departure) updates.departure = {};
+        updates.departure[prop] = val;
+      } else if (field.startsWith('arrival.')) {
+        const prop = field.split('.')[1];
+        if (!updates.arrival) updates.arrival = {};
+        updates.arrival[prop] = val;
+      } else {
+        updates[field] = val;
+      }
+    });
+    return updates;
+  }
+
   window.tripFlights = {
     render: renderFlights,
     renderDetails: renderFlightDetails,
     showDeletePassengerModal: showDeletePassengerModal,
     buildEditForm: buildFlightEditForm,
-    collectUpdates: collectFlightUpdates
+    collectUpdates: collectFlightUpdates,
+    buildFullEditForm: buildFullFlightEditForm,
+    collectFullUpdates: collectFullFlightUpdates
   };
 })();

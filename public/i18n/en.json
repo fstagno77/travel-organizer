@@ -107,7 +107,13 @@
     "addHotelTitle": "Add Hotel",
     "editBookingTitle": "Edit booking",
     "editBookingSuccess": "Booking updated",
-    "editError": "Error updating booking"
+    "editError": "Error updating booking",
+    "manageBookingMenu": "Manage booking",
+    "manageBookingTitle": "Manage booking",
+    "editBooking": "Edit",
+    "deleteBooking": "Delete",
+    "confirmDelete": "Confirm deletion?",
+    "confirmDeleteBtn": "Delete"
   },
   "modal": {
     "cancel": "Cancel",
@@ -151,7 +157,13 @@
     "iataCode": "IATA code",
     "city": "City",
     "passengerName": "Name",
-    "passengerType": "Type"
+    "passengerType": "Type",
+    "airline": "Airline",
+    "operatedBy": "Operated by",
+    "airport": "Airport",
+    "arrivalNextDay": "Arrives next day (+1)",
+    "baggage": "Baggage",
+    "status": "Status"
   },
   "passenger": {
     "deleteTitle": "Remove passenger",
@@ -196,7 +208,25 @@
     "priceInfo": "Price",
     "currency": "Currency",
     "amount": "Amount",
-    "fullAddress": "Full address"
+    "fullAddress": "Full address",
+    "bedTypes": "Bed type",
+    "pinCode": "PIN",
+    "rooms": "Rooms",
+    "adults": "Adults",
+    "children": "Children",
+    "guestsInfo": "Guests",
+    "breakfastInfo": "Breakfast",
+    "breakfastIncluded": "Breakfast included",
+    "breakfastType": "Breakfast type",
+    "street": "Street",
+    "city": "City",
+    "postalCode": "Postal code",
+    "country": "Country",
+    "totalAmount": "Total",
+    "roomPrice": "Room",
+    "taxAmount": "Taxes",
+    "paymentInfo": "Payment",
+    "paymentMethod": "Payment method"
   },
   "changelog": {
     "title": "Changelog",

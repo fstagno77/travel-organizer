@@ -296,13 +296,12 @@
               <span data-i18n="trip.share">Share</span>
             </button>
             <div class="section-dropdown-divider"></div>
-            <button class="section-dropdown-item" data-action="delete-booking">
+            <button class="section-dropdown-item" data-action="manage-booking">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="15" y1="9" x2="9" y2="15"></line>
-                <line x1="9" y1="9" x2="15" y2="15"></line>
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
               </svg>
-              <span data-i18n="trip.deleteBookingMenu">Delete booking</span>
+              <span data-i18n="trip.manageBookingMenu">Gestisci prenotazione</span>
             </button>
             <button class="section-dropdown-item section-dropdown-item--danger" data-action="delete">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -727,11 +726,11 @@
     try { sessionStorage.setItem('tripActiveTab', tabName); } catch(e) {}
 
     // Show/hide menu items based on active tab
-    const deleteBookingItem = document.querySelector('[data-action="delete-booking"]');
-    const menuDivider = deleteBookingItem?.previousElementSibling;
+    const manageBookingItem = document.querySelector('[data-action="manage-booking"]');
+    const menuDivider = manageBookingItem?.previousElementSibling;
     const isActivities = tabName === 'activities';
 
-    if (deleteBookingItem) deleteBookingItem.style.display = isActivities ? 'none' : '';
+    if (manageBookingItem) manageBookingItem.style.display = isActivities ? 'none' : '';
     if (menuDivider?.classList.contains('section-dropdown-divider')) {
       menuDivider.style.display = isActivities ? 'none' : '';
     }
@@ -766,8 +765,8 @@
           showRenameModal(tripId);
         } else if (action === 'delete') {
           deleteTrip(tripId);
-        } else if (action === 'delete-booking') {
-          showDeleteBookingModal(tripId);
+        } else if (action === 'manage-booking') {
+          showManageBookingPanel(tripId);
         } else if (action === 'share') {
           showShareModal(tripId);
         } else if (action === 'change-photo') {
@@ -1641,6 +1640,432 @@
     input.focus();
     input.select();
     i18n.apply(modal);
+  }
+
+  // ===========================
+  // Manage booking panel (selection → edit/delete)
+  // ===========================
+
+  /**
+   * Show slide-in panel to manage bookings (edit or delete)
+   */
+  function showManageBookingPanel(tripId) {
+    const existingPanel = document.getElementById('manage-booking-panel');
+    if (existingPanel) {
+      existingPanel.remove();
+      document.body.classList.remove('slide-panel-open');
+    }
+
+    const currentTab = document.querySelector('.segmented-control-btn.active')?.dataset.tab || 'flights';
+    const type = currentTab === 'hotels' ? 'hotel' : 'flight';
+    const items = type === 'flight'
+      ? (currentTripData?.flights || [])
+      : (currentTripData?.hotels || []);
+
+    // Build booking list grouped by bookingReference/confirmation
+    let listHTML = '';
+    if (items.length === 0) {
+      listHTML = `<p class="text-muted">${i18n.t('trip.noBookings') || 'Nessuna prenotazione'}</p>`;
+    } else {
+      const groups = {};
+      for (const item of items) {
+        const key = type === 'flight'
+          ? (item.bookingReference || item.id)
+          : (item.confirmationNumber || item.confirmation || item.id);
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(item);
+      }
+
+      listHTML = '<div class="manage-booking-list">';
+      for (const [ref, groupItems] of Object.entries(groups)) {
+        const itemIds = groupItems.map(g => g.id).join(',');
+        let sublabel = '';
+
+        if (type === 'flight') {
+          sublabel = groupItems.map(f => {
+            const dep = f.departure?.code || '???';
+            const arr = f.arrival?.code || '???';
+            return `${esc(f.flightNumber || '')} ${esc(dep)} → ${esc(arr)}`;
+          }).join(', ');
+
+          const nameSet = new Set();
+          for (const f of groupItems) {
+            if (f.passengers?.length) {
+              f.passengers.forEach(p => p.name && nameSet.add(p.name));
+            } else if (f.passenger?.name) {
+              nameSet.add(f.passenger.name);
+            }
+          }
+          const passengerNames = [...nameSet];
+
+          if (passengerNames.length > 1) {
+            for (const name of passengerNames) {
+              listHTML += `
+                <label class="manage-booking-item">
+                  <input type="radio" name="manage-booking" value="${itemIds}" data-type="${type}" data-mode="booking" data-passenger="${esc(name)}" data-ref="${esc(ref)}">
+                  <span class="manage-booking-item-label">
+                    <span><strong>${esc(ref)}</strong> &middot; ${esc(name)}</span>
+                    <span class="manage-booking-item-sub">${sublabel}</span>
+                  </span>
+                </label>`;
+            }
+          } else {
+            const name = passengerNames[0] || '';
+            listHTML += `
+              <label class="manage-booking-item">
+                <input type="radio" name="manage-booking" value="${itemIds}" data-type="${type}" data-mode="booking" data-ref="${esc(ref)}">
+                <span class="manage-booking-item-label">
+                  <span><strong>${esc(ref)}</strong>${name ? ` &middot; ${esc(name)}` : ''}</span>
+                  <span class="manage-booking-item-sub">${sublabel}</span>
+                </span>
+              </label>`;
+          }
+        } else {
+          sublabel = groupItems.map(h => esc(h.name || 'Hotel')).join(', ');
+          const nameSet = new Set();
+          for (const h of groupItems) {
+            if (h.guestName) nameSet.add(h.guestName);
+          }
+          const guestNames = [...nameSet];
+          const names = guestNames.length ? guestNames.join(', ') : '';
+          listHTML += `
+            <label class="manage-booking-item">
+              <input type="radio" name="manage-booking" value="${itemIds}" data-type="${type}" data-mode="booking" data-ref="${esc(ref)}">
+              <span class="manage-booking-item-label">
+                <span><strong>${esc(ref)}</strong>${names ? ` &middot; ${esc(names)}` : ''}</span>
+                <span class="manage-booking-item-sub">${sublabel}</span>
+              </span>
+            </label>`;
+        }
+      }
+      listHTML += '</div>';
+    }
+
+    const panelHTML = `
+      <div class="slide-panel-overlay" id="manage-booking-panel">
+        <div class="slide-panel">
+          <div class="slide-panel-header">
+            <h2 id="manage-panel-title">${i18n.t('trip.manageBookingTitle') || 'Gestisci prenotazione'}</h2>
+            <button class="modal-close" id="manage-panel-close">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <div class="slide-panel-body" id="manage-panel-body">
+            ${listHTML}
+          </div>
+          <div class="slide-panel-footer" id="manage-panel-footer">
+            <button class="btn btn-primary" id="manage-edit-btn" disabled>${i18n.t('trip.editBooking') || 'Modifica'}</button>
+            <button class="btn btn-outline-danger" id="manage-delete-btn" disabled>${i18n.t('trip.deleteBooking') || 'Elimina'}</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', panelHTML);
+
+    const panel = document.getElementById('manage-booking-panel');
+    const panelBody = document.getElementById('manage-panel-body');
+    const panelTitle = document.getElementById('manage-panel-title');
+    const panelFooter = document.getElementById('manage-panel-footer');
+    const closeBtn = document.getElementById('manage-panel-close');
+    const editBtn = document.getElementById('manage-edit-btn');
+    const deleteBtn = document.getElementById('manage-delete-btn');
+
+    let outsideClickHandler = null;
+    let escapeHandler = null;
+
+    const closePanel = () => {
+      panel.classList.remove('active');
+      document.body.classList.remove('slide-panel-open');
+      if (outsideClickHandler) {
+        document.removeEventListener('click', outsideClickHandler);
+        outsideClickHandler = null;
+      }
+      if (escapeHandler) {
+        document.removeEventListener('keydown', escapeHandler);
+        escapeHandler = null;
+      }
+      setTimeout(() => panel.remove(), 300);
+      document.body.style.overflow = '';
+    };
+
+    // Enable/disable action buttons based on radio selection
+    panel.querySelectorAll('input[type="radio"]').forEach(radio => {
+      radio.addEventListener('change', () => {
+        editBtn.disabled = false;
+        deleteBtn.disabled = false;
+      });
+    });
+
+    // ---- EDIT action ----
+    editBtn.addEventListener('click', () => {
+      const selected = panel.querySelector('input[type="radio"]:checked');
+      if (!selected) return;
+
+      const ids = selected.value.split(',');
+      const selectedType = selected.dataset.type;
+      const passengerName = selected.dataset.passenger;
+      const allItems = selectedType === 'flight'
+        ? (currentTripData?.flights || [])
+        : (currentTripData?.hotels || []);
+      const selectedItems = allItems.filter(it => ids.includes(it.id));
+
+      if (selectedItems.length === 0) return;
+
+      // Transition to edit mode
+      panelTitle.textContent = i18n.t('trip.editBookingTitle') || 'Modifica prenotazione';
+
+      // Build edit forms for all items in the booking
+      let formHTML = '';
+      if (selectedItems.length === 1) {
+        formHTML = selectedType === 'flight'
+          ? window.tripFlights.buildFullEditForm(selectedItems[0])
+          : window.tripHotels.buildFullEditForm(selectedItems[0]);
+      } else {
+        formHTML = selectedItems.map((item, idx) => {
+          const itemLabel = selectedType === 'flight'
+            ? `${item.flightNumber || ''} ${item.departure?.code || ''} → ${item.arrival?.code || ''}`
+            : (item.name || 'Hotel');
+          const form = selectedType === 'flight'
+            ? window.tripFlights.buildFullEditForm(item)
+            : window.tripHotels.buildFullEditForm(item);
+          return `
+            <div class="manage-edit-item" data-item-id="${item.id}">
+              <div class="manage-edit-item-header">${esc(itemLabel)}</div>
+              ${form}
+            </div>
+          `;
+        }).join('<hr class="manage-edit-divider">');
+      }
+
+      panelBody.innerHTML = formHTML;
+
+      // Add back button to header
+      const header = panel.querySelector('.slide-panel-header');
+      const backBtn = document.createElement('button');
+      backBtn.className = 'manage-back-btn';
+      backBtn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>`;
+      header.insertBefore(backBtn, panelTitle);
+
+      backBtn.addEventListener('click', () => {
+        // Return to selection view
+        closePanel();
+        setTimeout(() => showManageBookingPanel(tripId), 300);
+      });
+
+      // Init airport autocomplete for flights
+      if (selectedType === 'flight') {
+        import('./airportAutocomplete.js').then(() => {
+          if (window.AirportAutocomplete) {
+            window.AirportAutocomplete.init(panelBody);
+          }
+        });
+      }
+
+      // Update footer
+      panelFooter.innerHTML = `
+        <button class="btn btn-secondary" id="manage-cancel-btn">${i18n.t('modal.cancel') || 'Annulla'}</button>
+        <button class="btn btn-primary" id="manage-save-btn">${i18n.t('modal.save') || 'Salva'}</button>
+      `;
+
+      document.getElementById('manage-cancel-btn').addEventListener('click', () => {
+        closePanel();
+        setTimeout(() => showManageBookingPanel(tripId), 300);
+      });
+
+      document.getElementById('manage-save-btn').addEventListener('click', async () => {
+        const saveBtn = document.getElementById('manage-save-btn');
+
+        // Validate required fields
+        const invalidInput = panelBody.querySelector('input:invalid');
+        if (invalidInput) {
+          invalidInput.focus();
+          invalidInput.reportValidity();
+          return;
+        }
+
+        // Validate IATA codes
+        panelBody.querySelectorAll('input[data-field$=".code"]').forEach(input => {
+          if (input.value.trim()) input.value = input.value.trim().toUpperCase();
+        });
+
+        // Validate hotel check-out > check-in
+        if (selectedType === 'hotel') {
+          const checkInDate = panelBody.querySelector('[data-field="checkIn.date"]')?.value;
+          const checkOutDate = panelBody.querySelector('[data-field="checkOut.date"]')?.value;
+          if (checkInDate && checkOutDate && checkOutDate <= checkInDate) {
+            const field = panelBody.querySelector('[data-field="checkOut.date"]');
+            field.focus();
+            field.setCustomValidity(i18n.t('hotel.checkOut') + ' > ' + i18n.t('hotel.checkIn'));
+            field.reportValidity();
+            field.setCustomValidity('');
+            return;
+          }
+        }
+
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<span class="spinner spinner-sm"></span>';
+
+        try {
+          if (selectedItems.length === 1) {
+            const updates = selectedType === 'flight'
+              ? window.tripFlights.collectFullUpdates(panelBody)
+              : window.tripHotels.collectFullUpdates(panelBody);
+
+            const response = await utils.authFetch('/.netlify/functions/edit-booking', {
+              method: 'POST',
+              body: JSON.stringify({ tripId, type: selectedType, itemId: selectedItems[0].id, updates })
+            });
+            if (!response.ok) throw new Error('Failed to save');
+          } else {
+            // Multiple items: collect updates per item
+            const itemSections = panelBody.querySelectorAll('.manage-edit-item');
+            for (const section of itemSections) {
+              const itemId = section.dataset.itemId;
+              const updates = selectedType === 'flight'
+                ? window.tripFlights.collectFullUpdates(section)
+                : window.tripHotels.collectFullUpdates(section);
+
+              const response = await utils.authFetch('/.netlify/functions/edit-booking', {
+                method: 'POST',
+                body: JSON.stringify({ tripId, type: selectedType, itemId, updates })
+              });
+              if (!response.ok) throw new Error('Failed to save');
+            }
+          }
+
+          const activeTab = document.querySelector('.segmented-control-btn.active')?.dataset.tab;
+          closePanel();
+          await loadTripFromUrl();
+          if (activeTab) switchToTab(activeTab);
+          utils.showToast(i18n.t('trip.editBookingSuccess') || 'Prenotazione aggiornata', 'success');
+        } catch (error) {
+          console.error('Error editing booking:', error);
+          utils.showToast(i18n.t('trip.editError') || 'Errore nell\'aggiornamento', 'error');
+          saveBtn.disabled = false;
+          saveBtn.textContent = i18n.t('modal.save') || 'Salva';
+        }
+      });
+    });
+
+    // ---- DELETE action ----
+    deleteBtn.addEventListener('click', () => {
+      const selected = panel.querySelector('input[type="radio"]:checked');
+      if (!selected) return;
+
+      const passengerName = selected.dataset.passenger;
+      const bookingRef = selected.dataset.ref;
+
+      // Show inline confirmation
+      panelFooter.innerHTML = `
+        <span class="manage-confirm-text">${i18n.t('trip.confirmDelete') || 'Confermi l\'eliminazione?'}</span>
+        <button class="btn btn-secondary btn-sm" id="manage-delete-cancel">${i18n.t('modal.cancel') || 'Annulla'}</button>
+        <button class="btn btn-danger btn-sm" id="manage-delete-confirm">${i18n.t('trip.confirmDeleteBtn') || 'Elimina'}</button>
+      `;
+
+      document.getElementById('manage-delete-cancel').addEventListener('click', () => {
+        // Restore original footer
+        panelFooter.innerHTML = `
+          <button class="btn btn-primary" id="manage-edit-btn">${i18n.t('trip.editBooking') || 'Modifica'}</button>
+          <button class="btn btn-outline-danger" id="manage-delete-btn">${i18n.t('trip.deleteBooking') || 'Elimina'}</button>
+        `;
+        // Re-attach listeners (simplified: re-open panel)
+        closePanel();
+        setTimeout(() => showManageBookingPanel(tripId), 300);
+      });
+
+      document.getElementById('manage-delete-confirm').addEventListener('click', async () => {
+        const confirmBtn = document.getElementById('manage-delete-confirm');
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = '<span class="spinner spinner-sm"></span>';
+
+        try {
+          if (passengerName) {
+            // Delete passenger
+            const ids = selected.value.split(',');
+            const flight = (currentTripData?.flights || []).find(f => f.id === ids[0]);
+            const response = await utils.authFetch('/.netlify/functions/delete-passenger', {
+              method: 'POST',
+              body: JSON.stringify({
+                tripId,
+                passengerName,
+                bookingReference: bookingRef
+              })
+            });
+            if (!response.ok) throw new Error('Failed to delete passenger');
+
+            // Optimistic update
+            for (const f of (currentTripData?.flights || [])) {
+              if (f.bookingReference?.toLowerCase()?.trim() === bookingRef?.toLowerCase()?.trim()) {
+                f.passengers = (f.passengers || []).filter(p =>
+                  p.name?.toLowerCase()?.trim() !== passengerName?.toLowerCase()?.trim()
+                );
+              }
+            }
+            currentTripData.flights = (currentTripData.flights || []).filter(f =>
+              !f.passengers || f.passengers.length > 0
+            );
+          } else {
+            // Delete entire booking items
+            const ids = selected.value.split(',');
+            for (const id of ids) {
+              const response = await utils.authFetch('/.netlify/functions/delete-booking', {
+                method: 'POST',
+                body: JSON.stringify({
+                  tripId,
+                  type: selected.dataset.type,
+                  itemId: id
+                })
+              });
+              if (!response.ok) throw new Error('Failed to delete booking');
+            }
+
+            // Optimistic update
+            const deleteIds = new Set(ids);
+            if (selected.dataset.type === 'flight') {
+              currentTripData.flights = (currentTripData.flights || []).filter(f => !deleteIds.has(f.id));
+            } else {
+              currentTripData.hotels = (currentTripData.hotels || []).filter(h => !deleteIds.has(h.id));
+            }
+          }
+
+          closePanel();
+          rerenderCurrentTab();
+          utils.showToast(i18n.t('trip.deleteBookingSuccess') || 'Prenotazione eliminata', 'success');
+        } catch (error) {
+          console.error('Error deleting booking:', error);
+          utils.showToast(i18n.t('trip.deleteError') || 'Errore nell\'eliminazione', 'error');
+          confirmBtn.disabled = false;
+          confirmBtn.textContent = i18n.t('trip.confirmDeleteBtn') || 'Elimina';
+        }
+      });
+    });
+
+    // Close handlers
+    closeBtn.addEventListener('click', closePanel);
+
+    outsideClickHandler = (e) => {
+      const slidePanel = panel.querySelector('.slide-panel');
+      if (slidePanel && !slidePanel.contains(e.target)) {
+        closePanel();
+      }
+    };
+    setTimeout(() => document.addEventListener('click', outsideClickHandler), 10);
+
+    escapeHandler = (e) => {
+      if (e.key === 'Escape') closePanel();
+    };
+    document.addEventListener('keydown', escapeHandler);
+
+    // Trigger animation
+    requestAnimationFrame(() => {
+      panel.classList.add('active');
+      document.body.classList.add('slide-panel-open');
+    });
+    document.body.style.overflow = 'hidden';
   }
 
   // ===========================

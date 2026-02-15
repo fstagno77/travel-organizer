@@ -462,10 +462,260 @@
     return updates;
   }
 
+  /**
+   * Build full edit form with ALL hotel fields (for manage booking panel)
+   */
+  function buildFullHotelEditForm(hotel) {
+    const lang = i18n.getLang();
+    let roomTypeVal = '';
+    if (hotel.roomTypes && Array.isArray(hotel.roomTypes)) {
+      roomTypeVal = hotel.roomTypes.map(rt => rt[lang] || rt.en || rt).join(', ');
+    } else if (hotel.roomType && typeof hotel.roomType === 'object') {
+      roomTypeVal = hotel.roomType[lang] || hotel.roomType.en || '';
+    } else if (hotel.roomType) {
+      roomTypeVal = hotel.roomType;
+    }
+
+    return `
+      <div class="edit-booking-form">
+        <div class="edit-booking-section">
+          <div class="edit-booking-section-title">
+            ${i18n.t('hotel.hotelInfo') || 'Hotel'}
+          </div>
+          <div class="edit-booking-grid">
+            <div class="edit-booking-field full-width">
+              <label>${i18n.t('hotel.hotelInfo') || 'Nome'}</label>
+              <input type="text" data-field="name" value="${escAttr(hotel.name)}" required>
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('hotel.checkIn') || 'Check-in'}</label>
+              <input type="date" data-field="checkIn.date" value="${escAttr(hotel.checkIn?.date)}" required>
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('hotel.checkIn') || 'Check-in'} - ${i18n.t('common.from') || 'Orario'}</label>
+              <input type="time" data-field="checkIn.time" value="${escAttr(hotel.checkIn?.time)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('hotel.checkOut') || 'Check-out'}</label>
+              <input type="date" data-field="checkOut.date" value="${escAttr(hotel.checkOut?.date)}" required>
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('hotel.checkOut') || 'Check-out'} - ${i18n.t('common.until') || 'Orario'}</label>
+              <input type="time" data-field="checkOut.time" value="${escAttr(hotel.checkOut?.time)}">
+            </div>
+          </div>
+        </div>
+
+        <div class="edit-booking-section">
+          <div class="edit-booking-section-title">
+            ${i18n.t('hotel.detailsInfo') || 'Dettagli'}
+          </div>
+          <div class="edit-booking-grid">
+            <div class="edit-booking-field">
+              <label>${i18n.t('hotel.roomType') || 'Tipo camera'}</label>
+              <input type="text" data-field="roomType" value="${escAttr(roomTypeVal)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('hotel.bedTypes') || 'Tipo letto'}</label>
+              <input type="text" data-field="bedTypes" value="${escAttr(hotel.bedTypes)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('hotel.guestName') || 'Nome ospite'}</label>
+              <input type="text" data-field="guestName" value="${escAttr(hotel.guestName)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('hotel.phone') || 'Telefono'}</label>
+              <input type="tel" data-field="phone" value="${escAttr(hotel.phone)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('hotel.confirmation') || 'N. Conferma'}</label>
+              <input type="text" data-field="confirmationNumber" value="${escAttr(hotel.confirmationNumber)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('hotel.pinCode') || 'PIN'}</label>
+              <input type="text" data-field="pinCode" value="${escAttr(hotel.pinCode)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('hotel.rooms') || 'Camere'}</label>
+              <input type="number" data-field="rooms" value="${escAttr(hotel.rooms)}" min="1" step="1">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('hotel.nights') || 'Notti'}</label>
+              <input type="number" data-field="nights" value="${escAttr(hotel.nights)}" min="1" step="1">
+            </div>
+          </div>
+        </div>
+
+        <div class="edit-booking-section">
+          <div class="edit-booking-section-title">
+            ${i18n.t('hotel.guestsInfo') || 'Ospiti'}
+          </div>
+          <div class="edit-booking-grid">
+            <div class="edit-booking-field">
+              <label>${i18n.t('hotel.adults') || 'Adulti'}</label>
+              <input type="number" data-field="guests.adults" value="${escAttr(hotel.guests?.adults)}" min="0" step="1">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('hotel.children') || 'Bambini'}</label>
+              <input type="number" data-field="guests.childrenCount" value="${escAttr(hotel.guests?.children?.length || 0)}" min="0" step="1">
+            </div>
+          </div>
+        </div>
+
+        <div class="edit-booking-section">
+          <div class="edit-booking-section-title">
+            ${i18n.t('hotel.breakfastInfo') || 'Colazione'}
+          </div>
+          <div class="edit-booking-grid">
+            <div class="edit-booking-field edit-booking-field--checkbox">
+              <label>
+                <input type="checkbox" data-field="breakfast.included" ${hotel.breakfast?.included ? 'checked' : ''}>
+                ${i18n.t('hotel.breakfastIncluded') || 'Colazione inclusa'}
+              </label>
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('hotel.breakfastType') || 'Tipo colazione'}</label>
+              <input type="text" data-field="breakfast.type" value="${escAttr(hotel.breakfast?.type)}">
+            </div>
+          </div>
+        </div>
+
+        <div class="edit-booking-section">
+          <div class="edit-booking-section-title">
+            ${i18n.t('hotel.addressInfo') || 'Indirizzo'}
+          </div>
+          <div class="edit-booking-grid">
+            <div class="edit-booking-field full-width">
+              <label>${i18n.t('hotel.fullAddress') || 'Indirizzo completo'}</label>
+              <input type="text" data-field="address.fullAddress" value="${escAttr(hotel.address?.fullAddress)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('hotel.street') || 'Via'}</label>
+              <input type="text" data-field="address.street" value="${escAttr(hotel.address?.street)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('hotel.city') || 'Città'}</label>
+              <input type="text" data-field="address.city" value="${escAttr(hotel.address?.city)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('hotel.postalCode') || 'CAP'}</label>
+              <input type="text" data-field="address.postalCode" value="${escAttr(hotel.address?.postalCode)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('hotel.country') || 'Paese'}</label>
+              <input type="text" data-field="address.country" value="${escAttr(hotel.address?.country)}">
+            </div>
+          </div>
+        </div>
+
+        <div class="edit-booking-section">
+          <div class="edit-booking-section-title">
+            ${i18n.t('hotel.priceInfo') || 'Prezzo'}
+          </div>
+          <div class="edit-booking-grid">
+            <div class="edit-booking-field">
+              <label>${i18n.t('hotel.currency') || 'Valuta'}</label>
+              <input type="text" data-field="price.total.currency" value="${escAttr(hotel.price?.total?.currency)}" maxlength="3" placeholder="es. EUR" style="text-transform:uppercase">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('hotel.totalAmount') || 'Totale'}</label>
+              <input type="number" data-field="price.total.value" value="${escAttr(hotel.price?.total?.value)}" min="0" step="0.01">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('hotel.roomPrice') || 'Camera'}</label>
+              <input type="number" data-field="price.room.value" value="${escAttr(hotel.price?.room?.value)}" min="0" step="0.01">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('hotel.taxAmount') || 'Tasse'}</label>
+              <input type="number" data-field="price.tax.value" value="${escAttr(hotel.price?.tax?.value)}" min="0" step="0.01">
+            </div>
+          </div>
+        </div>
+
+        <div class="edit-booking-section">
+          <div class="edit-booking-section-title">
+            ${i18n.t('hotel.paymentInfo') || 'Pagamento'}
+          </div>
+          <div class="edit-booking-grid">
+            <div class="edit-booking-field">
+              <label>${i18n.t('hotel.paymentMethod') || 'Metodo'}</label>
+              <input type="text" data-field="payment.method" value="${escAttr(hotel.payment?.method)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('hotel.cancellation') || 'Cancellazione gratuita entro'}</label>
+              <input type="datetime-local" data-field="cancellation.freeCancellationUntil" value="${escAttr(hotel.cancellation?.freeCancellationUntil?.replace('Z', ''))}">
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Collect full hotel form values (handles checkboxes and nested fields)
+   */
+  function collectFullHotelUpdates(formView) {
+    const updates = {};
+    formView.querySelectorAll('input[data-field]').forEach(input => {
+      const field = input.dataset.field;
+      const val = input.type === 'checkbox' ? input.checked : input.value.trim();
+
+      if (field.startsWith('checkIn.')) {
+        const prop = field.split('.')[1];
+        if (!updates.checkIn) updates.checkIn = {};
+        updates.checkIn[prop] = val;
+      } else if (field.startsWith('checkOut.')) {
+        const prop = field.split('.')[1];
+        if (!updates.checkOut) updates.checkOut = {};
+        updates.checkOut[prop] = val;
+      } else if (field.startsWith('address.')) {
+        const prop = field.split('.')[1];
+        if (!updates.address) updates.address = {};
+        updates.address[prop] = val;
+      } else if (field.startsWith('price.total.')) {
+        const prop = field.split('.')[2];
+        if (!updates.price) updates.price = {};
+        if (!updates.price.total) updates.price.total = {};
+        updates.price.total[prop] = val;
+      } else if (field.startsWith('price.room.')) {
+        const prop = field.split('.')[2];
+        if (!updates.price) updates.price = {};
+        if (!updates.price.room) updates.price.room = {};
+        updates.price.room[prop] = val;
+      } else if (field.startsWith('price.tax.')) {
+        const prop = field.split('.')[2];
+        if (!updates.price) updates.price = {};
+        if (!updates.price.tax) updates.price.tax = {};
+        updates.price.tax[prop] = val;
+      } else if (field.startsWith('breakfast.')) {
+        const prop = field.split('.')[1];
+        if (!updates.breakfast) updates.breakfast = {};
+        updates.breakfast[prop] = val;
+      } else if (field.startsWith('payment.')) {
+        const prop = field.split('.')[1];
+        if (!updates.payment) updates.payment = {};
+        updates.payment[prop] = val;
+      } else if (field.startsWith('cancellation.')) {
+        const prop = field.split('.')[1];
+        if (!updates.cancellation) updates.cancellation = {};
+        updates.cancellation[prop] = val;
+      } else if (field.startsWith('guests.')) {
+        const prop = field.split('.')[1];
+        if (!updates.guests) updates.guests = {};
+        updates.guests[prop] = val;
+      } else {
+        updates[field] = val;
+      }
+    });
+    return updates;
+  }
+
   window.tripHotels = {
     render: renderHotels,
     renderDetails: renderHotelDetails,
     buildEditForm: buildHotelEditForm,
-    collectUpdates: collectHotelUpdates
+    collectUpdates: collectHotelUpdates,
+    buildFullEditForm: buildFullHotelEditForm,
+    collectFullUpdates: collectFullHotelUpdates
   };
 })();
