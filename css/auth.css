@@ -1750,6 +1750,8 @@ img.login-logo-img {
     bottom: 36px;
     left: var(--spacing-4);
     right: var(--spacing-4);
+    width: auto;
+    max-width: none;
     gap: var(--spacing-3);
     margin-top: 0;
   }
