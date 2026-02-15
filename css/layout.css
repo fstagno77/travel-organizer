@@ -185,7 +185,7 @@ main {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: var(--spacing-2);
   padding: var(--spacing-2);
   background-color: #ffffff;
   color: #2163F6;
@@ -195,8 +195,8 @@ main {
   font-weight: var(--font-weight-semibold);
   cursor: pointer;
   transition: all var(--transition-fast);
-  min-height: 40px;
-  min-width: 40px;
+  min-height: 44px;
+  min-width: 44px;
 }
 
 @media (min-width: 360px) {

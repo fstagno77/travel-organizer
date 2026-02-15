@@ -2894,19 +2894,20 @@ input[type="time"].form-input {
 .activity-header-add-btn {
   display: inline-flex;
   align-items: center;
-  gap: var(--spacing-1);
+  justify-content: center;
+  gap: var(--spacing-2);
   white-space: nowrap;
   background: var(--color-primary);
   color: white;
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
-  border: none;
+  padding: var(--spacing-3) var(--spacing-5);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-primary);
   cursor: pointer;
-  font-weight: 500;
-  font-size: 0.875rem;
-  line-height: 1.25rem;
-  transition: all 0.2s;
-  box-shadow: 0 4px 6px -1px rgba(147, 197, 253, 0.4), 0 2px 4px -2px rgba(147, 197, 253, 0.4);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-sm);
+  line-height: 1;
+  transition: all var(--transition-fast);
+  min-height: 44px;
   margin-left: var(--spacing-2);
   position: relative;
 }
@@ -2919,6 +2920,12 @@ input[type="time"].form-input {
   height: 70%;
   width: 1px;
   background: rgb(203 213 225);
+}
+
+.activity-header-add-btn svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
 }
 
 .activity-header-add-btn .activity-header-add-label-short {
@@ -2939,12 +2946,10 @@ input[type="time"].form-input {
     flex-wrap: wrap;
   }
   .activity-header-add-btn {
-    flex: none !important;
-    padding: 0.4rem 0.75rem !important;
-    border-radius: 0.5rem;
+    flex: none;
+    padding: var(--spacing-2) var(--spacing-4);
     justify-content: center;
     margin-left: auto;
-    font-size: 0.8125rem;
   }
   .activity-header-add-btn::before {
     display: none;
