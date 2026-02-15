@@ -3602,6 +3602,7 @@ input[type="time"].form-input {
   flex: 1;
   min-width: 0;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
   padding-bottom: 0.5rem;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
@@ -4733,17 +4734,9 @@ input[type="time"].form-input {
   background-color: var(--color-gray-50);
 }
 
-.manage-booking-item:has(input:checked) {
+.manage-booking-item.selected {
   border-color: var(--color-primary);
   background-color: var(--color-primary-light, rgba(59, 130, 246, 0.05));
-}
-
-.manage-booking-item input[type="radio"] {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-  accent-color: var(--color-primary);
-  cursor: pointer;
 }
 
 .manage-booking-item-label {
