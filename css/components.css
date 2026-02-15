@@ -5944,4 +5944,9 @@ input[type="time"].form-input {
   body.slide-panel-open .trip-modal {
     translate: none;
   }
+
+  .trip-modal {
+    height: calc(100vh - 20px);
+    margin-top: 20px;
+  }
 }
