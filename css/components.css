@@ -3483,10 +3483,10 @@ input[type="time"].form-input {
 .activity-new-btn--dashed {
   width: 100%;
   justify-content: center;
-  border: 1.5px dashed var(--color-gray-300);
+  border: 1px dashed var(--color-gray-300);
   background: none;
   padding: var(--spacing-3) var(--spacing-4);
-  border-radius: 1rem;
+  border-radius: var(--radius-lg);
   color: var(--color-gray-400);
   font-size: var(--font-size-sm);
   cursor: pointer;
