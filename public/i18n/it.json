@@ -124,7 +124,8 @@
     "confirm": "Conferma",
     "ok": "OK",
     "delete": "Elimina",
-    "dismiss": "Ignora"
+    "dismiss": "Ignora",
+    "close": "Chiudi"
   },
   "flight": {
     "terminal": "Terminal",

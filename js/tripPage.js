@@ -1701,24 +1701,22 @@
           if (passengerNames.length > 1) {
             for (const name of passengerNames) {
               listHTML += `
-                <label class="manage-booking-item">
-                  <input type="radio" name="manage-booking" value="${itemIds}" data-type="${type}" data-mode="booking" data-passenger="${esc(name)}" data-ref="${esc(ref)}">
+                <div class="manage-booking-item" data-value="${itemIds}" data-type="${type}" data-mode="booking" data-passenger="${esc(name)}" data-ref="${esc(ref)}">
                   <span class="manage-booking-item-label">
                     <span><strong>${esc(ref)}</strong> &middot; ${esc(name)}</span>
                     <span class="manage-booking-item-sub">${sublabel}</span>
                   </span>
-                </label>`;
+                </div>`;
             }
           } else {
             const name = passengerNames[0] || '';
             listHTML += `
-              <label class="manage-booking-item">
-                <input type="radio" name="manage-booking" value="${itemIds}" data-type="${type}" data-mode="booking" data-ref="${esc(ref)}">
+              <div class="manage-booking-item" data-value="${itemIds}" data-type="${type}" data-mode="booking" data-ref="${esc(ref)}">
                 <span class="manage-booking-item-label">
                   <span><strong>${esc(ref)}</strong>${name ? ` &middot; ${esc(name)}` : ''}</span>
                   <span class="manage-booking-item-sub">${sublabel}</span>
                 </span>
-              </label>`;
+              </div>`;
           }
         } else {
           sublabel = groupItems.map(h => esc(h.name || 'Hotel')).join(', ');
@@ -1729,13 +1727,12 @@
           const guestNames = [...nameSet];
           const names = guestNames.length ? guestNames.join(', ') : '';
           listHTML += `
-            <label class="manage-booking-item">
-              <input type="radio" name="manage-booking" value="${itemIds}" data-type="${type}" data-mode="booking" data-ref="${esc(ref)}">
+            <div class="manage-booking-item" data-value="${itemIds}" data-type="${type}" data-mode="booking" data-ref="${esc(ref)}">
               <span class="manage-booking-item-label">
                 <span><strong>${esc(ref)}</strong>${names ? ` &middot; ${esc(names)}` : ''}</span>
                 <span class="manage-booking-item-sub">${sublabel}</span>
               </span>
-            </label>`;
+            </div>`;
         }
       }
       listHTML += '</div>';
@@ -1757,8 +1754,7 @@
             ${listHTML}
           </div>
           <div class="slide-panel-footer" id="manage-panel-footer">
-            <button class="btn btn-primary" id="manage-edit-btn" disabled>${i18n.t('trip.editBooking') || 'Modifica'}</button>
-            <button class="btn btn-outline-danger" id="manage-delete-btn" disabled>${i18n.t('trip.deleteBooking') || 'Elimina'}</button>
+            <button class="btn btn-secondary" id="manage-close-btn">${i18n.t('modal.close') || 'Chiudi'}</button>
           </div>
         </div>
       </div>
@@ -1771,8 +1767,7 @@
     const panelTitle = document.getElementById('manage-panel-title');
     const panelFooter = document.getElementById('manage-panel-footer');
     const closeBtn = document.getElementById('manage-panel-close');
-    const editBtn = document.getElementById('manage-edit-btn');
-    const deleteBtn = document.getElementById('manage-delete-btn');
+    const closePanelBtn = document.getElementById('manage-close-btn');
 
     let outsideClickHandler = null;
     let escapeHandler = null;
@@ -1792,20 +1787,47 @@
       document.body.style.overflow = '';
     };
 
-    // Enable/disable action buttons based on radio selection
-    panel.querySelectorAll('input[type="radio"]').forEach(radio => {
-      radio.addEventListener('change', () => {
-        editBtn.disabled = false;
-        deleteBtn.disabled = false;
+    closePanelBtn.addEventListener('click', closePanel);
+
+    // Remove existing action buttons
+    const removeActions = () => {
+      const existing = panelBody.querySelector('.manage-booking-actions');
+      if (existing) existing.remove();
+    };
+
+    // Card click selection → show action buttons below card
+    panel.querySelectorAll('.manage-booking-item').forEach(card => {
+      card.addEventListener('click', () => {
+        panel.querySelectorAll('.manage-booking-item').forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        removeActions();
+
+        const actionsHTML = `
+          <div class="manage-booking-actions">
+            <button class="btn btn-primary btn-sm" id="manage-edit-btn">${i18n.t('trip.editBooking') || 'Modifica'}</button>
+            <button class="btn btn-outline-danger btn-sm" id="manage-delete-btn">${i18n.t('trip.deleteBooking') || 'Elimina'}</button>
+          </div>
+        `;
+        card.insertAdjacentHTML('afterend', actionsHTML);
+
+        // Attach edit handler
+        document.getElementById('manage-edit-btn').addEventListener('click', (e) => {
+          e.stopPropagation();
+          handleEdit(card);
+        });
+
+        // Attach delete handler
+        document.getElementById('manage-delete-btn').addEventListener('click', (e) => {
+          e.stopPropagation();
+          handleDelete(card);
+        });
       });
     });
 
     // ---- EDIT action ----
-    editBtn.addEventListener('click', () => {
-      const selected = panel.querySelector('input[type="radio"]:checked');
-      if (!selected) return;
+    function handleEdit(selected) {
 
-      const ids = selected.value.split(',');
+      const ids = selected.dataset.value.split(',');
       const selectedType = selected.dataset.type;
       const passengerName = selected.dataset.passenger;
       const allItems = selectedType === 'flight'
@@ -1949,35 +1971,31 @@
           saveBtn.textContent = i18n.t('modal.save') || 'Salva';
         }
       });
-    });
+    }
 
     // ---- DELETE action ----
-    deleteBtn.addEventListener('click', () => {
-      const selected = panel.querySelector('input[type="radio"]:checked');
-      if (!selected) return;
-
+    function handleDelete(selected) {
       const passengerName = selected.dataset.passenger;
       const bookingRef = selected.dataset.ref;
 
-      // Show inline confirmation
-      panelFooter.innerHTML = `
-        <span class="manage-confirm-text">${i18n.t('trip.confirmDelete') || 'Confermi l\'eliminazione?'}</span>
-        <button class="btn btn-secondary btn-sm" id="manage-delete-cancel">${i18n.t('modal.cancel') || 'Annulla'}</button>
-        <button class="btn btn-danger btn-sm" id="manage-delete-confirm">${i18n.t('trip.confirmDeleteBtn') || 'Elimina'}</button>
-      `;
-
-      document.getElementById('manage-delete-cancel').addEventListener('click', () => {
-        // Restore original footer
-        panelFooter.innerHTML = `
-          <button class="btn btn-primary" id="manage-edit-btn">${i18n.t('trip.editBooking') || 'Modifica'}</button>
-          <button class="btn btn-outline-danger" id="manage-delete-btn">${i18n.t('trip.deleteBooking') || 'Elimina'}</button>
+      // Replace action buttons with inline confirmation
+      const actionsEl = panelBody.querySelector('.manage-booking-actions');
+      if (actionsEl) {
+        actionsEl.innerHTML = `
+          <span class="manage-confirm-text">${i18n.t('trip.confirmDelete') || 'Confermi l\'eliminazione?'}</span>
+          <button class="btn btn-secondary btn-sm" id="manage-delete-cancel">${i18n.t('modal.cancel') || 'Annulla'}</button>
+          <button class="btn btn-danger btn-sm" id="manage-delete-confirm">${i18n.t('trip.confirmDeleteBtn') || 'Elimina'}</button>
         `;
-        // Re-attach listeners (simplified: re-open panel)
+      }
+
+      document.getElementById('manage-delete-cancel').addEventListener('click', (e) => {
+        e.stopPropagation();
         closePanel();
         setTimeout(() => showManageBookingPanel(tripId), 300);
       });
 
-      document.getElementById('manage-delete-confirm').addEventListener('click', async () => {
+      document.getElementById('manage-delete-confirm').addEventListener('click', async (e) => {
+        e.stopPropagation();
         const confirmBtn = document.getElementById('manage-delete-confirm');
         confirmBtn.disabled = true;
         confirmBtn.innerHTML = '<span class="spinner spinner-sm"></span>';
@@ -1985,8 +2003,7 @@
         try {
           if (passengerName) {
             // Delete passenger
-            const ids = selected.value.split(',');
-            const flight = (currentTripData?.flights || []).find(f => f.id === ids[0]);
+            const ids = selected.dataset.value.split(',');
             const response = await utils.authFetch('/.netlify/functions/delete-passenger', {
               method: 'POST',
               body: JSON.stringify({
@@ -2010,7 +2027,7 @@
             );
           } else {
             // Delete entire booking items
-            const ids = selected.value.split(',');
+            const ids = selected.dataset.value.split(',');
             for (const id of ids) {
               const response = await utils.authFetch('/.netlify/functions/delete-booking', {
                 method: 'POST',
@@ -2042,7 +2059,7 @@
           confirmBtn.textContent = i18n.t('trip.confirmDeleteBtn') || 'Elimina';
         }
       });
-    });
+    }
 
     // Close handlers
     closeBtn.addEventListener('click', closePanel);
