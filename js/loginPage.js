@@ -29,6 +29,20 @@
     }
   } catch (e) {}
 
+  // Load platform stats (public, no auth needed)
+  try {
+    const statsRes = await fetch('/.netlify/functions/get-platform-stats');
+    const statsData = await statsRes.json();
+    if (statsData.success && statsData.stats) {
+      const { totalTrips, totalTravelDays, totalActivities } = statsData.stats;
+      animateStatNumber('stat-trips', totalTrips);
+      animateStatNumber('stat-days', totalTravelDays);
+      animateStatNumber('stat-activities', totalActivities);
+    }
+  } catch (e) {
+    console.log('Failed to load platform stats:', e);
+  }
+
   // Google login button
   const googleBtn = document.getElementById('google-login-btn');
   googleBtn.addEventListener('click', async () => {
@@ -45,6 +59,7 @@
   const otpEmailForm = document.getElementById('otp-email-form');
   const otpEmail = document.getElementById('otp-email');
   const otpSendBtn = document.getElementById('otp-send-btn');
+  const loginDivider = document.querySelector('.login-divider');
 
   // OTP Code Form
   const otpCodeForm = document.getElementById('otp-code-form');
@@ -72,8 +87,8 @@
       currentEmail = email;
       // Show code input form
       otpEmailForm.style.display = 'none';
+      loginDivider.style.display = 'none';
       googleBtn.style.display = 'none';
-      document.querySelector('.login-divider').style.display = 'none';
       otpCodeForm.style.display = 'block';
       otpSentTo.textContent = (i18n.t('auth.codeSentTo') || 'Codice inviato a') + ' ' + email;
       otpCode.focus();
@@ -130,13 +145,42 @@
 
   // Back to email form
   otpBackBtn.addEventListener('click', () => {
-    otpEmailForm.style.display = 'block';
-    googleBtn.style.display = 'flex';
-    document.querySelector('.login-divider').style.display = 'flex';
     otpCodeForm.style.display = 'none';
+    otpEmailForm.style.display = 'flex';
+    loginDivider.style.display = 'flex';
+    googleBtn.style.display = 'flex';
     otpSendBtn.disabled = false;
     otpSendBtn.querySelector('span').textContent = i18n.t('auth.sendCode') || 'Invia codice';
     otpCode.value = '';
     otpError.textContent = '';
   });
+
+  /**
+   * Animate a number counting up from 0 to target
+   */
+  function animateStatNumber(elementId, target) {
+    const el = document.getElementById(elementId);
+    if (!el || target <= 0) {
+      if (el) el.textContent = target || '0';
+      return;
+    }
+
+    const duration = 1200;
+    const startTime = performance.now();
+
+    function update(currentTime) {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      // Ease-out cubic for smooth deceleration
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const current = Math.round(eased * target);
+      el.textContent = current.toLocaleString('it-IT');
+
+      if (progress < 1) {
+        requestAnimationFrame(update);
+      }
+    }
+
+    requestAnimationFrame(update);
+  }
 })();
