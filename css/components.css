@@ -5946,7 +5946,8 @@ input[type="time"].form-input {
   }
 
   .trip-modal {
-    height: calc(100dvh - 10px);
+    min-height: calc(100dvh - 10px);
     margin-top: 10px;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 }
