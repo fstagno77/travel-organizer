@@ -1724,8 +1724,18 @@ img.login-logo-img {
 @media (max-width: 600px) {
   .login-container {
     padding: var(--spacing-4);
-    justify-content: center;
+    justify-content: flex-start;
+    padding-top: var(--spacing-10);
     padding-bottom: 140px;
+  }
+
+  .login-content {
+    flex: 1;
+  }
+
+  .login-form-section {
+    margin-top: auto;
+    margin-bottom: auto;
   }
 
   .login-tagline {
