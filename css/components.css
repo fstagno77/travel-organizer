@@ -2966,18 +2966,12 @@ input[type="time"].form-input {
   .activity-dropdown {
     position: fixed;
     top: auto;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    right: var(--spacing-4);
+    left: var(--spacing-4);
     width: auto;
-    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-    margin-top: 0;
-    padding: var(--spacing-5) var(--spacing-4) var(--spacing-6);
-    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.15);
-    z-index: 100;
   }
-  .activity-dropdown .activity-dropdown-arrow {
-    display: none;
+  .activity-dropdown--filter {
+    min-width: 0;
   }
 }
 
