@@ -1746,7 +1746,7 @@ img.login-logo-img {
 
   .login-stats {
     gap: var(--spacing-3);
-    margin-top: var(--spacing-8);
+    margin-top: auto;
   }
 
   .login-stat-card {
