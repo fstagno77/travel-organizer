@@ -173,7 +173,8 @@
         <h2 class="section-header-title">I miei voli</h2>
         <button class="section-header-cta btn btn-primary" id="flights-add-booking-btn">
           ${plusSvg}
-          <span class="section-header-cta-label">Prenotazione</span>
+          <span class="section-header-cta-label-full">Aggiungi Prenotazione</span>
+          <span class="section-header-cta-label-short">Prenotazione</span>
         </button>
       </div>
     `;

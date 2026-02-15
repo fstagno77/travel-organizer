@@ -2779,9 +2779,17 @@ input[type="time"].form-input {
   height: 20px;
 }
 
-@media (max-width: 359px) {
-  .section-header-cta .section-header-cta-label {
+/* Responsive: full label on desktop, short on mobile */
+.section-header-cta-label-short {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .section-header-cta-label-full {
     display: none;
+  }
+  .section-header-cta-label-short {
+    display: inline;
   }
 }
 

@@ -215,6 +215,7 @@
             ${icons.plusCircle}
             <span class="activity-header-add-label">Aggiungi Attivit\u00e0</span>
             <span class="activity-header-add-label-short">Attivit\u00e0</span>
+
           </button>
         </div>
       </div>
