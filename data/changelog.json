@@ -1,0 +1,22 @@
+{
+  "versions": [
+    {
+      "version": "0.23",
+      "date": "2026-02-16",
+      "changes": {
+        "it": [
+          "Città visitate nelle card dei viaggi in homepage (icona pin + nomi)",
+          "Gestione città: salva e modifica le città di un viaggio",
+          "Auto-compilazione città da voli e hotel con lookup nel database",
+          "Normalizzazione Title Case per i nomi delle città"
+        ],
+        "en": [
+          "Visited cities on trip cards in homepage (pin icon + names)",
+          "City management: save and update trip cities",
+          "Auto-fill cities from flights and hotels with database lookup",
+          "Title Case normalization for city names"
+        ]
+      }
+    }
+  ]
+}
