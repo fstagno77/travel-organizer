@@ -120,25 +120,20 @@
       // Apply translations
       i18n.apply();
 
-      // Initialize close button with slide-out animation
+      // Initialize back button
       document.getElementById('trip-close-btn')?.addEventListener('click', () => {
-        const modal = document.querySelector('.trip-modal');
-        // Reset in-modal page slider if active
+        // Reset activity panel if active
         const slider = document.getElementById('modal-page-slider');
         if (slider) {
           slider.classList.remove('at-activity');
           const activityPage = document.getElementById('modal-page-activity');
           if (activityPage) activityPage.innerHTML = '';
         }
-        document.body.classList.add('closing');
-        modal.classList.add('closing');
-        modal.addEventListener('animationend', () => {
-          if (document.referrer && new URL(document.referrer).origin === window.location.origin) {
-            history.back();
-          } else {
-            window.location.href = '/';
-          }
-        }, { once: true });
+        if (document.referrer && new URL(document.referrer).origin === window.location.origin) {
+          history.back();
+        } else {
+          window.location.href = '/';
+        }
       });
 
       // Initialize trip creator (for "Change photo" feature)
@@ -269,52 +264,6 @@
           <span class="material-symbols-outlined" style="font-size: 20px;">bed</span>
           <span data-i18n="trip.hotels">Hotels</span>
         </button>
-        <div class="section-menu" id="content-menu">
-          <button class="section-menu-btn" id="content-menu-btn">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="5" r="1"></circle>
-              <circle cx="12" cy="12" r="1"></circle>
-              <circle cx="12" cy="19" r="1"></circle>
-            </svg>
-          </button>
-          <div class="section-dropdown" id="content-dropdown">
-            <button class="section-dropdown-item" data-action="rename">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-              </svg>
-              <span data-i18n="trip.rename">Rinomina</span>
-            </button>
-            <button class="section-dropdown-item" data-action="change-photo">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                <polyline points="21 15 16 10 5 21"></polyline>
-              </svg>
-              <span data-i18n="trip.changePhoto">Cambia foto</span>
-            </button>
-            <button class="section-dropdown-item" data-action="share">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="18" cy="5" r="3"></circle>
-                <circle cx="6" cy="12" r="3"></circle>
-                <circle cx="18" cy="19" r="3"></circle>
-                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-              </svg>
-              <span data-i18n="trip.share">Share</span>
-            </button>
-            <div class="section-dropdown-divider"></div>
-            <button class="section-dropdown-item section-dropdown-item--danger" data-action="delete">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="3 6 5 6 21 6"></polyline>
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                <line x1="10" y1="11" x2="10" y2="17"></line>
-                <line x1="14" y1="11" x2="14" y2="17"></line>
-              </svg>
-              <span data-i18n="trip.deleteTrip">Delete trip</span>
-            </button>
-          </div>
-        </div>
       </div>
     `;
 
@@ -353,7 +302,8 @@
     switchToTab(activeTab);
     showIndicator();
 
-    // Initialize menu
+    // Render header menu (three dots in top-right)
+    renderHeaderMenu();
     initMenu(tripData.id);
 
     // Setup event delegation on tab containers
@@ -731,6 +681,62 @@
   // ===========================
   // Menu
   // ===========================
+
+  /**
+   * Render the three-dots menu into the header (top-right)
+   */
+  function renderHeaderMenu() {
+    const spacer = document.querySelector('.trip-header-spacer');
+    if (!spacer) return;
+    spacer.innerHTML = `
+      <div class="section-menu" id="content-menu">
+        <button class="section-menu-btn" id="content-menu-btn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="5" r="1"></circle>
+            <circle cx="12" cy="12" r="1"></circle>
+            <circle cx="12" cy="19" r="1"></circle>
+          </svg>
+        </button>
+        <div class="section-dropdown" id="content-dropdown">
+          <button class="section-dropdown-item" data-action="rename">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+            </svg>
+            <span data-i18n="trip.rename">Rinomina</span>
+          </button>
+          <button class="section-dropdown-item" data-action="change-photo">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <circle cx="8.5" cy="8.5" r="1.5"></circle>
+              <polyline points="21 15 16 10 5 21"></polyline>
+            </svg>
+            <span data-i18n="trip.changePhoto">Cambia foto</span>
+          </button>
+          <button class="section-dropdown-item" data-action="share">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="18" cy="5" r="3"></circle>
+              <circle cx="6" cy="12" r="3"></circle>
+              <circle cx="18" cy="19" r="3"></circle>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+            </svg>
+            <span data-i18n="trip.share">Share</span>
+          </button>
+          <div class="section-dropdown-divider"></div>
+          <button class="section-dropdown-item section-dropdown-item--danger" data-action="delete">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              <line x1="10" y1="11" x2="10" y2="17"></line>
+              <line x1="14" y1="11" x2="14" y2="17"></line>
+            </svg>
+            <span data-i18n="trip.deleteTrip">Delete trip</span>
+          </button>
+        </div>
+      </div>
+    `;
+  }
 
   /**
    * Initialize menu

@@ -161,7 +161,7 @@ const navigation = {
               ${ctaBtn}
             </div>
             <a href="/index.html" class="header-logo header-logo--img">
-              <img src="/assets/icons/travel_flow_logo.png" alt="Travel Flow" class="header-logo-img">
+              <img src="/assets/icons/travel-flow-logo.png" alt="Travel Flow" class="header-logo-img" width="161" height="40">
             </a>
             <div class="header-actions">
               ${rightActions}

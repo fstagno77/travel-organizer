@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="it" style="background-color:#f0f4ff">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -14,6 +14,11 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Travel Flow">
 
+  <!-- Preconnect & Preload -->
+  <link rel="preconnect" href="https://ftivlqthgsziuljruiqo.supabase.co">
+  <link rel="preload" href="./assets/fonts/inter/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/assets/icons/travel-flow-logo-bk.png" as="image">
+
   <!-- CSS -->
   <link rel="stylesheet" href="./css/reset.css">
   <link rel="stylesheet" href="./css/variables.css">
@@ -26,18 +31,29 @@
   <!-- Fonts (self-hosted) -->
   <link rel="stylesheet" href="./css/fonts.css">
 </head>
-<body class="trip-modal-page" style="background:linear-gradient(to top,#0D47A1,#1557E0,#2163F6)">
-  <div class="trip-modal">
-    <div class="modal-page-slider" id="modal-page-slider">
-      <div class="modal-page modal-page--main" id="modal-page-main">
-        <div class="trip-hero" id="trip-hero">
-          <div class="trip-hero-overlay"></div>
-          <button class="trip-hero-close" id="trip-close-btn" aria-label="Close">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
+<body class="trip-page">
+  <div class="page-wrapper">
+    <!-- Trip Header with logo -->
+    <header class="header header--trip">
+      <div class="container">
+        <div class="header-inner header-inner--trip">
+          <button class="trip-back-btn" id="trip-close-btn" aria-label="Indietro">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="15 18 9 12 15 6"></polyline>
             </svg>
           </button>
+          <a href="/index.html" class="header-logo header-logo--img">
+            <img src="/assets/icons/travel-flow-logo-bk.png" alt="Travel Flow" class="header-logo-img" width="100" height="40">
+          </a>
+          <div class="trip-header-spacer"></div>
+        </div>
+      </div>
+    </header>
+
+    <div class="trip-page-content" id="modal-page-slider">
+      <div class="trip-page-main modal-page--main" id="modal-page-main">
+        <div class="trip-hero" id="trip-hero">
+          <div class="trip-hero-overlay"></div>
           <div class="trip-hero-content">
             <h1 id="trip-title" class="trip-hero-title">Loading...</h1>
             <div class="trip-hero-meta">

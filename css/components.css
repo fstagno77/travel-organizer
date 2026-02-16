@@ -1322,92 +1322,118 @@
 
 /* Trip Header */
 /* ========================================
-   Trip Modal Page
+   Trip Page (Full-screen)
    ======================================== */
 
-/* Dark backdrop behind modal */
-.trip-modal-page {
-  background: linear-gradient(to top, #0D47A1, #1557E0, #2163F6);
-  position: fixed;
-  inset: 0;
-  overflow: hidden;
+/* Trip page body */
+.trip-page {
+  background: linear-gradient(to bottom right, #f8fafc, #eff6ff, #eef2ff);
+  min-height: 100vh;
 }
 
-/* Modal container */
-.trip-modal {
-  background: linear-gradient(to bottom right, #f8fafc, #eff6ff, #eef2ff);
-  border-radius: 1rem 1rem 0 0;
-  height: calc(100% - 30px);
-  margin-top: 30px;
+/* Trip header - transparent, blends with page background */
+.header--trip {
+  background: transparent !important;
+  background-color: transparent !important;
+  border-bottom: none !important;
+}
+
+.header-inner.header-inner--trip {
+  display: grid;
+  grid-template-columns: 48px 1fr 48px;
+  align-items: center;
+  height: 64px;
+}
+
+.header-inner.header-inner--trip .header-logo-img {
+  height: 40px;
+}
+
+.header-inner.header-inner--trip > :first-child {
+  justify-self: start;
+}
+
+.header-inner.header-inner--trip > :nth-child(2) {
+  justify-self: center;
+}
+
+.header-inner.header-inner--trip > :last-child {
+  justify-self: end;
+}
+
+/* Back button */
+.trip-back-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 9999px;
+  background: none;
+  border: none;
+  color: var(--color-gray-600);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  padding: 0;
+}
+
+.trip-back-btn:hover {
+  background-color: var(--color-gray-100);
+  color: var(--color-gray-900);
+}
+
+.trip-back-btn:active {
+  transform: scale(0.95);
+}
+
+/* Header right area (menu) */
+.trip-header-spacer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.trip-header-spacer .section-menu-btn {
+  color: var(--color-gray-600);
+}
+
+.trip-header-spacer .section-dropdown {
+  right: 0;
+  left: auto;
+}
+
+/* Trip page content area */
+.trip-page-content {
+  flex: 1;
+  position: relative;
+}
+
+.trip-page-main {
   display: flex;
   flex-direction: column;
-  padding: 30px 10px 0;
-  overflow: hidden;
-  position: relative;
-  will-change: transform, translate;
-  animation: tripModalSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
-  transition: translate var(--transition-normal);
+  min-height: 0;
 }
 
-.trip-modal::after {
+/* Activity panel overlay for trip page */
+.trip-page-content::after {
   content: '';
-  position: absolute;
+  position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0);
   pointer-events: none;
   transition: background 300ms cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: 15;
-  border-radius: inherit;
+  z-index: 60;
 }
 
-.trip-modal:has(.at-activity)::after {
+.trip-page-content.at-activity::after,
+.modal-page-slider.at-activity::after {
   background: rgba(0, 0, 0, 0.6);
   pointer-events: auto;
 }
 
-
-
-.trip-modal.closing {
-  animation: tripModalSlideOut 0.3s cubic-bezier(0.4, 0, 1, 1) both;
-}
-
-@keyframes tripModalSlideIn {
-  from {
-    transform: translateY(100%);
-  }
-  to {
-    transform: translateY(0);
-  }
-}
-
-@keyframes tripModalSlideOut {
-  from {
-    transform: translateY(0);
-  }
-  to {
-    transform: translateY(100%);
-  }
-}
-
-/* In-modal page slider (main content ↔ activity panel) */
-.modal-page-slider {
-  flex: 1;
-  min-height: 0;
-  position: relative;
-}
-
-.modal-page--main {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  overflow-y: auto;
-  overflow-x: hidden;
-  transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-
+/* Activity slide panel */
 .modal-page--activity {
-  position: absolute;
+  position: fixed;
   top: 1.5rem;
   right: 1.5rem;
   bottom: 1.5rem;
@@ -1422,13 +1448,10 @@
   background: var(--color-white);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
   border-radius: 1rem;
-  z-index: 20;
+  z-index: 70;
 }
 
-.modal-page-slider.at-activity .modal-page--main {
-  pointer-events: none;
-}
-
+.trip-page-content.at-activity .modal-page--activity,
 .modal-page-slider.at-activity .modal-page--activity {
   transform: translateX(0);
 }
@@ -1436,6 +1459,11 @@
 @media (max-width: 768px) {
   .modal-page--activity {
     width: 100%;
+    max-width: 100%;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 0;
   }
 }
 
@@ -1460,6 +1488,7 @@
 }
 
 /* Content container matches hero width */
+.trip-page-main > main > .container,
 .modal-page--main > main > .container {
   max-width: var(--container-max-width);
   width: calc(100% - var(--container-padding) * 2);
@@ -1490,39 +1519,6 @@
   background: rgba(0, 0, 0, 0.35);
   pointer-events: none;
   border-radius: inherit;
-}
-
-/* Close button (glass effect) */
-.trip-hero-close {
-  position: absolute;
-  top: var(--spacing-4);
-  right: var(--spacing-4);
-  z-index: 3;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  background-color: rgba(255, 255, 255, 0.15);
-  border: 1.5px solid rgba(255, 255, 255, 0.35);
-  border-radius: 9999px;
-  color: #ffffff;
-  cursor: pointer;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
-  padding: 0;
-}
-
-.trip-hero-close:hover {
-  background-color: #ffffff;
-  border-color: #ffffff;
-  color: var(--color-primary);
-}
-
-.trip-hero-close:active {
-  transform: scale(0.95);
 }
 
 /* Hero content (title + dates) - centered */
@@ -1639,6 +1635,9 @@
 }
 
 @media (max-width: 575px) {
+  .header-inner.header-inner--trip .header-logo-img {
+    height: 40px;
+  }
   .trip-hero {
     min-height: 200px;
   }
@@ -4409,6 +4408,11 @@ input[type="time"].form-input {
   visibility: visible;
 }
 
+/* When a modal is active, neutralize trip hero tabs so they don't overlap */
+body:has(> .modal-overlay.active) .trip-hero-tabs {
+  z-index: 0;
+}
+
 .modal {
   background-color: var(--color-white);
   border-radius: var(--radius-lg);
@@ -6009,13 +6013,7 @@ input[type="time"].form-input {
     width: 100%;
   }
 
-  body.slide-panel-open .trip-modal {
-    translate: none;
-  }
-
-  .trip-modal {
-    height: calc(100% - 10px);
-    margin-top: 10px;
+  .trip-page {
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 }
