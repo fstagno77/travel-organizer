@@ -25,6 +25,7 @@
 
   // Filter state
   let activeFilters = new Set(window.activityCategories.CATEGORY_ORDER);
+  let _presentCategories = new Set();
   let searchQuery = '';
   let _dropdownCleanup = null;
 
@@ -154,9 +155,22 @@
   const iconCards = `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M4 11h5V5H4v6zm0 7h5v-6H4v6zm6 0h5v-6h-5v6zm6 0h5v-6h-5v6zm-6-7h5V5h-5v6zm6-6v6h5V5h-5z"/></svg>`;
   const iconCalendar = `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>`;
 
-  function renderFilterPanel() {
+  function getPresentCategories(dayData) {
+    const present = new Set();
+    for (const date of dayData.allDates) {
+      for (const event of (dayData.grouped[date] || [])) {
+        present.add(cats().eventToCategoryKey(event));
+      }
+    }
+    return present;
+  }
+
+  function renderFilterPanel(presentCategories) {
     const c = cats();
-    const pills = c.CATEGORY_ORDER.map(key => {
+    const keys = c.CATEGORY_ORDER.filter(k => presentCategories.has(k));
+    if (keys.length <= 1) return ''; // no filter needed for 0-1 categories
+
+    const pills = keys.map(key => {
       const cat = c.CATEGORIES[key];
       const label = c.getCategoryLabel(cat);
       return `<button class="activity-filter-pill active" data-category="${key}"
@@ -175,8 +189,10 @@
     `;
   }
 
-  function renderActivityHeader(activeMode) {
+  function renderActivityHeader(activeMode, presentCategories) {
     const icons = cats().ICONS;
+    const filterPanel = renderFilterPanel(presentCategories);
+    const showFilter = filterPanel.length > 0;
     return `
       <div class="activity-header">
         <div class="activity-header-title">Le mie attivit\u00e0</div>
@@ -193,15 +209,15 @@
               </div>
             </div>
           </div>
-          <div class="activity-btn-container" id="activity-filter-container">
+          ${showFilter ? `<div class="activity-btn-container" id="activity-filter-container">
             <button class="activity-header-btn" id="activity-filter-btn" title="Filtra">
               ${icons.filter}
             </button>
             <div class="activity-dropdown activity-dropdown--filter" id="activity-filter-dropdown" hidden>
               <div class="activity-dropdown-arrow"></div>
-              ${renderFilterPanel()}
+              ${filterPanel}
             </div>
-          </div>
+          </div>` : ''}
           <div class="activity-view-switcher">
             <button class="activity-view-btn ${activeMode === 'list' ? 'active' : ''}"
                     data-view-mode="list" title="${i18n.t('trip.viewList') || 'List view'}">
@@ -762,7 +778,7 @@
             p.style.background = allActive ? p.dataset.gradient : '';
           });
           if (allActive) {
-            activeFilters = new Set(cats().CATEGORY_ORDER);
+            activeFilters = new Set(_presentCategories);
             deselectBtn.textContent = 'Deseleziona tutti';
           } else {
             activeFilters.clear();
@@ -862,10 +878,11 @@
 
     const dayData = buildDayEvents(tripData);
     const viewMode = getViewMode();
-    activeFilters = new Set(cats().CATEGORY_ORDER);
+    _presentCategories = getPresentCategories(dayData);
+    activeFilters = new Set(_presentCategories);
     searchQuery = '';
 
-    container.innerHTML = renderActivityHeader(viewMode);
+    container.innerHTML = renderActivityHeader(viewMode, _presentCategories);
     const contentDiv = document.createElement('div');
     contentDiv.id = 'activities-view-content';
     container.appendChild(contentDiv);
