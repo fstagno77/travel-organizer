@@ -334,7 +334,7 @@ body:has(> .modal-overlay.active) .header {
 .footer {
   background-color: var(--color-white);
   border-top: 1px solid var(--color-gray-200);
-  padding: var(--spacing-6) 0;
+  padding: var(--spacing-6) 0 calc(var(--spacing-6) + env(safe-area-inset-bottom, 4px));
 }
 
 .footer-inner {
