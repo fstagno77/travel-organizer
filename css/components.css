@@ -5694,7 +5694,7 @@ body:has(> .modal-overlay.active) .trip-hero-tabs {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--spacing-5) var(--spacing-5) var(--spacing-4);
+  padding: calc(var(--spacing-5) + env(safe-area-inset-top, 0px)) var(--spacing-5) var(--spacing-4);
   border-bottom: 1px solid var(--color-gray-100);
   flex-shrink: 0;
 }
