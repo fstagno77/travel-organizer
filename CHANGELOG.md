@@ -7,8 +7,13 @@
 - **Gestione città** (`manage-cities`): nuova funzione backend per salvare/aggiornare le città di un viaggio
 - **Auto-compilazione città**: le città vengono derivate automaticamente da voli (arrivo) e hotel quando non impostate manualmente
 - **Lookup DB città**: sia il backend che il frontend cercano corrispondenze nel database città (`data/cities.json`) per arricchire con paese, coordinate
+- **Header unificato**: tutte le pagine usano lo stesso header con logo immagine e sfondo gradiente
+- **Filtro attività intelligente**: i pill del filtro mostrano solo le categorie presenti nel viaggio
 
 ### Miglioramenti
 - Normalizzazione Title Case per i nomi delle città (mai tutto maiuscolo o minuscolo)
 - Supporto robusto per formati legacy (stringhe) e moderni (oggetti con `name`, `country`, `lat`, `lng`)
 - Il frontend "Compila da voli e hotel" ora arricchisce le città con paese e coordinate dal DB
+
+### Bug fix
+- Fix logo non visibile in homepage (nome file con underscore vs trattino)

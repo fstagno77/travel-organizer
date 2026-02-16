@@ -1,6 +1,28 @@
 {
   "versions": [
     {
+      "version": "0.23",
+      "date": "2026-02-16",
+      "changes": {
+        "it": [
+          "Città visitate nelle card dei viaggi in homepage (icona pin + nomi)",
+          "Gestione città: salva e modifica le città di un viaggio",
+          "Auto-compilazione città da voli e hotel con lookup nel database",
+          "Header unificato con logo su tutte le pagine",
+          "Filtro attività mostra solo categorie presenti nel viaggio",
+          "Fix logo non visibile in homepage"
+        ],
+        "en": [
+          "Visited cities on trip cards in homepage (pin icon + names)",
+          "City management: save and update trip cities",
+          "Auto-fill cities from flights and hotels with database lookup",
+          "Unified header with logo across all pages",
+          "Activity filter only shows categories present in the trip",
+          "Fix logo not visible on homepage"
+        ]
+      }
+    },
+    {
       "version": "0.22.0",
       "date": "2026-02-15",
       "changes": {
