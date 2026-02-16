@@ -1838,7 +1838,6 @@ input[type="time"].form-input {
 
 .home-main {
   background: linear-gradient(to bottom right, #f8fafc, #eff6ff, #eef2ff);
-  min-height: 100vh;
 }
 
 .home-container {
@@ -2194,6 +2193,23 @@ input[type="time"].form-input {
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
   line-height: 1.2;
   margin: 0;
+}
+
+.trip-card-cities {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 12px;
+  font-weight: 400;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  line-height: 1.3;
+  margin-top: 2px;
+}
+
+.trip-card-cities svg {
+  flex-shrink: 0;
+  stroke: rgba(255, 255, 255, 0.9);
 }
 
 /* Content area below image */
@@ -4491,6 +4507,167 @@ body:has(> .modal-overlay.active) .trip-hero-tabs {
 
 .modal-confirm .modal-footer {
   border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+/* Cities modal */
+#cities-modal .form-label {
+  display: block;
+  margin-bottom: var(--spacing-2);
+}
+
+#cities-modal .modal-footer {
+  justify-content: space-between;
+}
+
+.cities-list {
+  margin-top: var(--spacing-3);
+}
+
+.cities-empty {
+  color: var(--color-gray-500);
+  font-size: var(--text-sm);
+  text-align: center;
+  padding: var(--spacing-4) 0;
+  margin: 0;
+}
+
+.city-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-3) 0;
+  border-bottom: 1px solid var(--color-gray-200);
+}
+
+.city-item:last-child {
+  border-bottom: none;
+}
+
+.city-item-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.city-name {
+  font-size: var(--text-base);
+  color: var(--color-gray-800);
+}
+
+.city-country {
+  font-size: var(--text-xs);
+  color: var(--color-gray-500);
+}
+
+/* Autocomplete */
+.city-input-wrapper {
+  position: relative;
+}
+
+.city-autocomplete-dropdown {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  background: white;
+  border: 1px solid var(--color-gray-200);
+  border-top: none;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.city-autocomplete-dropdown.active {
+  display: block;
+}
+
+.city-autocomplete-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-2) var(--spacing-3);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.city-autocomplete-item:hover,
+.city-autocomplete-item.active {
+  background-color: var(--color-gray-50);
+}
+
+.city-autocomplete-name {
+  font-size: var(--text-sm);
+  color: var(--color-gray-800);
+}
+
+.city-autocomplete-country {
+  font-size: var(--text-xs);
+  color: var(--color-gray-500);
+}
+
+.city-remove-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: none;
+  color: var(--color-gray-400);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.city-remove-btn:hover {
+  color: var(--color-danger);
+  background-color: var(--color-danger-light, rgba(239, 68, 68, 0.1));
+}
+
+.city-error {
+  color: var(--color-danger);
+  font-size: var(--text-sm);
+  min-height: 20px;
+  margin-top: var(--spacing-1);
+}
+
+.city-autofill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: var(--spacing-2);
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-primary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+}
+
+.city-autofill-btn:hover {
+  opacity: 0.7;
+}
+
+.city-autofill-warning {
+  margin-top: var(--spacing-2);
+  padding: var(--spacing-3);
+  background-color: rgba(239, 68, 68, 0.08);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  color: var(--color-gray-800);
+}
+
+.city-autofill-warning-actions {
+  display: flex;
+  gap: var(--spacing-2);
+  margin-top: var(--spacing-2);
+  justify-content: flex-start;
 }
 
 /* Quick Upload Card (inline) */

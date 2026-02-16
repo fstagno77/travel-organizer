@@ -4,6 +4,27 @@
  */
 
 const { authenticateRequest, unauthorizedResponse, getCorsHeaders, handleOptions } = require('./utils/auth');
+const path = require('path');
+const fs = require('fs');
+
+// Load cities DB once (lazy)
+let citiesDb = null;
+let citiesIndex = null; // lowercase name → city object
+function getCitiesIndex() {
+  if (citiesIndex) return citiesIndex;
+  try {
+    const filePath = path.join(__dirname, '..', '..', 'data', 'cities.json');
+    citiesDb = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    citiesIndex = new Map();
+    for (const city of citiesDb) {
+      citiesIndex.set(city.n.toLowerCase(), city);
+    }
+  } catch (e) {
+    console.error('Failed to load cities.json:', e.message);
+    citiesIndex = new Map();
+  }
+  return citiesIndex;
+}
 
 exports.handler = async (event, context) => {
   const headers = getCorsHeaders();
@@ -53,18 +74,71 @@ exports.handler = async (event, context) => {
       today = testDateParam;
     }
 
+    // Normalize city name to Title Case (e.g. "NEW YORK" → "New York")
+    const toTitleCase = (str) =>
+      str.replace(/\S+/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+
+    // Enrich a city name with country from cities DB
+    const index = getCitiesIndex();
+    function enrichCity(name) {
+      const obj = { name: toTitleCase(name) };
+      const match = index.get(name.toLowerCase());
+      if (match) {
+        obj.country = match.c;
+      }
+      return obj;
+    }
+
     // Extract summary-only trip data for frontend
-    const trips = data.map(row => ({
-      id: row.data.id,
-      folder: row.data.id,
-      title: row.data.title,
-      destination: row.data.destination,
-      startDate: row.data.startDate,
-      endDate: row.data.endDate,
-      route: row.data.route,
-      color: '#0066cc',
-      coverPhoto: row.data.coverPhoto || null
-    }));
+    const trips = data.map(row => {
+      // Use saved cities if present, otherwise auto-derive from bookings
+      let cities = (row.data.cities || []).map(c => {
+        const name = typeof c === 'string' ? c : (c.name || '');
+        if (!name) return null;
+        const obj = typeof c === 'object' && c !== null ? { ...c } : {};
+        obj.name = toTitleCase(name);
+        // Enrich with country if missing
+        if (!obj.country) {
+          const match = index.get(name.toLowerCase());
+          if (match) obj.country = match.c;
+        }
+        return obj;
+      }).filter(Boolean);
+
+      // Fallback: derive cities from flight arrivals + hotel cities
+      if (cities.length === 0) {
+        const seen = new Set();
+        const derived = [];
+        for (const f of (row.data.flights || [])) {
+          const city = f.arrival?.city;
+          if (city && !seen.has(city.toLowerCase())) {
+            seen.add(city.toLowerCase());
+            derived.push(enrichCity(city));
+          }
+        }
+        for (const h of (row.data.hotels || [])) {
+          const city = h.address?.city;
+          if (city && !seen.has(city.toLowerCase())) {
+            seen.add(city.toLowerCase());
+            derived.push(enrichCity(city));
+          }
+        }
+        cities = derived;
+      }
+
+      return {
+        id: row.data.id,
+        folder: row.data.id,
+        title: row.data.title,
+        destination: row.data.destination,
+        startDate: row.data.startDate,
+        endDate: row.data.endDate,
+        route: row.data.route,
+        color: '#0066cc',
+        coverPhoto: row.data.coverPhoto || null,
+        cities
+      };
+    });
 
     // Filter today's trips server-side: today between startDate and endDate+1 day
     const todayTrips = data

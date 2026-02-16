@@ -757,6 +757,15 @@ const homePage = (function() {
           <div class="trip-card-image" style="${imageStyle}"${dataBg}>
             <div class="trip-card-overlay">
               <h3 class="trip-card-destination">${utils.escapeHtml(title)}</h3>
+              ${trip.cities && trip.cities.length > 0 ? `
+                <div class="trip-card-cities">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                    <circle cx="12" cy="10" r="3"></circle>
+                  </svg>
+                  <span>${trip.cities.map(c => utils.escapeHtml(typeof c === 'string' ? c : (c.name || ''))).filter(Boolean).join(', ')}</span>
+                </div>
+              ` : ''}
             </div>
           </div>
           <div class="trip-card-content">

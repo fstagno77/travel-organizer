@@ -713,6 +713,13 @@
             </svg>
             <span data-i18n="trip.changePhoto">Cambia foto</span>
           </button>
+          <button class="section-dropdown-item" data-action="cities">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+              <circle cx="12" cy="10" r="3"></circle>
+            </svg>
+            <span data-i18n="trip.cities">Città</span>
+          </button>
           <button class="section-dropdown-item" data-action="share">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="18" cy="5" r="3"></circle>
@@ -767,6 +774,8 @@
           showShareModal(tripId);
         } else if (action === 'change-photo') {
           changePhoto(tripId);
+        } else if (action === 'cities') {
+          showCitiesModal(tripId);
         }
       });
     });
@@ -1138,7 +1147,7 @@
             <p data-i18n="trip.deleteConfirm">Are you sure you want to delete this trip?</p>
             <p class="text-muted mt-2"><strong>${esc(tripTitle)}</strong></p>
           </div>
-          <div class="modal-footer">
+          <div class="modal-footer" style="justify-content: space-between;">
             <button class="btn btn-secondary" id="delete-cancel" data-i18n="modal.cancel">Cancel</button>
             <button class="btn btn-danger" id="delete-confirm" data-i18n="trip.delete">Delete</button>
           </div>
@@ -1569,9 +1578,9 @@
             <label class="form-label" data-i18n="trip.newName">New name</label>
             <input type="text" class="form-input" id="rename-input" value="${esc(currentTitle)}">
           </div>
-          <div class="modal-footer">
-            <button class="btn btn-secondary" id="rename-cancel" data-i18n="modal.cancel">Cancel</button>
-            <button class="btn btn-primary" id="rename-submit" data-i18n="modal.save">Save</button>
+          <div class="modal-footer" style="justify-content: space-between;">
+            <button class="btn btn-secondary" id="rename-cancel" data-i18n="modal.cancel">Annulla</button>
+            <button class="btn btn-primary" id="rename-submit">Conferma</button>
           </div>
         </div>
       </div>
@@ -1636,6 +1645,391 @@
     input.focus();
     input.select();
     i18n.apply(modal);
+  }
+
+  // ===========================
+  // Cities modal
+  // ===========================
+
+  let _citiesDb = null;
+  let _citiesDbLoading = false;
+
+  /** Lazy-load cities database JSON */
+  function getCitiesDatabase() {
+    if (_citiesDb) return _citiesDb;
+    if (!_citiesDbLoading) {
+      _citiesDbLoading = true;
+      fetch('./data/cities.json')
+        .then(r => r.json())
+        .then(data => { _citiesDb = data; })
+        .catch(() => { _citiesDb = []; });
+    }
+    return [];
+  }
+
+  /**
+   * Show modal to manage trip cities
+   * @param {string} tripId
+   */
+  function showCitiesModal(tripId) {
+    const existingModal = document.getElementById('cities-modal');
+    if (existingModal) existingModal.remove();
+
+    // Normalize legacy string cities to objects
+    const rawCities = currentTripData?.cities || [];
+    let draftCities = rawCities.map(c =>
+      typeof c === 'string' ? { name: c } : { ...c }
+    );
+    const labelText = draftCities.length > 0 ? 'Aggiungi un\'altra città' : 'Aggiungi una città';
+
+    const modalHTML = `
+      <div class="modal-overlay" id="cities-modal">
+        <div class="modal">
+          <div class="modal-header">
+            <h2 data-i18n="trip.cities">Città</h2>
+            <button class="modal-close" id="cities-close">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <label class="form-label" id="city-label">${labelText}</label>
+            <div class="city-input-wrapper">
+              <input type="text" class="form-input" id="city-input" placeholder="Cerca una città..." maxlength="100" autocomplete="off">
+              <div class="city-autocomplete-dropdown" id="city-dropdown"></div>
+            </div>
+            <div class="city-error" id="city-error"></div>
+            <button class="city-autofill-btn" id="city-autofill">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+              </svg>
+              Compila da voli e hotel
+            </button>
+            <div class="cities-list" id="cities-list">
+              ${renderCitiesList(draftCities)}
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" id="cities-cancel" data-i18n="modal.cancel">Annulla</button>
+            <button class="btn btn-primary" id="cities-confirm">Conferma</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    const modal = document.getElementById('cities-modal');
+    const closeBtn = document.getElementById('cities-close');
+    const cancelBtn = document.getElementById('cities-cancel');
+    const confirmBtn = document.getElementById('cities-confirm');
+    const input = document.getElementById('city-input');
+    const dropdown = document.getElementById('city-dropdown');
+    const errorEl = document.getElementById('city-error');
+
+    let activeIndex = -1;
+    // Pre-load cities database
+    getCitiesDatabase();
+
+    const closeModal = () => {
+      modal.remove();
+      document.body.style.overflow = '';
+    };
+
+    const showError = (msg) => {
+      errorEl.textContent = msg;
+      setTimeout(() => { errorEl.textContent = ''; }, 3000);
+    };
+
+    const refreshList = () => {
+      document.getElementById('cities-list').innerHTML = renderCitiesList(draftCities);
+      document.getElementById('city-label').textContent = draftCities.length > 0
+        ? 'Aggiungi un\'altra città' : 'Aggiungi una città';
+      bindCityRemoveButtons(modal, draftCities, refreshList);
+    };
+
+    const addCityObj = (cityObj) => {
+      errorEl.textContent = '';
+      const duplicate = draftCities.some(c => c.name.toLowerCase() === cityObj.name.toLowerCase());
+      if (duplicate) {
+        showError('Città già presente');
+        return;
+      }
+      draftCities.push(cityObj);
+      input.value = '';
+      hideDropdown();
+      refreshList();
+      input.focus();
+    };
+
+    const hideDropdown = () => {
+      dropdown.innerHTML = '';
+      dropdown.classList.remove('active');
+      activeIndex = -1;
+    };
+
+    const showDropdown = (items) => {
+      if (items.length === 0) {
+        hideDropdown();
+        return;
+      }
+      activeIndex = -1;
+      dropdown.innerHTML = items.map((item, i) => `
+        <div class="city-autocomplete-item" data-index="${i}">
+          <span class="city-autocomplete-name">${esc(item.name)}</span>
+          <span class="city-autocomplete-country">${esc(item.country || '')}</span>
+        </div>
+      `).join('');
+      dropdown.classList.add('active');
+
+      dropdown.querySelectorAll('.city-autocomplete-item').forEach((el, i) => {
+        el.addEventListener('click', () => addCityObj(items[i]));
+        el.addEventListener('mouseenter', () => {
+          setActiveItem(i);
+        });
+      });
+    };
+
+    const setActiveItem = (index) => {
+      dropdown.querySelectorAll('.city-autocomplete-item').forEach((el, i) => {
+        el.classList.toggle('active', i === index);
+      });
+      activeIndex = index;
+    };
+
+    // Local JSON autocomplete
+    const searchCities = (query) => {
+      if (query.length < 2) { hideDropdown(); return; }
+      const q = query.toLowerCase();
+      const citiesDb = getCitiesDatabase();
+      if (!citiesDb.length) { hideDropdown(); return; }
+
+      const results = [];
+      // Prioritize cities that start with the query
+      for (const c of citiesDb) {
+        if (c.n.toLowerCase().startsWith(q)) {
+          results.push({ name: c.n, country: c.c, lat: c.lat, lng: c.lng });
+          if (results.length >= 8) break;
+        }
+      }
+      // If fewer than 8, add cities that contain the query
+      if (results.length < 8) {
+        for (const c of citiesDb) {
+          if (!c.n.toLowerCase().startsWith(q) && c.n.toLowerCase().includes(q)) {
+            results.push({ name: c.n, country: c.c, lat: c.lat, lng: c.lng });
+            if (results.length >= 8) break;
+          }
+        }
+      }
+      showDropdown(results);
+    };
+
+    input.addEventListener('input', () => {
+      searchCities(input.value.trim());
+    });
+
+    input.addEventListener('keydown', (e) => {
+      const items = dropdown.querySelectorAll('.city-autocomplete-item');
+      if (!items.length) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          // Allow adding plain text if no dropdown
+          const cityName = input.value.trim();
+          if (cityName) addCityObj({ name: cityName });
+        }
+        return;
+      }
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setActiveItem(Math.min(activeIndex + 1, items.length - 1));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setActiveItem(Math.max(activeIndex - 1, 0));
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (activeIndex >= 0) {
+          items[activeIndex].click();
+        } else {
+          const cityName = input.value.trim();
+          if (cityName) addCityObj({ name: cityName });
+        }
+      } else if (e.key === 'Escape') {
+        hideDropdown();
+      }
+    });
+
+    // Close dropdown when clicking outside
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) { closeModal(); return; }
+      if (!e.target.closest('.city-input-wrapper')) hideDropdown();
+    });
+
+    const autofillCities = () => {
+      const extracted = extractCitiesFromTrip(currentTripData);
+      if (extracted.length === 0) {
+        showError('Nessuna città trovata nei voli e hotel');
+        return;
+      }
+
+      if (draftCities.length > 0) {
+        const existingWarning = document.getElementById('city-autofill-warning');
+        if (existingWarning) return;
+
+        const autofillBtn = document.getElementById('city-autofill');
+        const warningHTML = `<div class="city-autofill-warning" id="city-autofill-warning">
+          <span>Le città attuali verranno sostituite. Continuare?</span>
+          <div class="city-autofill-warning-actions">
+            <button class="btn btn-secondary" id="city-autofill-no">No, annulla</button>
+            <button class="btn btn-primary" id="city-autofill-yes">Sì, continua</button>
+          </div>
+        </div>`;
+        autofillBtn.insertAdjacentHTML('afterend', warningHTML);
+        document.getElementById('city-autofill-no').addEventListener('click', () => {
+          document.getElementById('city-autofill-warning').remove();
+        });
+        document.getElementById('city-autofill-yes').addEventListener('click', () => {
+          document.getElementById('city-autofill-warning').remove();
+          draftCities.length = 0;
+          draftCities.push(...extracted);
+          refreshList();
+        });
+        return;
+      }
+
+      draftCities.push(...extracted);
+      refreshList();
+    };
+
+    const saveAndClose = async () => {
+      confirmBtn.disabled = true;
+      confirmBtn.innerHTML = '<span class="spinner spinner-sm"></span>';
+
+      try {
+        const response = await utils.authFetch('/.netlify/functions/manage-cities', {
+          method: 'POST',
+          body: JSON.stringify({ action: 'set', tripId, cities: draftCities })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Failed to save cities');
+        }
+
+        currentTripData.cities = result.cities;
+        closeModal();
+      } catch (error) {
+        showError('Errore nel salvataggio');
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = 'Conferma';
+      }
+    };
+
+    closeBtn.addEventListener('click', closeModal);
+    cancelBtn.addEventListener('click', closeModal);
+    confirmBtn.addEventListener('click', saveAndClose);
+    document.getElementById('city-autofill').addEventListener('click', autofillCities);
+
+    bindCityRemoveButtons(modal, draftCities, refreshList);
+
+    modal.offsetHeight;
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    input.focus();
+    i18n.apply(modal);
+  }
+
+  /**
+   * Render cities list HTML (supports both string and object cities)
+   */
+  function renderCitiesList(cities) {
+    if (!cities || cities.length === 0) {
+      return '';
+    }
+    return cities.map(city => {
+      const name = typeof city === 'string' ? city : city.name;
+      const country = (typeof city === 'object' && city.country) ? city.country : '';
+      return `
+        <div class="city-item">
+          <div class="city-item-info">
+            <span class="city-name">${esc(name)}</span>
+            ${country ? `<span class="city-country">${esc(country)}</span>` : ''}
+          </div>
+          <button class="city-remove-btn" data-city="${esc(name)}" title="Rimuovi">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+      `;
+    }).join('');
+  }
+
+  /**
+   * Bind click handlers to city remove buttons (local draft, no API call)
+   */
+  function bindCityRemoveButtons(modal, draftCities, refreshList) {
+    modal.querySelectorAll('.city-remove-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const cityName = btn.dataset.city;
+        const index = draftCities.findIndex(c => {
+          const n = typeof c === 'string' ? c : c.name;
+          return n.toLowerCase() === cityName.toLowerCase();
+        });
+        if (index !== -1) {
+          draftCities.splice(index, 1);
+          refreshList();
+        }
+      });
+    });
+  }
+
+  /**
+   * Extract unique cities from flights and hotels as objects, ordered by date
+   */
+  function extractCitiesFromTrip(tripData) {
+    if (!tripData) return [];
+
+    // Build a lookup index from the cities DB (lowercase name → city record)
+    const citiesDb = getCitiesDatabase();
+    const cityIndex = new Map();
+    for (const c of citiesDb) {
+      cityIndex.set(c.n.toLowerCase(), c);
+    }
+
+    const seen = new Set();
+    const cities = [];
+
+    const addCity = (name) => {
+      if (!name) return;
+      const trimmed = name.trim();
+      if (trimmed && !seen.has(trimmed.toLowerCase())) {
+        seen.add(trimmed.toLowerCase());
+        const match = cityIndex.get(trimmed.toLowerCase());
+        if (match) {
+          cities.push({ name: match.n, country: match.c, lat: match.lat, lng: match.lng });
+        } else {
+          cities.push({ name: trimmed });
+        }
+      }
+    };
+
+    const flights = [...(tripData.flights || [])].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    for (const f of flights) {
+      addCity(f.departure?.city);
+      addCity(f.arrival?.city);
+    }
+
+    const hotels = [...(tripData.hotels || [])].sort((a, b) => (a.checkIn?.date || '').localeCompare(b.checkIn?.date || ''));
+    for (const h of hotels) {
+      addCity(h.address?.city);
+    }
+
+    return cities;
   }
 
   // ===========================
