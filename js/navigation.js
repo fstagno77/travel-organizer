@@ -14,6 +14,7 @@ const navigation = {
     await this.loadFooter();
     this.setActiveNavLink();
     this.startPendingBookingsPolling();
+    this.initAutoHideHeader();
   },
 
   /**
@@ -234,6 +235,47 @@ const navigation = {
    */
   async refreshPendingCount() {
     await this.updatePendingBookingsCount();
+  },
+
+  /**
+   * Auto-hide header: hides on scroll down, shows on scroll up
+   */
+  initAutoHideHeader() {
+    const header = document.querySelector('.header');
+    if (!header) return;
+
+    let lastScrollY = window.scrollY;
+    let ticking = false;
+    const threshold = 5;
+
+    function update() {
+      const scrollY = window.scrollY;
+      const diff = scrollY - lastScrollY;
+
+      if (scrollY <= 0) {
+        header.classList.remove('header--hidden');
+        header.classList.remove('header--scrolled');
+      } else {
+        header.classList.add('header--scrolled');
+        if (diff >= threshold) {
+          header.classList.add('header--hidden');
+        } else if (diff <= -threshold) {
+          header.classList.remove('header--hidden');
+        }
+      }
+
+      if (Math.abs(diff) >= threshold) {
+        lastScrollY = scrollY;
+      }
+      ticking = false;
+    }
+
+    window.addEventListener('scroll', () => {
+      if (!ticking) {
+        requestAnimationFrame(update);
+        ticking = true;
+      }
+    }, { passive: true });
   }
 };
 

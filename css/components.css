@@ -1331,11 +1331,17 @@
   min-height: 100vh;
 }
 
-/* Trip header - transparent, blends with page background */
-.header--trip {
-  background: transparent !important;
-  background-color: transparent !important;
-  border-bottom: none !important;
+/* Trip header - transparent at top, solid when scrolled
+   .header.header--trip (0,2,0) overrides .header in layout.css (0,1,0) */
+.header.header--trip {
+  background-color: transparent;
+  border-bottom: none;
+  transition: transform 0.3s ease, background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.header.header--trip.header--scrolled {
+  background-color: #f4f8fd;
+  border-bottom: none;
 }
 
 .header-inner.header-inner--trip {
@@ -1441,8 +1447,7 @@
   max-width: calc(100% - 3rem);
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
   transform: translateX(calc(100% + 1.5rem));
   transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
   background: var(--color-white);
@@ -5748,10 +5753,12 @@ body:has(> .modal-overlay.active) .trip-hero-tabs {
 
 .slide-panel-body {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   padding: var(--spacing-5);
   overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .slide-panel-footer {

@@ -1,6 +1,7 @@
 /**
  * Netlify Function: Get Shared Trip
  * Public endpoint for viewing shared trips (bypasses RLS)
+ * Validates share token and checks trip expiration
  */
 
 const { getServiceClient, getCorsHeaders, handleOptions } = require('./utils/auth');
@@ -21,13 +22,13 @@ exports.handler = async (event, context) => {
     };
   }
 
-  const tripId = event.queryStringParameters?.id;
+  const token = event.queryStringParameters?.token;
 
-  if (!tripId) {
+  if (!token) {
     return {
       statusCode: 400,
       headers,
-      body: JSON.stringify({ success: false, error: 'Trip ID is required' })
+      body: JSON.stringify({ success: false, error: 'Share token is required' })
     };
   }
 
@@ -38,7 +39,7 @@ exports.handler = async (event, context) => {
     const { data, error } = await supabase
       .from('trips')
       .select('data')
-      .eq('id', tripId)
+      .eq('data->>shareToken', token)
       .single();
 
     if (error) {
@@ -48,7 +49,7 @@ exports.handler = async (event, context) => {
         return {
           statusCode: 404,
           headers,
-          body: JSON.stringify({ success: false, error: 'Trip not found' })
+          body: JSON.stringify({ success: false, error: 'shareNotFound' })
         };
       }
 
@@ -63,8 +64,23 @@ exports.handler = async (event, context) => {
       return {
         statusCode: 404,
         headers,
-        body: JSON.stringify({ success: false, error: 'Trip not found' })
+        body: JSON.stringify({ success: false, error: 'shareNotFound' })
       };
+    }
+
+    const tripData = data.data;
+
+    // Check expiration: trip endDate must be >= today
+    if (tripData.endDate) {
+      const endDate = new Date(tripData.endDate + 'T23:59:59');
+      const now = new Date();
+      if (endDate < now) {
+        return {
+          statusCode: 410,
+          headers,
+          body: JSON.stringify({ success: false, error: 'shareExpired' })
+        };
+      }
     }
 
     return {
@@ -72,7 +88,7 @@ exports.handler = async (event, context) => {
       headers,
       body: JSON.stringify({
         success: true,
-        tripData: data.data
+        tripData
       })
     };
 

@@ -1326,14 +1326,10 @@ const homePage = (function() {
    * Show share modal with shareable link
    * @param {string} tripId
    */
-  function showShareModal(tripId) {
+  async function showShareModal(tripId) {
     // Remove existing modal if any
     const existingModal = document.getElementById('share-modal');
     if (existingModal) existingModal.remove();
-
-    // Generate share URL
-    const baseUrl = window.location.origin;
-    const shareUrl = `${baseUrl}/share.html?id=${tripId}`;
 
     const modalHTML = `
       <div class="modal-overlay active" id="share-modal">
@@ -1350,8 +1346,8 @@ const homePage = (function() {
           <div class="modal-body">
             <p class="share-description" data-i18n="trip.shareDescription">Copia questo link per condividere il viaggio con altri. Chi riceve il link potrà visualizzare solo questo viaggio.</p>
             <div class="share-link-container">
-              <input type="text" id="share-link-input" class="form-input share-link-input" value="${shareUrl}" readonly>
-              <button class="btn btn-primary share-copy-btn" id="share-copy-btn">
+              <input type="text" id="share-link-input" class="form-input share-link-input" value="" readonly placeholder="Generazione link...">
+              <button class="btn btn-primary share-copy-btn" id="share-copy-btn" disabled>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                   <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
@@ -1380,22 +1376,41 @@ const homePage = (function() {
       document.body.style.overflow = '';
     };
 
+    // Fetch share token from backend
+    let shareUrl = '';
+    try {
+      const response = await utils.authFetch('/.netlify/functions/share-trip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tripId })
+      });
+      const result = await response.json();
+      if (result.success && result.shareToken) {
+        shareUrl = `${window.location.origin}/share.html?token=${result.shareToken}`;
+        linkInput.value = shareUrl;
+        copyBtn.disabled = false;
+      } else {
+        linkInput.value = '';
+        linkInput.placeholder = i18n.t('common.error') || 'Error';
+      }
+    } catch (err) {
+      console.error('Error generating share token:', err);
+      linkInput.value = '';
+      linkInput.placeholder = i18n.t('common.error') || 'Error';
+    }
+
     // Copy link function
     const copyLink = async () => {
+      if (!shareUrl) return;
       try {
         await navigator.clipboard.writeText(shareUrl);
         copiedMessage.classList.add('visible');
-        setTimeout(() => {
-          copiedMessage.classList.remove('visible');
-        }, 2000);
+        setTimeout(() => copiedMessage.classList.remove('visible'), 2000);
       } catch (err) {
-        // Fallback for older browsers
         linkInput.select();
         document.execCommand('copy');
         copiedMessage.classList.add('visible');
-        setTimeout(() => {
-          copiedMessage.classList.remove('visible');
-        }, 2000);
+        setTimeout(() => copiedMessage.classList.remove('visible'), 2000);
       }
     };
 

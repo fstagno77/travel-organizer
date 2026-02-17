@@ -141,6 +141,11 @@
         window.tripCreator.init();
       }
 
+      // Auto-hide header on scroll
+      if (window.navigation?.initAutoHideHeader) {
+        window.navigation.initAutoHideHeader();
+      }
+
       // Load trip data from URL parameter (requires auth)
       if (!auth?.requireAuth()) {
         return;
@@ -1529,18 +1534,16 @@
    * Show share modal
    * @param {string} tripId
    */
-  function showShareModal(tripId) {
+  async function showShareModal(tripId) {
     const existingModal = document.getElementById('share-modal');
     if (existingModal) existingModal.remove();
 
-    const shareUrl = `${window.location.origin}/share.html?id=${encodeURIComponent(tripId)}`;
-
     const modalHTML = `
-      <div class="modal-overlay" id="share-modal">
+      <div class="modal-overlay active" id="share-modal">
         <div class="modal">
           <div class="modal-header">
-            <h2 data-i18n="trip.share">Share</h2>
-            <button class="modal-close" id="share-close">
+            <h2 data-i18n="trip.shareTitle">Condividi viaggio</h2>
+            <button class="modal-close" id="share-modal-close">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="18" y1="6" x2="6" y2="18"></line>
                 <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -1548,22 +1551,31 @@
             </button>
           </div>
           <div class="modal-body">
-            <p class="mb-4" data-i18n="trip.shareDescription">Share this trip with others using the link below:</p>
-            <div class="share-url-container">
-              <input type="text" class="share-url-input" id="share-url-input" value="${shareUrl}" readonly>
-              <button class="btn btn-primary" id="copy-url-btn" data-i18n="trip.copyLink">Copy link</button>
+            <p class="share-description" data-i18n="trip.shareDescription">Copia questo link per condividere il viaggio con altri.</p>
+            <div class="share-link-container">
+              <input type="text" id="share-link-input" class="form-input share-link-input" value="" readonly placeholder="Generazione link...">
+              <button class="btn btn-primary share-copy-btn" id="share-copy-btn" disabled>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+                <span data-i18n="trip.copyLink">Copia</span>
+              </button>
             </div>
+            <div class="share-copied-message" id="share-copied-message" data-i18n="trip.linkCopied">Link copiato!</div>
           </div>
         </div>
       </div>
     `;
 
     document.body.insertAdjacentHTML('beforeend', modalHTML);
+    document.body.style.overflow = 'hidden';
 
     const modal = document.getElementById('share-modal');
-    const closeBtn = document.getElementById('share-close');
-    const copyBtn = document.getElementById('copy-url-btn');
-    const urlInput = document.getElementById('share-url-input');
+    const closeBtn = document.getElementById('share-modal-close');
+    const copyBtn = document.getElementById('share-copy-btn');
+    const linkInput = document.getElementById('share-link-input');
+    const copiedMessage = document.getElementById('share-copied-message');
 
     const closeModal = () => {
       modal.remove();
@@ -1574,24 +1586,54 @@
     modal.addEventListener('click', (e) => {
       if (e.target === modal) closeModal();
     });
-
-    copyBtn.addEventListener('click', async () => {
-      try {
-        await navigator.clipboard.writeText(shareUrl);
-        copyBtn.textContent = i18n.t('trip.copied') || 'Copied!';
-        setTimeout(() => {
-          copyBtn.textContent = i18n.t('trip.copyLink') || 'Copy link';
-        }, 2000);
-      } catch (err) {
-        urlInput.select();
-        document.execCommand('copy');
+    document.addEventListener('keydown', function escHandler(e) {
+      if (e.key === 'Escape') {
+        closeModal();
+        document.removeEventListener('keydown', escHandler);
       }
     });
 
-    urlInput.addEventListener('click', () => urlInput.select());
+    // Fetch share token from backend
+    let shareUrl = '';
+    try {
+      const response = await utils.authFetch('/.netlify/functions/share-trip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tripId })
+      });
+      const result = await response.json();
+      if (result.success && result.shareToken) {
+        shareUrl = `${window.location.origin}/share.html?token=${result.shareToken}`;
+        linkInput.value = shareUrl;
+        copyBtn.disabled = false;
+      } else {
+        linkInput.value = '';
+        linkInput.placeholder = i18n.t('common.error') || 'Error';
+      }
+    } catch (err) {
+      console.error('Error generating share token:', err);
+      linkInput.value = '';
+      linkInput.placeholder = i18n.t('common.error') || 'Error';
+    }
 
-    modal.classList.add('active');
-    document.body.style.overflow = 'hidden';
+    // Copy link function
+    const copyLink = async () => {
+      if (!shareUrl) return;
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        copiedMessage.classList.add('visible');
+        setTimeout(() => copiedMessage.classList.remove('visible'), 2000);
+      } catch (err) {
+        linkInput.select();
+        document.execCommand('copy');
+        copiedMessage.classList.add('visible');
+        setTimeout(() => copiedMessage.classList.remove('visible'), 2000);
+      }
+    };
+
+    copyBtn.addEventListener('click', copyLink);
+    linkInput.addEventListener('focus', () => linkInput.select());
+
     i18n.apply(modal);
   }
 

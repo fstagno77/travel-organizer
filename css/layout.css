@@ -41,6 +41,12 @@ main {
   }
 }
 
+/* Header placeholder: display:contents so the <header> inside
+   becomes a direct flex-child of .page-wrapper, allowing sticky to work */
+#header-placeholder {
+  display: contents;
+}
+
 /* Header */
 .header {
   background-color: var(--color-white);
@@ -49,6 +55,11 @@ main {
   top: 0;
   z-index: 50;
   padding-top: env(safe-area-inset-top, 0px);
+  transition: transform 0.3s ease;
+}
+
+.header--hidden {
+  transform: translateY(-100%);
 }
 
 /* When a modal is active, drop header below the overlay */
@@ -56,6 +67,7 @@ body:has(> .modal-overlay.active) .header {
   position: relative;
   z-index: 0;
 }
+
 
 /* Home page header variant - gradient background */
 .header--home {
