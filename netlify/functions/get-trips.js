@@ -105,26 +105,6 @@ exports.handler = async (event, context) => {
         return obj;
       }).filter(Boolean);
 
-      // Fallback: derive cities from flight arrivals + hotel cities
-      if (cities.length === 0) {
-        const seen = new Set();
-        const derived = [];
-        for (const f of (row.data.flights || [])) {
-          const city = f.arrival?.city;
-          if (city && !seen.has(city.toLowerCase())) {
-            seen.add(city.toLowerCase());
-            derived.push(enrichCity(city));
-          }
-        }
-        for (const h of (row.data.hotels || [])) {
-          const city = h.address?.city;
-          if (city && !seen.has(city.toLowerCase())) {
-            seen.add(city.toLowerCase());
-            derived.push(enrichCity(city));
-          }
-        }
-        cities = derived;
-      }
 
       return {
         id: row.data.id,

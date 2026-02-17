@@ -456,6 +456,7 @@ const homePage = (function() {
         const cat = cats?.CATEGORIES?.volo;
         events.push({
           type: 'flight',
+          id: flight.id,
           time: flight.departureTime || '',
           title: `${depCity} → ${arrCity}`,
           description: flight.flightNumber || '',
@@ -484,6 +485,7 @@ const homePage = (function() {
         const cat = cats?.CATEGORIES?.hotel;
         events.push({
           type: 'hotel',
+          id: hotel.id,
           time: isCheckIn ? (hotel.checkIn?.time || '15:00') : (isCheckOut ? (hotel.checkOut?.time || '12:00') : ''),
           title: hotel.name || 'Hotel',
           description: statusLabel,
@@ -501,6 +503,7 @@ const homePage = (function() {
         const cat = cats?.CATEGORIES?.[activity.category || catKey];
         events.push({
           type: 'activity',
+          id: activity.id,
           time: activity.startTime || '',
           title: activity.name || '',
           description: activity.description || '',
@@ -541,22 +544,46 @@ const homePage = (function() {
    * @param {Array} todayTrips
    * @returns {string}
    */
-  function getTripDestinations(trip, todayTrips) {
-    // Use trip.destination if it's a string
-    if (trip.destination && typeof trip.destination === 'string') return trip.destination;
-    // Derive from route array
-    if (Array.isArray(trip.route) && trip.route.length > 0) return trip.route.join(', ');
-    // Derive from todayTrips flight/hotel cities
-    const tripData = todayTrips.find(t => t.id === trip.id);
-    if (!tripData) return '';
-    const cities = new Set();
-    for (const flight of (tripData.flights || [])) {
-      if (flight.arrival?.city) cities.add(flight.arrival.city);
-    }
-    for (const hotel of (tripData.hotels || [])) {
-      if (hotel.address?.city) cities.add(hotel.address.city);
-    }
-    return Array.from(cities).join(', ');
+  function getTripDestinations(trip) {
+    // Only show cities explicitly set by the user via the "Città" modal
+    if (!trip.cities || trip.cities.length === 0) return '';
+    return trip.cities
+      .map(c => typeof c === 'string' ? c : (c.name || ''))
+      .filter(Boolean)
+      .join(', ');
+  }
+
+  /**
+   * Add click handlers on today's event cards to deep-link into the trip page
+   */
+  function initCurrentTripEventLinks(container) {
+    const tripCard = container.querySelector('.current-trip-card');
+    if (!tripCard) return;
+    const tripUrl = tripCard.getAttribute('href');
+    if (!tripUrl) return;
+
+    tripCard.addEventListener('click', (e) => {
+      const eventCard = e.target.closest('.current-event-card[data-event-type]');
+      if (!eventCard) return; // let the default <a> navigation happen
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      const type = eventCard.dataset.eventType;
+      const id = eventCard.dataset.eventId;
+      const tab = eventCard.dataset.eventTab;
+
+      const url = new URL(tripUrl, window.location.origin);
+      if (tab) url.searchParams.set('tab', tab);
+
+      if (type === 'activity' && id) {
+        url.searchParams.set('activityId', id);
+      } else if (id) {
+        url.searchParams.set('itemId', id);
+      }
+
+      window.location.href = url.toString();
+    });
   }
 
   /**
@@ -576,7 +603,7 @@ const homePage = (function() {
     const todayStr = formatTodayDate(lang);
 
     // Build destination cities string from trip data
-    const destinationStr = getTripDestinations(trip, todayTrips);
+    const destinationStr = getTripDestinations(trip);
 
     // Collect today's events
     const todayEvents = collectTodayEvents(trip.id, todayTrips, lang);
@@ -591,8 +618,13 @@ const homePage = (function() {
         const iconGradient = cat?.gradient || 'linear-gradient(135deg, #a855f7, #7c3aed)';
         const iconHtml = cat?.svg || '<span class="material-symbols-outlined">location_on</span>';
 
+        // Map event type to trip page tab name
+        const tabMap = { flight: 'flights', hotel: 'hotels', activity: 'activities' };
+        const tab = tabMap[event.type] || 'activities';
+
         return `
-          <div class="current-event-card" style="background: ${bg}; border-color: ${border}">
+          <div class="current-event-card" style="background: ${bg}; border-color: ${border}"
+               data-event-type="${event.type}" data-event-id="${event.id || ''}" data-event-tab="${tab}">
             <div class="current-event-icon" style="background: ${iconGradient}">
               <span style="color: white; display: flex; align-items: center; justify-content: center">${iconHtml}</span>
             </div>
@@ -611,6 +643,11 @@ const homePage = (function() {
                   <span>${utils.escapeHtml(event.location)}</span>
                 </div>
               ` : ''}
+            </div>
+            <div class="current-event-arrow">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.4">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
             </div>
           </div>
         `;
@@ -869,6 +906,7 @@ const homePage = (function() {
     container.innerHTML = phase1Html;
     initCoverLazyLoad(container);
     initTripCardMenus();
+    initCurrentTripEventLinks(container);
     i18n.apply(container);
 
     // --- Phase 2: remaining cards via requestAnimationFrame ---

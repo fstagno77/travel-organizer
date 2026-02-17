@@ -290,12 +290,15 @@
     initTabSwitching();
 
     // Determine which tab to show:
-    // - Page refresh → restore saved tab
-    // - New navigation (opening a trip) → always Activities
+    // 1. URL param ?tab= (deep link from home page)
+    // 2. Page refresh → restore saved tab
+    // 3. New navigation → always Activities
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlTab = urlParams.get('tab');
     const navEntry = performance.getEntriesByType('navigation')[0];
     const isRefresh = navEntry && navEntry.type === 'reload';
     const savedTab = isRefresh ? sessionStorage.getItem('tripActiveTab') : null;
-    const activeTab = savedTab || 'activities';
+    const activeTab = (urlTab && ['flights', 'hotels', 'activities'].includes(urlTab)) ? urlTab : (savedTab || 'activities');
 
     // Render only the active tab (lazy rendering — others rendered on first access)
     renderTab(activeTab);
@@ -312,6 +315,47 @@
     // Apply translations
     i18n.apply(container);
     i18n.apply(heroTabs);
+
+    // Deep link: scroll to specific item or open activity panel
+    handleDeepLink(urlParams, tripData);
+  }
+
+  /**
+   * Handle deep-link URL params: scroll to item or open activity panel
+   */
+  async function handleDeepLink(urlParams, tripData) {
+    const itemId = urlParams.get('itemId');
+    const activityId = urlParams.get('activityId');
+
+    if (itemId) {
+      // Scroll to a specific flight or hotel card
+      setTimeout(() => {
+        const card = document.querySelector(`[data-id="${CSS.escape(itemId)}"]`);
+        if (card) {
+          card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          card.classList.add('highlight-card');
+          setTimeout(() => card.classList.remove('highlight-card'), 1500);
+        }
+      }, 150);
+    } else if (activityId) {
+      // Open the activity slide panel
+      const activity = tripData.activities?.find(a => a.id === activityId);
+      if (activity) {
+        setTimeout(async () => {
+          const sp = await loadSlidePanel();
+          sp.show('view', null, activity);
+        }, 150);
+      }
+    }
+
+    // Clean deep-link params from URL (keep only ?id=)
+    if (itemId || activityId || urlParams.get('tab')) {
+      const cleanUrl = new URL(window.location.href);
+      cleanUrl.searchParams.delete('tab');
+      cleanUrl.searchParams.delete('itemId');
+      cleanUrl.searchParams.delete('activityId');
+      window.history.replaceState(null, '', cleanUrl.toString());
+    }
   }
 
   // ===========================

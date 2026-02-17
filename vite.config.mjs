@@ -19,6 +19,7 @@ export default defineConfig({
         profile: resolve(__dirname, 'profile.html'),
         'pending-bookings': resolve(__dirname, 'pending-bookings.html'),
         share: resolve(__dirname, 'share.html'),
+        admin: resolve(__dirname, 'admin.html'),
       },
       output: {
         manualChunks(id) {

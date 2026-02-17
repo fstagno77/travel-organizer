@@ -2024,16 +2024,28 @@ input[type="time"].form-input {
 /* Event card */
 .current-event-card {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 14px;
   padding: 16px 18px;
   border-radius: 14px;
   border: 1px solid;
   transition: box-shadow 200ms ease;
+  cursor: pointer;
 }
 
 .current-event-card:hover {
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.current-event-card:active {
+  transform: scale(0.98);
+}
+
+.current-event-arrow {
+  flex-shrink: 0;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
 }
 
 .current-event-icon {
