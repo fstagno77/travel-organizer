@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.24.1 - 2026-02-17
+
+### Miglioramenti
+- **Orario atterraggio nel tab Attività**: i voli nella vista elenco ora mostrano anche l'orario di arrivo (es. "14:30 → 18:45"), con indicatore "+1" per arrivi il giorno successivo
+- **Open Graph meta tags**: aggiunta anteprima social per la pagina condivisa (titolo, descrizione, immagine)
+
 ## 0.23.2 - 2026-02-17
 
 ### Nuove funzionalità

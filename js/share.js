@@ -553,6 +553,10 @@
         }
 
         let timeLabel = event.time || '';
+        if (timeLabel && event.type === 'flight' && event.data.arrivalTime) {
+          timeLabel += ' \u2192 ' + event.data.arrivalTime;
+          if (event.data.arrivalNextDay) timeLabel += ' +1';
+        }
         if (timeLabel && event.type === 'activity' && event.data.endTime) {
           timeLabel += ' \u2013 ' + event.data.endTime;
         }
