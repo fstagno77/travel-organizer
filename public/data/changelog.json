@@ -1,6 +1,28 @@
 {
   "versions": [
     {
+      "version": "0.24",
+      "date": "2026-02-17",
+      "changes": {
+        "it": [
+          "Header auto-hide: l'header si nasconde scorrendo verso il basso e riappare scorrendo verso l'alto",
+          "Header trasparente nella pagina viaggio: sfondo trasparente in alto, solido allo scroll",
+          "Link di condivisione sicuri con token invece di ID viaggio",
+          "Scadenza automatica link condivisione dopo la data di fine viaggio",
+          "Dashboard admin con statistiche, gestione utenti e viaggi, log email, analytics",
+          "Fix doppio scroll nel pannello attività"
+        ],
+        "en": [
+          "Auto-hide header: header hides on scroll down and reappears on scroll up",
+          "Transparent header on trip page: transparent at top, solid when scrolled",
+          "Secure share links using tokens instead of trip IDs",
+          "Automatic share link expiration after trip end date",
+          "Admin dashboard with stats, user/trip management, email logs, analytics",
+          "Fix double scroll in activity panel"
+        ]
+      }
+    },
+    {
       "version": "0.23",
       "date": "2026-02-16",
       "changes": {
