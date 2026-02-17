@@ -3007,12 +3007,12 @@ input[type="time"].form-input {
   display: none;
 }
 
-/* But visible on shared view */
-.shared-view .trip-content-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--spacing-4);
+/* Shared view: no interactive elements */
+.shared-view .activity-item {
+  cursor: default;
+}
+.shared-view .activity-item-arrow {
+  display: none;
 }
 
 /* Tab content visibility */
@@ -5272,41 +5272,8 @@ body:has(> .modal-overlay.active) .trip-hero-tabs {
   opacity: 1;
 }
 
-.header-shared .header-inner {
-  justify-content: center;
-}
-
-@media (min-width: 768px) {
-  .header-shared .header-inner {
-    justify-content: flex-start;
-  }
-}
-
-/* Shared view trip header (legacy style for share.html) */
-.shared-view .trip-header {
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
-  color: var(--color-white);
-  padding: var(--spacing-8) 0;
-  margin-bottom: var(--spacing-6);
-}
-
-.shared-view .trip-header h1 {
-  color: var(--color-white);
-  margin-bottom: var(--spacing-2);
-}
-
-.shared-view .trip-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spacing-4);
-  font-size: var(--font-size-sm);
-  opacity: 0.9;
-}
-
-.shared-view .trip-meta-item {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-2);
+.shared-view .trip-title-edit-btn {
+  display: none;
 }
 
 /* ========================================

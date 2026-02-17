@@ -1,6 +1,6 @@
 /**
  * Share - Shared trip view functionality
- * This is a minimal version for viewing shared trips without navigation
+ * View-only rendering with activities, flights, and hotels tabs
  */
 
 (async function() {
@@ -8,23 +8,22 @@
 
   const esc = (text) => utils.escapeHtml(text);
 
+  // Minimal SVG icons for activity types (no dependency on activityCategories.js)
+  const ICONS = {
+    flight: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.4-.1.9.3 1.1l4.8 3.2-2.1 2.1-2.4-.6c-.4-.1-.8 0-1 .3l-.2.3c-.2.3-.1.7.1 1l2.2 2.2 2.2 2.2c.3.3.7.3 1 .1l.3-.2c.3-.2.4-.6.3-1l-.6-2.4 2.1-2.1 3.2 4.8c.2.4.7.5 1.1.3l.5-.3c.4-.2.6-.6.5-1.1z"/></svg>',
+    hotel: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/><path d="M9 9v.01"/><path d="M9 12v.01"/><path d="M9 15v.01"/><path d="M9 18v.01"/></svg>',
+    activity: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'
+  };
+
   /**
    * Initialize the shared view
    */
   async function init() {
     try {
-      // Initialize i18n first
       await i18n.init();
-
-      // Initialize language selector
       initLangSelector();
-
-      // Apply translations
       i18n.apply();
-
-      // Load and display trip data
       await initSharedTripPage();
-
     } catch (error) {
       console.error('Error initializing shared view:', error);
     }
@@ -43,29 +42,23 @@
     const flagEl = selector.querySelector('.lang-flag');
     const currentEl = selector.querySelector('.lang-current');
 
-    // Update display
     const updateDisplay = () => {
       const lang = i18n.getLang();
       flagEl.textContent = i18n.getLangFlag(lang);
       currentEl.textContent = i18n.getLangName(lang);
-
-      // Update active state
       options.forEach(opt => {
         opt.classList.toggle('active', opt.dataset.lang === lang);
       });
     };
 
-    // Initial update
     updateDisplay();
 
-    // Toggle dropdown
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const isOpen = dropdown.classList.toggle('active');
       btn.setAttribute('aria-expanded', isOpen);
     });
 
-    // Handle language selection
     options.forEach(option => {
       option.addEventListener('click', async () => {
         const lang = option.dataset.lang;
@@ -73,12 +66,10 @@
         updateDisplay();
         dropdown.classList.remove('active');
         btn.setAttribute('aria-expanded', 'false');
-        // Re-render trip content on language change
         initSharedTripPage();
       });
     });
 
-    // Close dropdown when clicking outside
     document.addEventListener('click', () => {
       dropdown.classList.remove('active');
       btn.setAttribute('aria-expanded', 'false');
@@ -93,94 +84,106 @@
     if (!contentContainer) return;
 
     try {
-      const tripId = new URLSearchParams(window.location.search).get('id');
+      const token = new URLSearchParams(window.location.search).get('token');
 
-      if (!tripId) {
-        throw new Error('No trip ID provided');
+      if (!token) {
+        throw new Error('noToken');
       }
 
-      // Load trip data from API
-      const response = await fetch(`/.netlify/functions/get-shared-trip?id=${tripId}`);
+      const response = await fetch(`/.netlify/functions/get-shared-trip?token=${encodeURIComponent(token)}`);
       const result = await response.json();
-      let tripData;
-      if (result.success && result.tripData) {
-        tripData = result.tripData;
-      } else {
-        throw new Error('Trip not found');
+
+      if (!response.ok || !result.success) {
+        const errorKey = result.error || 'shareNotFound';
+        throw new Error(errorKey);
       }
+
+      const tripData = result.tripData;
 
       // Update page title
       const lang = i18n.getLang();
-      const title = tripData.title[lang] || tripData.title.en;
+      const title = tripData.title?.[lang] || tripData.title?.en || tripData.title?.it || '';
       document.title = `${title} - Travel Flow`;
 
-      // Update trip header
-      updateTripHeader(tripData);
+      // Update hero
+      updateTripHero(tripData);
 
-      // Render content (without menu options)
+      // Render hero tabs
+      renderHeroTabs(tripData);
+
+      // Render content
       renderSharedTripContent(contentContainer, tripData);
 
     } catch (error) {
       console.error('Error loading trip data:', error);
+
+      // Clear hero tabs on error
+      const heroTabs = document.getElementById('trip-hero-tabs');
+      if (heroTabs) heroTabs.innerHTML = '';
+
+      const isExpired = error.message === 'shareExpired';
+      const icon = isExpired ? '⏱️' : '🔗';
+      const titleKey = isExpired ? 'trip.shareExpired' : 'trip.shareNotFound';
+      const defaultTitle = isExpired ? 'This shared link has expired' : 'Shared trip not found';
+
       contentContainer.innerHTML = `
         <div class="empty-state">
-          <div class="empty-state-icon">❌</div>
-          <h3 class="empty-state-title" data-i18n="common.error">Error</h3>
-          <p class="empty-state-text" data-i18n="trip.loadError">Could not load trip data</p>
+          <div class="empty-state-icon">${icon}</div>
+          <h3 class="empty-state-title">${i18n.t(titleKey) || defaultTitle}</h3>
         </div>
       `;
-      i18n.apply(contentContainer);
     }
   }
 
   /**
-   * Update trip header with trip data
-   * @param {object} tripData
+   * Update trip hero with trip data
    */
-  function updateTripHeader(tripData) {
+  function updateTripHero(tripData) {
     const lang = i18n.getLang();
 
-    const titleEl = document.querySelector('.trip-header h1');
+    const titleEl = document.querySelector('.trip-hero-title');
     if (titleEl) {
-      titleEl.textContent = tripData.title[lang] || tripData.title.en;
+      titleEl.textContent = tripData.title?.[lang] || tripData.title?.en || tripData.title?.it || '';
     }
 
-    const dateEl = document.querySelector('.trip-meta-date');
+    const dateEl = document.getElementById('trip-dates');
     if (dateEl && tripData.startDate && tripData.endDate) {
       const start = utils.formatDate(tripData.startDate, lang, { month: 'short', day: 'numeric' });
       const end = utils.formatDate(tripData.endDate, lang, { month: 'short', day: 'numeric', year: 'numeric' });
       dateEl.textContent = `${start} - ${end}`;
     }
+
+    // Set hero background image if available
+    const hero = document.getElementById('trip-hero');
+    if (hero && tripData.coverPhoto?.url) {
+      hero.style.backgroundImage = `url('${tripData.coverPhoto.url}')`;
+    }
   }
 
   /**
-   * Render shared trip content (with share button instead of menu)
-   * @param {HTMLElement} container
-   * @param {object} tripData
+   * Render tabs in the hero section
    */
-  function renderSharedTripContent(container, tripData) {
-    const html = `
-      <div class="trip-content-header mb-6">
-        <div class="segmented-control">
-          <button class="segmented-control-btn active" data-tab="flights">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.4-.1.9.3 1.1l4.8 3.2-2.1 2.1-2.4-.6c-.4-.1-.8 0-1 .3l-.2.3c-.2.3-.1.7.1 1l2.2 2.2 2.2 2.2c.3.3.7.3 1 .1l.3-.2c.3-.2.4-.6.3-1l-.6-2.4 2.1-2.1 3.2 4.8c.2.4.7.5 1.1.3l.5-.3c.4-.2.6-.6.5-1.1z"/>
-            </svg>
-            <span data-i18n="trip.flights">Flights</span>
-          </button>
-          <button class="segmented-control-btn" data-tab="hotels">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M3 21h18"></path>
-              <path d="M5 21V7l8-4v18"></path>
-              <path d="M19 21V11l-6-4"></path>
-              <path d="M9 9v.01"></path>
-              <path d="M9 12v.01"></path>
-              <path d="M9 15v.01"></path>
-              <path d="M9 18v.01"></path>
-            </svg>
-            <span data-i18n="trip.hotels">Hotels</span>
-          </button>
-        </div>
+  function renderHeroTabs(tripData) {
+    const heroTabs = document.getElementById('trip-hero-tabs');
+    if (!heroTabs) return;
+
+    heroTabs.innerHTML = `
+      <div class="segmented-control">
+        <div class="segmented-indicator"></div>
+        <button class="segmented-control-btn" data-tab="activities">
+          <span class="material-symbols-outlined" style="font-size: 20px;">calendar_today</span>
+          <span data-i18n="trip.activities">Attività</span>
+        </button>
+        <button class="segmented-control-btn" data-tab="flights">
+          <span class="material-symbols-outlined" style="font-size: 20px;">travel</span>
+          <span data-i18n="trip.flights">Voli</span>
+        </button>
+        <button class="segmented-control-btn" data-tab="hotels">
+          <span class="material-symbols-outlined" style="font-size: 20px;">bed</span>
+          <span data-i18n="trip.hotels">Hotel</span>
+        </button>
+      </div>
+      <div class="section-menu">
         <button class="section-menu-btn" id="share-btn" title="Share">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="18" cy="5" r="3"></circle>
@@ -191,91 +194,112 @@
           </svg>
         </button>
       </div>
+    `;
 
-      <div id="flights-tab" class="tab-content active">
+    // Initialize share button
+    const shareBtn = document.getElementById('share-btn');
+    if (shareBtn) {
+      shareBtn.addEventListener('click', showShareModal);
+    }
+
+    i18n.apply(heroTabs);
+  }
+
+  /**
+   * Render shared trip content (tab containers only)
+   */
+  function renderSharedTripContent(container, tripData) {
+    container.innerHTML = `
+      <div id="activities-tab" class="tab-content">
+        <div id="activities-container"></div>
+      </div>
+      <div id="flights-tab" class="tab-content">
         <div id="flights-container"></div>
       </div>
-
       <div id="hotels-tab" class="tab-content">
         <div id="hotels-container"></div>
       </div>
     `;
 
-    container.innerHTML = html;
-
-    // Render content
+    // Render all tabs
+    renderActivities(document.getElementById('activities-container'), tripData);
     renderFlights(document.getElementById('flights-container'), tripData.flights);
     renderHotels(document.getElementById('hotels-container'), tripData.hotels);
 
     // Initialize tab switching
     initTabSwitching();
 
-    // Determine initial tab: show hotels if no flights, otherwise flights
+    // Determine default tab
     const hasFlights = tripData.flights && tripData.flights.length > 0;
     const hasHotels = tripData.hotels && tripData.hotels.length > 0;
-    if (!hasFlights && hasHotels) {
-      switchToTab('hotels');
+    const hasActivities = tripData.activities && tripData.activities.length > 0;
+
+    // Default to activities tab (always has content if there are flights/hotels)
+    if (hasFlights || hasHotels || hasActivities) {
+      switchToTab('activities');
+    } else {
+      switchToTab('flights');
     }
-
-    // Initialize share button
-    initShareButton();
-
-    // Apply translations
-    i18n.apply(container);
   }
 
-  /**
-   * Initialize tab switching
-   */
+  // ===========================
+  // Tab switching
+  // ===========================
+
+  function updateSegmentedIndicator(activeBtn) {
+    const indicator = document.querySelector('.segmented-control > .segmented-indicator');
+    if (!indicator || !activeBtn) return;
+    const control = activeBtn.parentElement;
+    const controlPadding = parseFloat(getComputedStyle(control).paddingLeft) || 0;
+    indicator.style.width = activeBtn.offsetWidth + 'px';
+    indicator.style.transform = 'translateX(' + (activeBtn.offsetLeft - controlPadding) + 'px)';
+  }
+
   function initTabSwitching() {
     const tabs = document.querySelectorAll('.segmented-control-btn');
-
     tabs.forEach(tab => {
-      tab.addEventListener('click', () => {
-        switchToTab(tab.dataset.tab);
-      });
+      tab.addEventListener('click', () => switchToTab(tab.dataset.tab));
     });
   }
 
-  /**
-   * Switch to a specific tab
-   * @param {string} tabName - 'flights' or 'hotels'
-   */
   function switchToTab(tabName) {
     const tabs = document.querySelectorAll('.segmented-control-btn');
 
-    // Update button states
     tabs.forEach(t => t.classList.remove('active'));
     const targetBtn = document.querySelector(`.segmented-control-btn[data-tab="${tabName}"]`);
-    if (targetBtn) targetBtn.classList.add('active');
+    if (targetBtn) {
+      targetBtn.classList.add('active');
+      updateSegmentedIndicator(targetBtn);
+    }
 
-    // Update content visibility
     document.querySelectorAll('.tab-content').forEach(content => {
       content.classList.remove('active');
     });
     const targetContent = document.getElementById(`${tabName}-tab`);
     if (targetContent) targetContent.classList.add('active');
-  }
 
-  /**
-   * Initialize share button
-   */
-  function initShareButton() {
-    const shareBtn = document.getElementById('share-btn');
-    if (shareBtn) {
-      shareBtn.addEventListener('click', showShareModal);
+    // Show indicator on first switch
+    const indicator = document.querySelector('.segmented-control > .segmented-indicator');
+    if (indicator && !indicator.style.opacity) {
+      indicator.style.transition = 'none';
+      updateSegmentedIndicator(targetBtn);
+      indicator.style.opacity = '1';
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          indicator.style.transition = '';
+        });
+      });
     }
   }
 
-  /**
-   * Show share modal with current URL
-   */
+  // ===========================
+  // Share modal
+  // ===========================
+
   function showShareModal() {
-    // Remove existing modal if any
     const existingModal = document.getElementById('share-modal');
     if (existingModal) existingModal.remove();
 
-    // Use current page URL
     const shareUrl = window.location.href;
 
     const modalHTML = `
@@ -291,7 +315,7 @@
             </button>
           </div>
           <div class="modal-body">
-            <p class="share-description" data-i18n="trip.shareDescription">Copia questo link per condividere il viaggio con altri. Chi riceve il link potrà visualizzare solo questo viaggio.</p>
+            <p class="share-description" data-i18n="trip.shareDescription">Copia questo link per condividere il viaggio con altri.</p>
             <div class="share-link-container">
               <input type="text" id="share-link-input" class="form-input share-link-input" value="${shareUrl}" readonly>
               <button class="btn btn-primary share-copy-btn" id="share-copy-btn">
@@ -317,32 +341,24 @@
     const linkInput = document.getElementById('share-link-input');
     const copiedMessage = document.getElementById('share-copied-message');
 
-    // Close modal function
     const closeModal = () => {
       modal.remove();
       document.body.style.overflow = '';
     };
 
-    // Copy link function
     const copyLink = async () => {
       try {
         await navigator.clipboard.writeText(shareUrl);
         copiedMessage.classList.add('visible');
-        setTimeout(() => {
-          copiedMessage.classList.remove('visible');
-        }, 2000);
+        setTimeout(() => copiedMessage.classList.remove('visible'), 2000);
       } catch (err) {
-        // Fallback for older browsers
         linkInput.select();
         document.execCommand('copy');
         copiedMessage.classList.add('visible');
-        setTimeout(() => {
-          copiedMessage.classList.remove('visible');
-        }, 2000);
+        setTimeout(() => copiedMessage.classList.remove('visible'), 2000);
       }
     };
 
-    // Event listeners
     closeBtn.addEventListener('click', closeModal);
     modal.addEventListener('click', (e) => {
       if (e.target === modal) closeModal();
@@ -354,19 +370,197 @@
       }
     });
     copyBtn.addEventListener('click', copyLink);
-
-    // Select all text when input is focused
     linkInput.addEventListener('focus', () => linkInput.select());
 
-    // Apply translations
     i18n.apply(modal);
   }
 
+  // ===========================
+  // Activities (view-only)
+  // ===========================
+
   /**
-   * Check if a flight is in the past
-   * @param {object} flight
-   * @returns {boolean}
+   * Build day-by-day events from trip data
+   * (Minimal copy of tripActivities.js buildDayEvents)
    */
+  function buildDayEvents(tripData) {
+    const lang = i18n.getLang();
+    const oneDay = 24 * 60 * 60 * 1000;
+    const toLocalDateStr = (d) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    };
+
+    const flights = tripData.flights || [];
+    const hotels = tripData.hotels || [];
+    const customActivities = tripData.activities || [];
+    const events = [];
+
+    for (const flight of flights) {
+      events.push({ date: flight.date, time: flight.departureTime || null, type: 'flight', data: flight });
+    }
+
+    for (const hotel of hotels) {
+      const checkInDate = hotel.checkIn?.date;
+      const checkOutDate = hotel.checkOut?.date;
+      if (checkInDate) {
+        events.push({ date: checkInDate, time: hotel.checkIn?.time || null, type: 'hotel-checkin', data: hotel });
+      }
+      if (checkInDate && checkOutDate) {
+        const start = new Date(checkInDate + 'T00:00:00');
+        const end = new Date(checkOutDate + 'T00:00:00');
+        let current = new Date(start.getTime() + oneDay);
+        while (current < end) {
+          events.push({ date: toLocalDateStr(current), time: null, type: 'hotel-stay', data: hotel });
+          current = new Date(current.getTime() + oneDay);
+        }
+      }
+      if (checkOutDate) {
+        events.push({ date: checkOutDate, time: hotel.checkOut?.time || null, type: 'hotel-checkout', data: hotel });
+      }
+    }
+
+    for (const activity of customActivities) {
+      events.push({ date: activity.date, time: activity.startTime || null, type: 'activity', data: activity });
+    }
+
+    const grouped = {};
+    for (const event of events) {
+      if (!grouped[event.date]) grouped[event.date] = [];
+      grouped[event.date].push(event);
+    }
+
+    const allDates = [];
+    if (tripData.startDate && tripData.endDate) {
+      let current = new Date(tripData.startDate + 'T00:00:00');
+      const end = new Date(tripData.endDate + 'T00:00:00');
+      while (current <= end) {
+        allDates.push(toLocalDateStr(current));
+        current = new Date(current.getTime() + oneDay);
+      }
+    }
+    for (const date of Object.keys(grouped)) {
+      if (!allDates.includes(date)) allDates.push(date);
+    }
+    allDates.sort();
+
+    const typePriority = { 'hotel-checkout': 0, 'flight': 1, 'hotel-checkin': 2, 'hotel-stay': 3, 'activity': 4 };
+    for (const date of allDates) {
+      if (grouped[date]) {
+        grouped[date].sort((a, b) => {
+          const aHasTime = a.time !== null;
+          const bHasTime = b.time !== null;
+          if (aHasTime !== bHasTime) return aHasTime ? 1 : -1;
+          if (aHasTime && bHasTime && a.time !== b.time) return a.time.localeCompare(b.time);
+          return (typePriority[a.type] || 99) - (typePriority[b.type] || 99);
+        });
+      }
+    }
+
+    return { allDates, grouped, lang };
+  }
+
+  /**
+   * Get icon for event type
+   */
+  function getEventIcon(type) {
+    if (type === 'flight') return ICONS.flight;
+    if (type.startsWith('hotel-')) return ICONS.hotel;
+    return ICONS.activity;
+  }
+
+  /**
+   * Render activities tab (view-only list)
+   */
+  function renderActivities(container, tripData) {
+    const flights = tripData.flights || [];
+    const hotels = tripData.hotels || [];
+    const customActivities = tripData.activities || [];
+
+    if (flights.length === 0 && hotels.length === 0 && customActivities.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <h3 class="empty-state-title" data-i18n="trip.noActivities">Nessuna attività</h3>
+        </div>
+      `;
+      i18n.apply(container);
+      return;
+    }
+
+    const { allDates, grouped, lang } = buildDayEvents(tripData);
+
+    const html = allDates.map(date => {
+      const dateObj = new Date(date + 'T00:00:00');
+      const dayNumber = dateObj.getDate();
+      const monthShort = dateObj.toLocaleDateString(lang, { month: 'short' }).toUpperCase().replace('.', '');
+      const weekdayShort = dateObj.toLocaleDateString(lang, { weekday: 'short' }).toUpperCase().replace('.', '');
+      const dayEvents = grouped[date] || [];
+
+      const itemsHtml = dayEvents.map(event => {
+        let text = '';
+
+        if (event.type === 'flight') {
+          const dep = event.data.departure?.city || event.data.departure?.code || '';
+          const dest = event.data.arrival?.city || event.data.arrival?.code || '';
+          text = `Volo da <strong>${esc(dep)}</strong> \u2192 <strong>${esc(dest)}</strong>`;
+        } else if (event.type === 'hotel-checkin') {
+          text = `<strong>${esc(event.data.name || 'Hotel')}</strong> - Check-in`;
+        } else if (event.type === 'hotel-stay') {
+          text = `<strong>${esc(event.data.name || 'Hotel')}</strong> - ${i18n.t('hotel.stay') || 'Soggiorno'}`;
+        } else if (event.type === 'hotel-checkout') {
+          text = `<strong>${esc(event.data.name || 'Hotel')}</strong> - Check-out`;
+        } else if (event.type === 'activity') {
+          const desc = event.data.description ? ' - ' + esc(event.data.description) : '';
+          text = `<strong>${esc(event.data.name)}</strong>${desc}`;
+        }
+
+        let timeLabel = event.time || '';
+        if (timeLabel && event.type === 'activity' && event.data.endTime) {
+          timeLabel += ' \u2013 ' + event.data.endTime;
+        }
+        const timeStr = timeLabel
+          ? `<span class="activity-item-time">${esc(timeLabel)}</span>`
+          : '';
+
+        return `
+          <div class="activity-item">
+            <span class="activity-item-icon">${getEventIcon(event.type)}</span>
+            ${timeStr}
+            <span class="activity-item-text">${text}</span>
+          </div>
+        `;
+      }).join('');
+
+      const emptyDay = dayEvents.length === 0
+        ? '<div class="activity-item activity-item--empty">\u2014</div>'
+        : '';
+
+      return `
+        <div class="activity-day">
+          <div class="activity-day-sidebar">
+            <div class="activity-day-header">
+              <div class="activity-day-number">${dayNumber}</div>
+              <div class="activity-day-meta">${weekdayShort}, ${monthShort}</div>
+            </div>
+          </div>
+          <div class="activity-list">
+            ${itemsHtml}
+            ${emptyDay}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    container.innerHTML = html;
+    i18n.apply(container);
+  }
+
+  // ===========================
+  // Flights
+  // ===========================
+
   function isFlightPast(flight) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -375,16 +569,11 @@
     return flightDate < today;
   }
 
-  /**
-   * Render flight cards
-   * @param {HTMLElement} container
-   * @param {Array} flights
-   */
   function renderFlights(container, flights) {
     if (!flights || flights.length === 0) {
       container.innerHTML = `
         <div class="empty-state">
-          <h3 class="empty-state-title" data-i18n="trip.noFlights">No flights</h3>
+          <h3 class="empty-state-title" data-i18n="trip.noFlights">Nessun volo</h3>
         </div>
       `;
       i18n.apply(container);
@@ -393,15 +582,10 @@
 
     const lang = i18n.getLang();
 
-    // Sort flights: upcoming first (by date), then past flights (by date)
     const sortedFlights = [...flights].sort((a, b) => {
       const aPast = isFlightPast(a);
       const bPast = isFlightPast(b);
-
-      if (aPast !== bPast) {
-        return aPast ? 1 : -1;
-      }
-
+      if (aPast !== bPast) return aPast ? 1 : -1;
       return new Date(a.date) - new Date(b.date);
     });
 
@@ -448,11 +632,10 @@
                 <div class="flight-airport">${esc(flight.arrival.city)}</div>
               </div>
             </div>
-
           </div>
 
           <button class="flight-toggle-details" data-flight-index="${index}">
-            <span data-i18n="flight.showDetails">Show details</span>
+            <span data-i18n="flight.showDetails">Dettagli</span>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="6 9 12 15 18 9"></polyline>
             </svg>
@@ -515,25 +698,20 @@
     }).join('');
 
     container.innerHTML = html;
-
-    // Apply translations
     i18n.apply(container);
-
-    // Initialize toggle buttons
     initFlightToggleButtons();
     initCopyValueButtons();
   }
 
-  /**
-   * Render hotel cards
-   * @param {HTMLElement} container
-   * @param {Array} hotels
-   */
+  // ===========================
+  // Hotels
+  // ===========================
+
   function renderHotels(container, hotels) {
     if (!hotels || hotels.length === 0) {
       container.innerHTML = `
         <div class="empty-state">
-          <h3 class="empty-state-title" data-i18n="trip.noHotels">No hotels</h3>
+          <h3 class="empty-state-title" data-i18n="trip.noHotels">Nessun hotel</h3>
         </div>
       `;
       i18n.apply(container);
@@ -542,7 +720,6 @@
 
     const lang = i18n.getLang();
 
-    // Sort hotels by check-in date
     const sortedHotels = [...hotels].sort((a, b) => {
       const dateA = new Date(a.checkIn?.date || '9999-12-31');
       const dateB = new Date(b.checkIn?.date || '9999-12-31');
@@ -559,7 +736,6 @@
 
       const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(hotel.address.fullAddress)}`;
       const nightsLabel = hotel.nights === 1 ? i18n.t('hotel.night') : i18n.t('hotel.nights');
-      // Support both roomType (single) and roomTypes (array) formats
       let roomType = '-';
       if (hotel.roomTypes && Array.isArray(hotel.roomTypes)) {
         roomType = hotel.roomTypes.map(rt => rt[lang] || rt.en || rt).join(', ');
@@ -616,7 +792,7 @@
           </div>
 
           <button class="hotel-toggle-details" data-hotel-index="${index}">
-            <span data-i18n="hotel.showDetails">Show details</span>
+            <span data-i18n="hotel.showDetails">Dettagli</span>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="6 9 12 15 18 9"></polyline>
             </svg>
@@ -675,21 +851,16 @@
     }).join('');
 
     container.innerHTML = html;
-
-    // Apply translations
     i18n.apply(container);
-
-    // Initialize toggle buttons
     initHotelToggleButtons();
   }
 
-  /**
-   * Initialize flight detail toggle buttons
-   */
-  function initFlightToggleButtons() {
-    const toggleButtons = document.querySelectorAll('.flight-toggle-details');
+  // ===========================
+  // Toggle buttons & copy
+  // ===========================
 
-    toggleButtons.forEach(btn => {
+  function initFlightToggleButtons() {
+    document.querySelectorAll('.flight-toggle-details').forEach(btn => {
       btn.addEventListener('click', () => {
         const index = btn.dataset.flightIndex;
         const details = document.getElementById(`flight-details-${index}`);
@@ -705,9 +876,6 @@
     });
   }
 
-  /**
-   * Initialize copy value buttons
-   */
   function initCopyValueButtons() {
     document.querySelectorAll('.btn-copy-value').forEach(btn => {
       btn.addEventListener('click', async () => {
@@ -719,7 +887,6 @@
           btn.classList.add('copied');
           setTimeout(() => btn.classList.remove('copied'), 1500);
         } catch (err) {
-          // Fallback for older browsers
           const textArea = document.createElement('textarea');
           textArea.value = value;
           textArea.style.position = 'fixed';
@@ -735,13 +902,8 @@
     });
   }
 
-  /**
-   * Initialize hotel detail toggle buttons
-   */
   function initHotelToggleButtons() {
-    const toggleButtons = document.querySelectorAll('.hotel-toggle-details');
-
-    toggleButtons.forEach(btn => {
+    document.querySelectorAll('.hotel-toggle-details').forEach(btn => {
       btn.addEventListener('click', () => {
         const index = btn.dataset.hotelIndex;
         const details = document.getElementById(`hotel-details-${index}`);

@@ -77,6 +77,8 @@
     "shareDescription": "Copia questo link per condividere il viaggio con altri. Chi riceve il link potrà visualizzare solo questo viaggio.",
     "copyLink": "Copia",
     "linkCopied": "Link copiato!",
+    "shareExpired": "Questo link di condivisione è scaduto",
+    "shareNotFound": "Viaggio condiviso non trovato",
     "selectPhoto": "Scegli una foto per",
     "loadingPhotos": "Caricamento foto...",
     "savingPhoto": "Salvataggio foto...",

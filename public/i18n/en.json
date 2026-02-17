@@ -77,6 +77,8 @@
     "shareDescription": "Copy this link to share the trip with others. Anyone with this link will only be able to view this trip.",
     "copyLink": "Copy",
     "linkCopied": "Link copied!",
+    "shareExpired": "This shared link has expired",
+    "shareNotFound": "Shared trip not found",
     "selectPhoto": "Choose a photo for",
     "loadingPhotos": "Loading photos...",
     "savingPhoto": "Saving photo...",
