@@ -4,7 +4,8 @@
 
 ### Miglioramenti
 - **Orario atterraggio nel tab Attività**: i voli nella vista elenco ora mostrano anche l'orario di arrivo (es. "14:30 → 18:45"), con indicatore "+1" per arrivi il giorno successivo
-- **Open Graph meta tags**: aggiunta anteprima social per la pagina condivisa (titolo, descrizione, immagine)
+- **Open Graph meta tags**: anteprima social per i link condivisi (iMessage, WhatsApp, Telegram) con nome viaggio, date, conteggio voli/hotel/attività e cover photo dinamica tramite Netlify Edge Function
+- **Categorie attività nella vista condivisa**: le attività ora mostrano icone e colori delle categorie
 
 ## 0.23.2 - 2026-02-17
 

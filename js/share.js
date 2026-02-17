@@ -276,6 +276,7 @@
     } else {
       switchToTab('flights');
     }
+    showIndicator();
   }
 
   // ===========================
@@ -313,19 +314,33 @@
     });
     const targetContent = document.getElementById(`${tabName}-tab`);
     if (targetContent) targetContent.classList.add('active');
+  }
 
-    // Show indicator on first switch
+  /**
+   * Position indicator on the active tab without animation (call after switchToTab on init)
+   */
+  function showIndicator() {
     const indicator = document.querySelector('.segmented-control > .segmented-indicator');
-    if (indicator && !indicator.style.opacity) {
-      indicator.style.transition = 'none';
-      updateSegmentedIndicator(targetBtn);
-      indicator.style.opacity = '1';
+    const activeBtn = document.querySelector('.segmented-control-btn.active[data-tab]');
+    if (!indicator || !activeBtn) return;
+
+    // Position without animation, then reveal
+    indicator.style.transition = 'none';
+    updateSegmentedIndicator(activeBtn);
+    indicator.style.opacity = '1';
+
+    // Re-enable transition after layout
+    requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          indicator.style.transition = '';
-        });
+        indicator.style.transition = '';
       });
-    }
+    });
+
+    // Recalculate after fonts load (icon font changes button widths)
+    document.fonts.ready.then(() => {
+      const currentActive = document.querySelector('.segmented-control-btn.active[data-tab]');
+      if (currentActive) updateSegmentedIndicator(currentActive);
+    });
   }
 
   // ===========================

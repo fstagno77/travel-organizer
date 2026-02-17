@@ -21,6 +21,10 @@
 [functions."admin-api"]
   timeout = 30
 
+[[edge_functions]]
+  function = "og-share"
+  path = "/share.html"
+
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
