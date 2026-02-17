@@ -106,8 +106,9 @@ export default async function handler(request, context) {
     }
   }
 
-  // Build dynamic OG values
-  const title = escapeHtml(tripData.name || 'Viaggio condiviso');
+  // Build dynamic OG values — title is a multilingual object { it: "...", en: "..." }
+  const tripName = tripData.title?.it || tripData.title?.en || Object.values(tripData.title || {})[0] || 'Viaggio condiviso';
+  const title = escapeHtml(tripName);
   const ogTitle = `${title} | Travel Flow`;
   const description = escapeHtml(buildDescription(tripData));
   const imageUrl = tripData.coverPhoto?.url || `${url.origin}/assets/icons/og-image.png`;
