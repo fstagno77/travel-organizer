@@ -8,12 +8,13 @@
 
   const esc = (text) => utils.escapeHtml(text);
 
-  // Minimal SVG icons for activity types (no dependency on activityCategories.js)
-  const ICONS = {
-    flight: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.4-.1.9.3 1.1l4.8 3.2-2.1 2.1-2.4-.6c-.4-.1-.8 0-1 .3l-.2.3c-.2.3-.1.7.1 1l2.2 2.2 2.2 2.2c.3.3.7.3 1 .1l.3-.2c.3-.2.4-.6.3-1l-.6-2.4 2.1-2.1 3.2 4.8c.2.4.7.5 1.1.3l.5-.3c.4-.2.6-.6.5-1.1z"/></svg>',
-    hotel: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/><path d="M9 9v.01"/><path d="M9 12v.01"/><path d="M9 15v.01"/><path d="M9 18v.01"/></svg>',
-    activity: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'
-  };
+  const cats = () => window.activityCategories;
+
+  // Filter/search state (module-scoped)
+  let activeFilters = new Set(window.activityCategories.CATEGORY_ORDER);
+  let _presentCategories = new Set();
+  let searchQuery = '';
+  let _dropdownCleanup = null;
 
   /**
    * Initialize the shared view
@@ -513,34 +514,118 @@
     return { allDates, grouped, lang };
   }
 
-  /**
-   * Get icon for event type
-   */
-  function getEventIcon(type) {
-    if (type === 'flight') return ICONS.flight;
-    if (type.startsWith('hotel-')) return ICONS.hotel;
-    return ICONS.activity;
+  // ===========================
+  // Filter helpers
+  // ===========================
+
+  function matchesSearch(event, query) {
+    if (!query) return true;
+    const q = query.toLowerCase();
+    const d = event.data;
+    if (event.type === 'flight') {
+      const parts = [
+        d.departure?.city, d.departure?.code, d.arrival?.city, d.arrival?.code,
+        d.airline, d.flightNumber
+      ];
+      return parts.some(p => p && p.toLowerCase().includes(q));
+    }
+    const s = v => typeof v === 'string' && v.toLowerCase().includes(q);
+    if (event.type.startsWith('hotel')) {
+      return s(d.name) || s(d.address);
+    }
+    return s(d.name) || s(d.description) || s(d.address);
   }
 
-  /**
-   * Render activities tab (view-only list)
-   */
-  function renderActivities(container, tripData) {
-    const flights = tripData.flights || [];
-    const hotels = tripData.hotels || [];
-    const customActivities = tripData.activities || [];
-
-    if (flights.length === 0 && hotels.length === 0 && customActivities.length === 0) {
-      container.innerHTML = `
-        <div class="empty-state">
-          <h3 class="empty-state-title" data-i18n="trip.noActivities">Nessuna attività</h3>
-        </div>
-      `;
-      i18n.apply(container);
-      return;
+  function getFilteredDayData(dayData) {
+    const { allDates, grouped, lang } = dayData;
+    const filtered = {};
+    for (const date of allDates) {
+      const events = grouped[date] || [];
+      filtered[date] = events.filter(event =>
+        activeFilters.has(cats().eventToCategoryKey(event)) && matchesSearch(event, searchQuery)
+      );
     }
+    return { allDates, grouped: filtered, lang };
+  }
 
-    const { allDates, grouped, lang } = buildDayEvents(tripData);
+  function getPresentCategories(dayData) {
+    const present = new Set();
+    for (const date of dayData.allDates) {
+      for (const event of (dayData.grouped[date] || [])) {
+        present.add(cats().eventToCategoryKey(event));
+      }
+    }
+    return present;
+  }
+
+  // ===========================
+  // Activity Header + Filter Panel
+  // ===========================
+
+  function renderFilterPanel(presentCategories) {
+    const c = cats();
+    const keys = c.CATEGORY_ORDER.filter(k => presentCategories.has(k));
+    if (keys.length <= 1) return '';
+
+    const pills = keys.map(key => {
+      const cat = c.CATEGORIES[key];
+      const label = c.getCategoryLabel(cat);
+      return `<button class="activity-filter-pill active" data-category="${key}"
+                      data-gradient="${cat.gradient}" data-gradient-hover="${cat.gradientHover}">
+                <span class="activity-filter-pill-icon">${cat.svg}</span>
+                ${label}
+              </button>`;
+    }).join('');
+
+    return `
+      <div class="activity-filter-header">
+        <span class="activity-filter-title">Filtra per tipo:</span>
+        <button class="activity-filter-deselect" id="activity-filter-deselect">Deseleziona tutti</button>
+      </div>
+      <div class="activity-filter-pills">${pills}</div>
+    `;
+  }
+
+  function renderActivityHeader(presentCategories) {
+    const icons = cats().ICONS;
+    const filterPanel = renderFilterPanel(presentCategories);
+    const showFilter = filterPanel.length > 0;
+    return `
+      <div class="activity-header">
+        <div class="activity-header-title">${i18n.t('trip.activities') || 'Attività'}</div>
+        <div class="activity-header-actions">
+          <div class="activity-btn-container" id="activity-search-container">
+            <button class="activity-header-btn" id="activity-search-btn" title="Cerca">
+              ${icons.search}
+            </button>
+            <div class="activity-dropdown" id="activity-search-dropdown" hidden>
+              <div class="activity-dropdown-arrow"></div>
+              <div class="activity-search-wrapper">
+                <input type="text" class="activity-search-input" placeholder="Cerca attività..." id="activity-search-input">
+                <button class="activity-search-clear" id="activity-search-clear" hidden>&times;</button>
+              </div>
+            </div>
+          </div>
+          ${showFilter ? `<div class="activity-btn-container" id="activity-filter-container">
+            <button class="activity-header-btn" id="activity-filter-btn" title="Filtra">
+              ${icons.filter}
+            </button>
+            <div class="activity-dropdown activity-dropdown--filter" id="activity-filter-dropdown" hidden>
+              <div class="activity-dropdown-arrow"></div>
+              ${filterPanel}
+            </div>
+          </div>` : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  // ===========================
+  // List View (read-only)
+  // ===========================
+
+  function renderListViewShared(container, dayData) {
+    const { allDates, grouped, lang } = dayData;
 
     const html = allDates.map(date => {
       const dateObj = new Date(date + 'T00:00:00');
@@ -550,6 +635,7 @@
       const dayEvents = grouped[date] || [];
 
       const itemsHtml = dayEvents.map(event => {
+        const category = cats().getCategoryForEvent(event);
         let text = '';
 
         if (event.type === 'flight') {
@@ -580,8 +666,8 @@
           : '';
 
         return `
-          <div class="activity-item">
-            <span class="activity-item-icon">${getEventIcon(event.type)}</span>
+          <div class="activity-item" style="--cat-color: ${category.color}">
+            <span class="activity-item-icon" style="color: ${category.color}">${category.svg}</span>
             ${timeStr}
             <span class="activity-item-text">${text}</span>
           </div>
@@ -609,6 +695,162 @@
     }).join('');
 
     container.innerHTML = html;
+  }
+
+  // ===========================
+  // Re-render & interactions
+  // ===========================
+
+  function rerenderContent(container, dayData) {
+    const contentDiv = document.getElementById('activities-view-content');
+    if (!contentDiv) return;
+    const filteredData = getFilteredDayData(dayData);
+    renderListViewShared(contentDiv, filteredData);
+  }
+
+  function initActivityInteractions(container, dayData) {
+    const filterBtn = document.getElementById('activity-filter-btn');
+    const filterDropdown = document.getElementById('activity-filter-dropdown');
+    const searchBtn = document.getElementById('activity-search-btn');
+    const searchDropdown = document.getElementById('activity-search-dropdown');
+
+    function closeAllDropdowns() {
+      if (searchDropdown) { searchDropdown.hidden = true; searchBtn?.classList.remove('active'); }
+      if (filterDropdown) { filterDropdown.hidden = true; filterBtn?.classList.remove('active'); }
+    }
+
+    if (filterBtn && filterDropdown) {
+      filterBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isHidden = filterDropdown.hidden;
+        closeAllDropdowns();
+        if (isHidden) {
+          filterDropdown.hidden = false;
+          filterBtn.classList.add('active');
+        }
+      });
+    }
+
+    if (filterDropdown) {
+      filterDropdown.querySelectorAll('.activity-filter-pill.active').forEach(p => {
+        p.style.background = p.dataset.gradient;
+      });
+
+      filterDropdown.addEventListener('mouseenter', (e) => {
+        const pill = e.target.closest('.activity-filter-pill');
+        if (pill && pill.classList.contains('active')) {
+          pill.style.background = pill.dataset.gradientHover;
+        }
+      }, true);
+      filterDropdown.addEventListener('mouseleave', (e) => {
+        const pill = e.target.closest('.activity-filter-pill');
+        if (pill && pill.classList.contains('active')) {
+          pill.style.background = pill.dataset.gradient;
+        }
+      }, true);
+
+      filterDropdown.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const pill = e.target.closest('.activity-filter-pill');
+        if (pill) {
+          const catKey = pill.dataset.category;
+          pill.classList.toggle('active');
+          pill.style.background = pill.classList.contains('active') ? pill.dataset.gradient : '';
+          if (activeFilters.has(catKey)) {
+            activeFilters.delete(catKey);
+          } else {
+            activeFilters.add(catKey);
+          }
+          rerenderContent(container, dayData);
+          return;
+        }
+        const deselectBtn = e.target.closest('#activity-filter-deselect');
+        if (deselectBtn) {
+          const allActive = activeFilters.size === 0;
+          filterDropdown.querySelectorAll('.activity-filter-pill').forEach(p => {
+            p.classList.toggle('active', allActive);
+            p.style.background = allActive ? p.dataset.gradient : '';
+          });
+          if (allActive) {
+            activeFilters = new Set(_presentCategories);
+            deselectBtn.textContent = 'Deseleziona tutti';
+          } else {
+            activeFilters.clear();
+            deselectBtn.textContent = 'Seleziona tutti';
+          }
+          rerenderContent(container, dayData);
+        }
+      });
+    }
+
+    if (searchBtn && searchDropdown) {
+      searchBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isHidden = searchDropdown.hidden;
+        closeAllDropdowns();
+        if (isHidden) {
+          searchDropdown.hidden = false;
+          searchBtn.classList.add('active');
+          document.getElementById('activity-search-input')?.focus();
+        }
+      });
+      searchDropdown.addEventListener('click', (e) => e.stopPropagation());
+
+      const searchInput = document.getElementById('activity-search-input');
+      const searchClear = document.getElementById('activity-search-clear');
+      if (searchInput && searchClear) {
+        searchInput.addEventListener('input', () => {
+          searchClear.hidden = !searchInput.value;
+          searchQuery = searchInput.value.trim();
+          rerenderContent(container, dayData);
+        });
+        searchClear.addEventListener('click', () => {
+          searchInput.value = '';
+          searchClear.hidden = true;
+          searchQuery = '';
+          rerenderContent(container, dayData);
+          searchInput.focus();
+        });
+      }
+    }
+
+    if (_dropdownCleanup) _dropdownCleanup();
+    document.addEventListener('click', closeAllDropdowns);
+    _dropdownCleanup = () => document.removeEventListener('click', closeAllDropdowns);
+  }
+
+  /**
+   * Render activities tab (view-only with filter & search)
+   */
+  function renderActivities(container, tripData) {
+    const flights = tripData.flights || [];
+    const hotels = tripData.hotels || [];
+    const customActivities = tripData.activities || [];
+
+    if (flights.length === 0 && hotels.length === 0 && customActivities.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <h3 class="empty-state-title" data-i18n="trip.noActivities">Nessuna attività</h3>
+        </div>
+      `;
+      i18n.apply(container);
+      return;
+    }
+
+    const dayData = buildDayEvents(tripData);
+    _presentCategories = getPresentCategories(dayData);
+    activeFilters = new Set(_presentCategories);
+    searchQuery = '';
+
+    container.innerHTML = renderActivityHeader(_presentCategories);
+
+    const contentDiv = document.createElement('div');
+    contentDiv.id = 'activities-view-content';
+    container.appendChild(contentDiv);
+
+    renderListViewShared(contentDiv, dayData);
+    initActivityInteractions(container, dayData);
+
     i18n.apply(container);
   }
 

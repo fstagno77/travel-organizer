@@ -1,6 +1,20 @@
 {
   "versions": [
     {
+      "version": "0.25",
+      "date": "2026-02-17",
+      "changes": {
+        "it": [
+          "Vista condivisa: attività con icone e colori per categoria (volo, hotel, ristorante, ecc.)",
+          "Vista condivisa: filtro per tipo di attività e ricerca testuale nella tab Attività"
+        ],
+        "en": [
+          "Shared view: activities with category icons and colors (flight, hotel, restaurant, etc.)",
+          "Shared view: filter by activity type and text search in Activities tab"
+        ]
+      }
+    },
+    {
       "version": "0.24",
       "date": "2026-02-17",
       "changes": {
