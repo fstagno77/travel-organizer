@@ -1695,20 +1695,16 @@
   // Cities modal
   // ===========================
 
-  let _citiesDb = null;
-  let _citiesDbLoading = false;
+  let _citiesDbPromise = null;
 
-  /** Lazy-load cities database JSON */
+  /** Lazy-load cities database JSON (returns a promise) */
   function getCitiesDatabase() {
-    if (_citiesDb) return _citiesDb;
-    if (!_citiesDbLoading) {
-      _citiesDbLoading = true;
-      fetch('./data/cities.json')
+    if (!_citiesDbPromise) {
+      _citiesDbPromise = fetch('./data/cities.json')
         .then(r => r.json())
-        .then(data => { _citiesDb = data; })
-        .catch(() => { _citiesDb = []; });
+        .catch(() => []);
     }
-    return [];
+    return _citiesDbPromise;
   }
 
   /**
@@ -1845,10 +1841,10 @@
     };
 
     // Local JSON autocomplete
-    const searchCities = (query) => {
+    const searchCities = async (query) => {
       if (query.length < 2) { hideDropdown(); return; }
       const q = query.toLowerCase();
-      const citiesDb = getCitiesDatabase();
+      const citiesDb = await getCitiesDatabase();
       if (!citiesDb.length) { hideDropdown(); return; }
 
       const results = [];
@@ -1911,8 +1907,8 @@
       if (!e.target.closest('.city-input-wrapper')) hideDropdown();
     });
 
-    const autofillCities = () => {
-      const extracted = extractCitiesFromTrip(currentTripData);
+    const autofillCities = async () => {
+      const extracted = await extractCitiesFromTrip(currentTripData);
       if (extracted.length === 0) {
         showError('Nessuna città trovata nei voli e hotel');
         return;
@@ -2035,11 +2031,11 @@
   /**
    * Extract unique cities from flights and hotels as objects, ordered by date
    */
-  function extractCitiesFromTrip(tripData) {
+  async function extractCitiesFromTrip(tripData) {
     if (!tripData) return [];
 
     // Build a lookup index from the cities DB (lowercase name → city record)
-    const citiesDb = getCitiesDatabase();
+    const citiesDb = await getCitiesDatabase();
     const cityIndex = new Map();
     for (const c of citiesDb) {
       cityIndex.set(c.n.toLowerCase(), c);
