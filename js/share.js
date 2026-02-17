@@ -730,8 +730,7 @@
     }
 
     if (filterBtn && filterDropdown) {
-      filterBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
+      filterBtn.addEventListener('click', () => {
         const isHidden = filterDropdown.hidden;
         closeAllDropdowns();
         if (isHidden) {
@@ -761,7 +760,6 @@
       }, true);
 
       filterDropdown.addEventListener('click', (e) => {
-        e.stopPropagation();
         const pill = e.target.closest('.activity-filter-pill');
         if (pill) {
           const catKey = pill.dataset.category;
@@ -795,8 +793,7 @@
     }
 
     if (searchBtn && searchDropdown) {
-      searchBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
+      searchBtn.addEventListener('click', () => {
         const isHidden = searchDropdown.hidden;
         closeAllDropdowns();
         if (isHidden) {
@@ -806,7 +803,6 @@
           document.getElementById('activity-search-input')?.focus();
         }
       });
-      searchDropdown.addEventListener('click', (e) => e.stopPropagation());
 
       const searchInput = document.getElementById('activity-search-input');
       const searchClear = document.getElementById('activity-search-clear');
@@ -826,9 +822,18 @@
       }
     }
 
+    const onOutsideInteraction = (e) => {
+      if (!e.target.closest('.activity-btn-container')) {
+        closeAllDropdowns();
+      }
+    };
     if (_dropdownCleanup) _dropdownCleanup();
-    document.addEventListener('click', closeAllDropdowns);
-    _dropdownCleanup = () => document.removeEventListener('click', closeAllDropdowns);
+    document.addEventListener('click', onOutsideInteraction);
+    document.addEventListener('touchstart', onOutsideInteraction);
+    _dropdownCleanup = () => {
+      document.removeEventListener('click', onOutsideInteraction);
+      document.removeEventListener('touchstart', onOutsideInteraction);
+    };
   }
 
   /**
