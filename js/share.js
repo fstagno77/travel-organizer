@@ -23,9 +23,62 @@
       await i18n.init();
       initLangSelector();
       i18n.apply();
+      initAutoHideHeader();
+      initShareHeaderButton();
       await initSharedTripPage();
     } catch (error) {
       console.error('Error initializing shared view:', error);
+    }
+  }
+
+  /**
+   * Auto-hide header: hides on scroll down, shows on scroll up
+   */
+  function initAutoHideHeader() {
+    const header = document.querySelector('.header');
+    if (!header) return;
+
+    let lastScrollY = window.scrollY;
+    let ticking = false;
+    const threshold = 5;
+
+    function update() {
+      const scrollY = window.scrollY;
+      const diff = scrollY - lastScrollY;
+
+      if (scrollY <= 0) {
+        header.classList.remove('header--hidden');
+        header.classList.remove('header--scrolled');
+      } else {
+        header.classList.add('header--scrolled');
+        if (diff >= threshold) {
+          header.classList.add('header--hidden');
+        } else if (diff <= -threshold) {
+          header.classList.remove('header--hidden');
+        }
+      }
+
+      if (Math.abs(diff) >= threshold) {
+        lastScrollY = scrollY;
+      }
+      ticking = false;
+    }
+
+    window.addEventListener('scroll', () => {
+      if (!ticking) {
+        requestAnimationFrame(update);
+        ticking = true;
+      }
+    }, { passive: true });
+  }
+
+  /**
+   * Initialize share button in header
+   */
+  function initShareHeaderButton() {
+    const btn = document.getElementById('share-header-btn');
+    if (btn) {
+      btn.addEventListener('click', showShareModal);
     }
   }
 
@@ -183,24 +236,7 @@
           <span data-i18n="trip.hotels">Hotel</span>
         </button>
       </div>
-      <div class="section-menu">
-        <button class="section-menu-btn" id="share-btn" title="Share">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="18" cy="5" r="3"></circle>
-            <circle cx="6" cy="12" r="3"></circle>
-            <circle cx="18" cy="19" r="3"></circle>
-            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-          </svg>
-        </button>
-      </div>
     `;
-
-    // Initialize share button
-    const shareBtn = document.getElementById('share-btn');
-    if (shareBtn) {
-      shareBtn.addEventListener('click', showShareModal);
-    }
 
     i18n.apply(heroTabs);
   }
