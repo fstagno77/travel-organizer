@@ -1621,6 +1621,7 @@
           <div class="modal-body">
             <label class="form-label" data-i18n="trip.newName">New name</label>
             <input type="text" class="form-input" id="rename-input" value="${esc(currentTitle)}">
+            <div class="char-counter" id="rename-char-counter"><span class="char-limit-msg" id="rename-limit-msg">Raggiunto il limite di caratteri consentito</span><span><span id="rename-char-count">${currentTitle.length}</span>/50</span></div>
           </div>
           <div class="modal-footer" style="justify-content: space-between;">
             <button class="btn btn-secondary" id="rename-cancel" data-i18n="modal.cancel">Annulla</button>
@@ -1638,6 +1639,17 @@
     const submitBtn = document.getElementById('rename-submit');
     const input = document.getElementById('rename-input');
 
+    const charCount = document.getElementById('rename-char-count');
+    const charCounter = document.getElementById('rename-char-counter');
+    input.addEventListener('input', () => {
+      const len = input.value.length;
+      const over = len > 50;
+      charCount.textContent = len;
+      charCounter.classList.toggle('over-limit', over);
+      input.classList.toggle('input-error', over);
+      submitBtn.disabled = over;
+    });
+
     const closeModal = () => {
       modal.remove();
       document.body.style.overflow = '';
@@ -1645,7 +1657,7 @@
 
     const submitRename = async () => {
       const newName = input.value.trim();
-      if (!newName) return;
+      if (!newName || newName.length > 50) return;
 
       submitBtn.disabled = true;
       submitBtn.innerHTML = '<span class="spinner spinner-sm"></span>';

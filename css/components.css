@@ -1775,6 +1775,35 @@
   color: var(--color-gray-400);
 }
 
+.char-counter {
+  display: flex;
+  justify-content: flex-end;
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-400);
+  margin-top: var(--spacing-1);
+}
+
+.char-counter.over-limit {
+  color: var(--color-danger, #e53e3e);
+}
+
+.char-limit-msg {
+  display: none;
+  margin-right: auto;
+}
+
+.char-counter.over-limit .char-limit-msg {
+  display: inline;
+}
+
+.form-input.input-error {
+  border-color: var(--color-danger, #e53e3e);
+}
+
+.form-input.input-error:focus {
+  box-shadow: 0 0 0 3px rgba(229, 62, 62, 0.15);
+}
+
 /* iOS Safari: date/time inputs can overflow containers due to native chrome */
 input[type="date"].form-input,
 input[type="time"].form-input {
