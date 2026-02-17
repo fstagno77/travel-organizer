@@ -1754,7 +1754,7 @@
   /** Lazy-load cities database JSON (returns a promise) */
   function getCitiesDatabase() {
     if (!_citiesDbPromise) {
-      _citiesDbPromise = fetch('./data/cities.json')
+      _citiesDbPromise = fetch('/data/cities.json')
         .then(r => r.json())
         .catch(() => []);
     }
