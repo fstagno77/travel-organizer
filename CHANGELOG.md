@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.23.2 - 2026-02-17
+
+### Nuove funzionalità
+- **Admin dashboard**: pagina di amministrazione con statistiche, gestione utenti/viaggi/prenotazioni, analytics (Chart.js), audit log, export dati
+- **Deep linking home → dettaglio viaggio**: cliccando su un evento (volo, hotel, attività) nella card "In Corso" si apre il viaggio nel tab e item corretto
+- **Icona admin nel header**: visibile solo per l'utente admin
+
+### Miglioramenti
+- Le città in homepage ora vengono mostrate solo se impostate dall'utente tramite il modale "Città" (rimosso fallback automatico da voli/hotel)
+
+### Bug fix
+- Fix autocomplete città non funzionante: il caricamento del database JSON era sincrono e tornava vuoto alla prima chiamata, ora usa async/await
+
 ## 0.23 - 2026-02-16
 
 ### Nuove funzionalità
