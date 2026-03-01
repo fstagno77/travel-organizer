@@ -1,6 +1,18 @@
 {
   "versions": [
     {
+      "version": "0.25.1",
+      "date": "2026-03-01",
+      "changes": {
+        "it": [
+          "Auto-fill nome attività da link Google Maps: incollando un link Maps nel campo indirizzo, il nome della location viene inserito automaticamente come nome attività"
+        ],
+        "en": [
+          "Auto-fill activity name from Google Maps link: pasting a Maps link in the address field automatically populates the activity name with the location name"
+        ]
+      }
+    },
+    {
       "version": "0.25",
       "date": "2026-02-17",
       "changes": {
