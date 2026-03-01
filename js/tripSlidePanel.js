@@ -830,6 +830,23 @@
         data.mapsUrl = url;
         addressInput.value = data.address || '';
         showPlaceCard(data);
+
+        // Auto-fill activity name from location name if empty
+        if (data.name && nameInput && !nameInput.value.trim()) {
+          nameInput.value = data.name;
+          // Trigger category auto-detection on the new name
+          if (categoryPicker && !selectedCategory) {
+            const detected = window.activityCategories.detectCategory(data.name);
+            if (detected !== 'luogo') {
+              categoryPicker.querySelectorAll('.activity-category-chip').forEach(c => c.classList.remove('active'));
+              const chip = categoryPicker.querySelector(`[data-category="${detected}"]`);
+              if (chip) {
+                chip.classList.add('active');
+                selectedCategory = detected;
+              }
+            }
+          }
+        }
       } catch (error) {
         console.error('Google Maps fetch error:', error);
         placeCardContainer.innerHTML = '';
