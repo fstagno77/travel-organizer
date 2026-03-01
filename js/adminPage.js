@@ -1239,7 +1239,7 @@ const adminPage = {
           if (typeof v === 'object') return [v.street, v.city, v.postalCode, v.country].filter(Boolean).join(', ') || null;
           return String(v);
         };
-        // Resolve guests: string, array, or plain object → readable string
+        // Resolve guests: { adults, children: [{age},...], total, pets } → "2 adulti, 4 bambini, 1 animale"
         const resolveGuests = (v) => {
           if (!v) return null;
           if (typeof v === 'string') return v;
@@ -1247,44 +1247,73 @@ const adminPage = {
           if (Array.isArray(v)) return v.map(g => typeof g === 'object' ? (g.name || g.value || '') : g).filter(Boolean).join(', ') || null;
           if (typeof v === 'object') {
             if (v.name) return v.name;
-            // Only show scalar (non-array, non-object) key:val pairs to avoid nested [object Object]
-            const parts = Object.entries(v)
-              .filter(([, val]) => val != null && !Array.isArray(val) && typeof val !== 'object')
-              .map(([k, val]) => `${k}: ${val}`);
+            const parts = [];
+            if (v.adults != null) parts.push(`${v.adults} adult${v.adults === 1 ? 'o' : 'i'}`);
+            const childCount = Array.isArray(v.children) ? v.children.length : (typeof v.children === 'number' ? v.children : null);
+            if (childCount) parts.push(`${childCount} bambin${childCount === 1 ? 'o' : 'i'}`);
+            if (v.pets) parts.push(`${v.pets} animale`);
+            if (v.total && !parts.length) parts.push(`${v.total} totale`);
             return parts.join(', ') || null;
           }
           return String(v);
         };
-        // Resolve breakfast / cancellation: bool or object → readable string (returns null if all values are null)
+        // Resolve breakfast / cancellation: bool or object → readable string (null if no meaningful data)
         const resolveText = (v) => {
           if (v == null) return null;
           if (typeof v === 'boolean') return v ? 'Sì' : 'No';
           if (typeof v === 'string') return v;
           if (typeof v === 'object') {
-            const val = v.description || v.policy || v.details || v.type
-              || (v.included != null ? (v.included ? 'Inclusa' : 'Non inclusa') : null);
-            return val || null; // suppress card if nothing meaningful found
+            const val = v.description || v.policy || v.details || v.freeCancellationUntil
+              || (v.included != null ? (v.included ? 'Inclusa' : 'Non inclusa') : null)
+              || (v.type && v.type !== 'null' ? v.type : null);
+            return val || null;
           }
           return String(v);
         };
+        // Resolve nested price object → "1420.64 EUR"
+        const resolvePrice = (v) => {
+          if (!v) return null;
+          if (typeof v === 'number') return String(v);
+          if (typeof v === 'string') return v;
+          if (typeof v === 'object') {
+            // { total: { value, currency } } or { value, currency }
+            const node = v.total || v;
+            if (node.value != null) return `${node.value}${node.currency ? ' ' + node.currency : ''}`;
+          }
+          return null;
+        };
+        // Resolve roomTypes array: [{it, en}] → Italian label
+        const resolveRoomType = (v) => {
+          if (!v) return null;
+          if (typeof v === 'string') return v;
+          if (Array.isArray(v) && v.length > 0) return v[0].it || v[0].en || null;
+          return null;
+        };
+
+        const city = h.city || h.address?.city || null;
+        const country = h.country || h.address?.country || null;
+        const cancellation = resolveText(h.cancellationPolicy || h.cancellation);
+        const totalPrice = resolvePrice(h.totalPrice ?? h.price);
+        const roomType = resolveRoomType(h.roomType || h.roomTypes);
+        const source = h.source ? ` · ${h.source}` : '';
 
         html += `
           <div class="pdf-hotel-card">
-            <div class="pdf-hotel-card-header">${this.esc(h.name || `Hotel ${i + 1}`)}</div>
+            <div class="pdf-hotel-card-header">${this.esc(h.name || `Hotel ${i + 1}`)}${this.esc(source)}</div>
             <div class="pdf-result-grid">
               ${this._pdfField('Check-in', resolveDate(h.checkIn))}
               ${this._pdfField('Check-out', resolveDate(h.checkOut))}
               ${this._pdfField('Notti', h.nights)}
               ${this._pdfField('Indirizzo', resolveAddress(h.address))}
-              ${this._pdfField('Città', h.city)}
-              ${this._pdfField('Paese', h.country)}
-              ${this._pdfField('Camera', h.roomType)}
+              ${this._pdfField('Città', city)}
+              ${this._pdfField('Paese', country)}
+              ${this._pdfField('Camera', roomType)}
               ${this._pdfField('Ospiti', resolveGuests(h.guests))}
-              ${this._pdfField('Prezzo totale', h.totalPrice)}
-              ${this._pdfField('Valuta', h.currency)}
+              ${this._pdfField('Prezzo totale', totalPrice)}
               ${this._pdfField('Codice prenotazione', h.bookingReference || h.confirmationNumber)}
-              ${this._pdfField('Cancellazione', resolveText(h.cancellationPolicy))}
+              ${this._pdfField('Cancellazione', cancellation)}
               ${this._pdfField('Colazione', resolveText(h.breakfast))}
+              ${this._pdfField('Host', h.hostName)}
               ${this._pdfField('Contatti', h.phone || h.email)}
             </div>
             <div class="pdf-analyze-usage-note">
