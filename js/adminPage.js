@@ -1244,21 +1244,27 @@ const adminPage = {
           if (!v) return null;
           if (typeof v === 'string') return v;
           if (typeof v === 'number') return String(v);
-          if (Array.isArray(v)) return v.map(g => typeof g === 'object' ? (g.name || g.value || JSON.stringify(g)) : g).join(', ');
+          if (Array.isArray(v)) return v.map(g => typeof g === 'object' ? (g.name || g.value || '') : g).filter(Boolean).join(', ') || null;
           if (typeof v === 'object') {
-            // e.g. { adults: 2, children: 0 } or { name: "John", type: "adult" }
             if (v.name) return v.name;
-            const parts = Object.entries(v).map(([k, val]) => `${k}: ${val}`);
+            // Only show scalar (non-array, non-object) key:val pairs to avoid nested [object Object]
+            const parts = Object.entries(v)
+              .filter(([, val]) => val != null && !Array.isArray(val) && typeof val !== 'object')
+              .map(([k, val]) => `${k}: ${val}`);
             return parts.join(', ') || null;
           }
           return String(v);
         };
-        // Resolve breakfast / cancellation: bool or object → readable string
+        // Resolve breakfast / cancellation: bool or object → readable string (returns null if all values are null)
         const resolveText = (v) => {
           if (v == null) return null;
           if (typeof v === 'boolean') return v ? 'Sì' : 'No';
           if (typeof v === 'string') return v;
-          if (typeof v === 'object') return v.description || v.policy || v.details || (v.included != null ? (v.included ? 'Inclusa' : 'Non inclusa') : null) || JSON.stringify(v);
+          if (typeof v === 'object') {
+            const val = v.description || v.policy || v.details || v.type
+              || (v.included != null ? (v.included ? 'Inclusa' : 'Non inclusa') : null);
+            return val || null; // suppress card if nothing meaningful found
+          }
           return String(v);
         };
 
