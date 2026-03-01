@@ -5,6 +5,7 @@
  */
 
 const { authenticateRequest, getServiceClient, unauthorizedResponse, getCorsHeaders, handleOptions } = require('./utils/auth');
+const { processSinglePdfWithClaude } = require('./utils/pdfProcessor');
 
 const ADMIN_EMAIL = 'fstagno@idibgroup.com';
 
@@ -144,6 +145,15 @@ exports.handler = async (event, context) => {
         break;
       case 'refresh-stats-cache':
         result = await refreshStatsCache(serviceClient);
+        break;
+      case 'get-trip-collaborators':
+        result = await getTripCollaborators(serviceClient, body);
+        break;
+      case 'list-pdf-logs':
+        result = await listPdfLogs(serviceClient, body);
+        break;
+      case 'analyze-pdf-admin':
+        result = await analyzePdfAdmin(body);
         break;
       default:
         return { statusCode: 400, headers, body: JSON.stringify({ success: false, error: `Unknown action: ${action}` }) };
@@ -837,4 +847,141 @@ async function refreshStatsCache(sc) {
   // Just return fresh stats - no caching layer yet
   const stats = await getDashboardStats(sc);
   return { ...stats, refreshedAt: new Date().toISOString() };
+}
+
+// ============================================
+// Trip Collaborators (Admin view)
+// ============================================
+
+async function getTripCollaborators(sc, { tripId }) {
+  if (!tripId) throw new Error('tripId is required');
+
+  // Get trip owner
+  const { data: trip } = await sc.from('trips').select('user_id').eq('id', tripId).single();
+  if (!trip) throw new Error('Trip not found');
+
+  const { data: ownerProfile } = await sc.from('profiles').select('username, email').eq('id', trip.user_id).single();
+
+  // Get collaborators (registered users)
+  const { data: collabs } = await sc
+    .from('trip_collaborators')
+    .select('id, user_id, role, invited_by, created_at, status')
+    .eq('trip_id', tripId)
+    .order('created_at', { ascending: true });
+
+  const collaborators = [];
+  if (collabs && collabs.length > 0) {
+    const userIds = [...new Set(collabs.map(c => c.user_id))];
+    const inviterIds = [...new Set(collabs.map(c => c.invited_by).filter(Boolean))];
+    const allIds = [...new Set([...userIds, ...inviterIds])];
+
+    const { data: profiles } = await sc.from('profiles').select('id, username, email').in('id', allIds);
+    const profileMap = {};
+    if (profiles) profiles.forEach(p => profileMap[p.id] = p);
+
+    for (const c of collabs) {
+      const profile = profileMap[c.user_id];
+      const inviterProfile = profileMap[c.invited_by];
+      collaborators.push({
+        id: c.id,
+        userId: c.user_id,
+        email: profile?.email || '-',
+        username: profile?.username || '-',
+        role: c.role,
+        status: c.status || 'accepted',
+        invitedBy: inviterProfile?.username || inviterProfile?.email || '-',
+        createdAt: c.created_at,
+        type: 'collaborator'
+      });
+    }
+  }
+
+  // Get all invitations (including revoked for history)
+  const { data: invitations } = await sc
+    .from('trip_invitations')
+    .select('id, email, role, invited_by, status, created_at, updated_at')
+    .eq('trip_id', tripId)
+    .order('created_at', { ascending: true });
+
+  const inviterIds2 = [...new Set((invitations || []).map(i => i.invited_by).filter(Boolean))];
+  const inviterMap = {};
+  if (inviterIds2.length > 0) {
+    const { data: inviterProfiles } = await sc.from('profiles').select('id, username, email').in('id', inviterIds2);
+    if (inviterProfiles) inviterProfiles.forEach(p => inviterMap[p.id] = p);
+  }
+
+  const invitationList = (invitations || []).map(inv => ({
+    id: inv.id,
+    email: inv.email,
+    role: inv.role,
+    status: inv.status,
+    invitedBy: inviterMap[inv.invited_by]?.username || inviterMap[inv.invited_by]?.email || '-',
+    createdAt: inv.created_at,
+    updatedAt: inv.updated_at,
+    type: 'invitation'
+  }));
+
+  return {
+    owner: {
+      userId: trip.user_id,
+      email: ownerProfile?.email || '-',
+      username: ownerProfile?.username || '-',
+      role: 'proprietario',
+      status: 'accepted',
+      type: 'owner'
+    },
+    collaborators,
+    invitations: invitationList
+  };
+}
+
+// ============================================
+// PDF Logs (Admin view)
+// ============================================
+
+async function listPdfLogs(sc, { page = 1, pageSize = 20, status }) {
+  let query = sc.from('email_processing_log').select('*', { count: 'exact' });
+
+  if (status) query = query.eq('status', status);
+
+  query = query.order('created_at', { ascending: false });
+  const from = (page - 1) * pageSize;
+  query = query.range(from, from + pageSize - 1);
+
+  const { data, count, error } = await query;
+  if (error) throw error;
+
+  // Resolve usernames for user_id
+  const userIds = [...new Set((data || []).map(l => l.user_id).filter(Boolean))];
+  const profileMap = {};
+  if (userIds.length > 0) {
+    const { data: profiles } = await sc.from('profiles').select('id, username, email').in('id', userIds);
+    if (profiles) profiles.forEach(p => profileMap[p.id] = p);
+  }
+
+  const logs = (data || []).map(l => ({
+    ...l,
+    username: profileMap[l.user_id]?.username || null,
+    userEmail: profileMap[l.user_id]?.email || null
+  }));
+
+  return { logs, total: count || 0, page, pageSize };
+}
+
+// ============================================
+// PDF Analyze (Admin simulation - no save)
+// ============================================
+
+async function analyzePdfAdmin({ pdfBase64, docType }) {
+  if (!pdfBase64) throw new Error('pdfBase64 is required');
+  if (!docType || !['flight', 'hotel'].includes(docType)) throw new Error('docType must be "flight" or "hotel"');
+
+  // Use a synthetic filename so pdfProcessor detects the correct type
+  const filename = docType === 'flight' ? 'volo-eticket.pdf' : 'hotel-booking.pdf';
+
+  const startTime = Date.now();
+  const result = await processSinglePdfWithClaude(pdfBase64, filename);
+  const durationMs = Date.now() - startTime;
+
+  return { result, docType, durationMs };
 }

@@ -100,6 +100,7 @@ const adminPage = {
       trips: () => this.renderTrips(),
       pending: () => this.renderPending(),
       'email-logs': () => this.renderEmailLogs(),
+      'pdf-logs': () => this.renderPdfLogs(),
       analytics: () => this.renderAnalytics(),
       sharing: () => this.renderSharing(),
       audit: () => this.renderAudit(),
@@ -243,13 +244,12 @@ const adminPage = {
             </thead>
             <tbody id="users-tbody">
               ${data.users.length ? data.users.map(u => `
-                <tr>
+                <tr class="admin-row-clickable" data-detail="${u.id}" title="Clicca per i dettagli">
                   <td><strong>${this.esc(u.username)}</strong></td>
                   <td>${this.esc(u.email)}</td>
                   <td>${u.tripCount}</td>
                   <td>${this.fmtDate(u.created_at)}</td>
-                  <td class="admin-actions">
-                    <button class="admin-btn admin-btn-secondary admin-btn-sm" data-detail="${u.id}">Dettagli</button>
+                  <td class="admin-actions" onclick="event.stopPropagation()">
                     <button class="admin-btn admin-btn-danger admin-btn-sm" data-delete-user="${u.id}" data-username="${this.esc(u.username)}">Elimina</button>
                   </td>
                 </tr>
@@ -269,9 +269,9 @@ const adminPage = {
       searchTimer = setTimeout(() => this.renderUsers(1, e.target.value), 400);
     });
 
-    // Detail buttons
-    document.querySelectorAll('[data-detail]').forEach(btn => {
-      btn.addEventListener('click', () => this.toggleUserDetail(btn.dataset.detail));
+    // Row click → detail
+    document.querySelectorAll('tr[data-detail]').forEach(row => {
+      row.addEventListener('click', () => this.toggleUserDetail(row.dataset.detail));
     });
 
     // Delete buttons
@@ -372,14 +372,13 @@ const adminPage = {
             </thead>
             <tbody>
               ${data.trips.length ? data.trips.map(t => `
-                <tr>
+                <tr class="admin-row-clickable" data-view-trip="${t.id}" title="Clicca per i dettagli">
                   <td><strong>${this.esc(t.title)}</strong></td>
                   <td>${this.esc(t.username)}</td>
                   <td>${this.esc(t.destination)}</td>
                   <td style="white-space:nowrap">${t.startDate || '-'} ${t.endDate ? '/ ' + t.endDate : ''}</td>
                   <td>${t.flightCount}/${t.hotelCount}/${t.activityCount}</td>
-                  <td class="admin-actions">
-                    <button class="admin-btn admin-btn-secondary admin-btn-sm" data-view-trip="${t.id}">Vedi</button>
+                  <td class="admin-actions" onclick="event.stopPropagation()">
                     <button class="admin-btn admin-btn-danger admin-btn-sm" data-delete-trip="${t.id}" data-title="${this.esc(t.title)}">Elimina</button>
                   </td>
                 </tr>
@@ -407,9 +406,9 @@ const adminPage = {
       this.renderTrips(1, document.getElementById('trips-search')?.value || '', document.getElementById('trips-status-filter').value);
     });
 
-    // View trip
-    document.querySelectorAll('[data-view-trip]').forEach(btn => {
-      btn.addEventListener('click', () => this.showTripDetail(btn.dataset.viewTrip));
+    // Row click → trip detail
+    document.querySelectorAll('tr[data-view-trip]').forEach(row => {
+      row.addEventListener('click', () => this.showTripDetail(row.dataset.viewTrip));
     });
 
     // Delete trip
@@ -426,9 +425,12 @@ const adminPage = {
     container.innerHTML = '<div class="admin-card"><div class="admin-loading"><span class="spinner"></span></div></div>';
     container.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-    let data;
+    let data, collabData;
     try {
-      data = await this.api('get-trip', { tripId });
+      [data, collabData] = await Promise.all([
+        this.api('get-trip', { tripId }),
+        this.api('get-trip-collaborators', { tripId }).catch(() => null)
+      ]);
     } catch (err) {
       container.innerHTML = `<div class="admin-card"><p style="color:var(--color-error)">Errore: ${this.esc(err.message)}</p></div>`;
       return;
@@ -439,6 +441,9 @@ const adminPage = {
     const flights = (d.flights || []);
     const hotels = (d.hotels || []);
     const activities = (d.activities || []);
+
+    // Build collaborators section
+    const collabSection = collabData ? this._renderCollaboratorsSection(collabData) : '';
 
     container.innerHTML = `
       <div class="admin-card">
@@ -500,6 +505,8 @@ const adminPage = {
             `).join('')}
           </div>
         ` : ''}
+
+        ${collabSection}
       </div>
     `;
 
@@ -529,6 +536,92 @@ const adminPage = {
       });
       document.getElementById('cancel-title-btn')?.addEventListener('click', () => this.showTripDetail(tripId));
     });
+  },
+
+  _renderCollaboratorsSection(collabData) {
+    const { owner, collaborators, invitations } = collabData;
+    const all = [owner, ...collaborators];
+    const pendingInvitations = invitations.filter(i => i.status === 'pending');
+    const revokedInvitations = invitations.filter(i => i.status === 'revoked');
+
+    const roleBadge = (role) => {
+      const map = { proprietario: 'primary', viaggiatore: 'info', ospite: 'neutral' };
+      return `<span class="admin-collab-role admin-collab-role-${map[role] || 'neutral'}">${role}</span>`;
+    };
+
+    const statusBadge = (status) => {
+      const map = { accepted: 'success', pending: 'warning', revoked: 'error' };
+      const labels = { accepted: 'attivo', pending: 'in attesa', revoked: 'revocato' };
+      return `<span class="admin-collab-status admin-collab-status-${map[status] || 'neutral'}">${labels[status] || status}</span>`;
+    };
+
+    const memberRows = all.map(m => `
+      <div class="admin-collab-row">
+        <div class="admin-collab-avatar">${(m.username || m.email || '?')[0].toUpperCase()}</div>
+        <div class="admin-collab-info">
+          <div class="admin-collab-name">${this.esc(m.username || '-')}</div>
+          <div class="admin-collab-email">${this.esc(m.email || '-')}</div>
+        </div>
+        <div class="admin-collab-badges">
+          ${roleBadge(m.role)}
+          ${statusBadge(m.status || 'accepted')}
+        </div>
+        ${m.type !== 'owner' ? `<div class="admin-collab-meta">${this.fmtDate(m.createdAt)}</div>` : '<div class="admin-collab-meta">—</div>'}
+      </div>
+    `).join('');
+
+    const inviteRows = pendingInvitations.map(inv => `
+      <div class="admin-collab-row admin-collab-row-invite">
+        <div class="admin-collab-avatar admin-collab-avatar-invite">@</div>
+        <div class="admin-collab-info">
+          <div class="admin-collab-name">${this.esc(inv.email)}</div>
+          <div class="admin-collab-email">Invitato da: ${this.esc(inv.invitedBy)}</div>
+        </div>
+        <div class="admin-collab-badges">
+          ${roleBadge(inv.role)}
+          ${statusBadge('pending')}
+        </div>
+        <div class="admin-collab-meta">${this.fmtDate(inv.createdAt)}</div>
+      </div>
+    `).join('');
+
+    const revokedRows = revokedInvitations.length ? `
+      <details style="margin-top:8px">
+        <summary style="font-size:12px;color:var(--color-gray-500);cursor:pointer;padding:4px 0">
+          ${revokedInvitations.length} invit${revokedInvitations.length === 1 ? 'o revocato' : 'i revocati'}
+        </summary>
+        ${revokedInvitations.map(inv => `
+          <div class="admin-collab-row admin-collab-row-revoked">
+            <div class="admin-collab-avatar admin-collab-avatar-revoked">@</div>
+            <div class="admin-collab-info">
+              <div class="admin-collab-name">${this.esc(inv.email)}</div>
+              <div class="admin-collab-email">Invitato da: ${this.esc(inv.invitedBy)}</div>
+            </div>
+            <div class="admin-collab-badges">
+              ${roleBadge(inv.role)}
+              ${statusBadge('revoked')}
+            </div>
+            <div class="admin-collab-meta">${this.fmtDate(inv.updatedAt || inv.createdAt)}</div>
+          </div>
+        `).join('')}
+      </details>
+    ` : '';
+
+    const totalMembers = all.length + pendingInvitations.length;
+
+    return `
+      <div class="admin-collab-section">
+        <h4 class="admin-collab-title">
+          Partecipanti al viaggio
+          <span class="admin-collab-count">${totalMembers}</span>
+        </h4>
+        <div class="admin-collab-list">
+          ${memberRows}
+          ${inviteRows}
+        </div>
+        ${revokedRows}
+      </div>
+    `;
   },
 
   async confirmDeleteTrip(tripId, title) {
@@ -597,15 +690,14 @@ const adminPage = {
             </thead>
             <tbody>
               ${bookings.length ? bookings.map(b => `
-                <tr>
+                <tr class="admin-row-clickable" data-view-booking="${b.id}" title="Clicca per i dettagli">
                   <td><strong>${this.esc(b.summary_title || '-')}</strong></td>
                   <td>${this.bookingTypeBadge(b.booking_type)}</td>
                   <td>${this.esc(b.username)}</td>
                   <td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${this.esc(b.email_from || '-')}</td>
                   <td>${this.statusBadge(b.status)}</td>
                   <td>${this.fmtDate(b.created_at)}</td>
-                  <td class="admin-actions">
-                    <button class="admin-btn admin-btn-secondary admin-btn-sm" data-view-booking="${b.id}">Vedi</button>
+                  <td class="admin-actions" onclick="event.stopPropagation()">
                     <button class="admin-btn admin-btn-danger admin-btn-sm" data-delete-booking="${b.id}">Elimina</button>
                   </td>
                 </tr>
@@ -633,9 +725,9 @@ const adminPage = {
       this.renderPending(1, f.status, f.type);
     });
 
-    // View booking detail
-    document.querySelectorAll('[data-view-booking]').forEach(btn => {
-      btn.addEventListener('click', () => this.toggleBookingDetail(btn.dataset.viewBooking, bookings));
+    // Row click → booking detail
+    document.querySelectorAll('tr[data-view-booking]').forEach(row => {
+      row.addEventListener('click', () => this.toggleBookingDetail(row.dataset.viewBooking, bookings));
     });
 
     document.querySelectorAll('[data-delete-booking]').forEach(btn => {
@@ -739,6 +831,424 @@ const adminPage = {
     });
 
     this.bindPagination(() => (p) => this.renderEmailLogs(p, document.getElementById('email-log-filter')?.value || ''));
+  },
+
+  // ============================================
+  // PDF Logs
+  // ============================================
+
+  async renderPdfLogs(page = 1, statusFilter = '') {
+    const data = await this.api('list-pdf-logs', { page, pageSize: 20, status: statusFilter || undefined });
+    const main = document.querySelector('.admin-content');
+
+    const statusOpts = ['success', 'error', 'extraction_failed', 'user_not_found'];
+
+    main.innerHTML = `
+      <div class="admin-view-header">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:4px">
+          <h1 style="margin:0">Log Elaborazione PDF</h1>
+          <button class="admin-btn admin-btn-primary" id="btn-analyze-pdf">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            Analizza documento
+          </button>
+        </div>
+        <p>${data.total} elaborazioni totali</p>
+      </div>
+
+      <div class="admin-card">
+        <div class="admin-toolbar">
+          <select class="admin-filter" id="pdf-log-filter">
+            <option value="">Tutti gli stati</option>
+            ${statusOpts.map(s => `<option value="${s}" ${statusFilter === s ? 'selected' : ''}>${s}</option>`).join('')}
+          </select>
+        </div>
+        <div class="admin-table-wrapper">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Sorgente</th>
+                <th>Stato</th>
+                <th>Utente</th>
+                <th>File / Oggetto email</th>
+                <th>Estratto</th>
+                <th>Errore</th>
+                <th>Data</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.logs.length ? data.logs.map(l => `
+                <tr class="pdf-log-row" data-log-id="${this.esc(l.id)}" style="cursor:pointer" title="Clicca per dettagli">
+                  <td>${this._pdfSourceBadge(l.source)}</td>
+                  <td>${this.emailStatusBadge(l.status)}</td>
+                  <td>
+                    <div style="font-weight:500">${this.esc(l.username || '-')}</div>
+                    <div style="font-size:11px;color:var(--color-gray-500)">${this.esc(l.userEmail || l.email_from || '')}</div>
+                  </td>
+                  <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${this.esc(l.email_subject || '')}">
+                    ${this.esc((l.email_subject || '-').substring(0, 45))}
+                  </td>
+                  <td style="font-size:12px;color:var(--color-gray-600)">
+                    ${l.extracted_summary ? `${l.extracted_summary.flights || 0}✈ ${l.extracted_summary.hotels || 0}🏨` : (l.attachment_count != null ? `${l.attachment_count} file` : '-')}
+                  </td>
+                  <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--color-error);font-size:12px" title="${this.esc(l.error_message || '')}">${this.esc((l.error_message || '').substring(0, 35) || '-')}</td>
+                  <td style="white-space:nowrap">${this.fmtDate(l.created_at)}</td>
+                </tr>
+                <tr class="pdf-log-detail-row" id="pdf-log-detail-${this.esc(l.id)}" style="display:none">
+                  <td colspan="7">
+                    <div class="pdf-log-detail-panel">
+                      ${this._renderPdfLogDetail(l)}
+                    </div>
+                  </td>
+                </tr>
+              `).join('') : '<tr><td colspan="7" class="admin-table-empty">Nessun log PDF</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+        ${this.pagination(data.total, page, 20)}
+      </div>
+
+      <!-- Analyze PDF Modal -->
+      <div class="admin-modal-overlay" id="pdf-analyze-overlay" style="display:none">
+        <div class="admin-modal pdf-analyze-modal">
+          <div class="admin-modal-header">
+            <h3>Analizza documento PDF</h3>
+            <button class="admin-modal-close" id="pdf-analyze-close">&times;</button>
+          </div>
+          <div class="admin-modal-body" id="pdf-analyze-body">
+            <p style="color:var(--color-gray-600);margin-bottom:16px">
+              Carica un PDF per vedere come verrebbe estratto e interpretato dal sistema. <strong>Nessun dato viene salvato.</strong>
+            </p>
+            <div class="pdf-analyze-form">
+              <div class="pdf-analyze-type-select">
+                <label class="pdf-type-option">
+                  <input type="radio" name="pdf-doc-type" value="flight" checked>
+                  <span class="pdf-type-label">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.4-.1.9.3 1.1l4.8 3.2-2.1 2.1-2.4-.6c-.4-.1-.8 0-1 .3l-.2.3c-.2.3-.1.7.1 1l2.2 2.2 2.2 2.2c.3.3.7.3 1 .1l.3-.2c.3-.2.4-.6.3-1l-.6-2.4 2.1-2.1 3.2 4.8c.2.4.7.5 1.1.3l.5-.3c.4-.2.6-.6.5-1.1z"/></svg>
+                    Volo / Biglietto aereo
+                  </span>
+                </label>
+                <label class="pdf-type-option">
+                  <input type="radio" name="pdf-doc-type" value="hotel">
+                  <span class="pdf-type-label">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                    Hotel / Alloggio
+                  </span>
+                </label>
+              </div>
+              <div class="pdf-upload-area" id="pdf-upload-area">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--color-gray-400);margin-bottom:8px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <p style="margin:0;color:var(--color-gray-500);font-size:14px">Trascina un PDF qui oppure</p>
+                <label for="pdf-file-input" class="admin-btn admin-btn-secondary admin-btn-sm" style="margin-top:8px;cursor:pointer">Scegli file</label>
+                <input type="file" id="pdf-file-input" accept=".pdf" style="display:none">
+                <p id="pdf-file-name" style="margin:8px 0 0;font-size:12px;color:var(--color-gray-500)"></p>
+              </div>
+              <button class="admin-btn admin-btn-primary" id="btn-run-analysis" disabled style="width:100%;margin-top:12px">
+                Analizza documento
+              </button>
+            </div>
+            <div id="pdf-analyze-result" style="display:none"></div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Filter
+    document.getElementById('pdf-log-filter')?.addEventListener('change', () => {
+      this.renderPdfLogs(1, document.getElementById('pdf-log-filter').value);
+    });
+
+    // Row toggle detail
+    document.querySelectorAll('.pdf-log-row').forEach(row => {
+      row.addEventListener('click', () => {
+        const id = row.dataset.logId;
+        const detail = document.getElementById(`pdf-log-detail-${id}`);
+        if (detail) {
+          detail.style.display = detail.style.display === 'none' ? 'table-row' : 'none';
+        }
+      });
+    });
+
+    this.bindPagination(() => (p) => this.renderPdfLogs(p, document.getElementById('pdf-log-filter')?.value || ''));
+
+    // Analyze modal
+    const overlay = document.getElementById('pdf-analyze-overlay');
+    document.getElementById('btn-analyze-pdf')?.addEventListener('click', () => { overlay.style.display = 'flex'; });
+    document.getElementById('pdf-analyze-close')?.addEventListener('click', () => { overlay.style.display = 'none'; });
+    overlay?.addEventListener('click', (e) => { if (e.target === overlay) overlay.style.display = 'none'; });
+
+    // File input
+    const fileInput = document.getElementById('pdf-file-input');
+    const runBtn = document.getElementById('btn-run-analysis');
+    const fileNameEl = document.getElementById('pdf-file-name');
+    const uploadArea = document.getElementById('pdf-upload-area');
+    let selectedPdfBase64 = null;
+
+    const handleFile = (file) => {
+      if (!file || file.type !== 'application/pdf') {
+        this.toast('Seleziona un file PDF valido', 'error');
+        return;
+      }
+      fileNameEl.textContent = file.name;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        selectedPdfBase64 = e.target.result.split(',')[1];
+        runBtn.disabled = false;
+      };
+      reader.readAsDataURL(file);
+    };
+
+    fileInput?.addEventListener('change', (e) => handleFile(e.target.files[0]));
+
+    uploadArea?.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('drag-over'); });
+    uploadArea?.addEventListener('dragleave', () => uploadArea.classList.remove('drag-over'));
+    uploadArea?.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('drag-over');
+      handleFile(e.dataTransfer.files[0]);
+    });
+
+    runBtn?.addEventListener('click', async () => {
+      if (!selectedPdfBase64) return;
+      const docType = document.querySelector('input[name="pdf-doc-type"]:checked')?.value || 'flight';
+      const resultEl = document.getElementById('pdf-analyze-result');
+
+      runBtn.disabled = true;
+      runBtn.textContent = 'Analisi in corso...';
+      resultEl.style.display = 'none';
+
+      try {
+        const res = await this.api('analyze-pdf-admin', { pdfBase64: selectedPdfBase64, docType });
+        resultEl.style.display = 'block';
+        resultEl.innerHTML = this._renderPdfAnalysisResult(res.result, docType, res.durationMs);
+      } catch (err) {
+        resultEl.style.display = 'block';
+        resultEl.innerHTML = `<div class="pdf-analyze-error"><strong>Errore:</strong> ${this.esc(err.message)}</div>`;
+      } finally {
+        runBtn.disabled = false;
+        runBtn.textContent = 'Analizza documento';
+      }
+    });
+  },
+
+  _renderPdfLogDetail(log) {
+    const extracted = log.extracted_data;
+    let extractedHtml = '';
+
+    if (extracted) {
+      const data = typeof extracted === 'string' ? JSON.parse(extracted) : extracted;
+      extractedHtml = `
+        <div class="pdf-log-extracted">
+          <div class="pdf-log-extracted-title">Dati estratti</div>
+          <pre class="pdf-log-json">${this.esc(JSON.stringify(data, null, 2))}</pre>
+        </div>
+      `;
+    }
+
+    // Build extracted_summary block for uploads
+    let summaryHtml = '';
+    if (log.extracted_summary && typeof log.extracted_summary === 'object') {
+      const s = log.extracted_summary;
+      summaryHtml = `
+        <div class="pdf-log-extracted">
+          <div class="pdf-log-extracted-title">Riepilogo estrazione</div>
+          <div class="pdf-result-grid" style="margin-bottom:0">
+            ${s.destination ? `<div class="pdf-result-field"><div class="pdf-result-field-label">Destinazione</div><div class="pdf-result-field-value">${this.esc(s.destination)}</div></div>` : ''}
+            ${s.flights != null ? `<div class="pdf-result-field"><div class="pdf-result-field-label">Voli estratti</div><div class="pdf-result-field-value">${s.flights}</div></div>` : ''}
+            ${s.hotels != null ? `<div class="pdf-result-field"><div class="pdf-result-field-label">Hotel estratti</div><div class="pdf-result-field-value">${s.hotels}</div></div>` : ''}
+            ${s.passenger ? `<div class="pdf-result-field"><div class="pdf-result-field-label">Passeggero</div><div class="pdf-result-field-value">${this.esc(s.passenger)}</div></div>` : ''}
+            ${s.startDate ? `<div class="pdf-result-field"><div class="pdf-result-field-label">Data inizio</div><div class="pdf-result-field-value">${this.esc(s.startDate)}</div></div>` : ''}
+            ${s.endDate ? `<div class="pdf-result-field"><div class="pdf-result-field-label">Data fine</div><div class="pdf-result-field-value">${this.esc(s.endDate)}</div></div>` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    const sourceLabel = log.source === 'upload' ? 'Caricamento diretto' : 'Email forwarding';
+    const emailLabel = log.source === 'upload' ? 'Utente' : 'Email da';
+    const subjectLabel = log.source === 'upload' ? 'File elaborati' : 'Oggetto email';
+
+    return `
+      <div class="pdf-log-detail-grid">
+        <div>
+          <div class="admin-detail-label">Sorgente</div>
+          <div class="admin-detail-value">${this._pdfSourceBadge(log.source)} <span style="font-size:12px;color:var(--color-gray-500);margin-left:4px">${sourceLabel}</span></div>
+        </div>
+        <div>
+          <div class="admin-detail-label">ID Log</div>
+          <div class="admin-detail-value" style="font-family:monospace;font-size:11px">${this.esc(log.id)}</div>
+        </div>
+        <div>
+          <div class="admin-detail-label">Utente</div>
+          <div class="admin-detail-value">${this.esc(log.username || log.user_id || '-')}</div>
+        </div>
+        <div>
+          <div class="admin-detail-label">${emailLabel}</div>
+          <div class="admin-detail-value">${this.esc(log.email_from || '-')}</div>
+        </div>
+        <div>
+          <div class="admin-detail-label">${subjectLabel}</div>
+          <div class="admin-detail-value">${this.esc(log.email_subject || '-')}</div>
+        </div>
+        ${log.attachment_count != null ? `
+        <div>
+          <div class="admin-detail-label">N° file</div>
+          <div class="admin-detail-value">${log.attachment_count}</div>
+        </div>` : ''}
+        ${log.trip_id ? `
+        <div>
+          <div class="admin-detail-label">Viaggio creato</div>
+          <div class="admin-detail-value" style="font-family:monospace;font-size:11px">${this.esc(log.trip_id)}</div>
+        </div>` : ''}
+        ${log.error_message ? `
+        <div style="grid-column:1/-1">
+          <div class="admin-detail-label">Messaggio errore</div>
+          <div class="admin-detail-value" style="color:var(--color-error)">${this.esc(log.error_message)}</div>
+        </div>` : ''}
+      </div>
+      ${summaryHtml}
+      ${extractedHtml}
+    `;
+  },
+
+  _pdfSourceBadge(source) {
+    if (source === 'upload') {
+      return `<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:#ede9fe;color:#6d28d9">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+        Upload
+      </span>`;
+    }
+    return `<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:#dbeafe;color:#1d4ed8">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+      Email
+    </span>`;
+  },
+
+  _renderPdfAnalysisResult(result, docType, durationMs) {
+    if (!result) {
+      return `<div class="pdf-analyze-error">Nessun dato estratto dal documento.</div>`;
+    }
+
+    const flights = result.flights || (result.flightNumber ? [result] : []);
+    const hotels = result.hotels || (result.name && result.checkIn ? [result] : []);
+    const passenger = result.passenger;
+    const booking = result.booking;
+
+    let html = `
+      <div class="pdf-analyze-result-header">
+        <span class="pdf-analyze-result-type">${docType === 'flight' ? 'Volo' : 'Hotel'}</span>
+        <span class="pdf-analyze-result-time">${durationMs}ms</span>
+        <span class="pdf-analyze-result-note">Simulazione — nessun dato salvato</span>
+      </div>
+    `;
+
+    if (passenger) {
+      html += `
+        <div class="pdf-section-title">Passeggero</div>
+        <div class="pdf-result-grid">
+          ${this._pdfField('Nome', passenger.name)}
+          ${this._pdfField('Tipo', passenger.type)}
+          ${this._pdfField('Numero biglietto', passenger.ticketNumber)}
+          ${this._pdfField('Posto', passenger.seat)}
+          ${this._pdfField('Bagaglio', passenger.baggage)}
+          ${this._pdfField('Frequent flyer', passenger.frequentFlyer)}
+        </div>
+      `;
+    }
+
+    if (booking) {
+      html += `
+        <div class="pdf-section-title">Prenotazione</div>
+        <div class="pdf-result-grid">
+          ${this._pdfField('Codice prenotazione', booking.bookingReference || booking.pnr)}
+          ${this._pdfField('Biglietto', booking.ticketNumber)}
+          ${this._pdfField('Classe', booking.class || booking.cabinClass)}
+          ${this._pdfField('Tariffa', booking.fare || booking.price)}
+          ${this._pdfField('Emesso da', booking.issuedBy)}
+          ${this._pdfField('Data emissione', booking.issuedDate)}
+        </div>
+      `;
+    }
+
+    if (flights.length > 0) {
+      html += `<div class="pdf-section-title">Voli estratti (${flights.length})</div>`;
+      flights.forEach((f, i) => {
+        html += `
+          <div class="pdf-flight-card">
+            <div class="pdf-flight-card-header">Segmento ${i + 1}: ${this.esc(f.departure?.code || f.departure?.city || '?')} → ${this.esc(f.arrival?.code || f.arrival?.city || '?')}</div>
+            <div class="pdf-result-grid">
+              ${this._pdfField('N° volo', f.flightNumber)}
+              ${this._pdfField('Compagnia', f.airline)}
+              ${this._pdfField('Data', f.date)}
+              ${this._pdfField('Partenza', `${f.departure?.city || ''} ${f.departure?.airport || ''} (${f.departure?.code || ''}) ${f.departureTime || ''}`)}
+              ${this._pdfField('Arrivo', `${f.arrival?.city || ''} ${f.arrival?.airport || ''} (${f.arrival?.code || ''}) ${f.arrivalTime || ''}`)}
+              ${this._pdfField('Durata', f.duration)}
+              ${this._pdfField('Terminale partenza', f.departure?.terminal)}
+              ${this._pdfField('Terminale arrivo', f.arrival?.terminal)}
+            </div>
+            <div class="pdf-analyze-usage-note">
+              Come verrebbe usato: aggiunto a <strong>tripData.flights[]</strong> con
+              passenger, ticketNumber, pdfUrl collegati al passeggero estratto.
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    if (hotels.length > 0) {
+      html += `<div class="pdf-section-title">Hotel estratti (${hotels.length})</div>`;
+      hotels.forEach((h, i) => {
+        html += `
+          <div class="pdf-hotel-card">
+            <div class="pdf-hotel-card-header">${this.esc(h.name || `Hotel ${i + 1}`)}</div>
+            <div class="pdf-result-grid">
+              ${this._pdfField('Check-in', h.checkIn)}
+              ${this._pdfField('Check-out', h.checkOut)}
+              ${this._pdfField('Notti', h.nights)}
+              ${this._pdfField('Indirizzo', h.address)}
+              ${this._pdfField('Città', h.city)}
+              ${this._pdfField('Paese', h.country)}
+              ${this._pdfField('Camera', h.roomType)}
+              ${this._pdfField('Ospiti', Array.isArray(h.guests) ? h.guests.join(', ') : h.guests)}
+              ${this._pdfField('Prezzo totale', h.totalPrice)}
+              ${this._pdfField('Valuta', h.currency)}
+              ${this._pdfField('Codice prenotazione', h.bookingReference || h.confirmationNumber)}
+              ${this._pdfField('Cancellazione', h.cancellationPolicy)}
+              ${this._pdfField('Colazione', h.breakfast)}
+              ${this._pdfField('Contatti', h.phone || h.email)}
+            </div>
+            <div class="pdf-analyze-usage-note">
+              Come verrebbe usato: aggiunto a <strong>tripData.hotels[]</strong> con
+              pdfUrl collegato alla prenotazione.
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    if (flights.length === 0 && hotels.length === 0) {
+      html += `<div class="pdf-analyze-empty">Nessun volo o hotel riconoscibile nel documento.</div>`;
+    }
+
+    html += `
+      <div class="pdf-analyze-raw-toggle">
+        <details>
+          <summary>JSON grezzo estratto da Claude</summary>
+          <pre class="pdf-log-json">${this.esc(JSON.stringify(result, null, 2))}</pre>
+        </details>
+      </div>
+    `;
+
+    return html;
+  },
+
+  _pdfField(label, value) {
+    if (value == null || value === '' || value === 'N/A' || value === 'null') return '';
+    return `
+      <div class="pdf-result-field">
+        <div class="pdf-result-field-label">${this.esc(label)}</div>
+        <div class="pdf-result-field-value">${this.esc(String(value))}</div>
+      </div>
+    `;
   },
 
   // ============================================

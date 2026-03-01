@@ -5,7 +5,7 @@
  * Authenticated endpoint - associates trips with user
  */
 
-const { authenticateRequest, unauthorizedResponse, getCorsHeaders, handleOptions } = require('./utils/auth');
+const { authenticateRequest, unauthorizedResponse, getCorsHeaders, handleOptions, getServiceClient } = require('./utils/auth');
 const { uploadPdf, downloadPdfAsBase64, moveTmpPdfToTrip, cleanupTmpPdfs } = require('./utils/storage');
 const { processPdfsWithClaude, extractPassengerFromFilename } = require('./utils/pdfProcessor');
 const { deduplicateFlights, deduplicateHotels } = require('./utils/deduplication');
@@ -33,6 +33,29 @@ exports.handler = async (event, context) => {
   }
 
   const { user, supabase } = authResult;
+  const serviceClient = getServiceClient();
+
+  // Logging state — updated as processing proceeds so catch block can also log
+  let pdfCount = 0;
+  let pdfFilenames = '';
+
+  const logPdfUpload = async ({ status, tripId = null, extractedSummary = null, errorMessage = null }) => {
+    try {
+      await serviceClient.from('email_processing_log').insert({
+        source: 'upload',
+        email_from: user.email,
+        email_subject: pdfFilenames || 'PDF upload diretto',
+        status,
+        user_id: user.id,
+        trip_id: tripId,
+        attachment_count: pdfCount,
+        extracted_summary: extractedSummary,
+        error_message: errorMessage
+      });
+    } catch (logErr) {
+      console.error('PDF upload log failed (non-fatal):', logErr);
+    }
+  };
 
   try {
     const { pdfs } = JSON.parse(event.body);
@@ -67,6 +90,8 @@ exports.handler = async (event, context) => {
     const allHotels = [];
     let metadata = {};
 
+    pdfCount = resolvedPdfs.length;
+    pdfFilenames = resolvedPdfs.map(p => p.filename).join(', ');
     console.log(`Processing ${resolvedPdfs.length} PDFs with batching...`);
 
     const results = await processPdfsWithClaude(resolvedPdfs);
@@ -268,6 +293,7 @@ exports.handler = async (event, context) => {
 
     if (dbError) {
       console.error('Supabase error:', dbError);
+      await logPdfUpload({ status: 'error', errorMessage: `DB save failed: ${dbError.message}` });
       return {
         statusCode: 500,
         headers,
@@ -278,6 +304,20 @@ exports.handler = async (event, context) => {
         })
       };
     }
+
+    // Log successful upload (non-fatal)
+    await logPdfUpload({
+      status: 'success',
+      tripId: tripData.id,
+      extractedSummary: {
+        destination: tripData.destination,
+        flights: tripData.flights.length,
+        hotels: tripData.hotels.length,
+        passenger: tripData.passenger?.name || null,
+        startDate: tripData.startDate,
+        endDate: tripData.endDate
+      }
+    });
 
     return {
       statusCode: 200,
@@ -304,6 +344,12 @@ exports.handler = async (event, context) => {
       }
     }
     console.error('Error processing PDFs:', error);
+
+    // Log failure (non-fatal — best effort only)
+    const isRateLimit = error.status === 429 || error.message?.includes('rate_limit');
+    if (!isRateLimit && pdfCount > 0) {
+      await logPdfUpload({ status: 'extraction_failed', errorMessage: error.message });
+    }
     const isRateLimit = error.status === 429 || error.message?.includes('rate_limit');
     const retryAfter = error.retryAfter || 30;
     return {
