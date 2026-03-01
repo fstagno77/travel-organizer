@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.24.2 - 2026-03-01
+## 0.25.1 - 2026-03-01
 
 ### Miglioramenti
 - **Auto-fill nome attività da Google Maps**: quando si incolla un link Google Maps nel campo indirizzo, il nome della location viene automaticamente inserito come nome dell'attività (se il campo è vuoto), con rilevamento automatico della categoria
