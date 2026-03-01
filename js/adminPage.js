@@ -1016,7 +1016,7 @@ const adminPage = {
       const resultEl = document.getElementById('pdf-analyze-result');
 
       runBtn.disabled = true;
-      runBtn.textContent = 'Analisi in corso...';
+      runBtn.innerHTML = '<span class="spinner" style="width:15px;height:15px;margin-right:8px;display:inline-block;vertical-align:middle"></span>Analisi in corso...';
       resultEl.style.display = 'none';
 
       try {
@@ -1028,7 +1028,7 @@ const adminPage = {
         resultEl.innerHTML = `<div class="pdf-analyze-error"><strong>Errore:</strong> ${this.esc(err.message)}</div>`;
       } finally {
         runBtn.disabled = false;
-        runBtn.textContent = 'Analizza documento';
+        runBtn.innerHTML = 'Analizza documento';
       }
     });
   },
@@ -1145,46 +1145,71 @@ const adminPage = {
     `;
 
     if (passenger) {
+      // Normalize any nested objects in passenger fields
+      const resolvePassengerVal = (v) => {
+        if (v == null) return null;
+        if (typeof v === 'string') return v;
+        if (typeof v === 'boolean') return v ? 'Sì' : 'No';
+        if (Array.isArray(v)) return v.map(x => typeof x === 'object' ? (x.number || x.value || JSON.stringify(x)) : x).join(', ');
+        if (typeof v === 'object') return v.allowance || v.number || v.value || v.description || JSON.stringify(v);
+        return String(v);
+      };
       html += `
         <div class="pdf-section-title">Passeggero</div>
         <div class="pdf-result-grid">
-          ${this._pdfField('Nome', passenger.name)}
-          ${this._pdfField('Tipo', passenger.type)}
-          ${this._pdfField('Numero biglietto', passenger.ticketNumber)}
-          ${this._pdfField('Posto', passenger.seat)}
-          ${this._pdfField('Bagaglio', passenger.baggage)}
-          ${this._pdfField('Frequent flyer', passenger.frequentFlyer)}
+          ${this._pdfField('Nome', resolvePassengerVal(passenger.name))}
+          ${this._pdfField('Tipo', resolvePassengerVal(passenger.type))}
+          ${this._pdfField('Numero biglietto', resolvePassengerVal(passenger.ticketNumber))}
+          ${this._pdfField('Posto', resolvePassengerVal(passenger.seat))}
+          ${this._pdfField('Bagaglio', resolvePassengerVal(passenger.baggage))}
+          ${this._pdfField('Frequent flyer', resolvePassengerVal(passenger.frequentFlyer))}
         </div>
       `;
     }
 
     if (booking) {
+      const resolveBookingVal = (v) => {
+        if (v == null) return null;
+        if (typeof v === 'string') return v;
+        if (typeof v === 'object') return v.value || v.code || v.amount || v.description || JSON.stringify(v);
+        return String(v);
+      };
       html += `
         <div class="pdf-section-title">Prenotazione</div>
         <div class="pdf-result-grid">
-          ${this._pdfField('Codice prenotazione', booking.bookingReference || booking.pnr)}
-          ${this._pdfField('Biglietto', booking.ticketNumber)}
-          ${this._pdfField('Classe', booking.class || booking.cabinClass)}
-          ${this._pdfField('Tariffa', booking.fare || booking.price)}
-          ${this._pdfField('Emesso da', booking.issuedBy)}
-          ${this._pdfField('Data emissione', booking.issuedDate)}
+          ${this._pdfField('Codice prenotazione', resolveBookingVal(booking.bookingReference || booking.pnr))}
+          ${this._pdfField('Biglietto', resolveBookingVal(booking.ticketNumber))}
+          ${this._pdfField('Classe', resolveBookingVal(booking.class || booking.cabinClass))}
+          ${this._pdfField('Tariffa', resolveBookingVal(booking.fare || booking.price))}
+          ${this._pdfField('Emesso da', resolveBookingVal(booking.issuedBy))}
+          ${this._pdfField('Data emissione', resolveBookingVal(booking.issuedDate))}
         </div>
       `;
     }
 
     if (flights.length > 0) {
       html += `<div class="pdf-section-title">Voli estratti (${flights.length})</div>`;
+      // Resolve potentially-nested scalar fields from Claude response
+      const resolveStr = (v) => {
+        if (v == null) return null;
+        if (typeof v === 'string') return v;
+        if (typeof v === 'boolean') return v ? 'Sì' : 'No';
+        if (typeof v === 'object') return [v.date, v.time, v.value, v.text].filter(Boolean).join(' ') || JSON.stringify(v);
+        return String(v);
+      };
       flights.forEach((f, i) => {
+        const depTime = resolveStr(f.departureTime);
+        const arrTime = resolveStr(f.arrivalTime);
         html += `
           <div class="pdf-flight-card">
             <div class="pdf-flight-card-header">Segmento ${i + 1}: ${this.esc(f.departure?.code || f.departure?.city || '?')} → ${this.esc(f.arrival?.code || f.arrival?.city || '?')}</div>
             <div class="pdf-result-grid">
-              ${this._pdfField('N° volo', f.flightNumber)}
-              ${this._pdfField('Compagnia', f.airline)}
-              ${this._pdfField('Data', f.date)}
-              ${this._pdfField('Partenza', `${f.departure?.city || ''} ${f.departure?.airport || ''} (${f.departure?.code || ''}) ${f.departureTime || ''}`)}
-              ${this._pdfField('Arrivo', `${f.arrival?.city || ''} ${f.arrival?.airport || ''} (${f.arrival?.code || ''}) ${f.arrivalTime || ''}`)}
-              ${this._pdfField('Durata', f.duration)}
+              ${this._pdfField('N° volo', resolveStr(f.flightNumber))}
+              ${this._pdfField('Compagnia', resolveStr(f.airline))}
+              ${this._pdfField('Data', resolveStr(f.date))}
+              ${this._pdfField('Partenza', `${f.departure?.city || ''} ${f.departure?.airport || ''} (${f.departure?.code || ''}) ${depTime || ''}`.trim())}
+              ${this._pdfField('Arrivo', `${f.arrival?.city || ''} ${f.arrival?.airport || ''} (${f.arrival?.code || ''}) ${arrTime || ''}`.trim())}
+              ${this._pdfField('Durata', resolveStr(f.duration))}
               ${this._pdfField('Terminale partenza', f.departure?.terminal)}
               ${this._pdfField('Terminale arrivo', f.arrival?.terminal)}
             </div>
@@ -1200,23 +1225,60 @@ const adminPage = {
     if (hotels.length > 0) {
       html += `<div class="pdf-section-title">Hotel estratti (${hotels.length})</div>`;
       hotels.forEach((h, i) => {
+        // Resolve nested date objects: { date, time } → "date time"
+        const resolveDate = (v) => {
+          if (!v) return null;
+          if (typeof v === 'string') return v;
+          if (typeof v === 'object') return [v.date, v.time].filter(Boolean).join(' ') || null;
+          return String(v);
+        };
+        // Resolve address: object → readable string
+        const resolveAddress = (v) => {
+          if (!v) return null;
+          if (typeof v === 'string') return v;
+          if (typeof v === 'object') return [v.street, v.city, v.postalCode, v.country].filter(Boolean).join(', ') || null;
+          return String(v);
+        };
+        // Resolve guests: string, array, or plain object → readable string
+        const resolveGuests = (v) => {
+          if (!v) return null;
+          if (typeof v === 'string') return v;
+          if (typeof v === 'number') return String(v);
+          if (Array.isArray(v)) return v.map(g => typeof g === 'object' ? (g.name || g.value || JSON.stringify(g)) : g).join(', ');
+          if (typeof v === 'object') {
+            // e.g. { adults: 2, children: 0 } or { name: "John", type: "adult" }
+            if (v.name) return v.name;
+            const parts = Object.entries(v).map(([k, val]) => `${k}: ${val}`);
+            return parts.join(', ') || null;
+          }
+          return String(v);
+        };
+        // Resolve breakfast / cancellation: bool or object → readable string
+        const resolveText = (v) => {
+          if (v == null) return null;
+          if (typeof v === 'boolean') return v ? 'Sì' : 'No';
+          if (typeof v === 'string') return v;
+          if (typeof v === 'object') return v.description || v.policy || v.details || (v.included != null ? (v.included ? 'Inclusa' : 'Non inclusa') : null) || JSON.stringify(v);
+          return String(v);
+        };
+
         html += `
           <div class="pdf-hotel-card">
             <div class="pdf-hotel-card-header">${this.esc(h.name || `Hotel ${i + 1}`)}</div>
             <div class="pdf-result-grid">
-              ${this._pdfField('Check-in', h.checkIn)}
-              ${this._pdfField('Check-out', h.checkOut)}
+              ${this._pdfField('Check-in', resolveDate(h.checkIn))}
+              ${this._pdfField('Check-out', resolveDate(h.checkOut))}
               ${this._pdfField('Notti', h.nights)}
-              ${this._pdfField('Indirizzo', h.address)}
+              ${this._pdfField('Indirizzo', resolveAddress(h.address))}
               ${this._pdfField('Città', h.city)}
               ${this._pdfField('Paese', h.country)}
               ${this._pdfField('Camera', h.roomType)}
-              ${this._pdfField('Ospiti', Array.isArray(h.guests) ? h.guests.join(', ') : h.guests)}
+              ${this._pdfField('Ospiti', resolveGuests(h.guests))}
               ${this._pdfField('Prezzo totale', h.totalPrice)}
               ${this._pdfField('Valuta', h.currency)}
               ${this._pdfField('Codice prenotazione', h.bookingReference || h.confirmationNumber)}
-              ${this._pdfField('Cancellazione', h.cancellationPolicy)}
-              ${this._pdfField('Colazione', h.breakfast)}
+              ${this._pdfField('Cancellazione', resolveText(h.cancellationPolicy))}
+              ${this._pdfField('Colazione', resolveText(h.breakfast))}
               ${this._pdfField('Contatti', h.phone || h.email)}
             </div>
             <div class="pdf-analyze-usage-note">
