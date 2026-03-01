@@ -942,11 +942,12 @@ const adminPage = {
                 <input type="file" id="pdf-file-input" accept=".pdf" style="display:none">
                 <p id="pdf-file-name" style="margin:8px 0 0;font-size:12px;color:var(--color-gray-500)"></p>
               </div>
-              <button class="admin-btn admin-btn-primary" id="btn-run-analysis" disabled style="width:100%;margin-top:12px">
-                Analizza documento
-              </button>
             </div>
             <div id="pdf-analyze-result" style="display:none"></div>
+          </div>
+          <div class="admin-modal-footer">
+            <button class="admin-btn admin-btn-secondary" id="pdf-analyze-cancel">Annulla</button>
+            <button class="admin-btn admin-btn-primary" id="btn-run-analysis" disabled>Analizza documento</button>
           </div>
         </div>
       </div>
@@ -972,9 +973,11 @@ const adminPage = {
 
     // Analyze modal
     const overlay = document.getElementById('pdf-analyze-overlay');
+    const closeOverlay = () => { overlay.style.display = 'none'; };
     document.getElementById('btn-analyze-pdf')?.addEventListener('click', () => { overlay.style.display = 'flex'; });
-    document.getElementById('pdf-analyze-close')?.addEventListener('click', () => { overlay.style.display = 'none'; });
-    overlay?.addEventListener('click', (e) => { if (e.target === overlay) overlay.style.display = 'none'; });
+    document.getElementById('pdf-analyze-close')?.addEventListener('click', closeOverlay);
+    document.getElementById('pdf-analyze-cancel')?.addEventListener('click', closeOverlay);
+    overlay?.addEventListener('click', (e) => { if (e.target === overlay) closeOverlay(); });
 
     // File input
     const fileInput = document.getElementById('pdf-file-input');
