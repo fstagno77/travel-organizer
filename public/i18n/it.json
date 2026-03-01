@@ -259,6 +259,7 @@
     "verifyCode": "Verifica",
     "changeEmail": "Cambia email",
     "invalidCode": "Codice non valido",
+    "notInvited": "Accesso riservato agli invitati. Per entrare devi essere invitato da un utente già registrato.",
     "createUsername": "Scegli un nome utente",
     "usernameSubtitle": "Questo sarà il tuo identificativo univoco",
     "usernameHint": "5-12 caratteri, solo lettere e numeri",

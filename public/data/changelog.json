@@ -1,6 +1,18 @@
 {
   "versions": [
     {
+      "version": "0.27",
+      "date": "2026-03-01",
+      "changes": {
+        "it": [
+          "Registrazione su invito: solo gli utenti invitati da un membro già registrato possono creare un account (magic link o Google). Chi non ha un invito valido viene bloccato prima dell'invio del codice OTP e, come secondo livello di sicurezza, dopo il login. L'account resta valido anche se successivamente rimosso dai viaggi."
+        ],
+        "en": [
+          "Invite-only registration: only users invited by an existing member can create an account (magic link or Google). Users without a valid invite are blocked before OTP is sent and, as a second security layer, after login. Accounts remain valid even if later removed from shared trips."
+        ]
+      }
+    },
+    {
       "version": "0.26",
       "date": "2026-03-01",
       "changes": {

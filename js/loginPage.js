@@ -82,6 +82,25 @@
     otpSendBtn.disabled = true;
     otpSendBtn.querySelector('span').textContent = '...';
 
+    // Check if email is allowed to register before sending OTP
+    try {
+      const res = await fetch('/.netlify/functions/check-invite-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const check = await res.json();
+      if (!check.canProceed) {
+        otpError.textContent = i18n.t('auth.notInvited') || 'Accesso riservato agli invitati. Devi essere invitato da un utente già registrato.';
+        otpSendBtn.disabled = false;
+        otpSendBtn.querySelector('span').textContent = i18n.t('auth.sendCode') || 'Invia codice';
+        return;
+      }
+    } catch (e) {
+      // If check fails, proceed — post-auth validation will catch unauthorized users
+      console.warn('[login] check-invite-status failed, proceeding anyway:', e);
+    }
+
     try {
       await auth.sendOtp(email);
       currentEmail = email;

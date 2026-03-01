@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.27 - 2026-03-01
+
+### Nuove funzionalità
+- **Registrazione su invito**: Travel Flow è ora una piattaforma chiusa. Solo gli utenti invitati da un membro già registrato (come Viaggiatore o Ospite) possono creare un account, tramite magic link o Google OAuth
+- **Blocco pre-OTP**: prima di inviare il codice email, il sistema verifica che l'email abbia un invito valido (`trip_invitations` con `status='pending'`). Se non invitata, l'OTP non viene inviato e appare un messaggio esplicativo
+- **Blocco post-auth (secondo livello)**: dopo il login (anche con Google), il backend verifica l'accesso e, se non autorizzato, elimina l'account da `auth.users` — nessuna area utente rimane creata
+- **Account permanenti**: una volta registrato, l'account resta valido anche se l'utente viene rimosso da tutti i viaggi condivisi
+
 ## 0.26 - 2026-03-01
 
 ### Nuove funzionalità

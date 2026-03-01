@@ -259,6 +259,7 @@
     "verifyCode": "Verify",
     "changeEmail": "Change email",
     "invalidCode": "Invalid code",
+    "notInvited": "Access restricted to invited users. You need to be invited by an existing user to join.",
     "createUsername": "Choose a username",
     "usernameSubtitle": "This will be your unique identifier",
     "usernameHint": "5-12 characters, alphanumeric only",

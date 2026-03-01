@@ -141,10 +141,18 @@ const auth = {
     this.initialized = true;
     console.log('[auth] init() completed successfully');
 
-    // If user is logged in but needs username, show the modal
+    // If user is logged in but needs username, validate invite access first
     if (this.session && this.needsUsername) {
-      console.log('[auth] User logged in but needs username, showing modal');
-      this.showUsernameModal();
+      console.log('[auth] User logged in but needs username, checking registration access...');
+      const result = await this.checkRegistrationAccess();
+      if (!result.allowed) {
+        console.log('[auth] Registration blocked - not invited');
+        await this.supabase.auth.signOut();
+        this.showRegistrationBlockedModal();
+      } else {
+        console.log('[auth] Registration allowed, showing username modal');
+        this.showUsernameModal();
+      }
     }
 
     // If authenticated, check for pending invite token
@@ -545,13 +553,108 @@ const auth = {
   },
 
   /**
+   * Check if a newly-authenticated user (no profile yet) is allowed to register.
+   * Existing users (with profile) are always allowed and this is a no-op for them.
+   * If not allowed, the server deletes the auth.users record.
+   * @returns {Promise<{allowed: boolean, reason: string}>}
+   */
+  async checkRegistrationAccess() {
+    try {
+      const response = await fetch('/.netlify/functions/check-registration-access', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.session.access_token}`
+        }
+      });
+      const data = await response.json();
+      return data;
+    } catch (err) {
+      console.error('[auth] checkRegistrationAccess error:', err);
+      // On network error, block to be safe
+      return { allowed: false, reason: 'error' };
+    }
+  },
+
+  /**
+   * Show a modal explaining that registration is blocked (invite-only platform).
+   */
+  showRegistrationBlockedModal() {
+    const existing = document.querySelector('.auth-modal-overlay');
+    if (existing) existing.remove();
+
+    const lang = typeof i18n !== 'undefined' ? i18n.getLang() : 'it';
+    const texts = {
+      it: {
+        title: 'Accesso riservato',
+        message: 'Travel Flow è una piattaforma su invito. Per accedere devi essere invitato da un utente già registrato.',
+        close: 'Chiudi'
+      },
+      en: {
+        title: 'Access restricted',
+        message: 'Travel Flow is an invite-only platform. To access it you need to be invited by an existing user.',
+        close: 'Close'
+      }
+    };
+    const t = texts[lang] || texts.it;
+
+    const modalHTML = `
+      <div class="auth-modal-overlay">
+        <div class="auth-modal">
+          <div class="auth-modal-header">
+            <div class="auth-modal-logo">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+            </div>
+            <h2 class="auth-modal-title">${t.title}</h2>
+            <p class="auth-modal-subtitle">${t.message}</p>
+          </div>
+          <div class="auth-modal-body">
+            <button class="btn btn-primary btn-full" id="blocked-close-btn">
+              ${t.close}
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    document.body.classList.add('modal-open');
+
+    const overlay = document.querySelector('.auth-modal-overlay');
+    const closeBtn = document.getElementById('blocked-close-btn');
+
+    const closeModal = () => {
+      document.body.classList.remove('modal-open');
+      overlay.remove();
+    };
+
+    closeBtn.addEventListener('click', closeModal);
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) closeModal();
+    });
+  },
+
+  /**
    * Handle post-login flow
    */
   handlePostLogin() {
     console.log('[auth] handlePostLogin - needsUsername:', this.needsUsername);
     if (this.needsUsername) {
-      console.log('[auth] Showing username modal');
-      this.showUsernameModal();
+      // Validate invite access before allowing new account creation
+      this.checkRegistrationAccess().then(result => {
+        if (!result.allowed) {
+          console.log('[auth] Registration blocked - not invited');
+          this.supabase.auth.signOut();
+          this.showRegistrationBlockedModal();
+        } else {
+          console.log('[auth] Registration allowed, showing username modal');
+          this.showUsernameModal();
+        }
+      });
     } else {
       // Check for pending invite before reloading
       this.acceptPendingInvite().then(() => {
