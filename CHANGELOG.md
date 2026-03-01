@@ -1,11 +1,26 @@
 # Changelog
 
+## 0.24.2 - 2026-03-01
+
+### Miglioramenti
+- **Auto-fill nome attività da Google Maps**: quando si incolla un link Google Maps nel campo indirizzo, il nome della location viene automaticamente inserito come nome dell'attività (se il campo è vuoto), con rilevamento automatico della categoria
+
 ## 0.24.1 - 2026-02-17
 
 ### Miglioramenti
 - **Orario atterraggio nel tab Attività**: i voli nella vista elenco ora mostrano anche l'orario di arrivo (es. "14:30 → 18:45"), con indicatore "+1" per arrivi il giorno successivo
 - **Open Graph meta tags**: anteprima social per i link condivisi (iMessage, WhatsApp, Telegram) con nome viaggio, date, conteggio voli/hotel/attività e cover photo dinamica tramite Netlify Edge Function
 - **Categorie attività nella vista condivisa**: le attività ora mostrano icone e colori delle categorie
+- **Pulsante condivisione nell'header**: spostato nella barra di navigazione per maggiore accessibilità
+- **Auto-hide header nella vista condivisa**: l'header si nasconde allo scroll verso il basso e riappare allo scroll verso l'alto
+- **Stile pulsante menu trip header**: rimosso sfondo di default, ora coerente con lo stile della freccia indietro
+
+### Bug fix
+- Fix anteprima social che mostrava sempre "Viaggio condiviso" invece del nome del viaggio (edge function leggeva il campo sbagliato)
+- Fix posizionamento dropdown filtro/ricerca su mobile nel tab Attività
+- Fix chiusura dropdown filtro/ricerca al tap esterno su mobile
+- Fix indicatore segmented control nella vista condivisa
+- Fix autocomplete città: `cities.json` aggiunto alla directory pubblica con percorso assoluto
 
 ## 0.23.2 - 2026-02-17
 
