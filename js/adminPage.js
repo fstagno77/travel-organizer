@@ -1251,7 +1251,7 @@ const adminPage = {
             if (v.adults != null) parts.push(`${v.adults} adult${v.adults === 1 ? 'o' : 'i'}`);
             const childCount = Array.isArray(v.children) ? v.children.length : (typeof v.children === 'number' ? v.children : null);
             if (childCount) parts.push(`${childCount} bambin${childCount === 1 ? 'o' : 'i'}`);
-            if (v.pets) parts.push(`${v.pets} animale`);
+            if (v.pets != null && v.pets > 0) parts.push(`${v.pets} animal${v.pets === 1 ? 'e' : 'i'}`);
             if (v.total && !parts.length) parts.push(`${v.total} totale`);
             return parts.join(', ') || null;
           }
