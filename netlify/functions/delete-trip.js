@@ -6,6 +6,7 @@
 
 const { authenticateRequest, unauthorizedResponse, getCorsHeaders, handleOptions } = require('./utils/auth');
 const { deleteAllTripPdfs } = require('./utils/storage');
+const { canDeleteTrip } = require('./utils/permissions');
 
 exports.handler = async (event, context) => {
   const headers = getCorsHeaders();
@@ -29,7 +30,7 @@ exports.handler = async (event, context) => {
     return unauthorizedResponse();
   }
 
-  const { supabase } = authResult;
+  const { supabase, user } = authResult;
 
   try {
     const tripId = event.queryStringParameters?.id;
@@ -39,6 +40,16 @@ exports.handler = async (event, context) => {
         statusCode: 400,
         headers,
         body: JSON.stringify({ success: false, error: 'Trip ID is required' })
+      };
+    }
+
+    // Only trip owner can delete (collaborators cannot)
+    const isOwner = await canDeleteTrip(user.id, tripId);
+    if (!isOwner) {
+      return {
+        statusCode: 403,
+        headers,
+        body: JSON.stringify({ success: false, error: 'Only the trip owner can delete this trip' })
       };
     }
 

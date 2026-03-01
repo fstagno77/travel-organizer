@@ -12,4 +12,5 @@ import '../airportAutocomplete.js';
 import '../activityCategories.js';
 import '../tripActivities.js';
 import '../tripCreator.js';
+import '../shareModal.js';
 import '../tripPage.js';

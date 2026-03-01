@@ -5226,30 +5226,77 @@ body:has(> .modal-overlay.active) .trip-hero-tabs {
 
 /* Share Modal */
 .share-description {
-  font-size: var(--font-size-sm);
-  color: var(--color-gray-600);
-  margin-bottom: var(--spacing-4);
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-500);
+  margin: 0;
   line-height: var(--line-height-relaxed);
 }
 
-.share-link-container {
+.share-link-row {
   display: flex;
+  align-items: center;
   gap: var(--spacing-2);
+  margin-bottom: var(--spacing-2);
 }
 
-.share-link-input {
-  flex: 1;
-  font-size: var(--font-size-sm);
-  background-color: var(--color-gray-50);
-  cursor: text;
-}
-
-.share-copy-btn {
+.share-link-title {
   flex-shrink: 0;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-gray-700);
+  margin: 0;
   white-space: nowrap;
 }
 
+.share-link-code {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+  padding: var(--spacing-1) var(--spacing-3);
+  background-color: var(--color-gray-50);
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-full);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-600);
+  font-weight: var(--font-weight-medium);
+  box-shadow: var(--shadow-xs);
+}
+
+.share-copy-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-1);
+  background: none;
+  border: none;
+  color: var(--color-gray-400);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.share-copy-icon-btn:hover:not(:disabled) {
+  background-color: var(--color-blue-100);
+  color: var(--color-blue-600);
+}
+
+.share-copy-icon-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.share-copy-icon-btn.copied {
+  background-color: var(--color-green-100);
+  color: var(--color-green-600);
+}
+
 .share-copied-message {
+  display: none;
   margin-top: var(--spacing-3);
   padding: var(--spacing-2) var(--spacing-3);
   background-color: var(--color-success);
@@ -5258,16 +5305,10 @@ body:has(> .modal-overlay.active) .trip-hero-tabs {
   font-weight: var(--font-weight-medium);
   border-radius: var(--radius-md);
   text-align: center;
-  opacity: 0;
-  transform: translateY(-10px);
-  transition: all var(--transition-fast);
-  visibility: hidden;
 }
 
 .share-copied-message.visible {
-  opacity: 1;
-  transform: translateY(0);
-  visibility: visible;
+  display: block;
 }
 
 /* Shared View Styles */
@@ -6216,4 +6257,596 @@ body:has(> .modal-overlay.active) .trip-hero-tabs {
   .trip-page {
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
+}
+
+/* ===== Share Modal - Collaboration Section ===== */
+.share-section {
+  padding-top: var(--spacing-4);
+  border-top: 1px solid var(--color-gray-200);
+  margin-top: var(--spacing-4);
+}
+
+.share-section:first-child {
+  padding-top: 0;
+  border-top: none;
+  margin-top: 0;
+}
+
+.modal--share .modal-body {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: var(--spacing-4);
+}
+
+.share-section--link {
+  margin-top: var(--spacing-6);
+  padding-top: var(--spacing-4);
+  margin-left: calc(-1 * var(--spacing-5));
+  margin-right: calc(-1 * var(--spacing-5));
+  padding-left: var(--spacing-5);
+  padding-right: var(--spacing-5);
+  border-top: 1px solid var(--color-gray-200);
+}
+
+.share-section-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-gray-700);
+  margin-bottom: var(--spacing-3);
+}
+
+.share-invite-form {
+  display: flex;
+  gap: var(--spacing-2);
+  align-items: stretch;
+}
+
+.share-invite-form > .form-input {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  box-sizing: border-box;
+}
+
+.share-invite-form select {
+  flex-shrink: 0;
+  padding: var(--spacing-2) var(--spacing-3);
+  font-size: var(--font-size-sm);
+  border: 1px solid var(--color-gray-300);
+  border-radius: var(--radius-md);
+  background: var(--color-white);
+  cursor: pointer;
+  height: 40px;
+  box-sizing: border-box;
+}
+
+.share-invite-form .btn {
+  flex-shrink: 0;
+  height: 40px;
+  box-sizing: border-box;
+}
+
+.share-invite-spinner {
+  border-color: rgba(255, 255, 255, 0.3);
+  border-top-color: var(--color-white);
+}
+
+.share-invite-message {
+  font-size: var(--font-size-xs);
+  margin-top: var(--spacing-1);
+  min-height: 1em;
+}
+
+.share-invite-message--success {
+  color: #1d4ed8;
+}
+
+.share-invite-message--error {
+  color: var(--color-error);
+}
+
+.share-invite-input-wrapper {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.share-invite-input-wrapper .form-input {
+  width: 100%;
+  height: 40px;
+  box-sizing: border-box;
+}
+
+.share-invite-suggestions {
+  display: none;
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  background: var(--color-white);
+  border: 1px solid var(--color-gray-300);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  overflow: hidden;
+}
+
+.share-invite-suggestions.active {
+  display: block;
+}
+
+.share-suggest-item {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-2);
+  padding: var(--spacing-2) var(--spacing-3);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  transition: background 0.1s;
+}
+
+.share-suggest-item:hover,
+.share-suggest-item.focused {
+  background: var(--color-gray-100);
+}
+
+.share-suggest-name {
+  font-weight: 500;
+  color: var(--color-gray-800);
+  white-space: nowrap;
+}
+
+.share-suggest-email {
+  color: var(--color-gray-500);
+  font-size: var(--font-size-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.share-collaborator-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-2) 0;
+}
+
+.share-collaborator-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--color-gray-200);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-gray-600);
+}
+
+.share-collaborator-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.share-collaborator-name {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-gray-800);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.share-collaborator-email {
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-500);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.share-collaborator-badges {
+  display: flex;
+  gap: var(--spacing-1);
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.share-role-badge {
+  font-size: 11px;
+  font-weight: var(--font-weight-medium);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+
+.share-role-badge--proprietario {
+  background: var(--color-gray-100);
+  color: var(--color-gray-600);
+}
+
+.share-role-badge--viaggiatore {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.share-role-badge--ospite {
+  background: var(--color-gray-100);
+  color: var(--color-gray-600);
+}
+
+.share-status-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: #fef3c7;
+  color: #92400e;
+  white-space: nowrap;
+}
+
+.share-collaborator-actions {
+  display: flex;
+  gap: var(--spacing-1);
+  flex-shrink: 0;
+}
+
+.share-collaborator-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  min-height: 28px;
+  padding: var(--spacing-1) var(--spacing-1);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  border: none;
+  transition: all var(--transition-fast);
+}
+
+.share-action-btn--resend {
+  background: var(--color-primary);
+  color: var(--color-white);
+}
+
+.share-action-btn--resend:hover:not(:disabled) {
+  background: var(--color-primary-dark, #1d4ed8);
+}
+
+.share-action-btn--revoke {
+  background: var(--color-error);
+  color: var(--color-white);
+}
+
+.share-action-btn--revoke:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
+.share-collaborator-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.share-collaborators-loading {
+  display: flex;
+  justify-content: center;
+  padding: var(--spacing-4) 0;
+}
+
+.share-empty-collaborators {
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-500);
+  text-align: center;
+  padding: var(--spacing-4) 0;
+}
+
+@media (max-width: 480px) {
+  .share-invite-form {
+    flex-wrap: wrap;
+  }
+  .share-invite-form .form-input {
+    width: 100%;
+  }
+  .share-invite-form select {
+    flex: 1;
+  }
+}
+
+/* ===== Trip Role Badge (Home Page Cards) ===== */
+.trip-role-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: var(--font-weight-semibold);
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.trip-role-badge--viaggiatore {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.trip-role-badge--ospite {
+  background: var(--color-gray-100);
+  color: var(--color-gray-600);
+}
+
+/* ===== Notifications Page ===== */
+.notifications-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.notifications-header-actions {
+  display: flex;
+  gap: var(--spacing-2);
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.notifications-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-4);
+}
+
+.notifications-header-left h2 {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-gray-800);
+  margin: 0;
+}
+
+.notifications-header-left p {
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-500);
+  margin: var(--spacing-1) 0 0;
+}
+
+.notification-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3) var(--spacing-4);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.notification-item:hover {
+  background: var(--color-gray-50);
+}
+
+.notification-item--unread {
+  background: #f0f7ff;
+}
+
+.notification-item--unread:hover {
+  background: #e0efff;
+}
+
+.notification-item--unread .notification-message {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-gray-900);
+}
+
+.notification-icon {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--color-gray-100);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.notification-item--unread .notification-icon {
+  background: #dbeafe;
+}
+
+.notification-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-message {
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-700);
+  line-height: var(--line-height-relaxed);
+}
+
+.notification-trip {
+  font-size: var(--font-size-xs);
+  color: var(--color-primary);
+  margin-top: 2px;
+}
+
+.notification-time {
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-400);
+  margin-top: 2px;
+}
+
+.notification-unread-dot {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  border: none;
+  cursor: pointer;
+  align-self: center;
+  padding: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.notification-unread-dot:hover {
+  opacity: 0.7;
+}
+
+.notifications-link-pending {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-primary);
+  margin-top: var(--spacing-4);
+  text-decoration: none;
+}
+
+.notifications-link-pending:hover {
+  text-decoration: underline;
+}
+
+/* ===== Notification Action Buttons (Accept/Decline Invite) ===== */
+.notification-actions {
+  display: flex;
+  gap: var(--spacing-2);
+  margin-top: var(--spacing-2);
+}
+
+.notification-action-btn {
+  padding: 6px 16px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  border: none;
+  transition: opacity var(--transition-fast);
+}
+
+.notification-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.notification-action-btn--accept {
+  background: var(--color-success);
+  color: var(--color-white);
+}
+
+.notification-action-btn--accept:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.notification-action-btn--decline {
+  background: transparent;
+  color: var(--color-error);
+  border: 1px solid var(--color-error);
+}
+
+.notification-action-btn--decline:hover:not(:disabled) {
+  background: var(--color-error);
+  color: var(--color-white);
+}
+
+.notification-action-btn--secondary {
+  background: transparent;
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+  text-decoration: none;
+}
+
+.notification-action-btn--secondary:hover {
+  background: var(--color-surface-secondary);
+  color: var(--color-text);
+}
+
+/* Feedback inline dopo azione su notifica */
+.notification-feedback {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: 500;
+  margin-top: var(--spacing-2);
+}
+
+.notification-feedback-link {
+  margin-left: 6px;
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.notification-feedback-link:hover {
+  text-decoration: underline;
+}
+
+.notification-invite-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 99px;
+  margin-top: var(--spacing-2);
+}
+
+.notification-invite-status--accepted {
+  background: #dcfce7;
+  color: var(--color-success);
+}
+
+/* Badge tipo prenotazione */
+.notification-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+.notification-badge--booking {
+  background: #eff6ff;
+  color: var(--color-primary);
+}
+
+/* Trip link nella riga */
+a.notification-trip {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-size: 13px;
+}
+
+a.notification-trip:hover {
+  text-decoration: underline;
+}
+
+/* ===== Permission Gating ===== */
+.role-ospite .ospite-hidden {
+  display: none !important;
+}
+
+.trip-owner-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-500);
+  padding: var(--spacing-1) var(--spacing-3);
+  background: var(--color-gray-50);
+  border-radius: var(--radius-full);
+  margin-top: var(--spacing-2);
 }

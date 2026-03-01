@@ -7,6 +7,7 @@
 const { authenticateRequest, unauthorizedResponse, getCorsHeaders, handleOptions } = require('./utils/auth');
 const { deletePdf } = require('./utils/storage');
 const { updateTripDates } = require('./utils/tripDates');
+const { notifyCollaborators } = require('./utils/notificationHelper');
 
 exports.handler = async (event, context) => {
   const headers = getCorsHeaders();
@@ -30,7 +31,7 @@ exports.handler = async (event, context) => {
     return unauthorizedResponse();
   }
 
-  const { supabase } = authResult;
+  const { supabase, user } = authResult;
 
   try {
     const { tripId, passengerName, bookingReference } = JSON.parse(event.body);
@@ -170,6 +171,11 @@ exports.handler = async (event, context) => {
         body: JSON.stringify({ success: false, error: 'Failed to update trip' })
       };
     }
+
+    // Notify collaborators about the change
+    await notifyCollaborators(tripId, user.id, 'booking_edited',
+      'Ha rimosso un passeggero da un volo',
+      'Removed a passenger from a flight');
 
     return {
       statusCode: 200,

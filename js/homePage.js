@@ -788,10 +788,16 @@ const homePage = (function() {
       }
     }
 
+    // Role badge for shared trips
+    const roleBadge = trip.role && trip.role !== 'proprietario'
+      ? `<span class="trip-role-badge trip-role-badge--${trip.role}">${trip.role === 'viaggiatore' ? (i18n.t('share.roleViaggiatore') || 'Viaggiatore') : (i18n.t('share.roleOspite') || 'Ospite')}</span>`
+      : '';
+
     return `
       <div class="trip-card-wrapper">
         <a href="${tripUrl}" class="${cardClass}">
           <div class="trip-card-image" style="${imageStyle}"${dataBg}>
+            ${roleBadge}
             <div class="trip-card-overlay">
               <h3 class="trip-card-destination">${utils.escapeHtml(title)}</h3>
               ${trip.cities && trip.cities.length > 0 ? `
@@ -1062,7 +1068,9 @@ const homePage = (function() {
         if (action === 'changePhoto') {
           changePhoto(tripId, tripDestination);
         } else if (action === 'share') {
-          showShareModal(tripId);
+          // Get trip role from the card's data attribute
+          const tripRole = item.dataset.tripRole || 'proprietario';
+          shareModal.show(tripId, tripRole);
         } else if (action === 'rename') {
           renameTrip(tripId, tripName);
         } else if (action === 'delete') {
@@ -1317,118 +1325,6 @@ const homePage = (function() {
       }
     });
     confirmBtn.addEventListener('click', performDelete);
-
-    // Apply translations
-    i18n.apply(modal);
-  }
-
-  /**
-   * Show share modal with shareable link
-   * @param {string} tripId
-   */
-  async function showShareModal(tripId) {
-    // Remove existing modal if any
-    const existingModal = document.getElementById('share-modal');
-    if (existingModal) existingModal.remove();
-
-    const modalHTML = `
-      <div class="modal-overlay active" id="share-modal">
-        <div class="modal">
-          <div class="modal-header">
-            <h2 data-i18n="trip.shareTitle">Condividi viaggio</h2>
-            <button class="modal-close" id="share-modal-close">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
-          </div>
-          <div class="modal-body">
-            <p class="share-description" data-i18n="trip.shareDescription">Copia questo link per condividere il viaggio con altri. Chi riceve il link potrà visualizzare solo questo viaggio.</p>
-            <div class="share-link-container">
-              <input type="text" id="share-link-input" class="form-input share-link-input" value="" readonly placeholder="Generazione link...">
-              <button class="btn btn-primary share-copy-btn" id="share-copy-btn" disabled>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                </svg>
-                <span data-i18n="trip.copyLink">Copia</span>
-              </button>
-            </div>
-            <div class="share-copied-message" id="share-copied-message" data-i18n="trip.linkCopied">Link copiato!</div>
-          </div>
-        </div>
-      </div>
-    `;
-
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-    document.body.style.overflow = 'hidden';
-
-    const modal = document.getElementById('share-modal');
-    const closeBtn = document.getElementById('share-modal-close');
-    const copyBtn = document.getElementById('share-copy-btn');
-    const linkInput = document.getElementById('share-link-input');
-    const copiedMessage = document.getElementById('share-copied-message');
-
-    // Close modal function
-    const closeModal = () => {
-      modal.remove();
-      document.body.style.overflow = '';
-    };
-
-    // Fetch share token from backend
-    let shareUrl = '';
-    try {
-      const response = await utils.authFetch('/.netlify/functions/share-trip', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tripId })
-      });
-      const result = await response.json();
-      if (result.success && result.shareToken) {
-        shareUrl = `${window.location.origin}/share.html?token=${result.shareToken}`;
-        linkInput.value = shareUrl;
-        copyBtn.disabled = false;
-      } else {
-        linkInput.value = '';
-        linkInput.placeholder = i18n.t('common.error') || 'Error';
-      }
-    } catch (err) {
-      console.error('Error generating share token:', err);
-      linkInput.value = '';
-      linkInput.placeholder = i18n.t('common.error') || 'Error';
-    }
-
-    // Copy link function
-    const copyLink = async () => {
-      if (!shareUrl) return;
-      try {
-        await navigator.clipboard.writeText(shareUrl);
-        copiedMessage.classList.add('visible');
-        setTimeout(() => copiedMessage.classList.remove('visible'), 2000);
-      } catch (err) {
-        linkInput.select();
-        document.execCommand('copy');
-        copiedMessage.classList.add('visible');
-        setTimeout(() => copiedMessage.classList.remove('visible'), 2000);
-      }
-    };
-
-    // Event listeners
-    closeBtn.addEventListener('click', closeModal);
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) closeModal();
-    });
-    document.addEventListener('keydown', function escHandler(e) {
-      if (e.key === 'Escape') {
-        closeModal();
-        document.removeEventListener('keydown', escHandler);
-      }
-    });
-    copyBtn.addEventListener('click', copyLink);
-
-    // Select all text when input is focused
-    linkInput.addEventListener('focus', () => linkInput.select());
 
     // Apply translations
     i18n.apply(modal);

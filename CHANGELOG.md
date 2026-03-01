@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.26 - 2026-03-01
+
+### Nuove funzionalità
+- **Condivisione collaborativa viaggi**: invita altri utenti a un viaggio con ruolo Viaggiatore (può modificare e invitare ospiti) o Ospite (sola lettura). La lista collaboratori è visibile nel modale di condivisione con opzioni di revoca e reinvio invito
+- **Flusso invito email**: gli utenti registrati ricevono una notifica in-app con accept/decline; gli utenti non registrati ricevono un'email con link per iscriversi e accedere direttamente al viaggio
+- **Sistema notifiche**: campanella nell'header con badge contatore non letti. Pagina `/notifications.html` con lista ultimi 30 giorni. Tipi: invito collaborazione, accettazione/rifiuto, revoca, aggiunta/modifica/eliminazione prenotazioni e attività
+- **Ruoli e permessi**: logica centralizzata (`permissions.js`). Proprietario: accesso completo. Viaggiatore: modifica + invita ospiti. Ospite: sola lettura con gating CSS sui controlli di modifica
+- **Badge proprietario nel trip**: nei viaggi condivisi viene mostrato il nome del proprietario sotto il titolo con il proprio ruolo
+- **"Lascia viaggio"**: nel menu del viaggio appare l'opzione per uscire dai viaggi condivisi (per tutti i non-proprietari)
+- **Autocomplete email inviti**: digitando nel campo email del modale di condivisione vengono suggerite email/username di persone già invitate in precedenti viaggi
+
+### Miglioramenti
+- `shareModal.js`: modulo condiviso usato sia da homepage che da trip page (sostituisce la logica inline duplicata)
+- `get-trip.js`: restituisce `{ tripData, role, owner }` per supportare la vista ruolo collaboratore
+- `get-trips.js`: ogni viaggio include il campo `role` dell'utente corrente
+- `delete-trip.js`: solo il proprietario può eliminare un viaggio (403 per collaboratori)
+- Tutte le funzioni di mutazione (add/edit/delete booking, manage-activity): inviano notifica ai collaboratori dopo ogni modifica
+- Nav bell ora punta a `/notifications.html` (era `/pending-bookings.html`); badge mostra somma prenotazioni in attesa + notifiche non lette
+
 ## 0.25.1 - 2026-03-01
 
 ### Miglioramenti

@@ -3,7 +3,7 @@
  * Retrieves all trips from Supabase for the authenticated user
  */
 
-const { authenticateRequest, unauthorizedResponse, getCorsHeaders, handleOptions } = require('./utils/auth');
+const { authenticateRequest, unauthorizedResponse, getCorsHeaders, handleOptions, getServiceClient } = require('./utils/auth');
 const path = require('path');
 const fs = require('fs');
 
@@ -48,13 +48,13 @@ exports.handler = async (event, context) => {
     return unauthorizedResponse();
   }
 
-  const { supabase } = authResult;
+  const { supabase, user } = authResult;
 
   try {
-    // RLS will automatically filter to user's trips
+    // RLS will automatically filter to user's trips + shared trips
     const { data, error } = await supabase
       .from('trips')
-      .select('id, data, created_at')
+      .select('id, user_id, data, created_at')
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -64,6 +64,20 @@ exports.handler = async (event, context) => {
         headers,
         body: JSON.stringify({ success: false, error: 'Failed to fetch trips' })
       };
+    }
+
+    // Get collaborator roles for the current user
+    let collabMap = new Map();
+    try {
+      const serviceClient = getServiceClient();
+      const { data: collabs } = await serviceClient
+        .from('trip_collaborators')
+        .select('trip_id, role')
+        .eq('user_id', user.id)
+        .eq('status', 'accepted');
+      collabMap = new Map((collabs || []).map(c => [c.trip_id, c.role]));
+    } catch (collabErr) {
+      console.error('Error fetching collaborator roles:', collabErr);
     }
 
     // Allow testDate override for frontend testing (read-only, no DB writes)
@@ -116,7 +130,8 @@ exports.handler = async (event, context) => {
         route: row.data.route,
         color: '#0066cc',
         coverPhoto: row.data.coverPhoto || null,
-        cities
+        cities,
+        role: collabMap.get(row.id) || 'proprietario'
       };
     });
 

@@ -3,7 +3,8 @@
  * Retrieves a single trip from Supabase by ID for the authenticated user
  */
 
-const { authenticateRequest, unauthorizedResponse, getCorsHeaders, handleOptions } = require('./utils/auth');
+const { authenticateRequest, unauthorizedResponse, getCorsHeaders, handleOptions, getServiceClient } = require('./utils/auth');
+const { getUserRole } = require('./utils/permissions');
 
 exports.handler = async (event, context) => {
   const headers = getCorsHeaders();
@@ -27,7 +28,7 @@ exports.handler = async (event, context) => {
     return unauthorizedResponse();
   }
 
-  const { supabase } = authResult;
+  const { supabase, user } = authResult;
 
   try {
     // Get trip ID from query parameters
@@ -41,10 +42,10 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // RLS will automatically filter to user's trips
+    // RLS will automatically filter to user's trips + shared trips
     const { data, error } = await supabase
       .from('trips')
-      .select('data')
+      .select('data, user_id')
       .eq('id', tripId)
       .single();
 
@@ -57,10 +58,30 @@ exports.handler = async (event, context) => {
       };
     }
 
+    // Get user's role for this trip
+    let role = 'proprietario';
+    let owner = null;
+    try {
+      role = await getUserRole(user.id, tripId) || 'proprietario';
+
+      // Get owner info if not the owner
+      if (data.user_id !== user.id) {
+        const serviceClient = getServiceClient();
+        const { data: ownerProfile } = await serviceClient
+          .from('profiles')
+          .select('username, email')
+          .eq('id', data.user_id)
+          .single();
+        owner = ownerProfile ? { username: ownerProfile.username, email: ownerProfile.email } : null;
+      }
+    } catch (roleErr) {
+      console.error('Error fetching role/owner info:', roleErr);
+    }
+
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ success: true, tripData: data.data })
+      body: JSON.stringify({ success: true, tripData: data.data, role, owner })
     };
 
   } catch (error) {

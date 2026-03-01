@@ -1,6 +1,28 @@
 {
   "versions": [
     {
+      "version": "0.26",
+      "date": "2026-03-01",
+      "changes": {
+        "it": [
+          "Condivisione collaborativa viaggi: invita utenti con ruolo Viaggiatore (modifica + invita ospiti) o Ospite (sola lettura), con lista collaboratori, revoca e reinvio invito",
+          "Flusso invito email: utenti registrati ricevono notifica in-app con accept/decline; non registrati ricevono email con link per iscriversi",
+          "Sistema notifiche: campanella nell'header con badge, pagina notifiche con storico 30 giorni per tutti gli eventi collaborativi e di modifica",
+          "Ruoli e permessi: gating interfaccia in base al ruolo (proprietario / viaggiatore / ospite) con blocco azioni non autorizzate",
+          "Badge proprietario nel trip e opzione 'Lascia viaggio' nel menu per i collaboratori",
+          "Autocomplete email inviti: suggerisce email e username di persone già invitate in precedenti viaggi"
+        ],
+        "en": [
+          "Collaborative trip sharing: invite users as Traveler (edit + invite guests) or Guest (read-only), with collaborators list, revoke and resend invite",
+          "Email invite flow: registered users get an in-app notification with accept/decline; unregistered users get an email with signup link",
+          "Notifications system: header bell with badge, notifications page with 30-day history for all collaborative and edit events",
+          "Roles & permissions: UI gating based on role (owner / traveler / guest) with blocked unauthorized actions",
+          "Owner badge in trip view and 'Leave trip' option in menu for collaborators",
+          "Email invite autocomplete: suggests emails and usernames of people previously invited to other trips"
+        ]
+      }
+    },
+    {
       "version": "0.25.1",
       "date": "2026-03-01",
       "changes": {

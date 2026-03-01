@@ -57,6 +57,10 @@
     if ((path.endsWith('/') || path.endsWith('index.html')) && typeof homePage !== 'undefined') {
       homePage.init();
     }
+
+    if (path.includes('notifications.html') && typeof notificationsPage !== 'undefined') {
+      notificationsPage.init();
+    }
   }
 
   // Listen for language changes to re-render dynamic content

@@ -20,6 +20,7 @@ export default defineConfig({
         'pending-bookings': resolve(__dirname, 'pending-bookings.html'),
         share: resolve(__dirname, 'share.html'),
         admin: resolve(__dirname, 'admin.html'),
+        notifications: resolve(__dirname, 'notifications.html'),
       },
       output: {
         manualChunks(id) {

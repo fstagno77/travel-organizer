@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Notifiche - Travel Flow</title>
+
+  <!-- Favicon & PWA -->
+  <link rel="icon" type="image/svg+xml" href="assets/icons/favicon.svg">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#2563eb">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Travel Flow">
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="css/reset.css">
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/utilities.css">
+  <link rel="stylesheet" href="css/auth.css">
+  <link rel="stylesheet" href="css/changelog.css">
+
+  <!-- Fonts (self-hosted) -->
+  <link rel="stylesheet" href="./css/fonts.css">
+</head>
+<body>
+  <div class="page-wrapper">
+    <div id="header-placeholder"></div>
+
+    <main>
+      <div class="container">
+        <section class="section">
+          <header class="section-header">
+            <div class="notifications-header-row">
+              <div>
+                <h1 class="section-title" data-i18n="notifications.title">Notifiche</h1>
+                <p class="section-subtitle" data-i18n="notifications.subtitle">Aggiornamenti sui tuoi viaggi condivisi</p>
+              </div>
+              <div class="notifications-header-actions">
+                <button class="btn btn-primary btn-sm" id="mark-all-read-btn" style="display: none;">
+                  <span data-i18n="notifications.markAllRead">Segna tutto come letto</span>
+                </button>
+              </div>
+            </div>
+          </header>
+
+          <div id="notifications-container">
+            <div class="text-center py-6">
+              <span class="spinner"></span>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <div id="footer-placeholder"></div>
+  </div>
+
+  <!-- JS -->
+  <script type="module" src="/js/entries/notifications-entry.js"></script>
+</body>
+</html>

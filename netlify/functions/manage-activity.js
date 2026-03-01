@@ -5,6 +5,7 @@
 
 const { authenticateRequest, unauthorizedResponse, getCorsHeaders, handleOptions } = require('./utils/auth');
 const { uploadActivityFile, deleteActivityFile, getActivityFileSignedUrl } = require('./utils/storage');
+const { notifyCollaborators } = require('./utils/notificationHelper');
 
 // Map MIME types to file extensions
 const MIME_TO_EXT = {
@@ -38,7 +39,7 @@ exports.handler = async (event, context) => {
     return unauthorizedResponse();
   }
 
-  const { supabase } = authResult;
+  const { supabase, user } = authResult;
 
   try {
     const { action, tripId, activity, activityId, attachments, removedAttachments, filePath } = JSON.parse(event.body);
@@ -147,6 +148,15 @@ exports.handler = async (event, context) => {
         body: JSON.stringify({ success: false, error: 'Failed to save trip' })
       };
     }
+
+    // Notify collaborators about the activity change
+    const notifTypes = { create: 'activity_added', update: 'activity_edited', delete: 'activity_deleted' };
+    const notifMessagesIt = { create: 'Ha aggiunto un\'attività', update: 'Ha modificato un\'attività', delete: 'Ha eliminato un\'attività' };
+    const notifMessagesEn = { create: 'Added an activity', update: 'Edited an activity', delete: 'Deleted an activity' };
+    await notifyCollaborators(tripId, user.id,
+      notifTypes[action] || 'activity_edited',
+      notifMessagesIt[action] || 'Ha modificato un\'attività',
+      notifMessagesEn[action] || 'Edited an activity');
 
     return {
       statusCode: 200,

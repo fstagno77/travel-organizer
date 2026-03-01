@@ -10,6 +10,7 @@ const { uploadPdf, downloadPdfAsBase64, moveTmpPdfToTrip, cleanupTmpPdfs } = req
 const { processPdfsWithClaude, extractPassengerFromFilename } = require('./utils/pdfProcessor');
 const { updateTripDates } = require('./utils/tripDates');
 const { deduplicateFlights, deduplicateHotels } = require('./utils/deduplication');
+const { notifyCollaborators } = require('./utils/notificationHelper');
 
 exports.handler = async (event, context) => {
   const headers = getCorsHeaders();
@@ -33,7 +34,7 @@ exports.handler = async (event, context) => {
     return unauthorizedResponse();
   }
 
-  const { supabase } = authResult;
+  const { supabase, user } = authResult;
 
   try {
     const { pdfs, tripId } = JSON.parse(event.body);
@@ -335,6 +336,11 @@ exports.handler = async (event, context) => {
         })
       };
     }
+
+    // Notify collaborators about the new booking
+    await notifyCollaborators(tripId, user.id, 'booking_added',
+      'Ha aggiunto una prenotazione',
+      'Added a booking');
 
     return {
       statusCode: 200,

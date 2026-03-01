@@ -15,6 +15,8 @@
   }
 
   let currentTripData = null;
+  let currentUserRole = 'proprietario'; // 'proprietario', 'viaggiatore', 'ospite'
+  let currentTripOwner = null; // { username, email } if not owner
   let tabRendered = { activities: false, flights: false, hotels: false };
 
   // ===========================
@@ -24,6 +26,7 @@
   window.tripPage = {
     get currentTripData() { return currentTripData; },
     set currentTripData(v) { currentTripData = v; },
+    get userRole() { return currentUserRole; },
     esc,
     escAttr,
     loadTripFromUrl,
@@ -184,7 +187,9 @@
       }
 
       currentTripData = result.tripData;
-      console.log('Rendering trip...');
+      currentUserRole = result.role || 'proprietario';
+      currentTripOwner = result.owner || null;
+      console.log('Rendering trip, role:', currentUserRole);
       renderTrip(result.tripData);
       console.log('Trip rendered successfully');
       if (typeof window.__perfMarkTripLoaded === 'function') window.__perfMarkTripLoaded();
@@ -317,12 +322,43 @@
     // Setup event delegation on tab containers
     setupEventDelegation();
 
+    // Apply permission-based UI gating
+    applyPermissionGating();
+
     // Apply translations
     i18n.apply(container);
     i18n.apply(heroTabs);
 
     // Deep link: scroll to specific item or open activity panel
     handleDeepLink(urlParams, tripData);
+  }
+
+  /**
+   * Hide UI elements based on user's role
+   */
+  function applyPermissionGating() {
+    if (currentUserRole === 'ospite') {
+      // Hide all upload/add/edit/delete UI for guests
+      document.body.classList.add('role-ospite');
+    } else if (currentUserRole === 'viaggiatore') {
+      document.body.classList.add('role-viaggiatore');
+    }
+
+    // Show owner info badge if not the owner
+    if (currentTripOwner && currentUserRole !== 'proprietario') {
+      const titleEl = document.getElementById('trip-title');
+      if (titleEl) {
+        const roleLabel = currentUserRole === 'viaggiatore'
+          ? (i18n.t('share.roleTraveler') || 'Viaggiatore')
+          : (i18n.t('share.roleGuest') || 'Ospite');
+        const badgeClass = currentUserRole === 'viaggiatore' ? 'trip-role-badge--viaggiatore' : 'trip-role-badge--ospite';
+        titleEl.insertAdjacentHTML('afterend',
+          `<div class="trip-owner-info">
+            <span class="trip-role-badge ${badgeClass}">${roleLabel}</span>
+            <span class="trip-owner-name">${esc(currentTripOwner.username || currentTripOwner.email)}</span>
+          </div>`);
+      }
+    }
   }
 
   /**
@@ -737,6 +773,10 @@
   function renderHeaderMenu() {
     const spacer = document.querySelector('.trip-header-spacer');
     if (!spacer) return;
+
+    const canEdit = currentUserRole === 'proprietario' || currentUserRole === 'viaggiatore';
+    const canDelete = currentUserRole === 'proprietario';
+
     spacer.innerHTML = `
       <div class="section-menu" id="content-menu">
         <button class="section-menu-btn" id="content-menu-btn">
@@ -747,6 +787,7 @@
           </svg>
         </button>
         <div class="section-dropdown" id="content-dropdown">
+          ${canEdit ? `
           <button class="section-dropdown-item" data-action="rename">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
@@ -769,6 +810,7 @@
             </svg>
             <span data-i18n="trip.cities">Città</span>
           </button>
+          ` : ''}
           <button class="section-dropdown-item" data-action="share">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="18" cy="5" r="3"></circle>
@@ -779,6 +821,7 @@
             </svg>
             <span data-i18n="trip.share">Share</span>
           </button>
+          ${canDelete ? `
           <div class="section-dropdown-divider"></div>
           <button class="section-dropdown-item section-dropdown-item--danger" data-action="delete">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -789,6 +832,18 @@
             </svg>
             <span data-i18n="trip.deleteTrip">Delete trip</span>
           </button>
+          ` : ''}
+          ${currentUserRole !== 'proprietario' ? `
+          <div class="section-dropdown-divider"></div>
+          <button class="section-dropdown-item section-dropdown-item--danger" data-action="leave-trip">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+            <span data-i18n="trip.leaveTrip">Lascia viaggio</span>
+          </button>
+          ` : ''}
         </div>
       </div>
     `;
@@ -820,11 +875,13 @@
         } else if (action === 'delete') {
           deleteTrip(tripId);
         } else if (action === 'share') {
-          showShareModal(tripId);
+          shareModal.show(tripId, currentUserRole);
         } else if (action === 'change-photo') {
           changePhoto(tripId);
         } else if (action === 'cities') {
           showCitiesModal(tripId);
+        } else if (action === 'leave-trip') {
+          leaveTrip(tripId);
         }
       });
     });
@@ -1531,110 +1588,29 @@
   }
 
   /**
-   * Show share modal
+   * Leave a shared trip (remove self as collaborator)
    * @param {string} tripId
    */
-  async function showShareModal(tripId) {
-    const existingModal = document.getElementById('share-modal');
-    if (existingModal) existingModal.remove();
+  async function leaveTrip(tripId) {
+    const confirmed = confirm(i18n.t('trip.leaveConfirm') || 'Sei sicuro di voler lasciare questo viaggio?');
+    if (!confirmed) return;
 
-    const modalHTML = `
-      <div class="modal-overlay active" id="share-modal">
-        <div class="modal">
-          <div class="modal-header">
-            <h2 data-i18n="trip.shareTitle">Condividi viaggio</h2>
-            <button class="modal-close" id="share-modal-close">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
-          </div>
-          <div class="modal-body">
-            <p class="share-description" data-i18n="trip.shareDescription">Copia questo link per condividere il viaggio con altri.</p>
-            <div class="share-link-container">
-              <input type="text" id="share-link-input" class="form-input share-link-input" value="" readonly placeholder="Generazione link...">
-              <button class="btn btn-primary share-copy-btn" id="share-copy-btn" disabled>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                </svg>
-                <span data-i18n="trip.copyLink">Copia</span>
-              </button>
-            </div>
-            <div class="share-copied-message" id="share-copied-message" data-i18n="trip.linkCopied">Link copiato!</div>
-          </div>
-        </div>
-      </div>
-    `;
-
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-    document.body.style.overflow = 'hidden';
-
-    const modal = document.getElementById('share-modal');
-    const closeBtn = document.getElementById('share-modal-close');
-    const copyBtn = document.getElementById('share-copy-btn');
-    const linkInput = document.getElementById('share-link-input');
-    const copiedMessage = document.getElementById('share-copied-message');
-
-    const closeModal = () => {
-      modal.remove();
-      document.body.style.overflow = '';
-    };
-
-    closeBtn.addEventListener('click', closeModal);
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) closeModal();
-    });
-    document.addEventListener('keydown', function escHandler(e) {
-      if (e.key === 'Escape') {
-        closeModal();
-        document.removeEventListener('keydown', escHandler);
-      }
-    });
-
-    // Fetch share token from backend
-    let shareUrl = '';
     try {
-      const response = await utils.authFetch('/.netlify/functions/share-trip', {
+      const response = await utils.authFetch('/.netlify/functions/manage-collaboration', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tripId })
+        body: JSON.stringify({ action: 'remove-self', tripId })
       });
       const result = await response.json();
-      if (result.success && result.shareToken) {
-        shareUrl = `${window.location.origin}/share.html?token=${result.shareToken}`;
-        linkInput.value = shareUrl;
-        copyBtn.disabled = false;
+      if (result.success) {
+        window.location.href = '/index.html';
       } else {
-        linkInput.value = '';
-        linkInput.placeholder = i18n.t('common.error') || 'Error';
+        utils.showToast(i18n.t('common.error') || 'Errore', 'error');
       }
     } catch (err) {
-      console.error('Error generating share token:', err);
-      linkInput.value = '';
-      linkInput.placeholder = i18n.t('common.error') || 'Error';
+      console.error('Error leaving trip:', err);
+      utils.showToast(i18n.t('common.error') || 'Errore', 'error');
     }
-
-    // Copy link function
-    const copyLink = async () => {
-      if (!shareUrl) return;
-      try {
-        await navigator.clipboard.writeText(shareUrl);
-        copiedMessage.classList.add('visible');
-        setTimeout(() => copiedMessage.classList.remove('visible'), 2000);
-      } catch (err) {
-        linkInput.select();
-        document.execCommand('copy');
-        copiedMessage.classList.add('visible');
-        setTimeout(() => copiedMessage.classList.remove('visible'), 2000);
-      }
-    };
-
-    copyBtn.addEventListener('click', copyLink);
-    linkInput.addEventListener('focus', () => linkInput.select());
-
-    i18n.apply(modal);
   }
 
   /**

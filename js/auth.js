@@ -20,8 +20,21 @@ const auth = {
       return this;
     }
 
-    // Check for OAuth callback parameters before creating client
+    // Check for invite token in URL and save before any redirects
     const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('invite')) {
+      const inviteToken = urlParams.get('invite');
+      console.log('[auth] Invite token found in URL, saving to sessionStorage');
+      sessionStorage.setItem('pending_invite_token', inviteToken);
+      // Clean invite param from URL but keep other params
+      urlParams.delete('invite');
+      const cleanUrl = urlParams.toString()
+        ? `${window.location.pathname}?${urlParams.toString()}`
+        : window.location.pathname;
+      window.history.replaceState(null, '', cleanUrl);
+    }
+
+    // Check for OAuth callback parameters before creating client
     const hasCode = urlParams.has('code');
     const hasError = urlParams.has('error');
     console.log('[auth] URL has code:', hasCode, 'error:', hasError);
@@ -132,6 +145,28 @@ const auth = {
     if (this.session && this.needsUsername) {
       console.log('[auth] User logged in but needs username, showing modal');
       this.showUsernameModal();
+    }
+
+    // If authenticated, check for pending invite token
+    if (this.session && this.profile) {
+      const pendingToken = sessionStorage.getItem('pending_invite_token');
+      if (pendingToken) {
+        await this.acceptPendingInvite();
+        const redirectTrip = sessionStorage.getItem('redirect_to_trip');
+        if (redirectTrip) {
+          sessionStorage.removeItem('redirect_to_trip');
+          window.location.href = `/trip.html?id=${redirectTrip}`;
+          return this;
+        }
+      }
+
+      // Check for redirect from a previously accepted invite
+      const redirectTrip = sessionStorage.getItem('redirect_to_trip');
+      if (redirectTrip) {
+        sessionStorage.removeItem('redirect_to_trip');
+        window.location.href = `/trip.html?id=${redirectTrip}`;
+        return this;
+      }
     }
 
     return this;
@@ -518,10 +553,46 @@ const auth = {
       console.log('[auth] Showing username modal');
       this.showUsernameModal();
     } else {
-      console.log('[auth] User has profile, reloading page');
-      window.dispatchEvent(new CustomEvent('authStateChanged'));
-      // Reload page to refresh data with authenticated user
-      window.location.reload();
+      // Check for pending invite before reloading
+      this.acceptPendingInvite().then(() => {
+        console.log('[auth] User has profile, reloading page');
+        window.dispatchEvent(new CustomEvent('authStateChanged'));
+        window.location.reload();
+      });
+    }
+  },
+
+  /**
+   * Accept a pending invite if one exists in sessionStorage
+   */
+  async acceptPendingInvite() {
+    const token = sessionStorage.getItem('pending_invite_token');
+    if (!token) return;
+
+    console.log('[auth] Accepting pending invite...');
+    try {
+      const response = await fetch('/.netlify/functions/manage-collaboration', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.session.access_token}`
+        },
+        body: JSON.stringify({ action: 'accept-invite', token })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        console.log('[auth] Invite accepted, tripId:', data.tripId);
+        sessionStorage.removeItem('pending_invite_token');
+        // Redirect to the trip after page reload
+        sessionStorage.setItem('redirect_to_trip', data.tripId);
+      } else {
+        console.error('[auth] Failed to accept invite:', data.error);
+        sessionStorage.removeItem('pending_invite_token');
+      }
+    } catch (err) {
+      console.error('[auth] Error accepting invite:', err);
+      sessionStorage.removeItem('pending_invite_token');
     }
   },
 
