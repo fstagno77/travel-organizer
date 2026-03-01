@@ -349,8 +349,8 @@
       const titleEl = document.getElementById('trip-title');
       if (titleEl) {
         const roleLabel = currentUserRole === 'viaggiatore'
-          ? (i18n.t('share.roleTraveler') || 'Viaggiatore')
-          : (i18n.t('share.roleGuest') || 'Ospite');
+          ? (i18n.t('share.roleViaggiatore') || 'Viaggiatore')
+          : (i18n.t('share.roleOspite') || 'Ospite');
         const badgeClass = currentUserRole === 'viaggiatore' ? 'trip-role-badge--viaggiatore' : 'trip-role-badge--ospite';
         titleEl.insertAdjacentHTML('afterend',
           `<div class="trip-owner-info">
