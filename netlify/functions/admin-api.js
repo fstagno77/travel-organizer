@@ -155,6 +155,15 @@ exports.handler = async (event, context) => {
       case 'analyze-pdf-admin':
         result = await analyzePdfAdmin(body);
         break;
+      case 'analyze-pdf-smart':
+        result = await analyzePdfSmart(body);
+        break;
+      case 'smartparse-list-templates':
+        result = await smartParseListTemplates();
+        break;
+      case 'smartparse-delete-template':
+        result = await smartParseDeleteTemplate(body);
+        break;
       default:
         return { statusCode: 400, headers, body: JSON.stringify({ success: false, error: `Unknown action: ${action}` }) };
     }
@@ -974,14 +983,70 @@ async function listPdfLogs(sc, { page = 1, pageSize = 20, status }) {
 
 async function analyzePdfAdmin({ pdfBase64, docType }) {
   if (!pdfBase64) throw new Error('pdfBase64 is required');
-  if (!docType || !['flight', 'hotel'].includes(docType)) throw new Error('docType must be "flight" or "hotel"');
+  if (!['flight', 'hotel', 'auto'].includes(docType)) throw new Error('docType must be "flight", "hotel", or "auto"');
 
-  // Use a synthetic filename so pdfProcessor detects the correct type
-  const filename = docType === 'flight' ? 'volo-eticket.pdf' : 'hotel-booking.pdf';
+  // For auto, try flight schema first then detect from result structure
+  const resolvedType = docType === 'auto' ? 'flight' : docType;
+  const filename = resolvedType === 'flight' ? 'volo-eticket.pdf' : 'hotel-booking.pdf';
 
   const startTime = Date.now();
   const result = await processSinglePdfWithClaude(pdfBase64, filename);
   const durationMs = Date.now() - startTime;
 
-  return { result, docType, durationMs };
+  // Detect doc type from result when auto was requested
+  const detectedDocType = docType === 'auto'
+    ? (result?.hotels?.length ? 'hotel' : result?.flights?.length ? 'flight' : null)
+    : null;
+
+  return { result, docType: detectedDocType || docType, detectedDocType, durationMs };
+}
+
+// ============================================
+// SmartParse BETA — 4-level cascade parser
+// Completely separate from production pipeline
+// ============================================
+
+async function analyzePdfSmart({ pdfBase64, docType, mode = 'auto' }) {
+  if (!pdfBase64) throw new Error('pdfBase64 is required');
+  if (!['flight', 'hotel', 'auto'].includes(docType)) throw new Error('docType must be "flight", "hotel", or "auto"');
+  if (!['auto', 'ai', 'classic'].includes(mode)) throw new Error('mode must be auto, ai, or classic');
+
+  const { parseDocumentSmart } = require('./utils/smartParser');
+  const parseResult = await parseDocumentSmart(pdfBase64, docType, mode);
+
+  const detectedDocType = parseResult.detectedDocType ?? null;
+
+  return {
+    result:              parseResult.result,
+    docType:             detectedDocType || docType,
+    detectedDocType,
+    durationMs:          parseResult.durationMs,
+    parseLevel:          parseResult.parseLevel,
+    claudeCalls:         parseResult.claudeCalls         ?? 0,
+    templateId:          parseResult.templateId          ?? null,
+    templateName:        parseResult.templateName        ?? null,
+    learnedTemplateId:   parseResult.learnedTemplateId   ?? null,
+    learnedTemplateName: parseResult.learnedTemplateName ?? null,
+    templateSaved:       parseResult.templateSaved       ?? null,
+    templateSaveError:   parseResult.templateSaveError   ?? null,
+    dbLoadError:         parseResult.dbLoadError         ?? null,
+    matchScore:          parseResult.matchScore          ?? null,
+    finalConfidence:     parseResult.finalConfidence     ?? null,
+    classicConfidence:   parseResult.classicConfidence   ?? null,
+    textLength:          parseResult.textLength          ?? 0,
+    isBeta:              true
+  };
+}
+
+async function smartParseListTemplates() {
+  const { listTemplates } = require('./utils/smartParser');
+  const templates = await listTemplates();
+  return { templates };
+}
+
+async function smartParseDeleteTemplate({ id }) {
+  if (!id) throw new Error('id is required');
+  const { deleteTemplate } = require('./utils/smartParser');
+  await deleteTemplate(id);
+  return { deleted: true };
 }

@@ -1177,6 +1177,21 @@
   border-radius: var(--radius-md);
   font-size: 13px;
   margin-top: 12px;
+  border: 1px solid #fca5a5;
+}
+
+.sp-cd-bar-wrap {
+  margin-top: 8px;
+  background: #fca5a5;
+  border-radius: 4px;
+  height: 4px;
+  overflow: hidden;
+}
+
+.sp-cd-bar {
+  height: 100%;
+  background: #dc2626;
+  transition: width 1s linear;
 }
 
 .pdf-analyze-empty {
@@ -1199,6 +1214,193 @@
 
 .pdf-analyze-form {
   margin-bottom: 16px;
+}
+
+/* ─── SmartParse BETA — Parser selector ───────────────────────────────────── */
+
+.pdf-parser-selector {
+  background: var(--color-gray-50);
+  border: 1px solid var(--color-gray-200);
+  border-radius: 8px;
+  padding: 10px 12px 12px;
+  margin-bottom: 14px;
+}
+
+.pdf-parser-options {
+  display: flex;
+  gap: 8px;
+}
+
+.pdf-parser-option {
+  flex: 1;
+  display: flex;
+  cursor: pointer;
+}
+
+.pdf-parser-option input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.pdf-parser-option-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  padding: 7px 12px;
+  border: 1.5px solid var(--color-gray-300);
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-gray-600);
+  background: #fff;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  cursor: pointer;
+}
+
+.pdf-parser-option input[type="radio"]:checked + .pdf-parser-option-label {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: #f0f7ff;
+}
+
+.sp-beta-badge {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: #f59e0b;
+  color: #fff;
+  padding: 1px 5px;
+  border-radius: 3px;
+  line-height: 1.6;
+}
+
+#smart-parse-options {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-gray-200);
+}
+
+/* ─── SmartParse BETA — Result bar ────────────────────────────────────────── */
+
+.sp-result-bar {
+  background: #0f172a;
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.sp-result-bar-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.sp-level-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.sp-level-1 { background: #064e3b; color: #6ee7b7; }  /* green  — cache hit */
+.sp-level-2 { background: #1e3a5f; color: #93c5fd; }  /* blue   — template */
+.sp-level-3 { background: #3b2e08; color: #fcd34d; }  /* yellow — classic  */
+.sp-level-4 { background: #3b0764; color: #d8b4fe; }  /* purple — Claude   */
+
+.sp-detected-type {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #1e3a5f;
+  color: #93c5fd;
+}
+
+.sp-claude-calls {
+  font-weight: 700;
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.sp-calls-zero {
+  background: #064e3b;
+  color: #6ee7b7;
+}
+
+.sp-calls-one {
+  background: #7c2d12;
+  color: #fdba74;
+}
+
+.sp-calls-two {
+  background: #4c1d95;
+  color: #c4b5fd;
+}
+
+.sp-calls-detail {
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+.sp-tpl-status {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 3px 0;
+}
+
+.sp-tpl-ok {
+  color: #6ee7b7;
+}
+
+.sp-tpl-error {
+  color: #fca5a5;
+}
+
+.sp-tpl-error strong {
+  color: #f87171;
+  font-weight: 700;
+}
+
+.sp-result-time {
+  margin-left: auto;
+  color: #64748b;
+  font-variant-numeric: tabular-nums;
+}
+
+.sp-result-bar-details {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid #1e293b;
+  font-size: 11px;
+  color: #64748b;
+}
+
+.sp-result-bar-details strong {
+  color: #cbd5e1;
+}
+
+.sp-result-bar-details code {
+  font-family: monospace;
+  color: #94a3b8;
+}
+
+.sp-result-conf {
+  color: #7dd3fc;
 }
 
 @media (max-width: 480px) {

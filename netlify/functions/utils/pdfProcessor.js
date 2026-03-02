@@ -4,7 +4,14 @@
  */
 
 const Anthropic = require('@anthropic-ai/sdk');
-const client = new Anthropic();
+
+// Lazy-initialized client — avoids module-level crash if ANTHROPIC_API_KEY is not yet set
+// when the module is first loaded (e.g., in admin-api.js which has many other actions).
+let _client;
+function getClient() {
+  if (!_client) _client = new Anthropic();
+  return _client;
+}
 
 const MODEL = 'claude-haiku-4-5-20251001';
 const MAX_TOKENS_SINGLE = 4096;
@@ -96,7 +103,7 @@ async function processBatch(pdfs, startIndex) {
   try {
     console.log(`Batch API call: ${pdfs.length} documents`);
 
-    const response = await client.messages.create({
+    const response = await getClient().messages.create({
       model: MODEL,
       max_tokens: MAX_TOKENS_BATCH,
       system: SYSTEM_PROMPT,
@@ -210,7 +217,7 @@ async function processSinglePdfWithClaude(base64Content, filename) {
   const userPrompt = getPromptForDocType(docType);
 
   try {
-    const response = await client.messages.create({
+    const response = await getClient().messages.create({
       model: MODEL,
       max_tokens: MAX_TOKENS_SINGLE,
       messages: [

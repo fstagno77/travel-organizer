@@ -129,7 +129,10 @@ const adminPage = {
     });
 
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
+      const text = await res.text().catch(() => '');
+      let err = {};
+      try { err = JSON.parse(text); } catch (_) {}
+      console.error(`[admin-api] ${action} → ${res.status}`, text.substring(0, 500));
       throw new Error(err.error || `HTTP ${res.status}`);
     }
 
@@ -919,9 +922,46 @@ const adminPage = {
               Carica un PDF per vedere come verrebbe estratto e interpretato dal sistema. <strong>Nessun dato viene salvato.</strong>
             </p>
             <div class="pdf-analyze-form">
+
+              <!-- Parser selector -->
+              <div class="pdf-parser-selector">
+                <div class="pdf-parser-options">
+                  <label class="pdf-parser-option">
+                    <input type="radio" name="pdf-parser-type" value="only-claude" checked>
+                    <span class="pdf-parser-option-label">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:.7"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+                      Only Claude
+                    </span>
+                  </label>
+                  <label class="pdf-parser-option">
+                    <input type="radio" name="pdf-parser-type" value="smart">
+                    <span class="pdf-parser-option-label">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:.7"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                      SmartParse
+                      <span class="sp-beta-badge">BETA</span>
+                    </span>
+                  </label>
+                </div>
+                <div id="smart-parse-options" style="display:none">
+                  <label style="font-size:12px;color:var(--color-gray-500);display:block;margin-bottom:4px">Modalità SmartParse</label>
+                  <select id="smart-parse-mode" class="admin-filter" style="width:100%">
+                    <option value="auto">Auto — cascata completa (1→2→3→4)</option>
+                    <option value="ai">Forza Claude — impara sempre il template</option>
+                    <option value="classic">Solo regex — nessuna chiamata AI</option>
+                  </select>
+                </div>
+              </div>
+
               <div class="pdf-analyze-type-select">
                 <label class="pdf-type-option">
-                  <input type="radio" name="pdf-doc-type" value="flight" checked>
+                  <input type="radio" name="pdf-doc-type" value="auto" checked>
+                  <span class="pdf-type-label">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                    Auto-detect
+                  </span>
+                </label>
+                <label class="pdf-type-option">
+                  <input type="radio" name="pdf-doc-type" value="flight">
                   <span class="pdf-type-label">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.4-.1.9.3 1.1l4.8 3.2-2.1 2.1-2.4-.6c-.4-.1-.8 0-1 .3l-.2.3c-.2.3-.1.7.1 1l2.2 2.2 2.2 2.2c.3.3.7.3 1 .1l.3-.2c.3-.2.4-.6.3-1l-.6-2.4 2.1-2.1 3.2 4.8c.2.4.7.5 1.1.3l.5-.3c.4-.2.6-.6.5-1.1z"/></svg>
                     Volo / Biglietto aereo
@@ -979,6 +1019,14 @@ const adminPage = {
     document.getElementById('pdf-analyze-cancel')?.addEventListener('click', closeOverlay);
     overlay?.addEventListener('click', (e) => { if (e.target === overlay) closeOverlay(); });
 
+    // Parser selector toggle
+    overlay?.querySelectorAll('input[name="pdf-parser-type"]').forEach(radio => {
+      radio.addEventListener('change', () => {
+        const isSmartParse = document.querySelector('input[name="pdf-parser-type"]:checked')?.value === 'smart';
+        document.getElementById('smart-parse-options').style.display = isSmartParse ? 'block' : 'none';
+      });
+    });
+
     // File input
     const fileInput = document.getElementById('pdf-file-input');
     const runBtn = document.getElementById('btn-run-analysis');
@@ -1012,20 +1060,52 @@ const adminPage = {
 
     runBtn?.addEventListener('click', async () => {
       if (!selectedPdfBase64) return;
-      const docType = document.querySelector('input[name="pdf-doc-type"]:checked')?.value || 'flight';
-      const resultEl = document.getElementById('pdf-analyze-result');
+      const docType    = document.querySelector('input[name="pdf-doc-type"]:checked')?.value || 'flight';
+      const parserType = document.querySelector('input[name="pdf-parser-type"]:checked')?.value || 'only-claude';
+      const resultEl   = document.getElementById('pdf-analyze-result');
 
       runBtn.disabled = true;
       runBtn.innerHTML = '<span class="spinner" style="width:15px;height:15px;margin-right:8px;display:inline-block;vertical-align:middle"></span>Analisi in corso...';
       resultEl.style.display = 'none';
 
       try {
-        const res = await this.api('analyze-pdf-admin', { pdfBase64: selectedPdfBase64, docType });
-        resultEl.style.display = 'block';
-        resultEl.innerHTML = this._renderPdfAnalysisResult(res.result, docType, res.durationMs);
+        let res;
+        if (parserType === 'smart') {
+          const mode = document.getElementById('smart-parse-mode')?.value || 'auto';
+          res = await this.api('analyze-pdf-smart', { pdfBase64: selectedPdfBase64, docType, mode });
+          resultEl.style.display = 'block';
+          resultEl.innerHTML = this._renderPdfAnalysisResult(res.result, res.detectedDocType || docType, res.durationMs, res);
+        } else {
+          res = await this.api('analyze-pdf-admin', { pdfBase64: selectedPdfBase64, docType });
+          resultEl.style.display = 'block';
+          resultEl.innerHTML = this._renderPdfAnalysisResult(res.result, res.detectedDocType || docType, res.durationMs, null);
+        }
       } catch (err) {
         resultEl.style.display = 'block';
-        resultEl.innerHTML = `<div class="pdf-analyze-error"><strong>Errore:</strong> ${this.esc(err.message)}</div>`;
+        const isOverload = /529|overload/i.test(err.message);
+        if (isOverload) {
+          let secsLeft = 30;
+          const renderCountdown = () => `
+            <div class="pdf-analyze-error sp-overload-countdown">
+              <strong>⚠ API sovraccarica (529)</strong><br>
+              <span style="font-size:13px">Anthropic è temporaneamente sovraccarico. Riprova tra <strong id="sp-cd-num">${secsLeft}</strong> secondi.</span>
+              <div class="sp-cd-bar-wrap"><div id="sp-cd-bar" class="sp-cd-bar" style="width:100%"></div></div>
+            </div>`;
+          resultEl.innerHTML = renderCountdown();
+          const iv = setInterval(() => {
+            secsLeft--;
+            const numEl = document.getElementById('sp-cd-num');
+            const barEl = document.getElementById('sp-cd-bar');
+            if (numEl) numEl.textContent = secsLeft;
+            if (barEl) barEl.style.width = `${(secsLeft / 30) * 100}%`;
+            if (secsLeft <= 0) {
+              clearInterval(iv);
+              resultEl.innerHTML = `<div class="pdf-analyze-error" style="border-color:#10b981"><strong style="color:#10b981">✓ Puoi riprovare ora</strong> — clicca nuovamente su "Analizza documento".</div>`;
+            }
+          }, 1000);
+        } else {
+          resultEl.innerHTML = `<div class="pdf-analyze-error"><strong>Errore:</strong> ${this.esc(err.message)}</div>`;
+        }
       } finally {
         runBtn.disabled = false;
         runBtn.innerHTML = 'Analizza documento';
@@ -1126,7 +1206,7 @@ const adminPage = {
     </span>`;
   },
 
-  _renderPdfAnalysisResult(result, docType, durationMs) {
+  _renderPdfAnalysisResult(result, docType, durationMs, smartMeta = null) {
     if (!result) {
       return `<div class="pdf-analyze-error">Nessun dato estratto dal documento.</div>`;
     }
@@ -1136,12 +1216,101 @@ const adminPage = {
     const passenger = result.passenger;
     const booking = result.booking;
 
+    const LEVEL_LABELS = {
+      1: { label: 'Cache esatta', cls: 'sp-level-1', icon: '⚡' },
+      2: { label: 'Template regex', cls: 'sp-level-2', icon: '📐' },
+      3: { label: 'Parser classico', cls: 'sp-level-3', icon: '🔤' },
+      4: { label: 'Claude API', cls: 'sp-level-4', icon: '🤖' }
+    };
+
+    let smartBar = '';
+    if (smartMeta?.isBeta) {
+      const lvl   = LEVEL_LABELS[smartMeta.parseLevel] || { label: `Livello ${smartMeta.parseLevel}`, cls: 'sp-level-4', icon: '?' };
+      const calls = smartMeta.claudeCalls ?? 0;
+
+      let claudeCallsHtml;
+      if (calls === 0) {
+        claudeCallsHtml = `<span class="sp-claude-calls sp-calls-zero">✅ 0 chiamate a Claude</span>`;
+      } else if (calls === 1) {
+        claudeCallsHtml = `<span class="sp-claude-calls sp-calls-one">🤖 1 chiamata a Claude <span class="sp-calls-detail">(estrazione dati)</span></span>`;
+      } else {
+        claudeCallsHtml = `<span class="sp-claude-calls sp-calls-two">🤖 ${calls} chiamate a Claude <span class="sp-calls-detail">(estrazione + generazione template)</span></span>`;
+      }
+
+      // Template status for Level 4
+      let tplStatusHtml = '';
+      if (smartMeta.parseLevel === 4) {
+        if (smartMeta.templateSaved === true) {
+          const name = smartMeta.learnedTemplateName ? ` "${this.esc(smartMeta.learnedTemplateName)}"` : '';
+          const isFingerprint = smartMeta.learnedTemplateName?.startsWith('Fingerprint-only');
+          const note = isFingerprint
+            ? ' — solo cache esatta (testo PDF non leggibile, regex saltate)'
+            : ' — prossimo upload: Livello 1 (cache) o Livello 2 (regex)';
+          tplStatusHtml = `<span class="sp-tpl-status sp-tpl-ok">📚 Template${name} salvato${note}</span>`;
+        } else if (smartMeta.templateSaved === false) {
+          const why = smartMeta.templateSaveError || smartMeta.dbLoadError || 'errore sconosciuto';
+          const isMissingTable = why.toLowerCase().includes('does not exist') || why.toLowerCase().includes('relation');
+          tplStatusHtml = `<span class="sp-tpl-status sp-tpl-error">
+            ❌ Template NON salvato${isMissingTable ? ' — <strong>tabella mancante: esegui la migrazione 012</strong>' : `: ${this.esc(why)}`}
+          </span>`;
+        }
+      }
+
+      // DB load error (affects Levels 1+2)
+      let dbErrorHtml = '';
+      if (smartMeta.dbLoadError && smartMeta.parseLevel >= 3) {
+        const isMissingTable = smartMeta.dbLoadError.toLowerCase().includes('does not exist') || smartMeta.dbLoadError.toLowerCase().includes('relation');
+        dbErrorHtml = `<span class="sp-tpl-status sp-tpl-error">
+          ⚠️ DB non raggiungibile${isMissingTable ? ' — <strong>esegui migrazione 012</strong>' : `: ${this.esc(smartMeta.dbLoadError)}`} (livelli 1+2 saltati)
+        </span>`;
+      }
+
+      // Detected doc type badge (when auto-detect was used)
+      const requestedType = smartMeta.docType; // what was sent (may be 'auto')
+      const detectedDocType = smartMeta.detectedDocType;
+      let detectedTypeHtml = '';
+      if (detectedDocType && detectedDocType !== 'auto') {
+        const dtLabel = detectedDocType === 'flight' ? '✈ Volo rilevato' : '🏨 Hotel rilevato';
+        detectedTypeHtml = `<span class="sp-detected-type">${dtLabel}</span>`;
+      }
+
+      // Template used (Levels 1+2) or confidence info
+      const tplUsedInfo = smartMeta.templateName
+        ? `Template: <strong>${this.esc(smartMeta.templateName)}</strong>`
+        : '';
+      const confInfo = smartMeta.finalConfidence != null
+        ? `Confidenza: ${(smartMeta.finalConfidence * 100).toFixed(0)}%`
+        : (smartMeta.classicConfidence != null ? `Confidenza: ${(smartMeta.classicConfidence * 100).toFixed(0)}%` : '');
+      const textInfo = smartMeta.textLength > 0 ? `Testo PDF: ${smartMeta.textLength} car.` : '⚠️ Testo non estratto';
+
+      smartBar = `
+        <div class="sp-result-bar">
+          <div class="sp-result-bar-top">
+            <span class="sp-level-badge ${lvl.cls}">${lvl.icon} ${lvl.label}</span>
+            ${detectedTypeHtml}
+            ${claudeCallsHtml}
+            <span class="sp-result-time">${durationMs}ms</span>
+          </div>
+          ${tplStatusHtml || dbErrorHtml || tplUsedInfo || confInfo || textInfo ? `
+          <div class="sp-result-bar-details">
+            ${tplStatusHtml ? `<div style="width:100%">${tplStatusHtml}</div>` : ''}
+            ${dbErrorHtml   ? `<div style="width:100%">${dbErrorHtml}</div>`   : ''}
+            ${tplUsedInfo   ? `<span>${tplUsedInfo}</span>`   : ''}
+            ${confInfo      ? `<span class="sp-result-conf">${confInfo}</span>` : ''}
+            <span class="sp-result-text-len">${textInfo}</span>
+          </div>` : ''}
+        </div>
+      `;
+    }
+
+    const typeLabel = docType === 'flight' ? 'Volo' : docType === 'hotel' ? 'Hotel' : 'Auto';
     let html = `
       <div class="pdf-analyze-result-header">
-        <span class="pdf-analyze-result-type">${docType === 'flight' ? 'Volo' : 'Hotel'}</span>
-        <span class="pdf-analyze-result-time">${durationMs}ms</span>
+        <span class="pdf-analyze-result-type">${typeLabel}</span>
+        ${!smartMeta?.isBeta ? `<span class="pdf-analyze-result-time">${durationMs}ms</span>` : ''}
         <span class="pdf-analyze-result-note">Simulazione — nessun dato salvato</span>
       </div>
+      ${smartBar}
     `;
 
     if (passenger) {
@@ -1332,9 +1501,23 @@ const adminPage = {
     html += `
       <div class="pdf-analyze-raw-toggle">
         <details>
-          <summary>JSON grezzo estratto da Claude</summary>
+          <summary>JSON estratto</summary>
           <pre class="pdf-log-json">${this.esc(JSON.stringify(result, null, 2))}</pre>
         </details>
+        ${smartMeta?.isBeta ? `
+        <details style="margin-top:6px">
+          <summary>Metadati SmartParse</summary>
+          <pre class="pdf-log-json">${this.esc(JSON.stringify({
+            parseLevel: smartMeta.parseLevel,
+            templateId: smartMeta.templateId,
+            templateName: smartMeta.templateName,
+            learnedTemplateId: smartMeta.learnedTemplateId,
+            matchScore: smartMeta.matchScore,
+            finalConfidence: smartMeta.finalConfidence,
+            classicConfidence: smartMeta.classicConfidence,
+            textLength: smartMeta.textLength
+          }, null, 2))}</pre>
+        </details>` : ''}
       </div>
     `;
 
