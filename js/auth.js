@@ -156,7 +156,10 @@ const auth = {
 
     // If authenticated, handle pending invites
     if (this.session && this.profile) {
-      // Accetta inviti pendenti per token (da link di invito)
+      // Converti eventuali inviti da trip_invitations in collaborazioni pending + notifiche
+      this.acceptPendingInvitesByEmail();
+
+      // Accetta inviti pendenti per token (solo da link di invito diretto)
       const pendingToken = sessionStorage.getItem('pending_invite_token');
       if (pendingToken) {
         await this.acceptPendingInvite();
@@ -167,9 +170,6 @@ const auth = {
           return this;
         }
       }
-
-      // Accetta inviti pendenti per email (fire-and-forget, non blocca il caricamento)
-      this.acceptPendingInvitesByEmail();
 
       // Check for redirect from a previously accepted invite
       const redirectTrip = sessionStorage.getItem('redirect_to_trip');
@@ -991,7 +991,7 @@ const auth = {
 
       try {
         await this.createProfile(username);
-        // Accetta automaticamente tutti gli inviti pendenti per questa email
+        // Converti inviti da trip_invitations in collaborazioni pending + notifiche
         await this.acceptPendingInvitesByEmail();
         document.body.classList.remove('modal-open');
         overlay.remove();
