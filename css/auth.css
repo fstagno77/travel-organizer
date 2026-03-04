@@ -89,6 +89,18 @@
   min-width: 0;
 }
 
+/* Input dentro modale auth — forza colori espliciti per evitare ereditarietà su iOS */
+.auth-modal .form-input {
+  color: var(--color-gray-800);
+  background: var(--color-white);
+  -webkit-text-fill-color: var(--color-gray-800);
+}
+
+.auth-modal .form-input::placeholder {
+  color: var(--color-gray-400);
+  -webkit-text-fill-color: var(--color-gray-400);
+}
+
 /* =====================================================
    GOOGLE BUTTON
    ===================================================== */

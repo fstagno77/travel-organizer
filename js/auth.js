@@ -898,6 +898,14 @@ const auth = {
     };
     const t = texts[lang] || texts.it;
 
+    // Genera suggerimento username dalla parte locale dell'email
+    const userEmail = this.session?.user?.email || '';
+    const emailLocal = userEmail.split('@')[0] || '';
+    // Rimuovi caratteri non alfanumerici e tronca a 12
+    let suggestion = emailLocal.replace(/[^a-z0-9]/gi, '').toLowerCase().slice(0, 12);
+    // Se troppo corto, aggiungi cifre
+    if (suggestion.length < 5) suggestion = '';
+
     const modalHTML = `
       <div class="auth-modal-overlay">
         <div class="auth-modal">
@@ -920,7 +928,10 @@ const auth = {
                 placeholder="${t.placeholder}"
                 maxlength="12"
                 autocomplete="off"
+                value="${suggestion}"
+                style="color: #1f2937; background: #fff;"
               >
+              <div class="form-hint" style="font-size:12px;color:#6b7280;margin-top:4px;">${t.hint}</div>
               <div class="form-error" id="username-error"></div>
             </div>
 
@@ -939,6 +950,13 @@ const auth = {
     const input = document.getElementById('username-input');
     const errorDiv = document.getElementById('username-error');
     const submitBtn = document.getElementById('submit-username-btn');
+
+    // Valida subito il suggerimento se presente
+    if (suggestion) {
+      const validation = this.validateUsername(suggestion, t);
+      submitBtn.disabled = !validation.valid;
+      errorDiv.textContent = validation.error || '';
+    }
 
     // Validate on input
     input.addEventListener('input', () => {
