@@ -5,6 +5,56 @@
 
 const ADMIN_EMAIL = 'fstagno@idibgroup.com';
 
+const SP_HELP_CONTENT = {
+  matchRules: {
+    title: 'Match Rules',
+    body: `<p>Le <strong>Match Rules</strong> determinano se questo template è applicabile a un documento.</p>
+<ul>
+  <li><strong>Tutti richiesti (all):</strong> tutte le parole chiave devono essere presenti nel testo del PDF. Se anche una sola manca, il template viene scartato.</li>
+  <li><strong>Bonus se presenti (any):</strong> ogni parola trovata aggiunge punti allo score di matching (non obbligatorie).</li>
+</ul>
+<p>Lo score finale determina se il template supera la soglia minima di confidenza.</p>
+<p><em>Suggerimento: usa parole uniche al tipo di documento, come nomi di compagnie aeree o catene alberghiere.</em></p>`
+  },
+  settings: {
+    title: 'Impostazioni template',
+    body: `<p>Le <strong>Impostazioni</strong> controllano il comportamento del template:</p>
+<ul>
+  <li><strong>Soglia confidenza:</strong> valore tra 0 e 100%. Il template viene usato solo se la confidenza totale supera questa soglia. Valori alti (es. 80%) riducono i falsi positivi; valori bassi aumentano la copertura.</li>
+  <li><strong>Tipo documento:</strong> filtra il template per tipo di documento. "Qualsiasi" lo applica a qualunque tipo indipendentemente dalla richiesta.</li>
+</ul>`
+  },
+  fieldRules: {
+    title: 'Field Rules',
+    body: `<p>Le <strong>Field Rules</strong> sono le istruzioni regex che il template usa per estrarre i dati dal testo del PDF.</p>
+<p>Ogni regola definisce:</p>
+<ul>
+  <li><strong>field:</strong> il nome del campo da estrarre (es. "flightNumber", "price")</li>
+  <li><strong>patterns:</strong> lista di espressioni regolari provate in ordine</li>
+  <li><strong>transform:</strong> trasformazioni post-estrazione (uppercase, toFloat, ecc.)</li>
+</ul>
+<p>Queste regole sono generate da Claude AI. Per aggiornarle usa la sezione <em>Rigenera Template</em> qui sotto.</p>`
+  },
+  regenerate: {
+    title: 'Rigenera Template',
+    body: `<p><strong>Rigenera</strong> chiede a Claude AI di analizzare un nuovo PDF campione e riscrivere completamente le Field Rules e le Match Rules del template.</p>
+<p><strong>Quando usarlo:</strong></p>
+<ul>
+  <li>Il template non estrae correttamente alcuni campi</li>
+  <li>Il formato del documento è cambiato (nuova versione del biglietto)</li>
+  <li>Vuoi migliorare la copertura con un campione più recente</li>
+</ul>
+<p><strong>Attenzione:</strong> questa operazione sovrascrive le regole esistenti. Nome e contatore utilizzi vengono mantenuti.</p>
+<p>Richiede una chiamata a Claude AI (~15 secondi).</p>`
+  },
+  sampleResult: {
+    title: 'Risultato Campione',
+    body: `<p>Il <strong>Risultato campione</strong> è il JSON estratto dall'ultimo documento che ha generato o aggiornato questo template.</p>
+<p>Serve come riferimento per capire che tipo di dati il template riesce a estrarre e con quale struttura.</p>
+<p>Non è modificabile — viene aggiornato automaticamente ogni volta che il template viene rigenerato o usato con successo.</p>`
+  }
+};
+
 const adminPage = {
   currentView: 'dashboard',
   charts: {},
@@ -101,6 +151,8 @@ const adminPage = {
       pending: () => this.renderPending(),
       'email-logs': () => this.renderEmailLogs(),
       'pdf-logs': () => this.renderPdfLogs(),
+      smartparse: () => this.renderSmartTemplates(),
+      analyzer: () => this.renderAnalyzer(),
       analytics: () => this.renderAnalytics(),
       sharing: () => this.renderSharing(),
       audit: () => this.renderAudit(),
@@ -109,10 +161,13 @@ const adminPage = {
 
     const renderer = renderers[view];
     if (renderer) {
-      renderer().catch(err => {
-        console.error('View render error:', err);
-        main.innerHTML = `<div class="admin-card"><p style="color:var(--color-error)">Errore: ${this.esc(err.message)}</p></div>`;
-      });
+      const result = renderer();
+      if (result && typeof result.catch === 'function') {
+        result.catch(err => {
+          console.error('View render error:', err);
+          main.innerHTML = `<div class="admin-card"><p style="color:var(--color-error)">Errore: ${this.esc(err.message)}</p></div>`;
+        });
+      }
     } else {
       main.innerHTML = '<div class="admin-card"><p>Vista non trovata</p></div>';
     }
@@ -849,11 +904,11 @@ const adminPage = {
     main.innerHTML = `
       <div class="admin-view-header">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:4px">
-          <h1 style="margin:0">Log Elaborazione PDF</h1>
-          <button class="admin-btn admin-btn-primary" id="btn-analyze-pdf">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-            Analizza documento
-          </button>
+          <h1 style="margin:0">Elaborazioni PDF</h1>
+          <a href="#analyzer" class="admin-btn admin-btn-secondary admin-btn-sm" data-view="analyzer">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            Analizzatore
+          </a>
         </div>
         <p>${data.total} elaborazioni totali</p>
       </div>
@@ -910,87 +965,6 @@ const adminPage = {
         ${this.pagination(data.total, page, 20)}
       </div>
 
-      <!-- Analyze PDF Modal -->
-      <div class="admin-modal-overlay" id="pdf-analyze-overlay" style="display:none">
-        <div class="admin-modal pdf-analyze-modal">
-          <div class="admin-modal-header">
-            <h3>Analizza documento PDF</h3>
-            <button class="admin-modal-close" id="pdf-analyze-close">&times;</button>
-          </div>
-          <div class="admin-modal-body" id="pdf-analyze-body">
-            <p style="color:var(--color-gray-600);margin-bottom:16px">
-              Carica un PDF per vedere come verrebbe estratto e interpretato dal sistema. <strong>Nessun dato viene salvato.</strong>
-            </p>
-            <div class="pdf-analyze-form">
-
-              <!-- Parser selector -->
-              <div class="pdf-parser-selector">
-                <div class="pdf-parser-options">
-                  <label class="pdf-parser-option">
-                    <input type="radio" name="pdf-parser-type" value="only-claude" checked>
-                    <span class="pdf-parser-option-label">
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:.7"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
-                      Only Claude
-                    </span>
-                  </label>
-                  <label class="pdf-parser-option">
-                    <input type="radio" name="pdf-parser-type" value="smart">
-                    <span class="pdf-parser-option-label">
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:.7"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-                      SmartParse
-                      <span class="sp-beta-badge">BETA</span>
-                    </span>
-                  </label>
-                </div>
-                <div id="smart-parse-options" style="display:none">
-                  <label style="font-size:12px;color:var(--color-gray-500);display:block;margin-bottom:4px">Modalità SmartParse</label>
-                  <select id="smart-parse-mode" class="admin-filter" style="width:100%">
-                    <option value="auto">Auto — cascata completa (1→2→3→4)</option>
-                    <option value="ai">Forza Claude — impara sempre il template</option>
-                    <option value="classic">Solo regex — nessuna chiamata AI</option>
-                  </select>
-                </div>
-              </div>
-
-              <div class="pdf-analyze-type-select">
-                <label class="pdf-type-option">
-                  <input type="radio" name="pdf-doc-type" value="auto" checked>
-                  <span class="pdf-type-label">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
-                    Auto-detect
-                  </span>
-                </label>
-                <label class="pdf-type-option">
-                  <input type="radio" name="pdf-doc-type" value="flight">
-                  <span class="pdf-type-label">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.4-.1.9.3 1.1l4.8 3.2-2.1 2.1-2.4-.6c-.4-.1-.8 0-1 .3l-.2.3c-.2.3-.1.7.1 1l2.2 2.2 2.2 2.2c.3.3.7.3 1 .1l.3-.2c.3-.2.4-.6.3-1l-.6-2.4 2.1-2.1 3.2 4.8c.2.4.7.5 1.1.3l.5-.3c.4-.2.6-.6.5-1.1z"/></svg>
-                    Volo / Biglietto aereo
-                  </span>
-                </label>
-                <label class="pdf-type-option">
-                  <input type="radio" name="pdf-doc-type" value="hotel">
-                  <span class="pdf-type-label">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-                    Hotel / Alloggio
-                  </span>
-                </label>
-              </div>
-              <div class="pdf-upload-area" id="pdf-upload-area">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--color-gray-400);margin-bottom:8px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                <p style="margin:0;color:var(--color-gray-500);font-size:14px">Trascina un PDF qui oppure</p>
-                <label for="pdf-file-input" class="admin-btn admin-btn-secondary admin-btn-sm" style="margin-top:8px;cursor:pointer">Scegli file</label>
-                <input type="file" id="pdf-file-input" accept=".pdf" style="display:none">
-                <p id="pdf-file-name" style="margin:8px 0 0;font-size:12px;color:var(--color-gray-500)"></p>
-              </div>
-            </div>
-            <div id="pdf-analyze-result" style="display:none"></div>
-          </div>
-          <div class="admin-modal-footer">
-            <button class="admin-btn admin-btn-secondary" id="pdf-analyze-cancel">Annulla</button>
-            <button class="admin-btn admin-btn-primary" id="btn-run-analysis" disabled>Analizza documento</button>
-          </div>
-        </div>
-      </div>
     `;
 
     // Filter
@@ -1010,107 +984,6 @@ const adminPage = {
     });
 
     this.bindPagination(() => (p) => this.renderPdfLogs(p, document.getElementById('pdf-log-filter')?.value || ''));
-
-    // Analyze modal
-    const overlay = document.getElementById('pdf-analyze-overlay');
-    const closeOverlay = () => { overlay.style.display = 'none'; };
-    document.getElementById('btn-analyze-pdf')?.addEventListener('click', () => { overlay.style.display = 'flex'; });
-    document.getElementById('pdf-analyze-close')?.addEventListener('click', closeOverlay);
-    document.getElementById('pdf-analyze-cancel')?.addEventListener('click', closeOverlay);
-    overlay?.addEventListener('click', (e) => { if (e.target === overlay) closeOverlay(); });
-
-    // Parser selector toggle
-    overlay?.querySelectorAll('input[name="pdf-parser-type"]').forEach(radio => {
-      radio.addEventListener('change', () => {
-        const isSmartParse = document.querySelector('input[name="pdf-parser-type"]:checked')?.value === 'smart';
-        document.getElementById('smart-parse-options').style.display = isSmartParse ? 'block' : 'none';
-      });
-    });
-
-    // File input
-    const fileInput = document.getElementById('pdf-file-input');
-    const runBtn = document.getElementById('btn-run-analysis');
-    const fileNameEl = document.getElementById('pdf-file-name');
-    const uploadArea = document.getElementById('pdf-upload-area');
-    let selectedPdfBase64 = null;
-
-    const handleFile = (file) => {
-      if (!file || file.type !== 'application/pdf') {
-        this.toast('Seleziona un file PDF valido', 'error');
-        return;
-      }
-      fileNameEl.textContent = file.name;
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        selectedPdfBase64 = e.target.result.split(',')[1];
-        runBtn.disabled = false;
-      };
-      reader.readAsDataURL(file);
-    };
-
-    fileInput?.addEventListener('change', (e) => handleFile(e.target.files[0]));
-
-    uploadArea?.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('drag-over'); });
-    uploadArea?.addEventListener('dragleave', () => uploadArea.classList.remove('drag-over'));
-    uploadArea?.addEventListener('drop', (e) => {
-      e.preventDefault();
-      uploadArea.classList.remove('drag-over');
-      handleFile(e.dataTransfer.files[0]);
-    });
-
-    runBtn?.addEventListener('click', async () => {
-      if (!selectedPdfBase64) return;
-      const docType    = document.querySelector('input[name="pdf-doc-type"]:checked')?.value || 'flight';
-      const parserType = document.querySelector('input[name="pdf-parser-type"]:checked')?.value || 'only-claude';
-      const resultEl   = document.getElementById('pdf-analyze-result');
-
-      runBtn.disabled = true;
-      runBtn.innerHTML = '<span class="spinner" style="width:15px;height:15px;margin-right:8px;display:inline-block;vertical-align:middle"></span>Analisi in corso...';
-      resultEl.style.display = 'none';
-
-      try {
-        let res;
-        if (parserType === 'smart') {
-          const mode = document.getElementById('smart-parse-mode')?.value || 'auto';
-          res = await this.api('analyze-pdf-smart', { pdfBase64: selectedPdfBase64, docType, mode });
-          resultEl.style.display = 'block';
-          resultEl.innerHTML = this._renderPdfAnalysisResult(res.result, res.detectedDocType || docType, res.durationMs, res);
-        } else {
-          res = await this.api('analyze-pdf-admin', { pdfBase64: selectedPdfBase64, docType });
-          resultEl.style.display = 'block';
-          resultEl.innerHTML = this._renderPdfAnalysisResult(res.result, res.detectedDocType || docType, res.durationMs, null);
-        }
-      } catch (err) {
-        resultEl.style.display = 'block';
-        const isOverload = /529|overload/i.test(err.message);
-        if (isOverload) {
-          let secsLeft = 30;
-          const renderCountdown = () => `
-            <div class="pdf-analyze-error sp-overload-countdown">
-              <strong>⚠ API sovraccarica (529)</strong><br>
-              <span style="font-size:13px">Anthropic è temporaneamente sovraccarico. Riprova tra <strong id="sp-cd-num">${secsLeft}</strong> secondi.</span>
-              <div class="sp-cd-bar-wrap"><div id="sp-cd-bar" class="sp-cd-bar" style="width:100%"></div></div>
-            </div>`;
-          resultEl.innerHTML = renderCountdown();
-          const iv = setInterval(() => {
-            secsLeft--;
-            const numEl = document.getElementById('sp-cd-num');
-            const barEl = document.getElementById('sp-cd-bar');
-            if (numEl) numEl.textContent = secsLeft;
-            if (barEl) barEl.style.width = `${(secsLeft / 30) * 100}%`;
-            if (secsLeft <= 0) {
-              clearInterval(iv);
-              resultEl.innerHTML = `<div class="pdf-analyze-error" style="border-color:#10b981"><strong style="color:#10b981">✓ Puoi riprovare ora</strong> — clicca nuovamente su "Analizza documento".</div>`;
-            }
-          }, 1000);
-        } else {
-          resultEl.innerHTML = `<div class="pdf-analyze-error"><strong>Errore:</strong> ${this.esc(err.message)}</div>`;
-        }
-      } finally {
-        runBtn.disabled = false;
-        runBtn.innerHTML = 'Analizza documento';
-      }
-    });
   },
 
   _renderPdfLogDetail(log) {
@@ -1218,8 +1091,7 @@ const adminPage = {
 
     const LEVEL_LABELS = {
       1: { label: 'Cache esatta', cls: 'sp-level-1', icon: '⚡' },
-      2: { label: 'Template regex', cls: 'sp-level-2', icon: '📐' },
-      3: { label: 'Parser classico', cls: 'sp-level-3', icon: '🔤' },
+      2: { label: 'Template L2', cls: 'sp-level-2', icon: '🧩' },
       4: { label: 'Claude API', cls: 'sp-level-4', icon: '🤖' }
     };
 
@@ -1228,45 +1100,30 @@ const adminPage = {
       const lvl   = LEVEL_LABELS[smartMeta.parseLevel] || { label: `Livello ${smartMeta.parseLevel}`, cls: 'sp-level-4', icon: '?' };
       const calls = smartMeta.claudeCalls ?? 0;
 
-      let claudeCallsHtml;
-      if (calls === 0) {
-        claudeCallsHtml = `<span class="sp-claude-calls sp-calls-zero">✅ 0 chiamate a Claude</span>`;
-      } else if (calls === 1) {
-        claudeCallsHtml = `<span class="sp-claude-calls sp-calls-one">🤖 1 chiamata a Claude <span class="sp-calls-detail">(estrazione dati)</span></span>`;
-      } else {
-        claudeCallsHtml = `<span class="sp-claude-calls sp-calls-two">🤖 ${calls} chiamate a Claude <span class="sp-calls-detail">(estrazione + generazione template)</span></span>`;
-      }
+      const claudeCallsHtml = calls === 0
+        ? `<span class="sp-claude-calls sp-calls-zero">✅ 0 chiamate a Claude</span>`
+        : `<span class="sp-claude-calls sp-calls-one">🤖 ${calls} chiamata a Claude</span>`;
 
-      // Template status for Level 4
-      let tplStatusHtml = '';
+      // Cache status for Level 4
+      let cacheStatusHtml = '';
       if (smartMeta.parseLevel === 4) {
-        if (smartMeta.templateSaved === true) {
-          const name = smartMeta.learnedTemplateName ? ` "${this.esc(smartMeta.learnedTemplateName)}"` : '';
-          const isFingerprint = smartMeta.learnedTemplateName?.startsWith('Fingerprint-only');
-          const note = isFingerprint
-            ? ' — solo cache esatta (testo PDF non leggibile, regex saltate)'
-            : ' — prossimo upload: Livello 1 (cache) o Livello 2 (regex)';
-          tplStatusHtml = `<span class="sp-tpl-status sp-tpl-ok">📚 Template${name} salvato${note}</span>`;
-        } else if (smartMeta.templateSaved === false) {
-          const why = smartMeta.templateSaveError || smartMeta.dbLoadError || 'errore sconosciuto';
-          const isMissingTable = why.toLowerCase().includes('does not exist') || why.toLowerCase().includes('relation');
-          tplStatusHtml = `<span class="sp-tpl-status sp-tpl-error">
-            ❌ Template NON salvato${isMissingTable ? ' — <strong>tabella mancante: esegui la migrazione 012</strong>' : `: ${this.esc(why)}`}
-          </span>`;
+        if (smartMeta.cacheSaved) {
+          cacheStatusHtml = `<span class="sp-tpl-status sp-tpl-ok">💾 Cache salvata — prossimo upload: 0 chiamate</span>`;
+        } else if (smartMeta.timedOut) {
+          cacheStatusHtml = `<span class="sp-tpl-status sp-tpl-error">⚠️ Timeout Claude — riprova</span>`;
         }
       }
 
-      // DB load error (affects Levels 1+2)
+      // DB load error
       let dbErrorHtml = '';
-      if (smartMeta.dbLoadError && smartMeta.parseLevel >= 3) {
-        const isMissingTable = smartMeta.dbLoadError.toLowerCase().includes('does not exist') || smartMeta.dbLoadError.toLowerCase().includes('relation');
+      if (smartMeta.dbLoadError) {
+        const isMissingTable = smartMeta.dbLoadError.toLowerCase().includes('does not exist');
         dbErrorHtml = `<span class="sp-tpl-status sp-tpl-error">
-          ⚠️ DB non raggiungibile${isMissingTable ? ' — <strong>esegui migrazione 012</strong>' : `: ${this.esc(smartMeta.dbLoadError)}`} (livelli 1+2 saltati)
+          ⚠️ DB non raggiungibile${isMissingTable ? ' — <strong>esegui migrazione 012</strong>' : `: ${this.esc(smartMeta.dbLoadError)}`}
         </span>`;
       }
 
-      // Detected doc type badge (when auto-detect was used)
-      const requestedType = smartMeta.docType; // what was sent (may be 'auto')
+      // Detected doc type badge
       const detectedDocType = smartMeta.detectedDocType;
       let detectedTypeHtml = '';
       if (detectedDocType && detectedDocType !== 'auto') {
@@ -1274,13 +1131,6 @@ const adminPage = {
         detectedTypeHtml = `<span class="sp-detected-type">${dtLabel}</span>`;
       }
 
-      // Template used (Levels 1+2) or confidence info
-      const tplUsedInfo = smartMeta.templateName
-        ? `Template: <strong>${this.esc(smartMeta.templateName)}</strong>`
-        : '';
-      const confInfo = smartMeta.finalConfidence != null
-        ? `Confidenza: ${(smartMeta.finalConfidence * 100).toFixed(0)}%`
-        : (smartMeta.classicConfidence != null ? `Confidenza: ${(smartMeta.classicConfidence * 100).toFixed(0)}%` : '');
       const textInfo = smartMeta.textLength > 0 ? `Testo PDF: ${smartMeta.textLength} car.` : '⚠️ Testo non estratto';
 
       smartBar = `
@@ -1291,12 +1141,10 @@ const adminPage = {
             ${claudeCallsHtml}
             <span class="sp-result-time">${durationMs}ms</span>
           </div>
-          ${tplStatusHtml || dbErrorHtml || tplUsedInfo || confInfo || textInfo ? `
+          ${cacheStatusHtml || dbErrorHtml ? `
           <div class="sp-result-bar-details">
-            ${tplStatusHtml ? `<div style="width:100%">${tplStatusHtml}</div>` : ''}
-            ${dbErrorHtml   ? `<div style="width:100%">${dbErrorHtml}</div>`   : ''}
-            ${tplUsedInfo   ? `<span>${tplUsedInfo}</span>`   : ''}
-            ${confInfo      ? `<span class="sp-result-conf">${confInfo}</span>` : ''}
+            ${cacheStatusHtml ? `<div style="width:100%">${cacheStatusHtml}</div>` : ''}
+            ${dbErrorHtml     ? `<div style="width:100%">${dbErrorHtml}</div>`     : ''}
             <span class="sp-result-text-len">${textInfo}</span>
           </div>` : ''}
         </div>
@@ -1405,7 +1253,10 @@ const adminPage = {
         const resolveAddress = (v) => {
           if (!v) return null;
           if (typeof v === 'string') return v;
-          if (typeof v === 'object') return [v.street, v.city, v.postalCode, v.country].filter(Boolean).join(', ') || null;
+          if (typeof v === 'object') {
+            const parts = [v.street, v.city, v.postalCode, v.country].filter(Boolean);
+            return parts.length ? parts.join(', ') : (v.fullAddress || null);
+          }
           return String(v);
         };
         // Resolve guests: { adults, children: [{age},...], total, pets } → "2 adulti, 4 bambini, 1 animale"
@@ -1439,7 +1290,7 @@ const adminPage = {
           }
           return String(v);
         };
-        // Resolve nested price object → "1420.64 EUR"
+        // Resolve nested price object → "1420.64 EUR" or "Tasse: 11"
         const resolvePrice = (v) => {
           if (!v) return null;
           if (typeof v === 'number') return String(v);
@@ -1448,6 +1299,8 @@ const adminPage = {
             // { total: { value, currency } } or { value, currency }
             const node = v.total || v;
             if (node.value != null) return `${node.value}${node.currency ? ' ' + node.currency : ''}`;
+            // partial: only tax info
+            if (v.tax?.value != null) return `Tasse: ${v.tax.value}${v.tax.currency ? ' ' + v.tax.currency : ''}`;
           }
           return null;
         };
@@ -1478,12 +1331,13 @@ const adminPage = {
               ${this._pdfField('Paese', country)}
               ${this._pdfField('Camera', roomType)}
               ${this._pdfField('Ospiti', resolveGuests(h.guests))}
+              ${this._pdfField('Ospite', h.guestName || h.hostName)}
               ${this._pdfField('Prezzo totale', totalPrice)}
               ${this._pdfField('Codice prenotazione', h.bookingReference || h.confirmationNumber)}
+              ${this._pdfField('Numero camera/stanza', h.rooms != null ? String(h.rooms) : null)}
               ${this._pdfField('Cancellazione', cancellation)}
               ${this._pdfField('Colazione', resolveText(h.breakfast))}
-              ${this._pdfField('Host', h.hostName)}
-              ${this._pdfField('Contatti', h.phone || h.email)}
+              ${this._pdfField('Contatti', h.contact || h.phone || h.email)}
             </div>
             <div class="pdf-analyze-usage-note">
               Come verrebbe usato: aggiunto a <strong>tripData.hotels[]</strong> con
@@ -1509,13 +1363,12 @@ const adminPage = {
           <summary>Metadati SmartParse</summary>
           <pre class="pdf-log-json">${this.esc(JSON.stringify({
             parseLevel: smartMeta.parseLevel,
-            templateId: smartMeta.templateId,
-            templateName: smartMeta.templateName,
-            learnedTemplateId: smartMeta.learnedTemplateId,
-            matchScore: smartMeta.matchScore,
-            finalConfidence: smartMeta.finalConfidence,
-            classicConfidence: smartMeta.classicConfidence,
-            textLength: smartMeta.textLength
+            brand: smartMeta.brand,
+            l2Method: smartMeta.l2Method,
+            templateId: smartMeta.templateId || smartMeta.cacheId,
+            claudeCalls: smartMeta.claudeCalls,
+            textLength: smartMeta.textLength,
+            durationMs: smartMeta.durationMs
           }, null, 2))}</pre>
         </details>` : ''}
       </div>
@@ -1797,8 +1650,8 @@ const adminPage = {
 
     main.innerHTML = `
       <div class="admin-view-header">
-        <h1>Audit Log</h1>
-        <p>Registro azioni amministrative</p>
+        <h1>Azioni Admin</h1>
+        <p>Storico delle operazioni distruttive eseguite dall'area admin (eliminazioni, revoche, modifiche dati)</p>
       </div>
 
       <div class="admin-card">
@@ -1825,6 +1678,113 @@ const adminPage = {
     `;
 
     this.bindPagination(() => (p) => this.renderAudit(p));
+  },
+
+  // ============================================
+  // SmartParse Templates
+  // ============================================
+
+  async renderSmartTemplates() {
+    const main = document.querySelector('.admin-content');
+    const { templates } = await this.api('smartparse-list-templates');
+
+    const typeIcon = { flight: '✈', hotel: '🏨', any: '?' };
+
+    const rows = templates.map(t => {
+      const icon = typeIcon[t.doc_type] || '?';
+      const date = new Date(t.created_at).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: '2-digit' });
+      const fpShort = t.last_sample_fingerprint ? t.last_sample_fingerprint.substring(0, 12) + '...' : '—';
+      return `
+        <tr class="sp-tpl-row" data-tpl-id="${this.esc(t.id)}">
+          <td><code style="font-size:11px;color:var(--text-secondary)">${fpShort}</code></td>
+          <td><span class="sp-tpl-type">${icon} ${t.doc_type}</span></td>
+          <td class="sp-tpl-uses">${t.usage_count || 0}</td>
+          <td style="color:var(--text-secondary);font-size:12px">${date}</td>
+          <td class="sp-tpl-actions">
+            <button class="admin-btn admin-btn-sm admin-btn-danger sp-tpl-delete-btn" data-tpl-id="${this.esc(t.id)}" data-tpl-name="${this.esc(t.name)}">Elimina</button>
+          </td>
+        </tr>`;
+    }).join('');
+
+    main.innerHTML = `
+      <div class="admin-view-header">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:4px">
+          <h1 style="margin:0;display:flex;align-items:center;gap:10px">
+            SmartParse v2 Cache
+            <span class="sp-beta-badge" style="font-size:11px;padding:2px 8px;border-radius:4px;background:#4c1d95;color:#d8b4fe;font-weight:700;letter-spacing:.5px">BETA</span>
+          </h1>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="admin-btn admin-btn-danger" id="btn-clear-all-cache" style="font-size:12px">Svuota cache</button>
+            <button class="admin-btn admin-btn-secondary" id="btn-refresh-sptpl">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              Aggiorna
+            </button>
+          </div>
+        </div>
+        <p style="margin:4px 0 0;color:var(--text-secondary);font-size:14px">${templates.length} documenti in cache — L1 cache hit = 0 chiamate Claude</p>
+      </div>
+
+      <div class="admin-card" style="padding:0;overflow:hidden">
+        ${templates.length === 0
+          ? `<div style="padding:40px;text-align:center;color:var(--text-secondary)">
+               <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:.4;margin-bottom:12px;display:block;margin-inline:auto"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+               <p style="margin:0">Nessun documento in cache.<br>Analizza un PDF con SmartParse — la cache viene popolata automaticamente.</p>
+             </div>`
+          : `<div class="admin-table-wrapper">
+               <table class="admin-table sp-tpl-table">
+                 <thead>
+                   <tr>
+                     <th>Fingerprint</th>
+                     <th>Tipo</th>
+                     <th>Utilizzi</th>
+                     <th>Creato</th>
+                     <th></th>
+                   </tr>
+                 </thead>
+                 <tbody>${rows}</tbody>
+               </table>
+             </div>`
+        }
+      </div>`;
+
+    this._setupSmartCacheView(templates);
+  },
+
+  _setupSmartCacheView(templates) {
+    const main = document.querySelector('.admin-content');
+
+    // Refresh
+    main.querySelector('#btn-refresh-sptpl')?.addEventListener('click', () => this.renderSmartTemplates());
+
+    // Clear all cache
+    main.querySelector('#btn-clear-all-cache')?.addEventListener('click', async () => {
+      const confirmed = await this.confirm('Svuotare tutta la cache SmartParse? I prossimi upload richiederanno Claude.', 'Svuota cache');
+      if (!confirmed) return;
+      for (const t of templates) {
+        try { await this.api('smartparse-delete-template', { id: t.id }); } catch (_) {}
+      }
+      this.toast('Cache svuotata', 'success');
+      this.renderSmartTemplates();
+    });
+
+    // Delete single entry
+    main.querySelectorAll('.sp-tpl-delete-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const id = btn.dataset.tplId;
+        btn.disabled = true;
+        btn.textContent = '...';
+        try {
+          await this.api('smartparse-delete-template', { id });
+          this.toast('Cache entry eliminata', 'success');
+          this.renderSmartTemplates();
+        } catch (err) {
+          this.toast(`Errore: ${err.message}`, 'error');
+          btn.disabled = false;
+          btn.textContent = 'Elimina';
+        }
+      });
+    });
   },
 
   // ============================================
@@ -2104,7 +2064,340 @@ const adminPage = {
     a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
-  }
+  },
+
+  // ============================================
+  // Analizzatore PDF
+  // ============================================
+
+  renderAnalyzer() {
+    const main = document.querySelector('.admin-content');
+
+    main.innerHTML = `
+      <div class="admin-view-header">
+        <h1>Analizzatore</h1>
+        <p>Carica uno o più PDF per vedere come vengono estratti e interpretati dal sistema. Nessun dato viene salvato nel database.</p>
+      </div>
+
+      <div class="analyzer-layout">
+
+        <!-- Colonna form -->
+        <div class="analyzer-form-col">
+          <div class="admin-card" style="padding:20px">
+
+            <!-- Parser selector -->
+            <div style="margin-bottom:16px">
+              <label style="font-size:12px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Parser</label>
+              <div class="pdf-parser-options">
+                <label class="pdf-parser-option">
+                  <input type="radio" name="pdf-parser-type" value="only-claude">
+                  <span class="pdf-parser-option-label">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:.7"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+                    Only Claude
+                  </span>
+                </label>
+                <label class="pdf-parser-option">
+                  <input type="radio" name="pdf-parser-type" value="smart" checked>
+                  <span class="pdf-parser-option-label">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:.7"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                    SmartParse
+                    <span class="sp-beta-badge">BETA</span>
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Tipo documento -->
+            <div style="margin-bottom:16px">
+              <label style="font-size:12px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Tipo documento</label>
+              <div class="pdf-analyze-type-select">
+                <label class="pdf-type-option">
+                  <input type="radio" name="pdf-doc-type" value="auto" checked>
+                  <span class="pdf-type-label">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                    Auto
+                  </span>
+                </label>
+                <label class="pdf-type-option">
+                  <input type="radio" name="pdf-doc-type" value="flight">
+                  <span class="pdf-type-label">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.4-.1.9.3 1.1l4.8 3.2-2.1 2.1-2.4-.6c-.4-.1-.8 0-1 .3l-.2.3c-.2.3-.1.7.1 1l2.2 2.2 2.2 2.2c.3.3.7.3 1 .1l.3-.2c.3-.2.4-.6.3-1l-.6-2.4 2.1-2.1 3.2 4.8c.2.4.7.5 1.1.3l.5-.3c.4-.2.6-.6.5-1.1z"/></svg>
+                    Volo
+                  </span>
+                </label>
+                <label class="pdf-type-option">
+                  <input type="radio" name="pdf-doc-type" value="hotel">
+                  <span class="pdf-type-label">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                    Hotel
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Upload area -->
+            <div style="margin-bottom:16px">
+              <label style="font-size:12px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">File PDF</label>
+              <div class="pdf-upload-area" id="pdf-upload-area">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--color-gray-400);margin-bottom:8px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <p style="margin:0;color:var(--color-gray-500);font-size:14px">Trascina PDF qui oppure</p>
+                <p style="margin:2px 0 0;color:var(--color-gray-400);font-size:12px">Fino a 5 file — processati in sequenza</p>
+                <label for="pdf-file-input" class="admin-btn admin-btn-secondary admin-btn-sm" style="margin-top:8px;cursor:pointer">Scegli file</label>
+                <input type="file" id="pdf-file-input" accept=".pdf" multiple style="display:none">
+                <div id="pdf-file-list" style="margin:8px 0 0;font-size:12px;color:var(--color-gray-500)"></div>
+              </div>
+            </div>
+
+            <button class="admin-btn admin-btn-primary" id="btn-run-analysis" disabled style="width:100%;padding:14px;text-align:center;justify-content:center;font-size:15px">
+              Analizza
+            </button>
+          </div>
+
+          <!-- SmartParse Activity Log — inside parser column, below the card -->
+          <div id="sp-activity-log-wrap" style="display:none;margin-top:8px">
+            <div style="display:flex;align-items:center;justify-content:space-between;
+                        padding:8px 16px;background:#161b22;border-radius:8px 8px 0 0;
+                        border:1px solid #30363d;border-bottom:none">
+              <span style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6e7681">
+                SYSTEM ACTIVITY LOG
+              </span>
+              <div style="display:flex;gap:6px">
+                <button id="sp-log-copy" style="font-size:11px;padding:3px 10px;background:transparent;
+                  border:1px solid #30363d;border-radius:4px;color:#8b949e;cursor:pointer">Copia</button>
+                <button id="sp-log-clear" style="font-size:11px;padding:3px 10px;background:transparent;
+                  border:1px solid #30363d;border-radius:4px;color:#8b949e;cursor:pointer">Clear</button>
+              </div>
+            </div>
+            <div id="sp-activity-log"
+              style="background:#0d1117;color:#e6edf3;font-family:'JetBrains Mono',Menlo,'Courier New',monospace;
+                     font-size:12px;line-height:1.8;border-radius:0 0 8px 8px;padding:14px 18px;
+                     min-height:100px;max-height:280px;overflow-y:auto;white-space:pre-wrap;
+                     word-break:break-word;border:1px solid #30363d"></div>
+          </div>
+        </div>
+
+        <!-- Colonna risultati -->
+        <div class="analyzer-results-col">
+          <div id="pdf-analyze-result"></div>
+        </div>
+
+      </div>
+    `;
+
+    // ── Activity Log ──────────────────────────────────────────────────────────
+    const logWrap = document.getElementById('sp-activity-log-wrap');
+    const logEl   = document.getElementById('sp-activity-log');
+    const logLines = []; // raw strings kept for copy
+
+    // Highlight numbers, quoted strings and key=value pairs within a log line
+    const spHighlight = (msg, level) => {
+      const accent = { error: '#f85149', warn: '#e3b341', ok: '#56d364', step: '#79c0ff' }[level];
+      // Escape HTML first
+      let safe = msg.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      // key=value → key=<accent>value</accent>
+      safe = safe.replace(/([\w]+)=([^\s,)]+)/g, (_, k, v) =>
+        `${k}=<span style="color:${accent||'#79c0ff'}">${v}</span>`);
+      // Quoted strings "..."
+      safe = safe.replace(/"([^"]+)"/g, `"<span style="color:#e3b341">$1</span>"`);
+      // Numbers (standalone)
+      safe = safe.replace(/\b(\d+(?:\.\d+)?(?:ms|s)?)\b/g, `<span style="color:#d2a8ff">$1</span>`);
+      return safe;
+    };
+
+    const spLog = (msg, level = 'info') => {
+      const now = new Date();
+      const ts  = `[${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}]`;
+      const lineColors = { error: '#f85149', warn: '#e3b341', ok: '#56d364' };
+      const lineColor  = lineColors[level] || '#e6edf3'; // default white
+      const rawLine    = `${ts} ${msg}`;
+      logLines.push(rawLine);
+      const row = document.createElement('span');
+      row.style.cssText = `display:block;color:${lineColor}`;
+      row.innerHTML =
+        `<span style="color:#6e7681">${ts}</span> ${spHighlight(msg, level)}`;
+      logEl.appendChild(row);
+      logEl.scrollTop = logEl.scrollHeight;
+      if (logWrap) logWrap.style.display = 'block';
+    };
+
+    document.getElementById('sp-log-clear')?.addEventListener('click', () => {
+      logLines.length = 0;
+      logEl.innerHTML = '';
+    });
+
+    document.getElementById('sp-log-copy')?.addEventListener('click', () => {
+      navigator.clipboard.writeText(logLines.join('\n')).then(
+        () => this.toast('Log copiato negli appunti', 'success'),
+        () => this.toast('Copia non riuscita', 'error')
+      );
+    });
+
+    // Parser selector toggle
+    document.querySelectorAll('input[name="pdf-parser-type"]').forEach(radio => {
+      radio.addEventListener('change', () => {
+        // v2: no mode options to toggle
+      });
+    });
+
+    // File handling
+    const MAX_PDF_FILES = 5;
+    const fileInput  = document.getElementById('pdf-file-input');
+    const runBtn     = document.getElementById('btn-run-analysis');
+    const fileListEl = document.getElementById('pdf-file-list');
+    const uploadArea = document.getElementById('pdf-upload-area');
+    let selectedFiles = [];
+
+    const readFileAsBase64 = (file) => new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload  = (e) => resolve(e.target.result.split(',')[1]);
+      reader.onerror = () => reject(new Error(`Errore lettura file: ${file.name}`));
+      reader.readAsDataURL(file);
+    });
+
+    const handleFiles = async (rawFiles) => {
+      const pdfs = Array.from(rawFiles).filter(f => f.type === 'application/pdf');
+      if (pdfs.length === 0) { this.toast('Seleziona almeno un file PDF valido', 'error'); return; }
+      if (pdfs.length > MAX_PDF_FILES) { this.toast(`Massimo ${MAX_PDF_FILES} file per analisi`, 'error'); return; }
+
+      fileListEl.innerHTML = '<span style="color:var(--color-gray-400)">Lettura in corso...</span>';
+      runBtn.disabled = true;
+      selectedFiles = [];
+
+      try {
+        for (const f of pdfs) {
+          const base64 = await readFileAsBase64(f);
+          selectedFiles.push({ name: f.name, base64 });
+        }
+        fileListEl.innerHTML = selectedFiles.map(f =>
+          `<div style="display:flex;align-items:center;gap:4px;margin-top:2px">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            ${this.esc(f.name)}
+          </div>`
+        ).join('');
+        runBtn.disabled = false;
+      } catch (err) {
+        fileListEl.innerHTML = `<span style="color:var(--color-danger)">${this.esc(err.message)}</span>`;
+      }
+    };
+
+    fileInput?.addEventListener('change', (e) => handleFiles(e.target.files));
+    uploadArea?.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('drag-over'); });
+    uploadArea?.addEventListener('dragleave', () => uploadArea.classList.remove('drag-over'));
+    uploadArea?.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('drag-over');
+      handleFiles(e.dataTransfer.files);
+    });
+
+    runBtn?.addEventListener('click', async () => {
+      if (!selectedFiles.length) return;
+
+      const docType    = document.querySelector('input[name="pdf-doc-type"]:checked')?.value || 'auto';
+      const parserType = document.querySelector('input[name="pdf-parser-type"]:checked')?.value || 'only-claude';
+      const resultEl   = document.getElementById('pdf-analyze-result');
+      const total      = selectedFiles.length;
+      const isMulti    = total > 1;
+
+      runBtn.disabled = true;
+      resultEl.innerHTML = '';
+      spLog(`─── Analisi avviata: ${total} file, parser=${parserType}, docType=${docType} ───`, 'step');
+
+      const updateProgress = (i) => {
+        runBtn.innerHTML = isMulti
+          ? `<span class="spinner" style="width:15px;height:15px;margin-right:8px;display:inline-block;vertical-align:middle"></span>Documento ${i} di ${total}...`
+          : `<span class="spinner" style="width:15px;height:15px;margin-right:8px;display:inline-block;vertical-align:middle"></span>Analisi in corso...`;
+      };
+
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const { name, base64 } = selectedFiles[i];
+        updateProgress(i + 1);
+
+        const placeholder = document.createElement('div');
+        placeholder.style.cssText = isMulti ? 'margin-bottom:16px;border:1px solid var(--border-color);border-radius:8px;overflow:hidden' : '';
+        placeholder.innerHTML = isMulti
+          ? `<div style="padding:8px 12px;background:var(--bg-secondary);border-bottom:1px solid var(--border-color);font-size:12px;font-weight:600;color:var(--text-secondary);display:flex;align-items:center;gap:6px">
+               <span class="spinner" style="width:12px;height:12px;display:inline-block"></span>
+               ${i + 1}. ${this.esc(name)}
+             </div>
+             <div style="padding:12px;color:var(--text-secondary);font-size:13px">Elaborazione...</div>`
+          : `<div style="color:var(--text-secondary);font-size:13px;padding:8px 0">Elaborazione...</div>`;
+        resultEl.appendChild(placeholder);
+
+        try {
+          let res, html;
+          if (parserType === 'smart') {
+            spLog(`▶ [${name}] Invio a analyze-pdf-smart (docType=${docType})`, 'step');
+            res = await this.api('analyze-pdf-smart', { pdfBase64: base64, docType });
+
+            // Log the core parse result
+            const lvlLabel = { 1:'L1 Cache esatta', 2:'L2 Template extraction', 4:'L4 Claude AI' };
+            spLog(`  Livello raggiunto: ${lvlLabel[res.parseLevel] || `L${res.parseLevel}`} (${res.durationMs}ms)`, res.parseLevel <= 2 ? 'ok' : 'warn');
+            if (res.textLength > 0) spLog(`  Testo PDF estratto: ${res.textLength} caratteri`, 'muted');
+            else spLog(`  ⚠ Testo PDF non estratto (PDF scansionato o protetto)`, 'warn');
+            if (res.parseLevel === 2) {
+              spLog(`  Template L2: brand=${res.brand || '?'}, metodo=${res.l2Method || '?'}`, 'info');
+            }
+            const hotelsFound = res.result?.hotels?.length ?? 0;
+            const flightsFound = res.result?.flights?.length ?? 0;
+            spLog(`  Estratti: ${hotelsFound} hotel, ${flightsFound} voli`, hotelsFound + flightsFound > 0 ? 'ok' : 'warn');
+            if (res.error) spLog(`  ⚠ ${res.error}`, 'warn');
+
+            // If Claude timed out, show a friendly retry UI instead of an error
+            if (res.timedOut) {
+              spLog(`  ✗ Timeout AI: ${res.timedOutMsg}`, 'error');
+              placeholder.innerHTML = isMulti
+                ? `<div style="padding:8px 12px;background:var(--bg-secondary);border-bottom:1px solid var(--border-color);font-size:12px;font-weight:600;color:var(--text-secondary)">⏱ ${i + 1}. ${this.esc(name)}</div>
+                   <div style="padding:12px"><div class="pdf-analyze-error" style="background:var(--bg-warning,#fef3c7);border-color:var(--text-warning,#b45309);color:var(--text-warning,#b45309)">
+                     <strong>Timeout AI:</strong> ${this.esc(res.timedOutMsg || 'Riprova tra qualche secondo')}
+                   </div></div>`
+                : `<div class="pdf-analyze-error" style="background:var(--bg-warning,#fef3c7);border-color:var(--text-warning,#b45309);color:var(--text-warning,#b45309)">
+                     <strong>Timeout AI:</strong> ${this.esc(res.timedOutMsg || 'Riprova tra qualche secondo')}
+                   </div>`;
+              continue;
+            }
+
+            if (res.cacheSaved) spLog(`  💾 Template salvato (${res.cacheId}) — prossimi upload stesso provider: L2 (0 chiamate)`, 'ok');
+            else if (res.parseLevel === 1) spLog(`  ✓ Cache L1 hit — nessuna chiamata Claude`, 'ok');
+            else if (res.parseLevel === 2) spLog(`  ✓ Template L2 hit — nessuna chiamata Claude`, 'ok');
+            else if (res.timedOut) spLog(`  ⚠ Claude timeout — riprova`, 'warn');
+
+            spLog(`  Chiamate Claude totali: ${res.claudeCalls ?? 0} | Durata: ${res.durationMs}ms`, 'muted');
+            html = this._renderPdfAnalysisResult(res.result, res.detectedDocType || docType, res.durationMs, res);
+          } else {
+            spLog(`▶ [${name}] Invio a analyze-pdf-admin (docType=${docType})`, 'step');
+            res  = await this.api('analyze-pdf-admin', { pdfBase64: base64, docType });
+            spLog(`  Completato: ${res.durationMs}ms`, 'muted');
+            html = this._renderPdfAnalysisResult(res.result, res.detectedDocType || docType, res.durationMs, null);
+          }
+          placeholder.style.cssText = isMulti ? 'margin-bottom:16px;border:1px solid var(--border-color);border-radius:8px;overflow:hidden' : '';
+          placeholder.innerHTML = isMulti
+            ? `<div style="padding:8px 12px;background:var(--bg-secondary);border-bottom:1px solid var(--border-color);font-size:12px;font-weight:600;color:var(--text-secondary);display:flex;align-items:center;gap:6px">
+                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                 ${i + 1}. ${this.esc(name)}
+               </div>
+               <div style="padding:12px">${html}</div>`
+            : html;
+        } catch (err) {
+          const isOverload = /529|overload/i.test(err.message);
+          spLog(`  ✗ ERRORE [${name}]: ${err.message}`, 'error');
+          placeholder.innerHTML = isMulti
+            ? `<div style="padding:8px 12px;background:var(--bg-secondary);border-bottom:1px solid var(--border-color);font-size:12px;font-weight:600;color:var(--text-secondary)">
+                 ❌ ${i + 1}. ${this.esc(name)}
+               </div>
+               <div style="padding:12px"><div class="pdf-analyze-error"><strong>${isOverload ? '⚠ API sovraccarica (529)' : 'Errore'}:</strong> ${this.esc(err.message)}</div></div>`
+            : `<div class="pdf-analyze-error"><strong>Errore:</strong> ${this.esc(err.message)}</div>`;
+          if (isOverload) {
+            resultEl.insertAdjacentHTML('beforeend', `<div class="pdf-analyze-error" style="margin-top:8px">⚠ Elaborazione interrotta: API sovraccarica. Riprova tra qualche secondo.</div>`);
+            break;
+          }
+        }
+      }
+
+      runBtn.disabled = false;
+      runBtn.innerHTML = 'Analizza';
+      spLog(`─── Analisi completata ───`, 'step');
+    });
+  },
 };
 
 // Init on DOM ready

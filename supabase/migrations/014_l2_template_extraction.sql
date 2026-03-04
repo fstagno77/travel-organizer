@@ -1,0 +1,11 @@
+-- L2 Template Extraction — NO NEW COLUMNS NEEDED
+--
+-- SmartParse v2.1 stores L2 template data in existing columns:
+--   brand          → brand detection for provider matching (column from migration 013)
+--   field_rules    → extraction_map (JSONB array of anchor rules)
+--   match_rules    → { _knownFingerprints: [...], _results: {...}, _sampleText: "..." }
+--
+-- One template row per brand+docType (id = tpl-{brand}-{docType}).
+-- No structural_signature needed — brand detection replaces it.
+--
+-- This migration is intentionally empty (no schema changes required).

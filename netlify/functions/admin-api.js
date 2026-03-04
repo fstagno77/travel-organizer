@@ -37,19 +37,16 @@ async function authenticateAdmin(event) {
  * Log admin action to audit table
  */
 async function logAdminAction(serviceClient, userId, action, entityType, entityId, details) {
-  try {
-    await serviceClient
-      .from('admin_audit_log')
-      .insert({
-        admin_user_id: userId,
-        action,
-        entity_type: entityType,
-        entity_id: entityId,
-        details: details || null
-      });
-  } catch (err) {
-    console.error('Failed to log admin action:', err);
-  }
+  const { error } = await serviceClient
+    .from('admin_audit_log')
+    .insert({
+      admin_user_id: userId,
+      action,
+      entity_type: entityType,
+      entity_id: entityId,
+      details: details || null
+    });
+  if (error) console.error('Failed to log admin action:', error);
 }
 
 exports.handler = async (event, context) => {
@@ -1002,39 +999,30 @@ async function analyzePdfAdmin({ pdfBase64, docType }) {
 }
 
 // ============================================
-// SmartParse BETA — 4-level cascade parser
-// Completely separate from production pipeline
+// SmartParse v2 — L1 Cache + L4 Claude Only
 // ============================================
 
-async function analyzePdfSmart({ pdfBase64, docType, mode = 'auto' }) {
+async function analyzePdfSmart({ pdfBase64, docType }) {
   if (!pdfBase64) throw new Error('pdfBase64 is required');
   if (!['flight', 'hotel', 'auto'].includes(docType)) throw new Error('docType must be "flight", "hotel", or "auto"');
-  if (!['auto', 'ai', 'classic'].includes(mode)) throw new Error('mode must be auto, ai, or classic');
 
   const { parseDocumentSmart } = require('./utils/smartParser');
-  const parseResult = await parseDocumentSmart(pdfBase64, docType, mode);
-
-  const detectedDocType = parseResult.detectedDocType ?? null;
+  const parseResult = await parseDocumentSmart(pdfBase64, docType);
 
   return {
-    result:              parseResult.result,
-    docType:             detectedDocType || docType,
-    detectedDocType,
-    durationMs:          parseResult.durationMs,
-    parseLevel:          parseResult.parseLevel,
-    claudeCalls:         parseResult.claudeCalls         ?? 0,
-    templateId:          parseResult.templateId          ?? null,
-    templateName:        parseResult.templateName        ?? null,
-    learnedTemplateId:   parseResult.learnedTemplateId   ?? null,
-    learnedTemplateName: parseResult.learnedTemplateName ?? null,
-    templateSaved:       parseResult.templateSaved       ?? null,
-    templateSaveError:   parseResult.templateSaveError   ?? null,
-    dbLoadError:         parseResult.dbLoadError         ?? null,
-    matchScore:          parseResult.matchScore          ?? null,
-    finalConfidence:     parseResult.finalConfidence     ?? null,
-    classicConfidence:   parseResult.classicConfidence   ?? null,
-    textLength:          parseResult.textLength          ?? 0,
-    isBeta:              true
+    result:          parseResult.result,
+    docType:         parseResult.detectedDocType || docType,
+    detectedDocType: parseResult.detectedDocType ?? null,
+    durationMs:      parseResult.durationMs,
+    parseLevel:      parseResult.parseLevel,
+    claudeCalls:     parseResult.claudeCalls ?? 0,
+    cacheId:         parseResult.cacheId ?? null,
+    cacheSaved:      parseResult.cacheSaved ?? null,
+    dbLoadError:     parseResult.dbLoadError ?? null,
+    textLength:      parseResult.textLength ?? 0,
+    timedOut:        parseResult.timedOut ?? false,
+    error:           parseResult.error ?? null,
+    isBeta:          true
   };
 }
 

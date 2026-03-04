@@ -6,6 +6,22 @@
 const { buildPassengersArray, buildPassengerEntry } = require('./passengerBuilder');
 
 /**
+ * Merge non-null fields from source into target without overwriting existing values.
+ * Used to enrich a flight record with data from a supplementary document
+ * (e.g. email confirmation adds price/seat to an existing boarding-pass entry).
+ */
+function mergeFlightFields(target, source) {
+  const skip = new Set(['id', '_pdfIndex', '_needsPdfUpload', 'passengers', 'passenger']);
+  for (const [key, val] of Object.entries(source)) {
+    if (skip.has(key)) continue;
+    if (val === null || val === undefined || val === '') continue;
+    if (target[key] === null || target[key] === undefined || target[key] === '') {
+      target[key] = val;
+    }
+  }
+}
+
+/**
  * Deduplicate hotels against existing hotels and within the new batch.
  * When existingHotels is empty, only deduplicates within the batch.
  *
@@ -74,18 +90,35 @@ function deduplicateFlights(newFlights, existingFlights = []) {
 
   for (const newFlight of newFlights) {
     const bookingRef = newFlight.bookingReference?.toLowerCase()?.trim();
-    const flightNum = newFlight.flightNumber?.toLowerCase()?.trim();
+    const flightNum  = newFlight.flightNumber?.toLowerCase()?.trim();
     const flightDate = newFlight.date;
 
-    // Check if flight with same booking ref, flight number and date exists in trip
-    const existingFlight = existingFlights.find(f =>
-      f.bookingReference?.toLowerCase()?.trim() === bookingRef &&
-      f.flightNumber?.toLowerCase()?.trim() === flightNum &&
-      f.date === flightDate
-    );
+    // PRIMARY MATCH: bookingRef + flightNumber + date (all three must be present and match)
+    let existingFlight = (bookingRef && flightNum && flightDate)
+      ? existingFlights.find(f =>
+          f.bookingReference?.toLowerCase()?.trim() === bookingRef &&
+          f.flightNumber?.toLowerCase()?.trim()    === flightNum &&
+          f.date === flightDate
+        )
+      : null;
+
+    // SECONDARY MATCH: bookingRef only — used when the new document (e.g. email
+    // confirmation) is missing flightNumber or date but shares a booking reference
+    // with an existing flight. In this case we enrich the existing record instead
+    // of creating a duplicate.
+    let isSecondaryMatch = false;
+    if (!existingFlight && bookingRef && (!flightNum || !flightDate)) {
+      existingFlight = existingFlights.find(f =>
+        f.bookingReference?.toLowerCase()?.trim() === bookingRef
+      );
+      if (existingFlight) isSecondaryMatch = true;
+    }
 
     if (existingFlight) {
-      // Flight exists in trip - aggregate passenger if new
+      // Merge any new fields (price, seat, gate, etc.) from the supplementary doc
+      mergeFlightFields(existingFlight, newFlight);
+
+      // Aggregate passenger if present and not already listed
       if (newFlight.passenger) {
         existingFlight.passengers = buildPassengersArray(existingFlight);
         const alreadyHasPassenger = existingFlight.passengers.some(p =>
@@ -95,28 +128,58 @@ function deduplicateFlights(newFlights, existingFlights = []) {
         if (!alreadyHasPassenger) {
           existingFlight.passengers.push(buildPassengerEntry(newFlight.passenger, newFlight));
           existingFlight._needsPdfUpload = true;
-          console.log(`Added passenger ${newFlight.passenger.name} to existing flight ${flightNum} on ${flightDate}`);
-        } else {
+          console.log(`Added passenger ${newFlight.passenger.name} to existing flight ${existingFlight.flightNumber || bookingRef}`);
+        } else if (!isSecondaryMatch) {
           console.log(`Skipping duplicate flight: ${flightNum} on ${flightDate}`);
           skippedFlights++;
         }
-      } else {
+      } else if (!isSecondaryMatch) {
         console.log(`Skipping duplicate flight: ${flightNum} on ${flightDate}`);
         skippedFlights++;
       }
+
+      if (isSecondaryMatch) {
+        existingFlight._needsPdfUpload = true;
+        console.log(`Merged supplementary doc (bookingRef: ${bookingRef}) into flight ${existingFlight.flightNumber}`);
+      }
+
     } else {
-      // Check if already in deduplicatedFlights (from same upload batch)
-      const alreadyAdded = deduplicatedFlights.find(f =>
-        f.bookingReference?.toLowerCase()?.trim() === bookingRef &&
-        f.flightNumber?.toLowerCase()?.trim() === flightNum &&
-        f.date === flightDate
-      );
+      // PRIMARY MATCH within current upload batch
+      let alreadyAdded = (bookingRef && flightNum && flightDate)
+        ? deduplicatedFlights.find(f =>
+            f.bookingReference?.toLowerCase()?.trim() === bookingRef &&
+            f.flightNumber?.toLowerCase()?.trim()    === flightNum &&
+            f.date === flightDate
+          )
+        : null;
+
+      // SECONDARY MATCH within batch
+      if (!alreadyAdded && bookingRef && (!flightNum || !flightDate)) {
+        alreadyAdded = deduplicatedFlights.find(f =>
+          f.bookingReference?.toLowerCase()?.trim() === bookingRef
+        );
+        if (alreadyAdded) {
+          mergeFlightFields(alreadyAdded, newFlight);
+          if (newFlight.passenger) {
+            alreadyAdded.passengers = buildPassengersArray(alreadyAdded);
+            const alreadyHasPassenger = alreadyAdded.passengers.some(p =>
+              (p.ticketNumber && newFlight.passenger.ticketNumber && p.ticketNumber === newFlight.passenger.ticketNumber) ||
+              (p.name && newFlight.passenger.name && p.name === newFlight.passenger.name)
+            );
+            if (!alreadyHasPassenger) {
+              alreadyAdded.passengers.push(buildPassengerEntry(newFlight.passenger, newFlight));
+            }
+          }
+          console.log(`Merged supplementary doc into batch flight ${alreadyAdded.flightNumber || bookingRef}`);
+          continue;
+        }
+      }
+
       if (!alreadyAdded) {
-        // First occurrence - initialize passengers array
         newFlight.passengers = buildPassengersArray(newFlight);
         deduplicatedFlights.push(newFlight);
       } else {
-        // Aggregate passenger to flight in batch
+        // Aggregate passenger to primary-matched batch flight
         if (newFlight.passenger) {
           alreadyAdded.passengers = buildPassengersArray(alreadyAdded);
           const alreadyHasPassenger = alreadyAdded.passengers.some(p =>
