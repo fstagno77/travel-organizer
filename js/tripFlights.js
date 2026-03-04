@@ -65,20 +65,20 @@
         <div class="empty-state">
           <h3 class="empty-state-title" data-i18n="trip.noFlights">No flights</h3>
           <p class="empty-state-text" data-i18n="trip.noFlightsText">No flight information available</p>
-        </div>
-        <div class="quick-upload-card" id="quick-upload-flights">
-          <input type="file" class="quick-upload-input" accept=".pdf" hidden>
-          <svg class="quick-upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="17 8 12 3 7 8"></polyline>
-            <line x1="12" y1="3" x2="12" y2="15"></line>
-          </svg>
-          <div class="quick-upload-spinner"></div>
-          <span class="quick-upload-text" data-i18n="${i18n.isTouchDevice() ? 'trip.quickUploadHintMobile' : 'trip.quickUploadHint'}">Drop a PDF here to add a booking</span>
+          <button class="btn btn-primary empty-state-cta" id="empty-add-flight">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <span data-i18n="trip.addBooking">Add booking</span>
+          </button>
         </div>
       `;
       i18n.apply(container);
-      window.tripPage.initQuickUploadCard('quick-upload-flights');
+      const addBtn = container.querySelector('#empty-add-flight');
+      if (addBtn) {
+        addBtn.addEventListener('click', () => {
+          const tripId = new URLSearchParams(window.location.search).get('id');
+          if (tripId) window.tripPage.showAddBookingModal(tripId);
+        });
+      }
       return;
     }
 

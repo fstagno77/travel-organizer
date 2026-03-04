@@ -149,6 +149,15 @@ exports.handler = async (event, context) => {
       case 'list-pdf-logs':
         result = await listPdfLogs(serviceClient, body);
         break;
+      case 'pdf-log-stats':
+        result = await getPdfLogStats(serviceClient);
+        break;
+      case 'clear-pdf-logs':
+        result = await clearPdfLogs(serviceClient, user.id);
+        break;
+      case 'get-trip-files':
+        result = await getTripFiles(serviceClient, body);
+        break;
       case 'analyze-pdf-admin':
         result = await analyzePdfAdmin(body);
         break;
@@ -533,6 +542,29 @@ async function deletePendingBooking(sc, { bookingId }, adminId) {
   await logAdminAction(sc, adminId, 'delete_pending_booking', 'pending_booking', bookingId);
 
   return { deleted: true };
+}
+
+// ============================================
+// Trip Files (signed URLs for download)
+// ============================================
+
+async function getTripFiles(sc, { tripId }) {
+  if (!tripId) throw new Error('tripId is required');
+  const { data: files } = await sc.storage.from('trip-pdfs').list(tripId);
+  if (!files || files.length === 0) return { files: [] };
+
+  const { data: urls } = await sc.storage.from('trip-pdfs').createSignedUrls(
+    files.map(f => `${tripId}/${f.name}`),
+    600 // 10 minutes
+  );
+
+  return {
+    files: (urls || []).map((u, i) => ({
+      name: files[i].name,
+      signedUrl: u.signedUrl,
+      size: files[i].metadata?.size || 0,
+    }))
+  };
 }
 
 // ============================================
@@ -974,6 +1006,89 @@ async function listPdfLogs(sc, { page = 1, pageSize = 20, status }) {
   return { logs, total: count || 0, page, pageSize };
 }
 
+async function getPdfLogStats(sc) {
+  const { data: logs } = await sc
+    .from('email_processing_log')
+    .select('status, parse_level, parse_meta, created_at')
+    .order('created_at', { ascending: false })
+    .limit(500);
+
+  const stats = {
+    total: (logs || []).length,
+    byLevel: { 1: 0, 2: 0, 4: 0, legacy: 0 },
+    byStatus: { success: 0, error: 0, extraction_failed: 0 },
+    feedback: { up: 0, down: 0 },
+    totalClaudeCalls: 0,
+    totalSaved: 0, // Calls saved by L1/L2
+    avgDurationByLevel: { 1: [], 2: [], 4: [] },
+  };
+
+  for (const log of (logs || [])) {
+    // Status
+    stats.byStatus[log.status] = (stats.byStatus[log.status] || 0) + 1;
+
+    // Parse level
+    const level = log.parse_level;
+    if (level === 1 || level === 2 || level === 4) {
+      stats.byLevel[level]++;
+      if (level === 1 || level === 2) stats.totalSaved++;
+    } else {
+      stats.byLevel.legacy++;
+    }
+
+    // Parse meta
+    const meta = log.parse_meta;
+    if (meta) {
+      if (meta.claudeCalls) stats.totalClaudeCalls += meta.claudeCalls;
+      if (meta.feedback === 'up') stats.feedback.up++;
+      if (meta.feedback === 'down') stats.feedback.down++;
+      if (meta.durationMs && level) {
+        if (stats.avgDurationByLevel[level]) {
+          stats.avgDurationByLevel[level].push(meta.durationMs);
+        }
+      }
+    }
+  }
+
+  // Compute averages
+  for (const level of [1, 2, 4]) {
+    const arr = stats.avgDurationByLevel[level];
+    stats.avgDurationByLevel[level] = arr.length > 0
+      ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length)
+      : 0;
+  }
+
+  // Claude savings percentage
+  const smartParseTotal = stats.byLevel[1] + stats.byLevel[2] + stats.byLevel[4];
+  stats.claudeSavingsPercent = smartParseTotal > 0
+    ? Math.round((stats.totalSaved / smartParseTotal) * 100)
+    : 0;
+
+  return { stats };
+}
+
+async function clearPdfLogs(sc, adminUserId) {
+  const { count } = await sc
+    .from('email_processing_log')
+    .select('*', { count: 'exact', head: true });
+
+  const { error } = await sc
+    .from('email_processing_log')
+    .delete()
+    .gte('created_at', '1970-01-01'); // match all rows
+
+  if (error) throw error;
+
+  // Audit log
+  await sc.from('admin_audit_log').insert({
+    admin_user_id: adminUserId,
+    action: 'clear_pdf_logs',
+    details: { deletedCount: count || 0 },
+  });
+
+  return { deleted: count || 0 };
+}
+
 // ============================================
 // PDF Analyze (Admin simulation - no save)
 // ============================================
@@ -1002,12 +1117,16 @@ async function analyzePdfAdmin({ pdfBase64, docType }) {
 // SmartParse v2 — L1 Cache + L4 Claude Only
 // ============================================
 
-async function analyzePdfSmart({ pdfBase64, docType }) {
+async function analyzePdfSmart({ pdfBase64, docType, mode }) {
   if (!pdfBase64) throw new Error('pdfBase64 is required');
-  if (!['flight', 'hotel', 'auto'].includes(docType)) throw new Error('docType must be "flight", "hotel", or "auto"');
+  const validMode = mode === 'beta' ? 'beta' : 'live';
+  const allowedDocTypes = validMode === 'beta'
+    ? ['flight', 'hotel', 'train', 'bus', 'auto']
+    : ['flight', 'hotel', 'auto'];
+  if (!allowedDocTypes.includes(docType)) throw new Error(`docType must be one of: ${allowedDocTypes.join(', ')}`);
 
   const { parseDocumentSmart } = require('./utils/smartParser');
-  const parseResult = await parseDocumentSmart(pdfBase64, docType);
+  const parseResult = await parseDocumentSmart(pdfBase64, docType, validMode);
 
   return {
     result:          parseResult.result,
@@ -1022,7 +1141,8 @@ async function analyzePdfSmart({ pdfBase64, docType }) {
     textLength:      parseResult.textLength ?? 0,
     timedOut:        parseResult.timedOut ?? false,
     error:           parseResult.error ?? null,
-    isBeta:          true
+    mode:            validMode,
+    isBeta:          validMode === 'beta'
   };
 }
 

@@ -35,7 +35,8 @@
     "new": "Nuovo Viaggio",
     "newShort": "Viaggio",
     "createTitle": "Crea nuovo viaggio",
-    "uploadHint": "Trascina qui i PDF o clicca per selezionare",
+    "previewTitle": "Nuovo Viaggio",
+    "uploadHint": "Trascina qui un PDF o clicca per selezionare",
     "uploadHintMobile": "Tocca per selezionare un PDF",
     "quickUploadHint": "Trascina qui un PDF per aggiungere una prenotazione",
     "quickUploadHintMobile": "Tocca per aggiungere una prenotazione",
@@ -115,7 +116,24 @@
     "editBooking": "Modifica",
     "deleteBooking": "Elimina",
     "confirmDelete": "Confermi l'eliminazione?",
-    "confirmDeleteBtn": "Elimina"
+    "confirmDeleteBtn": "Elimina",
+    "manualName": "Nome del viaggio",
+    "manualNamePlaceholder": "es. Giappone 2026",
+    "manualStartDate": "Data inizio",
+    "manualEndDate": "Data fine",
+    "manualCities": "Città (opzionale)",
+    "citySearchPlaceholder": "Cerca una città...",
+    "orUploadPdf": "oppure aggiungi un documento di prenotazione",
+    "endDateError": "La data di fine deve essere dopo la data di inizio",
+    "cityAlreadyAdded": "Città già presente",
+    "manualHint": "Crea un viaggio vuoto e aggiungi le prenotazioni dopo",
+    "pdfHint": "Carica una conferma di volo o hotel per iniziare",
+    "dateExtendTitle": "Modifica date del viaggio",
+    "dateExtendMessage": "La prenotazione ha date fuori dal periodo del viaggio.",
+    "dateExtendStart": "Anticipare l'inizio da {old} a {new}?",
+    "dateExtendEnd": "Posticipare la fine da {old} a {new}?",
+    "dateExtendConfirm": "Aggiorna date",
+    "dateExtendSkip": "Mantieni date attuali"
   },
   "modal": {
     "cancel": "Annulla",
@@ -456,7 +474,8 @@
     "leaveConfirm": "Sei sicuro di voler lasciare questo viaggio?",
     "leaveSuccess": "Hai lasciato il viaggio",
     "leaveError": "Errore durante l'uscita dal viaggio",
-    "ownerLabel": "di"
+    "ownerLabel": "di",
+    "copyInviteLink": "Copia il link e condividilo con"
   },
   "notifications": {
     "title": "Notifiche",

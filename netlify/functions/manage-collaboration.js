@@ -270,8 +270,9 @@ async function handleInvite(serviceClient, user, { tripId, email, role }, header
         });
     }
 
-    // Send invite email via Supabase
-    await sendInviteEmail(serviceClient, email, token, user, tripId);
+    // Build invite URL for the caller to share manually (WhatsApp, email, etc.)
+    const siteUrl = process.env.URL || 'https://travel-flow.com';
+    const inviteUrl = `${siteUrl}/index.html?invite=${token}`;
 
     return {
       statusCode: 200,
@@ -279,6 +280,7 @@ async function handleInvite(serviceClient, user, { tripId, email, role }, header
       body: JSON.stringify({
         success: true,
         status: 'invite_sent',
+        inviteUrl,
         invitation: {
           email,
           role,
@@ -629,8 +631,9 @@ async function handleResendInvite(serviceClient, user, { invitationId }, headers
     };
   }
 
-  // Resend email
-  await sendInviteEmail(serviceClient, invite.email, invite.token, user, invite.trip_id);
+  // Build invite URL for the caller to share manually
+  const siteUrl = process.env.URL || 'https://travel-flow.com';
+  const inviteUrl = `${siteUrl}/index.html?invite=${invite.token}`;
 
   // Update timestamp
   await serviceClient
@@ -641,7 +644,7 @@ async function handleResendInvite(serviceClient, user, { invitationId }, headers
   return {
     statusCode: 200,
     headers,
-    body: JSON.stringify({ success: true })
+    body: JSON.stringify({ success: true, inviteUrl })
   };
 }
 

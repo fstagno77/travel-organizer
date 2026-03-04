@@ -282,6 +282,25 @@ const HOTEL_SCHEMA = `{
     "source":"Provider"}]
 }`;
 
+const TRAIN_SCHEMA = `{
+  "trains": [{"date":"YYYY-MM-DD","trainNumber":"FR9876","operator":"Trenitalia",
+    "departure":{"station":"Roma Termini","city":"Roma","time":"HH:MM"},
+    "arrival":{"station":"Milano Centrale","city":"Milano","time":"HH:MM"},
+    "class":"Standard","seat":"12A","coach":"5",
+    "bookingReference":"XXXXXX","ticketNumber":null,
+    "price":{"value":0,"currency":"EUR"}}],
+  "passenger":{"name":"FULL NAME"}
+}`;
+
+const BUS_SCHEMA = `{
+  "buses": [{"date":"YYYY-MM-DD","operator":"FlixBus","routeNumber":"N123",
+    "departure":{"station":"Roma Tiburtina","city":"Roma","time":"HH:MM"},
+    "arrival":{"station":"Napoli","city":"Napoli","time":"HH:MM"},
+    "seat":null,"bookingReference":"XXXXXX",
+    "price":{"value":0,"currency":"EUR"}}],
+  "passenger":{"name":"FULL NAME"}
+}`;
+
 // ─── System prompt (≥1024 tokens for prompt caching) ────────────────────────
 
 const SYSTEM_PROMPT = `You are a specialized travel document parser. Your task is to extract structured data from travel documents (flight bookings, hotel reservations) and return ONLY valid JSON.
@@ -359,23 +378,85 @@ ${FLIGHT_SCHEMA}
 ### Hotel document:
 ${HOTEL_SCHEMA}`;
 
+// ─── Beta system prompt — extends live with train/bus types ─────────────────
+
+const BETA_SYSTEM_PROMPT = SYSTEM_PROMPT
+  // Extend document type detection to include train/bus
+  .replace(
+    'determine if it\'s a flight or hotel booking.\nSet "_docType" to "flight" or "hotel" accordingly.',
+    'determine the document type.\nSet "_docType" to "flight", "hotel", "train", or "bus" accordingly.'
+  )
+  // Add mandatory fields for trains and buses
+  .replace(
+    '## IMPORTANT OPTIONAL FIELDS',
+    `### For TRAINS:
+- trainNumber: train code (e.g., FR9876, IC1234)
+- date: travel date in YYYY-MM-DD
+- departure.station: departure station name
+- departure.city: departure city name
+- departure.time: departure time in HH:MM
+- arrival.station: arrival station name
+- arrival.city: arrival city name
+- arrival.time: arrival time in HH:MM
+- operator: train operator (Trenitalia, Italo, SNCF, DB, etc.)
+- bookingReference: booking/PNR reference code
+
+### For BUSES:
+- operator: bus operator (FlixBus, MarinoBus, Itabus, etc.)
+- date: travel date in YYYY-MM-DD
+- departure.station: departure station/stop
+- departure.city: departure city name
+- departure.time: departure time in HH:MM
+- arrival.station: arrival station/stop
+- arrival.city: arrival city name
+- arrival.time: arrival time in HH:MM
+- bookingReference: booking reference code
+
+## IMPORTANT OPTIONAL FIELDS`
+  )
+  // Add train/bus schemas after hotel schema
+  + `
+
+### Train document:
+${TRAIN_SCHEMA}
+
+### Bus document:
+${BUS_SCHEMA}`;
+
 // ─── Claude API call with prompt caching ────────────────────────────────────
 
-async function parseWithClaude(pdfBase64, docType, extractedText = '') {
+const BETA_DOC_TYPES = ['flight', 'hotel', 'train', 'bus'];
+const LIVE_DOC_TYPES = ['flight', 'hotel'];
+
+function getSchemaForDocType(docType) {
+  switch (docType) {
+    case 'hotel': return HOTEL_SCHEMA;
+    case 'train': return TRAIN_SCHEMA;
+    case 'bus':   return BUS_SCHEMA;
+    default:      return FLIGHT_SCHEMA;
+  }
+}
+
+async function parseWithClaude(pdfBase64, docType, extractedText = '', betaMode = false) {
   const client = new Anthropic();
   const useTextMode = extractedText.length > 200;
+  const systemPrompt = betaMode ? BETA_SYSTEM_PROMPT : SYSTEM_PROMPT;
+  const validTypes = betaMode ? BETA_DOC_TYPES : LIVE_DOC_TYPES;
 
   let userPrompt;
   if (docType === 'auto') {
-    userPrompt = `Detect if this document is a FLIGHT or HOTEL booking.
-Set "_docType" to "flight" or "hotel", then include only the fields for the detected type.
+    const typeList = validTypes.join(' or ').toUpperCase();
+    const ifBlocks = validTypes.map(t =>
+      `If ${t.toUpperCase()}, return: { "_docType": "${t}", ${getSchemaForDocType(t).slice(1)}`
+    ).join('\n');
+    userPrompt = `Detect if this document is a ${typeList} booking.
+Set "_docType" to one of ${JSON.stringify(validTypes)}, then include only the fields for the detected type.
 
-If FLIGHT, return: { "_docType": "flight", ${FLIGHT_SCHEMA.slice(1)}
-If HOTEL, return: { "_docType": "hotel", ${HOTEL_SCHEMA.slice(1)}
+${ifBlocks}
 
 Return ONLY valid JSON, no extra text.`;
   } else {
-    const schema = docType === 'hotel' ? HOTEL_SCHEMA : FLIGHT_SCHEMA;
+    const schema = getSchemaForDocType(docType);
     userPrompt = `Extract travel data from this ${docType} document.
 Return ONLY valid JSON matching this schema:
 ${schema}`;
@@ -405,7 +486,7 @@ ${schema}`;
         system: [
           {
             type: 'text',
-            text: SYSTEM_PROMPT,
+            text: systemPrompt,
             cache_control: { type: 'ephemeral' }
           }
         ],
@@ -466,8 +547,11 @@ ${schema}`;
   const { _rawText, _docType, ...result } = parsed;
   normalizeFlightFields(result);
 
-  const detectedDocType = typeof _docType === 'string' && ['flight', 'hotel'].includes(_docType) ? _docType : null;
-  console.log(`[SmartParse] Claude done, docType: ${detectedDocType}, flights: ${result.flights?.length || 0}, hotels: ${result.hotels?.length || 0}`);
+  const allowedDocTypes = betaMode ? BETA_DOC_TYPES : LIVE_DOC_TYPES;
+  const detectedDocType = typeof _docType === 'string' && allowedDocTypes.includes(_docType) ? _docType : null;
+  const trains = result.trains?.length || 0;
+  const buses = result.buses?.length || 0;
+  console.log(`[SmartParse] Claude done, docType: ${detectedDocType}, flights: ${result.flights?.length || 0}, hotels: ${result.hotels?.length || 0}${trains ? `, trains: ${trains}` : ''}${buses ? `, buses: ${buses}` : ''}`);
 
   return { result, detectedDocType };
 }
@@ -475,6 +559,7 @@ ${schema}`;
 // ─── Main cascade: L1 → L2 → L4 ────────────────────────────────────────────
 
 async function _parseDocumentSmartInternal(pdfBase64, docType, mode = 'auto', skipLearn = false) {
+  const betaMode = mode === 'beta';
   const t0 = Date.now();
 
   // --- Extract text (pdf-parse) for fingerprinting ---
@@ -571,7 +656,7 @@ async function _parseDocumentSmartInternal(pdfBase64, docType, mode = 'auto', sk
   let result, detectedDocType;
 
   try {
-    const claude = await parseWithClaude(pdfBase64, docType, extractedText);
+    const claude = await parseWithClaude(pdfBase64, docType, extractedText, betaMode);
     result = claude.result;
     detectedDocType = claude.detectedDocType;
   } catch (err) {

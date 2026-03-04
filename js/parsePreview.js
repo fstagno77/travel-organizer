@@ -1,0 +1,532 @@
+/**
+ * Parse Preview — Shared module for rendering SmartParse extraction results
+ * Used by tripCreator.js (new trip) and tripPage.js (add booking)
+ */
+
+const parsePreview = {
+  _feedback: null, // 'up' | 'down' | null
+  _editing: false,
+  _parsedResults: null,
+  _editedFields: [], // ['flight[0].flightNumber', 'hotel[0].checkIn', ...]
+  _activeSegment: 0,
+  _segments: [], // { type: 'flight'|'hotel', index, label, icon }
+
+  /**
+   * Render extraction preview into a container element.
+   * @param {HTMLElement} container - The modal body element
+   * @param {Array} parsedResults - Array from parse-pdf endpoint
+   * @param {Object} options - { onConfirm(feedback, parsedResults), onCancel() }
+   */
+  render(container, parsedResults, { onConfirm, onCancel }) {
+    this._feedback = null;
+    this._editing = false;
+    this._parsedResults = parsedResults;
+    this._editedFields = [];
+    this._activeSegment = 0;
+
+    const allFlights = [];
+    const allHotels = [];
+    let passenger = null;
+    let booking = null;
+
+    for (const pr of parsedResults) {
+      if (!pr.result) continue;
+      if (pr.result.flights) allFlights.push(...pr.result.flights);
+      if (pr.result.hotels) allHotels.push(...pr.result.hotels);
+      if (pr.result.passenger && !passenger) passenger = pr.result.passenger;
+      if (pr.result.booking && !booking) booking = pr.result.booking;
+    }
+
+    // Build segments list
+    this._segments = [];
+    allFlights.forEach((f, i) => {
+      const dep = f.departure?.code || '?';
+      const arr = f.arrival?.code || '?';
+      this._segments.push({ type: 'flight', index: i, label: `${dep}→${arr}`, icon: 'flight' });
+    });
+    allHotels.forEach((h, i) => {
+      const name = h.name || 'Hotel';
+      const short = name.length > 16 ? name.substring(0, 14) + '…' : name;
+      this._segments.push({ type: 'hotel', index: i, label: short, icon: 'hotel' });
+    });
+
+    const totalItems = this._segments.length;
+
+    let html = `<div class="parse-preview">`;
+
+    // ── Booking (top, above segmented) ──
+    if (booking) {
+      html += `<div class="parse-preview-booking">`;
+      html += `<div class="parse-section-header"><span>Prenotazione</span></div>`;
+      html += `<div class="parse-detail-grid">`;
+      html += this._field('PNR', booking.reference || booking.bookingReference, 'booking.reference');
+      html += this._field('Biglietto', booking.ticketNumber, 'booking.ticketNumber');
+      html += this._field('Data emissione', this._fmtDate(booking.issueDate), 'booking.issueDate', 'date', booking.issueDate);
+      html += this._field('Importo', this._resolvePrice(booking.totalAmount), 'booking.totalAmount');
+      html += `</div></div>`;
+    }
+
+    // ── Passenger (top, if document-level, not per-flight) ──
+    if (passenger && allFlights.length === 0) {
+      html += `<div class="parse-preview-booking">`;
+      html += `<div class="parse-section-header"><span>Passeggero</span></div>`;
+      html += `<div class="parse-detail-grid">`;
+      html += this._field('Nome', passenger.name, 'passenger.name');
+      html += this._field('Tipo', passenger.type, 'passenger.type');
+      html += this._field('Biglietto', passenger.ticketNumber, 'passenger.ticketNumber');
+      html += `</div></div>`;
+    }
+
+    // ── Segmented control (only if >1 item) ──
+    if (totalItems > 1) {
+      html += `<div class="parse-segmented">`;
+      this._segments.forEach((seg, i) => {
+        html += `<button class="parse-segment-btn${i === 0 ? ' active' : ''}" data-segment="${i}">
+          ${this._esc(seg.label)}
+        </button>`;
+      });
+      html += `</div>`;
+    }
+
+    // ── Content panels ──
+    html += `<div class="parse-panels">`;
+
+    allFlights.forEach((f, i) => {
+      const segIdx = i; // flights come first in segments
+      const depCode = f.departure?.code || '?';
+      const arrCode = f.arrival?.code || '?';
+      const depCity = f.departure?.city || '';
+      const arrCity = f.arrival?.city || '';
+      const depTime = f.departureTime || '';
+      const arrTime = f.arrivalTime || '';
+
+      html += `<div class="parse-panel${segIdx === 0 ? ' active' : ''}" data-panel="${segIdx}">`;
+      html += `<div class="parse-flight-card" data-type="flight" data-index="${i}">`;
+      html += `<div class="parse-flight-route">
+        <div class="parse-flight-endpoint">
+          <span class="parse-flight-code">${this._esc(depCode)}</span>
+          <span class="parse-flight-city">${this._esc(depCity)}</span>
+          ${depTime ? `<span class="parse-flight-time">${this._esc(depTime)}</span>` : ''}
+        </div>
+        <div class="parse-flight-arrow">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </div>
+        <div class="parse-flight-endpoint">
+          <span class="parse-flight-code">${this._esc(arrCode)}</span>
+          <span class="parse-flight-city">${this._esc(arrCity)}</span>
+          ${arrTime ? `<span class="parse-flight-time">${this._esc(arrTime)}</span>` : ''}
+        </div>
+      </div>`;
+
+      html += `<div class="parse-detail-grid">`;
+      html += this._field('Volo', f.flightNumber, 'flightNumber');
+      html += this._field('Compagnia', f.airline, 'airline');
+      html += this._field('Data', this._fmtDate(f.date), 'date', 'date', f.date);
+      html += this._field('Classe', f.class, 'class');
+      html += this._field('Passeggero', f.passenger?.name, 'passenger.name');
+      html += this._field('PNR', f.bookingReference, 'bookingReference');
+      html += this._field('Biglietto', f.ticketNumber || f.passenger?.ticketNumber, 'ticketNumber');
+      html += this._field('Posto', f.seat, 'seat');
+      html += this._field('Bagaglio', this._resolveBaggage(f.baggage), 'baggage');
+      html += this._field('Stato', f.status, 'status');
+      html += `</div>`;
+      html += `</div>`;
+      html += `</div>`;
+    });
+
+    allHotels.forEach((h, i) => {
+      const segIdx = allFlights.length + i;
+      const name = h.name || 'Hotel';
+      const checkIn = this._resolveDate(h.checkIn);
+      const checkOut = this._resolveDate(h.checkOut);
+      const address = this._resolveAddress(h.address);
+      const price = this._resolvePrice(h.price);
+      const roomType = this._resolveRoomType(h.roomTypes || h.roomType);
+      const guests = this._resolveGuests(h.guests);
+      const breakfast = this._resolveBreakfast(h.breakfast);
+      const cancellation = this._resolveCancellation(h.cancellation);
+
+      html += `<div class="parse-panel${segIdx === 0 ? ' active' : ''}" data-panel="${segIdx}">`;
+      html += `<div class="parse-hotel-card" data-type="hotel" data-index="${i}">`;
+      html += `<div class="parse-hotel-name">${this._esc(name)}</div>`;
+      if (address) html += `<div class="parse-hotel-address">${this._esc(address)}</div>`;
+
+      html += `<div class="parse-detail-grid">`;
+      html += this._field('Check-in', this._fmtDate(checkIn), 'checkIn', 'date', checkIn);
+      html += this._field('Check-out', this._fmtDate(checkOut), 'checkOut', 'date', checkOut);
+      html += this._field('Notti', h.nights, 'nights', 'number');
+      html += this._field('Camera', roomType, 'roomType');
+      html += this._field('Ospiti', guests, 'guests');
+      html += this._field('Nome ospite', h.guestName, 'guestName');
+      html += this._field('Prezzo', price, 'price');
+      html += this._field('Conferma', h.confirmationNumber, 'confirmationNumber');
+      html += this._field('Colazione', breakfast, 'breakfast');
+      html += this._field('Cancellazione', cancellation, 'cancellation');
+      html += this._field('Fonte', h.source, 'source');
+      html += `</div>`;
+      html += `</div>`;
+      html += `</div>`;
+    });
+
+    html += `</div>`; // .parse-panels
+
+    // ── Feedback + Actions ──
+    html += `<div class="parse-preview-footer">`;
+    html += `<div class="parse-preview-feedback">`;
+    html += `<span class="parse-feedback-label">Estrazione corretta?</span>`;
+    html += `<button class="parse-feedback-btn" data-value="up" title="Corretta">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+    </button>`;
+    html += `<button class="parse-feedback-btn" data-value="down" title="Non corretta">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10zM17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/></svg>
+    </button>`;
+    html += `</div>`;
+    html += `<div class="parse-preview-actions">`;
+    html += `<button class="btn btn-secondary parse-cancel-btn">Annulla</button>`;
+    html += `<div class="parse-actions-right">`;
+    html += `<button class="btn btn-outline parse-edit-btn">Modifica</button>`;
+    html += `<button class="btn btn-primary parse-confirm-btn">Conferma e salva</button>`;
+    html += `</div>`;
+    html += `</div>`;
+    html += `</div>`;
+
+    html += `</div>`;
+
+    container.innerHTML = html;
+
+    // ── Event listeners ──
+    container.querySelector('.parse-confirm-btn').addEventListener('click', () => {
+      if (this._editing) {
+        this._applyEdits(container);
+      }
+      onConfirm(this._feedback, this._parsedResults, this._editedFields);
+    });
+    container.querySelector('.parse-cancel-btn').addEventListener('click', () => {
+      onCancel();
+    });
+    container.querySelector('.parse-edit-btn').addEventListener('click', () => {
+      this._toggleEditMode(container);
+    });
+
+    // Feedback buttons
+    container.querySelectorAll('.parse-feedback-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const value = btn.dataset.value;
+        if (this._feedback === value) {
+          this._feedback = null;
+        } else {
+          this._feedback = value;
+        }
+        container.querySelectorAll('.parse-feedback-btn').forEach(b => {
+          b.classList.toggle('active', b.dataset.value === this._feedback);
+        });
+      });
+    });
+
+    // Segmented control
+    container.querySelectorAll('.parse-segment-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.dataset.segment);
+        this._switchSegment(container, idx);
+      });
+    });
+  },
+
+  _switchSegment(container, idx) {
+    this._activeSegment = idx;
+    container.querySelectorAll('.parse-segment-btn').forEach(b => {
+      b.classList.toggle('active', parseInt(b.dataset.segment) === idx);
+    });
+    container.querySelectorAll('.parse-panel').forEach(p => {
+      p.classList.toggle('active', parseInt(p.dataset.panel) === idx);
+    });
+  },
+
+  // ── Edit mode ──
+
+  _toggleEditMode(container) {
+    this._editing = !this._editing;
+    const editBtn = container.querySelector('.parse-edit-btn');
+    const preview = container.querySelector('.parse-preview');
+
+    if (this._editing) {
+      editBtn.textContent = 'Fine modifica';
+      preview.classList.add('parse-editing');
+      // Convert field values to inputs
+      container.querySelectorAll('.parse-field-value').forEach(el => {
+        const currentText = el.textContent;
+        const fieldKey = el.dataset.field || '';
+        const inputType = el.dataset.inputType || 'text';
+        const rawValue = el.dataset.raw || '';
+        const input = document.createElement('input');
+        input.className = 'parse-field-input';
+        input.dataset.field = fieldKey;
+        input.dataset.original = currentText;
+
+        if (inputType === 'date') {
+          input.type = 'date';
+          input.value = rawValue || '';
+          input.dataset.rawOriginal = rawValue || '';
+        } else if (inputType === 'number') {
+          input.type = 'number';
+          input.min = '0';
+          input.value = currentText;
+        } else {
+          input.type = 'text';
+          input.value = currentText;
+        }
+        el.replaceWith(input);
+      });
+      // Make hotel name editable
+      container.querySelectorAll('.parse-hotel-name').forEach(el => {
+        const currentText = el.textContent;
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'parse-field-input parse-hotel-name-input';
+        input.value = currentText;
+        input.dataset.field = 'name';
+        input.dataset.original = currentText;
+        el.replaceWith(input);
+      });
+      // Make hotel address editable
+      container.querySelectorAll('.parse-hotel-address').forEach(el => {
+        const currentText = el.textContent;
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'parse-field-input parse-hotel-address-input';
+        input.value = currentText;
+        input.dataset.field = 'address';
+        input.dataset.original = currentText;
+        el.replaceWith(input);
+      });
+    } else {
+      this._applyEdits(container);
+      editBtn.textContent = 'Modifica';
+      preview.classList.remove('parse-editing');
+      // Convert inputs back to display elements
+      container.querySelectorAll('.parse-field-input').forEach(input => {
+        const fieldKey = input.dataset.field || '';
+        if (input.classList.contains('parse-hotel-name-input')) {
+          const div = document.createElement('div');
+          div.className = 'parse-hotel-name';
+          div.textContent = input.value;
+          input.replaceWith(div);
+        } else if (input.classList.contains('parse-hotel-address-input')) {
+          const div = document.createElement('div');
+          div.className = 'parse-hotel-address';
+          div.textContent = input.value;
+          input.replaceWith(div);
+        } else {
+          const div = document.createElement('div');
+          div.className = 'parse-field-value';
+          div.dataset.field = fieldKey;
+          // Format date values back to readable display
+          if (input.type === 'date' && input.value) {
+            div.textContent = this._fmtDate(input.value) || input.value;
+            div.dataset.inputType = 'date';
+            div.dataset.raw = input.value;
+          } else if (input.type === 'number') {
+            div.textContent = input.value;
+            div.dataset.inputType = 'number';
+          } else {
+            div.textContent = input.value;
+          }
+          input.replaceWith(div);
+        }
+      });
+    }
+  },
+
+  _applyEdits(container) {
+    // Walk through each card and update the parsedResults
+    this._editedFields = [];
+    let flightIdx = 0;
+    let hotelIdx = 0;
+
+    for (const pr of this._parsedResults) {
+      if (!pr.result) continue;
+
+      if (pr.result.flights) {
+        for (const flight of pr.result.flights) {
+          const card = container.querySelector(`.parse-flight-card[data-index="${flightIdx}"]`);
+          if (card) this._applyCardEdits(card, flight, `flight[${flightIdx}]`);
+          flightIdx++;
+        }
+      }
+
+      if (pr.result.hotels) {
+        for (const hotel of pr.result.hotels) {
+          const card = container.querySelector(`.parse-hotel-card[data-index="${hotelIdx}"]`);
+          if (card) {
+            // Hotel name
+            const nameInput = card.querySelector('.parse-hotel-name-input');
+            if (nameInput && nameInput.value !== nameInput.dataset.original) {
+              hotel.name = nameInput.value;
+              this._editedFields.push(`hotel[${hotelIdx}].name`);
+            }
+            // Hotel address
+            const addrInput = card.querySelector('.parse-hotel-address-input');
+            if (addrInput && addrInput.value !== addrInput.dataset.original) {
+              if (typeof hotel.address === 'object') hotel.address.fullAddress = addrInput.value;
+              else hotel.address = addrInput.value;
+              this._editedFields.push(`hotel[${hotelIdx}].address`);
+            }
+            this._applyCardEdits(card, hotel, `hotel[${hotelIdx}]`);
+          }
+          hotelIdx++;
+        }
+      }
+    }
+  },
+
+  _applyCardEdits(card, dataObj, prefix) {
+    const inputs = card.querySelectorAll('.parse-field-input:not(.parse-hotel-name-input):not(.parse-hotel-address-input)');
+    inputs.forEach(input => {
+      const field = input.dataset.field;
+      if (!field) return;
+      let newVal = input.value.trim();
+      let changed = false;
+
+      // For date inputs, use YYYY-MM-DD value directly
+      if (input.type === 'date') {
+        changed = newVal !== (input.dataset.rawOriginal || '');
+      } else if (input.type === 'number') {
+        newVal = newVal ? Number(newVal) : newVal;
+        changed = String(newVal) !== input.dataset.original;
+      } else {
+        changed = newVal !== input.dataset.original;
+      }
+
+      if (!changed) return;
+
+      // Track edited field
+      this._editedFields.push(`${prefix}.${field}`);
+
+      // Set nested fields like "passenger.name"
+      const parts = field.split('.');
+      if (parts.length === 2) {
+        if (dataObj[parts[0]]) dataObj[parts[0]][parts[1]] = newVal;
+      } else {
+        dataObj[field] = newVal;
+      }
+    });
+  },
+
+  // ── Helpers ──
+
+  _field(label, value, fieldKey, inputType, rawValue) {
+    if (value == null || value === '' || value === 'null' || value === 'N/A') return '';
+    // Safety: resolve objects that slipped through
+    if (typeof value === 'object') {
+      value = this._resolvePrice(value) || JSON.stringify(value);
+    }
+    const typeAttr = inputType ? ` data-input-type="${inputType}"` : '';
+    const rawAttr = rawValue ? ` data-raw="${this._esc(String(rawValue))}"` : '';
+    return `<div class="parse-field">
+      <div class="parse-field-label">${this._esc(label)}</div>
+      <div class="parse-field-value" data-field="${this._esc(fieldKey || '')}"${typeAttr}${rawAttr}>${this._esc(String(value))}</div>
+    </div>`;
+  },
+
+  _fmtDate(str) {
+    if (!str) return null;
+    try {
+      const d = new Date(str + 'T00:00:00');
+      if (isNaN(d)) return str;
+      const months = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
+      return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+    } catch {
+      return str;
+    }
+  },
+
+  _resolveDate(v) {
+    if (!v) return null;
+    if (typeof v === 'string') return v;
+    if (typeof v === 'object') return v.date || null;
+    return String(v);
+  },
+
+  _resolveAddress(v) {
+    if (!v) return null;
+    if (typeof v === 'string') return v;
+    if (typeof v === 'object') {
+      if (v.fullAddress) return v.fullAddress;
+      const parts = [v.street, v.city, v.postalCode, v.country].filter(Boolean);
+      return parts.length ? parts.join(', ') : null;
+    }
+    return String(v);
+  },
+
+  _resolvePrice(v) {
+    if (!v) return null;
+    if (typeof v === 'number') return String(v);
+    if (typeof v === 'string') return v;
+    if (typeof v === 'object') {
+      const node = v.total || v;
+      if (node.value != null) return `${node.value} ${node.currency || ''}`.trim();
+    }
+    return null;
+  },
+
+  _resolveRoomType(v) {
+    if (!v) return null;
+    if (typeof v === 'string') return v;
+    if (Array.isArray(v) && v.length > 0) return v[0].it || v[0].en || v[0] || null;
+    return null;
+  },
+
+  _resolveGuests(v) {
+    if (!v) return null;
+    if (typeof v === 'string') return v;
+    if (typeof v === 'number') return String(v);
+    if (typeof v === 'object') {
+      const parts = [];
+      if (v.adults) parts.push(`${v.adults} adult${v.adults === 1 ? 'o' : 'i'}`);
+      const cc = Array.isArray(v.children) ? v.children.length : v.children;
+      if (cc) parts.push(`${cc} bambin${cc === 1 ? 'o' : 'i'}`);
+      if (v.pets) parts.push(`${v.pets} animal${v.pets === 1 ? 'e' : 'i'}`);
+      if (v.total && !parts.length) return `${v.total} ospiti`;
+      return parts.join(', ') || null;
+    }
+    return null;
+  },
+
+  _resolveBreakfast(v) {
+    if (v == null) return null;
+    if (typeof v === 'boolean') return v ? 'Inclusa' : 'Non inclusa';
+    if (typeof v === 'string') return v;
+    if (typeof v === 'object') {
+      if (v.included != null) return v.included ? (v.type || 'Inclusa') : 'Non inclusa';
+      return v.type || null;
+    }
+    return null;
+  },
+
+  _resolveCancellation(v) {
+    if (v == null) return null;
+    if (typeof v === 'string') return v;
+    if (typeof v === 'object') {
+      if (v.freeCancellationUntil) return `Gratuita fino al ${v.freeCancellationUntil}`;
+      if (v.policy) return v.policy;
+      if (v.penaltyAfter) return `Penale dopo: ${v.penaltyAfter}`;
+    }
+    return null;
+  },
+
+  _resolveBaggage(v) {
+    if (v == null) return null;
+    if (typeof v === 'string') return v;
+    if (typeof v === 'object') return v.allowance || v.description || v.value || null;
+    return String(v);
+  },
+
+  _esc(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = String(str);
+    return div.innerHTML;
+  }
+};
+
+window.parsePreview = parsePreview;

@@ -11,6 +11,8 @@ import '../tripHotels.js';
 import '../airportAutocomplete.js';
 import '../activityCategories.js';
 import '../tripActivities.js';
+import '../pdfUpload.js';
+import '../parsePreview.js';
 import '../tripCreator.js';
 import '../shareModal.js';
 import '../tripPage.js';

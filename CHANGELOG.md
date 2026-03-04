@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.28 - 2026-03-04
+
+### Fix
+- **Fix invito utenti non registrati**: rimossa la chiamata `inviteUserByEmail` che creava un utente fantasma in `auth.users` causando conflitto con Google OAuth. Ora l'invito genera un link copiabile che l'invitante condivide manualmente (WhatsApp, Telegram, ecc.)
+- **Link invito nel share modal**: dopo aver invitato un utente non registrato, il link di invito appare sotto il nome dell'invitato nella lista collaboratori con pulsante copia
+- **Reinvia invito**: il pulsante "Reinvia" mostra il link copiabile sotto la riga dell'invitato invece di inviare un'email
+
+### Miglioramenti
+- **Open Graph meta tags**: aggiunto supporto per la preview del link su WhatsApp/Telegram (titolo, descrizione, immagine)
+- **SmartParse v2.1**: estrazione template L2 per provider noti (0 chiamate AI per provider già processati)
+- **Admin dashboard**: miglioramenti alla gestione PDF log e statistiche
+- **Trip creator**: miglioramenti al flusso di creazione viaggio
+- **Trip page**: miglioramenti UI e nuove funzionalità
+
 ## 0.27 - 2026-03-01
 
 ### Nuove funzionalità

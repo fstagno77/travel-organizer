@@ -1027,6 +1027,11 @@
     const fileInput = document.getElementById('add-booking-file-input');
 
     let files = [];
+    let _uploadedPdfs = null;
+    let _parsedResults = null;
+    let _editedFields = [];
+    let phraseController = null;
+    let originalBodyContent = null;
 
     const closeModal = () => {
       modal.remove();
@@ -1041,17 +1046,17 @@
       }
       if (pdfFiles.length > 0) {
         files = pdfFiles;
-        submitBooking();
+        parseBooking();
       }
     };
 
-    const submitBooking = async () => {
+    /** Step 1: Upload and parse with SmartParse */
+    const parseBooking = async () => {
       if (files.length === 0) return;
 
-      // Show processing state with rotating phrases
       const modalBody = modal.querySelector('.modal-body');
       const modalFooter = modal.querySelector('.modal-footer');
-      const originalBodyContent = modalBody.innerHTML;
+      originalBodyContent = modalBody.innerHTML;
 
       modalBody.innerHTML = `
         <div class="processing-state">
@@ -1061,18 +1066,106 @@
       `;
       modalFooter.style.display = 'none';
 
-      // Start rotating phrases
       const phraseElement = modalBody.querySelector('.processing-phrase');
-      const phraseController = utils.startLoadingPhrases(phraseElement, 3000);
+      phraseController = utils.startLoadingPhrases(phraseElement, 3000);
 
       try {
-        // Upload files directly to Storage, then send only paths to backend
-        await import('./pdfUpload.js');
         const pdfs = await pdfUpload.uploadFiles(files);
+        _uploadedPdfs = pdfs;
 
+        const response = await utils.authFetch('/.netlify/functions/parse-pdf', {
+          method: 'POST',
+          body: JSON.stringify({ pdfs })
+        });
+
+        let result;
+        try {
+          result = await response.json();
+        } catch {
+          throw Object.assign(new Error('server_error'), { errorCode: `HTTP${response.status}` });
+        }
+
+        if (response.status === 429 || result.errorType === 'rate_limit') {
+          throw new Error('rate_limit');
+        }
+
+        if (!response.ok || !result.success) {
+          throw Object.assign(
+            new Error(result.error || 'Failed to parse PDFs'),
+            { errorCode: result.errorCode }
+          );
+        }
+
+        phraseController.stop();
+        _parsedResults = result.parsedResults;
+
+        // Show preview
+        const modalHeader = modal.querySelector('.modal-header h2');
+        if (modalHeader) {
+          const hasFlights = _parsedResults.some(pr => pr.result?.flights?.length);
+          const hasHotels = _parsedResults.some(pr => pr.result?.hotels?.length);
+          let previewTitle = 'Aggiungi prenotazione';
+          if (hasFlights && hasHotels) previewTitle = 'Voli e Hotel';
+          else if (hasFlights) previewTitle = 'Voli';
+          else if (hasHotels) previewTitle = 'Hotel';
+          modalHeader.textContent = previewTitle;
+        }
+
+        parsePreview.render(modalBody, _parsedResults, {
+          onConfirm: async (feedback, updatedResults, editedFields) => {
+            if (updatedResults) _parsedResults = updatedResults;
+            _editedFields = editedFields || [];
+            let skipDateUpdate = false;
+            const dateExt = checkDateExtension(_parsedResults);
+            if (dateExt) {
+              const shouldExtend = await showDateExtensionDialog(dateExt);
+              if (!shouldExtend) skipDateUpdate = true;
+            }
+            confirmAddBooking(feedback, skipDateUpdate);
+          },
+          onCancel: () => {
+            // Reset to upload state
+            modalBody.innerHTML = originalBodyContent;
+            modalFooter.style.display = '';
+            i18n.apply(modalBody);
+            bindUploadZoneEvents();
+          }
+        });
+
+      } catch (error) {
+        console.error('Error parsing booking:', error);
+        if (phraseController) phraseController.stop();
+        showBookingError(error, modalBody, modalFooter, originalBodyContent);
+      }
+    };
+
+    /** Step 2: Confirm and save */
+    const confirmAddBooking = async (feedback, skipDateUpdate = false) => {
+      const modalBody = modal.querySelector('.modal-body');
+      const modalFooter = modal.querySelector('.modal-footer');
+
+      modalBody.innerHTML = `
+        <div class="processing-state">
+          <div class="spinner"></div>
+          <p class="processing-phrase loading-phrase"></p>
+        </div>
+      `;
+      modalFooter.style.display = 'none';
+
+      const phraseElement = modalBody.querySelector('.processing-phrase');
+      phraseController = utils.startLoadingPhrases(phraseElement, 3000);
+
+      try {
         const response = await utils.authFetch('/.netlify/functions/add-booking', {
           method: 'POST',
-          body: JSON.stringify({ pdfs, tripId })
+          body: JSON.stringify({
+            pdfs: _uploadedPdfs,
+            tripId,
+            parsedData: _parsedResults,
+            feedback,
+            skipDateUpdate,
+            ...(_editedFields.length ? { editedFields: _editedFields } : {})
+          })
         });
 
         let result;
@@ -1083,11 +1176,9 @@
         }
 
         if (!response.ok || !result.success) {
-          // Check for rate limit error
           if (response.status === 429 || result.errorType === 'rate_limit') {
             throw new Error('rate_limit');
           }
-          // Check for duplicate booking error
           if (response.status === 409 || result.errorType === 'duplicate') {
             const error = new Error('duplicate');
             error.tripName = result.tripName;
@@ -1101,11 +1192,8 @@
 
         phraseController.stop();
         closeModal();
-        // Reload trip data
         await loadTripFromUrl();
 
-        // Switch tab: if added from Flights/Hotels, stay on that tab;
-        // if added from Activities, navigate to the corresponding tab
         if (originTab === 'activities' && result.added) {
           if (result.added.hotels > 0) {
             switchToTab('hotels');
@@ -1119,82 +1207,79 @@
         utils.showToast(i18n.t('trip.addSuccess') || 'Booking added', 'success');
       } catch (error) {
         console.error('Error adding booking:', error);
-        phraseController.stop();
+        if (phraseController) phraseController.stop();
 
-        // Show error in modal
-        let errorMessage;
-        if (error.message === 'rate_limit') {
-          errorMessage = i18n.t('common.rateLimitError') || 'Rate limit reached. Please wait a minute.';
-        } else if (error.message === 'duplicate') {
-          errorMessage = `${i18n.t('trip.duplicateError') || 'This booking is already in'} "${error.tripName}"`;
-        } else {
-          errorMessage = i18n.t('trip.addError') || 'Error adding booking';
-        }
-        const errorCode = error.errorCode || '';
-
-        modalBody.innerHTML = `
-          <div class="error-state">
-            <div class="error-state-icon">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
-              </svg>
-            </div>
-            <p class="error-state-message">${errorMessage}</p>
-            ${errorCode ? `<p class="error-state-code">${errorCode}</p>` : ''}
-            <button class="btn btn-secondary" id="error-retry-btn" data-i18n="modal.retry">Try again</button>
-          </div>
-        `;
-        modalFooter.style.display = 'none';
-        i18n.apply(modalBody);
-
-        // Retry button - restore upload zone
-        document.getElementById('error-retry-btn').addEventListener('click', () => {
-          modalBody.innerHTML = originalBodyContent;
-          modalFooter.style.display = '';
-          i18n.apply(modalBody);
-
-          // Re-attach event listeners
-          const newUploadZone = document.getElementById('add-booking-upload-zone');
-          const newFileInput = document.getElementById('add-booking-file-input');
-          newUploadZone.addEventListener('click', () => newFileInput.click());
-          newFileInput.addEventListener('change', (e) => {
-            addFiles(e.target.files);
-            newFileInput.value = '';
-          });
-          newUploadZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            newUploadZone.classList.add('dragover');
-          });
-          newUploadZone.addEventListener('dragleave', () => {
-            newUploadZone.classList.remove('dragover');
-          });
-          newUploadZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            newUploadZone.classList.remove('dragover');
-            addFiles(e.dataTransfer.files);
-          });
-        });
+        const modalBody = modal.querySelector('.modal-body');
+        const modalFooter = modal.querySelector('.modal-footer');
+        showBookingError(error, modalBody, modalFooter, originalBodyContent);
       }
     };
 
+    /** Show error state in modal */
+    const showBookingError = (error, modalBody, modalFooter, originalBodyContent) => {
+      let errorMessage;
+      if (error.message === 'rate_limit') {
+        errorMessage = i18n.t('common.rateLimitError') || 'Rate limit reached. Please wait a minute.';
+      } else if (error.message === 'duplicate') {
+        errorMessage = `${i18n.t('trip.duplicateError') || 'This booking is already in'} "${error.tripName}"`;
+      } else {
+        errorMessage = i18n.t('trip.addError') || 'Error adding booking';
+      }
+      const errorCode = error.errorCode || '';
+
+      modalBody.innerHTML = `
+        <div class="error-state">
+          <div class="error-state-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+            </svg>
+          </div>
+          <p class="error-state-message">${errorMessage}</p>
+          ${errorCode ? `<p class="error-state-code">${errorCode}</p>` : ''}
+          <button class="btn btn-secondary" id="error-retry-btn" data-i18n="modal.retry">Try again</button>
+        </div>
+      `;
+      modalFooter.style.display = 'none';
+      i18n.apply(modalBody);
+
+      document.getElementById('error-retry-btn').addEventListener('click', () => {
+        if (originalBodyContent) {
+          modalBody.innerHTML = originalBodyContent;
+          modalFooter.style.display = '';
+          i18n.apply(modalBody);
+          bindUploadZoneEvents();
+        } else {
+          closeModal();
+        }
+      });
+    };
+
+    /** Bind upload zone drag/drop/click events */
+    const bindUploadZoneEvents = () => {
+      const zone = document.getElementById('add-booking-upload-zone');
+      const input = document.getElementById('add-booking-file-input');
+      if (!zone || !input) return;
+      zone.addEventListener('click', () => input.click());
+      input.addEventListener('change', (e) => {
+        addFiles(e.target.files);
+        input.value = '';
+      });
+      zone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        zone.classList.add('dragover');
+      });
+      zone.addEventListener('dragleave', () => {
+        zone.classList.remove('dragover');
+      });
+      zone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        zone.classList.remove('dragover');
+        addFiles(e.dataTransfer.files);
+      });
+    };
+
     // Upload zone events
-    uploadZone.addEventListener('click', () => fileInput.click());
-    fileInput.addEventListener('change', (e) => {
-      addFiles(e.target.files);
-      fileInput.value = '';
-    });
-    uploadZone.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      uploadZone.classList.add('dragover');
-    });
-    uploadZone.addEventListener('dragleave', () => {
-      uploadZone.classList.remove('dragover');
-    });
-    uploadZone.addEventListener('drop', (e) => {
-      e.preventDefault();
-      uploadZone.classList.remove('dragover');
-      addFiles(e.dataTransfer.files);
-    });
+    bindUploadZoneEvents();
 
     // Modal events
     closeBtn.addEventListener('click', closeModal);
@@ -2881,9 +2966,113 @@
   }
 
   /**
-   * Handle quick upload - process file immediately
+   * Handle quick upload — two-step: parse → preview in modal → confirm saves to trip
    * @param {File} file - The PDF file to upload
    */
+  /**
+   * Extract all dates from parsed results and compare with trip dates.
+   * Returns { newStart, newEnd } if extension needed, or null.
+   */
+  function checkDateExtension(parsedResults) {
+    if (!currentTripData?.startDate || !currentTripData?.endDate) return null;
+
+    const dates = [];
+    for (const pr of parsedResults) {
+      if (!pr.result) continue;
+      if (pr.result.flights) {
+        for (const f of pr.result.flights) {
+          if (f.date) dates.push(f.date);
+        }
+      }
+      if (pr.result.hotels) {
+        for (const h of pr.result.hotels) {
+          const checkIn = typeof h.checkIn === 'object' ? h.checkIn?.date : h.checkIn;
+          const checkOut = typeof h.checkOut === 'object' ? h.checkOut?.date : h.checkOut;
+          if (checkIn) dates.push(checkIn);
+          if (checkOut) dates.push(checkOut);
+        }
+      }
+    }
+
+    if (dates.length === 0) return null;
+
+    dates.sort();
+    const earliest = dates[0];
+    const latest = dates[dates.length - 1];
+
+    const needStart = earliest < currentTripData.startDate;
+    const needEnd = latest > currentTripData.endDate;
+
+    if (!needStart && !needEnd) return null;
+
+    return {
+      newStart: needStart ? earliest : null,
+      oldStart: needStart ? currentTripData.startDate : null,
+      newEnd: needEnd ? latest : null,
+      oldEnd: needEnd ? currentTripData.endDate : null,
+    };
+  }
+
+  /**
+   * Show date extension confirmation dialog.
+   * Returns a promise that resolves to true (extend) or false (keep).
+   */
+  function showDateExtensionDialog(extension) {
+    return new Promise((resolve) => {
+      const fmtDate = (str) => {
+        if (!str) return '';
+        try {
+          const d = new Date(str + 'T00:00:00');
+          const months = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
+          return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+        } catch { return str; }
+      };
+
+      let details = '';
+      if (extension.newStart) {
+        const msg = (i18n.t('trip.dateExtendStart') || 'Move start from {old} to {new}?')
+          .replace('{old}', fmtDate(extension.oldStart))
+          .replace('{new}', fmtDate(extension.newStart));
+        details += `<p class="date-extend-detail">${msg}</p>`;
+      }
+      if (extension.newEnd) {
+        const msg = (i18n.t('trip.dateExtendEnd') || 'Move end from {old} to {new}?')
+          .replace('{old}', fmtDate(extension.oldEnd))
+          .replace('{new}', fmtDate(extension.newEnd));
+        details += `<p class="date-extend-detail">${msg}</p>`;
+      }
+
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay date-extend-overlay active';
+      overlay.innerHTML = `
+        <div class="modal date-extend-modal">
+          <div class="modal-header">
+            <h2>${i18n.t('trip.dateExtendTitle') || 'Update trip dates'}</h2>
+          </div>
+          <div class="modal-body">
+            <p>${i18n.t('trip.dateExtendMessage') || 'The booking has dates outside the trip period.'}</p>
+            ${details}
+          </div>
+          <div class="modal-footer date-extend-footer">
+            <button class="btn btn-secondary date-extend-skip">${i18n.t('trip.dateExtendSkip') || 'Keep current dates'}</button>
+            <button class="btn btn-primary date-extend-confirm">${i18n.t('trip.dateExtendConfirm') || 'Update dates'}</button>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(overlay);
+
+      overlay.querySelector('.date-extend-confirm').addEventListener('click', () => {
+        overlay.remove();
+        resolve(true);
+      });
+      overlay.querySelector('.date-extend-skip').addEventListener('click', () => {
+        overlay.remove();
+        resolve(false);
+      });
+    });
+  }
+
   async function handleQuickUpload(file) {
     // Show loading state on all quick upload cards
     const cards = document.querySelectorAll('.quick-upload-card');
@@ -2895,84 +3084,176 @@
       if (text) {
         text.dataset.originalText = text.textContent;
         text.classList.add('loading-phrase');
-        // Start rotating phrases
         const controller = utils.startLoadingPhrases(text, 3000);
         phraseControllers.push(controller);
       }
     });
 
-    try {
-      // Upload file directly to Storage, then send only path to backend
-      await import('./pdfUpload.js');
-      const pdfs = await pdfUpload.uploadFiles([file]);
-
-      const response = await utils.authFetch('/.netlify/functions/add-booking', {
-        method: 'POST',
-        body: JSON.stringify({ pdfs, tripId: currentTripData.id })
-      });
-
-      let result;
-      try {
-        result = await response.json();
-      } catch {
-        throw Object.assign(new Error('server_error'), { errorCode: `HTTP${response.status}` });
-      }
-
-      // Check for rate limit error
-      if (response.status === 429 || result.errorType === 'rate_limit') {
-        throw new Error('rate_limit');
-      }
-
-      // Check for duplicate booking error
-      if (response.status === 409 || result.errorType === 'duplicate') {
-        const error = new Error('duplicate');
-        error.tripName = result.tripName;
-        throw error;
-      }
-
-      if (!response.ok || !result.success) {
-        throw Object.assign(
-          new Error(result.error || 'Failed to add booking'),
-          { errorCode: result.errorCode }
-        );
-      }
-
-      // Remember current tab, reload, then stay on same tab
-      const currentTab = document.querySelector('.segmented-control-btn.active')?.dataset.tab;
-      await loadTripFromUrl();
-      if (currentTab) switchToTab(currentTab);
-
-      utils.showToast(i18n.t('trip.addSuccess') || 'Booking added', 'success');
-    } catch (error) {
-      let errorMessage;
-      if (error.message === 'rate_limit') {
-        console.log('Rate limit reached');
-        errorMessage = i18n.t('common.rateLimitError') || 'Rate limit reached. Please wait a minute.';
-      } else if (error.message === 'duplicate') {
-        console.log('Duplicate booking detected');
-        errorMessage = `${i18n.t('trip.duplicateError') || 'This booking is already in'} "${error.tripName}"`;
-      } else {
-        console.error('Error in quick upload:', error);
-        errorMessage = i18n.t('trip.addError') || 'Error adding booking';
-        if (error.errorCode) errorMessage += ` [${error.errorCode}]`;
-      }
-      utils.showToast(errorMessage, 'error');
-    } finally {
-      // Stop rotating phrases
-      phraseControllers.forEach(controller => controller.stop());
-
-      // Reset loading state
+    const resetCards = () => {
+      phraseControllers.forEach(c => c.stop());
       cards.forEach(card => {
         card.classList.remove('uploading');
         const text = card.querySelector('.quick-upload-text');
         if (text) {
           text.classList.remove('loading-phrase', 'phrase-visible');
-          if (text.dataset.originalText) {
-            text.textContent = text.dataset.originalText;
-          }
+          if (text.dataset.originalText) text.textContent = text.dataset.originalText;
         }
       });
+    };
+
+    try {
+      // Step 1: Upload to storage + SmartParse extraction
+      const pdfs = await pdfUpload.uploadFiles([file]);
+
+      const parseResponse = await utils.authFetch('/.netlify/functions/parse-pdf', {
+        method: 'POST',
+        body: JSON.stringify({ pdfs })
+      });
+
+      let parseResult;
+      try {
+        parseResult = await parseResponse.json();
+      } catch {
+        throw Object.assign(new Error('server_error'), { errorCode: `HTTP${parseResponse.status}` });
+      }
+
+      if (parseResponse.status === 429 || parseResult.errorType === 'rate_limit') {
+        throw new Error('rate_limit');
+      }
+
+      if (!parseResponse.ok || !parseResult.success) {
+        const code = parseResult.errorCode ? ` [${parseResult.errorCode}]` : '';
+        throw new Error((parseResult.error || 'Failed to process PDF') + code);
+      }
+
+      // Step 2: Show preview in modal
+      resetCards();
+
+      const parsedResults = parseResult.parsedResults;
+
+      // Open the trip-modal for preview
+      const modal = document.getElementById('trip-modal');
+      const modalBody = document.getElementById('modal-body');
+      const modalHeader = modal?.querySelector('.modal-header h2');
+
+      if (modalHeader) {
+        const hasFlights = parsedResults.some(pr => pr.result?.flights?.length);
+        const hasHotels = parsedResults.some(pr => pr.result?.hotels?.length);
+        let title = i18n.t('trip.addBookingTitle') || 'Aggiungi prenotazione';
+        if (hasFlights && !hasHotels) title = i18n.t('trip.addFlightTitle') || 'Aggiungi Voli';
+        else if (hasHotels && !hasFlights) title = i18n.t('trip.addHotelTitle') || 'Aggiungi Hotel';
+        modalHeader.textContent = title;
+      }
+
+      modal.classList.add('active');
+      document.body.style.overflow = 'hidden';
+      tripCreator.showFooter(false);
+
+      parsePreview.render(modalBody, parsedResults, {
+        onConfirm: async (feedback, updatedResults, editedFields) => {
+          const finalResults = updatedResults || parsedResults;
+
+          // Check if booking dates extend the trip
+          let skipDateUpdate = false;
+          const dateExt = checkDateExtension(finalResults);
+          if (dateExt) {
+            const shouldExtend = await showDateExtensionDialog(dateExt);
+            if (!shouldExtend) skipDateUpdate = true;
+          }
+
+          // Show saving state
+          modalBody.innerHTML = `
+            <div class="processing-state">
+              <span class="spinner"></span>
+              <p class="processing-phrase loading-phrase"></p>
+            </div>
+          `;
+          const phraseEl = modalBody.querySelector('.processing-phrase');
+          const savingPhrases = utils.startLoadingPhrases(phraseEl, 3000);
+
+          try {
+            const saveResponse = await utils.authFetch('/.netlify/functions/add-booking', {
+              method: 'POST',
+              body: JSON.stringify({
+                pdfs,
+                tripId: currentTripData.id,
+                parsedData: finalResults,
+                feedback,
+                skipDateUpdate,
+                ...(editedFields?.length ? { editedFields } : {})
+              })
+            });
+
+            let saveResult;
+            try {
+              saveResult = await saveResponse.json();
+            } catch {
+              throw Object.assign(new Error('server_error'), { errorCode: `HTTP${saveResponse.status}` });
+            }
+
+            if (saveResponse.status === 429 || saveResult.errorType === 'rate_limit') {
+              throw new Error('rate_limit');
+            }
+            if (saveResponse.status === 409 || saveResult.errorType === 'duplicate') {
+              const err = new Error('duplicate');
+              err.tripName = saveResult.tripName;
+              throw err;
+            }
+            if (!saveResponse.ok || !saveResult.success) {
+              throw Object.assign(
+                new Error(saveResult.error || 'Failed to add booking'),
+                { errorCode: saveResult.errorCode }
+              );
+            }
+
+            savingPhrases.stop();
+
+            // Close modal and reload trip
+            modal.classList.remove('active');
+            document.body.style.overflow = '';
+            tripCreator.reset();
+
+            const currentTab = document.querySelector('.segmented-control-btn.active')?.dataset.tab;
+            await loadTripFromUrl();
+            if (currentTab) switchToTab(currentTab);
+
+            utils.showToast(i18n.t('trip.addSuccess') || 'Booking added', 'success');
+          } catch (saveError) {
+            savingPhrases.stop();
+            modal.classList.remove('active');
+            document.body.style.overflow = '';
+            tripCreator.reset();
+            handleQuickUploadError(saveError);
+          }
+        },
+        onCancel: () => {
+          modal.classList.remove('active');
+          document.body.style.overflow = '';
+          tripCreator.reset();
+        }
+      });
+
+    } catch (error) {
+      resetCards();
+      handleQuickUploadError(error);
     }
+  }
+
+  /**
+   * Show error toast for quick upload failures
+   */
+  function handleQuickUploadError(error) {
+    let errorMessage;
+    if (error.message === 'rate_limit') {
+      errorMessage = i18n.t('common.rateLimitError') || 'Rate limit reached. Please wait a minute.';
+    } else if (error.message === 'duplicate') {
+      errorMessage = `${i18n.t('trip.duplicateError') || 'This booking is already in'} "${error.tripName}"`;
+    } else {
+      console.error('Error in quick upload:', error);
+      errorMessage = i18n.t('trip.addError') || 'Error adding booking';
+      if (error.errorCode) errorMessage += ` [${error.errorCode}]`;
+    }
+    utils.showToast(errorMessage, 'error');
   }
 
   // ===========================

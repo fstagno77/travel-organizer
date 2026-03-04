@@ -1,6 +1,24 @@
 {
   "versions": [
     {
+      "version": "0.28",
+      "date": "2026-03-04",
+      "changes": {
+        "it": [
+          "Fix invito utenti non registrati: il link di invito viene ora copiato e condiviso manualmente (WhatsApp, Telegram, ecc.) invece di inviare un'email automatica che causava conflitti con Google OAuth",
+          "Link invito nel share modal: dopo l'invito appare il link copiabile sotto il nome dell'invitato",
+          "Open Graph meta tags: preview del link su WhatsApp/Telegram con titolo e descrizione",
+          "SmartParse v2.1: estrazione template L2 per provider noti (0 chiamate AI)"
+        ],
+        "en": [
+          "Fix invite for unregistered users: invite link is now copied and shared manually (WhatsApp, Telegram, etc.) instead of sending an automatic email that caused Google OAuth conflicts",
+          "Invite link in share modal: after inviting, the copyable link appears under the invitee's name",
+          "Open Graph meta tags: link preview on WhatsApp/Telegram with title and description",
+          "SmartParse v2.1: L2 template extraction for known providers (0 AI calls)"
+        ]
+      }
+    },
+    {
       "version": "0.27",
       "date": "2026-03-01",
       "changes": {

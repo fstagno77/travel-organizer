@@ -1,12 +1,18 @@
 /**
- * Trip Creator - Modal for creating new trips from PDF documents
+ * Trip Creator - Modal for creating new trips from PDF documents or manual input
  */
 
 const tripCreator = {
   files: [],
-  state: 'idle', // idle, uploading, processing, photoSelection, success, error
+  state: 'idle', // idle, uploading, parsing, preview, saving, photoSelection, success, error
   pendingTripData: null, // Trip data waiting for photo selection
   pendingDestination: null, // Destination for photo selection
+  _parsedResults: null, // SmartParse results for two-step flow
+  _uploadedPdfs: null, // Uploaded PDF references for two-step flow
+  manualData: null, // Manual trip data: { name, startDate, endDate, cities }
+  _citiesDbPromise: null, // Lazy-loaded cities database
+  _cityDropdownItems: [], // Current dropdown items for city search
+  _cityActiveIndex: -1, // Active dropdown index for keyboard nav
   photoOptions: [], // Available photo options
   currentPage: 1, // Current Unsplash page
   hasMorePhotos: true, // Whether more photos are available
@@ -123,6 +129,11 @@ const tripCreator = {
     this.state = 'idle';
     this.pendingTripData = null;
     this.pendingDestination = null;
+    this._parsedResults = null;
+    this._uploadedPdfs = null;
+    this.manualData = { name: '', startDate: '', endDate: '', cities: [] };
+    this._cityDropdownItems = [];
+    this._cityActiveIndex = -1;
     this.photoOptions = [];
     this.currentPage = 1;
     this.hasMorePhotos = true;
@@ -132,7 +143,7 @@ const tripCreator = {
     this.updateSubmitButton();
     this.showFooter(true);
 
-    // Reset modal title
+    // Reset modal title and subtitle
     const modal = document.getElementById('trip-modal');
     const modalHeader = modal?.querySelector('.modal-header h2');
     if (modalHeader) {
@@ -142,12 +153,51 @@ const tripCreator = {
   },
 
   /**
-   * Render upload state (drag & drop zone)
+   * Render upload state — manual form + upload zone
    */
   renderUploadState() {
     const body = document.getElementById('modal-body');
+    const esc = utils.escapeHtml;
+    const t = (k, fb) => i18n.t(k) || fb;
+
     body.innerHTML = `
-      <div class="upload-zone" id="upload-zone">
+      <div class="manual-trip-form">
+        <div class="form-group">
+          <label class="form-label">${esc(t('trip.manualName', 'Trip name'))}</label>
+          <input type="text" class="form-input" id="manual-trip-name"
+                 maxlength="100" autocomplete="off"
+                 placeholder="${esc(t('trip.manualNamePlaceholder', 'e.g. Japan 2026'))}">
+        </div>
+        <div class="form-row">
+          <div class="form-group form-group-half">
+            <label class="form-label">${esc(t('trip.manualStartDate', 'Start date'))}</label>
+            <input type="date" class="form-input" id="manual-start-date">
+          </div>
+          <div class="form-group form-group-half">
+            <label class="form-label">${esc(t('trip.manualEndDate', 'End date'))}</label>
+            <input type="date" class="form-input" id="manual-end-date">
+            <div class="date-error" id="date-error">${esc(t('trip.endDateError', 'End date must be after start date'))}</div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">${esc(t('trip.manualCities', 'Cities (optional)'))}</label>
+          <div class="city-input-wrapper">
+            <input type="text" class="form-input" id="manual-city-input"
+                   maxlength="100" autocomplete="off"
+                   placeholder="${esc(t('trip.citySearchPlaceholder', 'Search a city...'))}">
+            <div class="city-autocomplete-dropdown" id="manual-city-dropdown"></div>
+          </div>
+          <div class="cities-list" id="manual-cities-list"></div>
+        </div>
+      </div>
+
+      <div class="manual-trip-divider">
+        <span class="manual-trip-divider-line"></span>
+        <span class="manual-trip-divider-text">${esc(t('trip.orUploadPdf', 'or add a booking document'))}</span>
+        <span class="manual-trip-divider-line"></span>
+      </div>
+
+      <div class="upload-zone upload-zone--compact" id="upload-zone">
         <input type="file" id="file-input" accept=".pdf" hidden>
         <svg class="upload-zone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -155,13 +205,237 @@ const tripCreator = {
           <line x1="12" y1="3" x2="12" y2="15"></line>
         </svg>
         <div class="upload-zone-text" data-i18n="${i18n.isTouchDevice() ? 'trip.uploadHintMobile' : 'trip.uploadHint'}">Trascina qui i PDF o clicca per selezionare</div>
-        <div class="upload-zone-hint">PDF</div>
+        <div class="upload-zone-hint">${esc(t('trip.pdfHint', 'Upload a flight or hotel confirmation to get started'))}</div>
       </div>
       <div class="file-list" id="file-list"></div>
     `;
 
+    this.bindManualFormEvents();
     this.bindUploadEvents();
     i18n.apply(body);
+  },
+
+  /**
+   * Get cities database (lazy-loaded)
+   */
+  getCitiesDatabase() {
+    if (!this._citiesDbPromise) {
+      this._citiesDbPromise = fetch('/data/cities.json')
+        .then(r => r.json())
+        .catch(() => []);
+    }
+    return this._citiesDbPromise;
+  },
+
+  /**
+   * Bind manual form events (name, dates, city search)
+   */
+  bindManualFormEvents() {
+    const nameInput = document.getElementById('manual-trip-name');
+    const startInput = document.getElementById('manual-start-date');
+    const endInput = document.getElementById('manual-end-date');
+    const cityInput = document.getElementById('manual-city-input');
+    const dropdown = document.getElementById('manual-city-dropdown');
+    const dateError = document.getElementById('date-error');
+
+    // Sync form → manualData
+    const syncAndUpdate = () => {
+      this.manualData.name = nameInput.value;
+      this.manualData.startDate = startInput.value;
+      this.manualData.endDate = endInput.value;
+
+      // Date validation
+      if (this.manualData.startDate && this.manualData.endDate && this.manualData.endDate < this.manualData.startDate) {
+        dateError.classList.add('visible');
+      } else {
+        dateError.classList.remove('visible');
+      }
+
+      this.updateSubmitButton();
+    };
+
+    nameInput.addEventListener('input', syncAndUpdate);
+    startInput.addEventListener('change', syncAndUpdate);
+    endInput.addEventListener('change', syncAndUpdate);
+
+    // City search
+    let searchTimeout = null;
+    cityInput.addEventListener('input', () => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => this._searchCities(cityInput.value), 150);
+    });
+
+    cityInput.addEventListener('keydown', (e) => {
+      const items = dropdown.querySelectorAll('.city-autocomplete-item');
+      if (!items.length) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const name = cityInput.value.trim();
+          if (name) this._addCity({ name });
+        }
+        return;
+      }
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        this._cityActiveIndex = Math.min(this._cityActiveIndex + 1, items.length - 1);
+        this._highlightCityItem(items);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        this._cityActiveIndex = Math.max(this._cityActiveIndex - 1, 0);
+        this._highlightCityItem(items);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (this._cityActiveIndex >= 0) {
+          items[this._cityActiveIndex].click();
+        } else {
+          const name = cityInput.value.trim();
+          if (name) this._addCity({ name });
+        }
+      } else if (e.key === 'Escape') {
+        this._hideCityDropdown();
+      }
+    });
+
+    // Close dropdown on click outside
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.city-input-wrapper')) {
+        this._hideCityDropdown();
+      }
+    }, { once: false });
+
+    // Pre-load cities database
+    this.getCitiesDatabase();
+  },
+
+  /**
+   * Search cities and show dropdown
+   */
+  async _searchCities(query) {
+    const dropdown = document.getElementById('manual-city-dropdown');
+    if (!dropdown) return;
+
+    if (query.length < 2) {
+      this._hideCityDropdown();
+      return;
+    }
+
+    const q = query.toLowerCase();
+    const citiesDb = await this.getCitiesDatabase();
+    if (!citiesDb.length) { this._hideCityDropdown(); return; }
+
+    const results = [];
+
+    // Prioritize startsWith matches
+    for (const c of citiesDb) {
+      if (c.n.toLowerCase().startsWith(q)) {
+        results.push({ name: c.n, country: c.c, lat: c.lat, lng: c.lng });
+        if (results.length >= 8) break;
+      }
+    }
+
+    // Then contains matches
+    if (results.length < 8) {
+      for (const c of citiesDb) {
+        if (!c.n.toLowerCase().startsWith(q) && c.n.toLowerCase().includes(q)) {
+          results.push({ name: c.n, country: c.c, lat: c.lat, lng: c.lng });
+          if (results.length >= 8) break;
+        }
+      }
+    }
+
+    if (results.length === 0) {
+      this._hideCityDropdown();
+      return;
+    }
+
+    this._cityDropdownItems = results;
+    this._cityActiveIndex = -1;
+
+    dropdown.innerHTML = results.map((item, i) => `
+      <div class="city-autocomplete-item" data-index="${i}">
+        <span class="city-autocomplete-name">${utils.escapeHtml(item.name)}</span>
+        <span class="city-autocomplete-country">${utils.escapeHtml(item.country || '')}</span>
+      </div>
+    `).join('');
+    dropdown.classList.add('active');
+
+    dropdown.querySelectorAll('.city-autocomplete-item').forEach((el, i) => {
+      el.addEventListener('click', () => this._addCity(results[i]));
+      el.addEventListener('mouseenter', () => {
+        this._cityActiveIndex = i;
+        this._highlightCityItem(dropdown.querySelectorAll('.city-autocomplete-item'));
+      });
+    });
+  },
+
+  _highlightCityItem(items) {
+    items.forEach((el, i) => {
+      el.classList.toggle('active', i === this._cityActiveIndex);
+    });
+  },
+
+  _hideCityDropdown() {
+    const dropdown = document.getElementById('manual-city-dropdown');
+    if (dropdown) {
+      dropdown.classList.remove('active');
+      dropdown.innerHTML = '';
+    }
+    this._cityActiveIndex = -1;
+  },
+
+  /**
+   * Add a city to the manual form
+   */
+  _addCity(cityObj) {
+    const duplicate = this.manualData.cities.some(c => c.name.toLowerCase() === cityObj.name.toLowerCase());
+    if (duplicate) {
+      utils.showToast(i18n.t('trip.cityAlreadyAdded') || 'City already added', 'error');
+      return;
+    }
+    this.manualData.cities.push(cityObj);
+    const cityInput = document.getElementById('manual-city-input');
+    if (cityInput) { cityInput.value = ''; cityInput.focus(); }
+    this._hideCityDropdown();
+    this._renderManualCities();
+  },
+
+  /**
+   * Render manual cities list
+   */
+  _renderManualCities() {
+    const list = document.getElementById('manual-cities-list');
+    if (!list) return;
+
+    if (this.manualData.cities.length === 0) {
+      list.innerHTML = '';
+      return;
+    }
+
+    list.innerHTML = this.manualData.cities.map(c => `
+      <div class="city-item">
+        <div class="city-item-info">
+          <span class="city-name">${utils.escapeHtml(c.name)}</span>
+          ${c.country ? `<span class="city-country">${utils.escapeHtml(c.country)}</span>` : ''}
+        </div>
+        <button class="city-remove-btn" data-city="${utils.escapeHtml(c.name.toLowerCase())}">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+    `).join('');
+
+    list.querySelectorAll('.city-remove-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const cityName = btn.dataset.city;
+        const idx = this.manualData.cities.findIndex(c => c.name.toLowerCase() === cityName);
+        if (idx !== -1) {
+          this.manualData.cities.splice(idx, 1);
+          this._renderManualCities();
+        }
+      });
+    });
   },
 
   /**
@@ -216,9 +490,6 @@ const tripCreator = {
     this.files.push(...pdfFiles);
     this.renderFileList();
     this.updateSubmitButton();
-
-    // Auto-submit immediately
-    this.submit();
   },
 
   /**
@@ -289,7 +560,10 @@ const tripCreator = {
    */
   updateSubmitButton() {
     const btn = document.getElementById('modal-submit');
-    btn.disabled = this.files.length === 0;
+    const hasFiles = this.files.length > 0;
+    const m = this.manualData;
+    const hasManual = m && m.name.trim().length > 0 && m.startDate && m.endDate && m.endDate >= m.startDate;
+    btn.disabled = !hasFiles && !hasManual;
   },
 
   /**
@@ -302,20 +576,31 @@ const tripCreator = {
   },
 
   /**
-   * Submit files for processing
+   * Step 1: Upload PDFs and parse with SmartParse (no save yet), or create manual trip
    */
   async submit() {
-    if (this.files.length === 0) return;
+    const hasFiles = this.files.length > 0;
+    const m = this.manualData;
+    const hasManual = m && m.name.trim().length > 0 && m.startDate && m.endDate;
 
-    this.state = 'processing';
+    if (!hasFiles && !hasManual) return;
+
+    // Manual-only path (no PDF)
+    if (!hasFiles && hasManual) {
+      return this.submitManual();
+    }
+
+    this.state = 'parsing';
     this.renderProcessingState();
     this.showFooter(false);
 
     try {
-      // Upload files directly to Storage, then send only paths to backend
+      // Upload files directly to Storage
       const pdfs = await pdfUpload.uploadFiles(this.files);
+      this._uploadedPdfs = pdfs;
 
-      const response = await utils.authFetch('/.netlify/functions/process-pdf', {
+      // Call parse-pdf (SmartParse) — no save
+      const response = await utils.authFetch('/.netlify/functions/parse-pdf', {
         method: 'POST',
         body: JSON.stringify({ pdfs })
       });
@@ -327,35 +612,162 @@ const tripCreator = {
         throw new Error(`${i18n.t('trip.addError') || 'Error processing file'} [HTTP${response.status}]`);
       }
 
-      // Check for rate limit error
       if (response.status === 429 || result.errorType === 'rate_limit') {
         throw new Error(i18n.t('common.rateLimitError') || 'Rate limit reached. Please wait a minute.');
       }
 
-      if (!response.ok) {
+      if (!response.ok || !result.success) {
         const code = result.errorCode ? ` [${result.errorCode}]` : '';
         throw new Error((result.error || 'Failed to process PDFs') + code);
       }
 
-      if (result.success) {
-        const tripData = result.tripData;
-        this.stopLoadingPhrases();
+      this.stopLoadingPhrases();
+      this._parsedResults = result.parsedResults;
+      this.state = 'preview';
+      this.renderPreviewState();
 
-        // Always show photo selection when there's a destination
-        if (result.needsPhotoSelection && result.destination) {
-          this.state = 'photoSelection';
-          this.pendingTripData = tripData;
-          this.pendingDestination = result.destination;
-          this.renderPhotoSelectionState(result.destination);
-        } else {
-          this.state = 'success';
-          this.renderSuccessState(`trip.html?id=${tripData.id}`);
-        }
+    } catch (error) {
+      console.error('Error parsing PDFs:', error);
+      this.stopLoadingPhrases();
+      this.state = 'error';
+      this.renderErrorState(error.message);
+    }
+  },
+
+  /**
+   * Manual trip creation — no PDF, just name + dates + optional cities
+   */
+  async submitManual() {
+    this.state = 'saving';
+    this.renderProcessingState();
+    this.showFooter(false);
+
+    try {
+      const response = await utils.authFetch('/.netlify/functions/create-trip', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: this.manualData.name.trim(),
+          startDate: this.manualData.startDate,
+          endDate: this.manualData.endDate,
+          cities: this.manualData.cities
+        })
+      });
+
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to create trip');
+      }
+
+      this.stopLoadingPhrases();
+      const tripData = result.tripData;
+      const destination = this.manualData.cities[0]?.name || '';
+
+      if (destination) {
+        this.state = 'photoSelection';
+        this.pendingTripData = tripData;
+        this.pendingDestination = destination;
+        this.renderPhotoSelectionState(destination);
       } else {
-        throw new Error(result.error || 'Unknown error');
+        this.state = 'success';
+        this.pendingTripData = tripData;
+        this.renderSuccessState(`trip.html?id=${tripData.id}`);
       }
     } catch (error) {
-      console.error('Error processing trip:', error);
+      console.error('Error creating manual trip:', error);
+      this.stopLoadingPhrases();
+      this.state = 'error';
+      this.renderErrorState(error.message);
+    }
+  },
+
+  /**
+   * Render SmartParse extraction preview
+   */
+  renderPreviewState() {
+    const body = document.getElementById('modal-body');
+
+    // Update modal title
+    const modal = document.getElementById('trip-modal');
+    const modalHeader = modal?.querySelector('.modal-header h2');
+    if (modalHeader) {
+      const hasFlights = this._parsedResults.some(pr => pr.result?.flights?.length);
+      const hasHotels = this._parsedResults.some(pr => pr.result?.hotels?.length);
+      let title = 'Nuovo Viaggio';
+      if (hasFlights && hasHotels) title = 'Nuovo Viaggio';
+      else if (hasFlights) title = 'Voli';
+      else if (hasHotels) title = 'Hotel';
+      modalHeader.textContent = title;
+    }
+
+    parsePreview.render(body, this._parsedResults, {
+      onConfirm: (feedback, updatedResults, editedFields) => {
+        if (updatedResults) this._parsedResults = updatedResults;
+        this.confirmSave(feedback, editedFields);
+      },
+      onCancel: () => this.reset()
+    });
+  },
+
+  /**
+   * Step 2: Confirm and save — sends parsedData to process-pdf
+   */
+  async confirmSave(feedback, editedFields) {
+    this.state = 'saving';
+    this.renderProcessingState();
+
+    try {
+      // Build manual overrides if user entered data
+      const reqBody = {
+        pdfs: this._uploadedPdfs,
+        parsedData: this._parsedResults,
+        feedback
+      };
+      if (editedFields?.length) reqBody.editedFields = editedFields;
+      const m = this.manualData;
+      if (m) {
+        const mo = {};
+        if (m.name.trim()) mo.name = m.name.trim();
+        if (m.startDate) mo.startDate = m.startDate;
+        if (m.endDate) mo.endDate = m.endDate;
+        if (m.cities.length > 0) mo.cities = m.cities;
+        if (Object.keys(mo).length > 0) reqBody.manualOverrides = mo;
+      }
+
+      const response = await utils.authFetch('/.netlify/functions/process-pdf', {
+        method: 'POST',
+        body: JSON.stringify(reqBody)
+      });
+
+      let result;
+      try {
+        result = await response.json();
+      } catch {
+        throw new Error(`${i18n.t('trip.addError') || 'Error processing file'} [HTTP${response.status}]`);
+      }
+
+      if (response.status === 429 || result.errorType === 'rate_limit') {
+        throw new Error(i18n.t('common.rateLimitError') || 'Rate limit reached. Please wait a minute.');
+      }
+
+      if (!response.ok || !result.success) {
+        const code = result.errorCode ? ` [${result.errorCode}]` : '';
+        throw new Error((result.error || 'Failed to save trip') + code);
+      }
+
+      const tripData = result.tripData;
+      this.stopLoadingPhrases();
+
+      if (result.needsPhotoSelection && result.destination) {
+        this.state = 'photoSelection';
+        this.pendingTripData = tripData;
+        this.pendingDestination = result.destination;
+        this.renderPhotoSelectionState(result.destination);
+      } else {
+        this.state = 'success';
+        this.renderSuccessState(`trip.html?id=${tripData.id}`);
+      }
+    } catch (error) {
+      console.error('Error saving trip:', error);
       this.stopLoadingPhrases();
       this.state = 'error';
       this.renderErrorState(error.message);

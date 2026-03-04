@@ -275,8 +275,8 @@ const utils = {
     return new Promise((resolve) => {
       const {
         title = '',
-        confirmText = i18n.t('modal.confirm') || 'OK',
-        cancelText = i18n.t('modal.cancel') || 'Annulla',
+        confirmText = (typeof i18n !== 'undefined' ? i18n.t('modal.confirm') : null) || 'OK',
+        cancelText = (typeof i18n !== 'undefined' ? i18n.t('modal.cancel') : null) || 'Annulla',
         variant = 'primary'
       } = options;
 

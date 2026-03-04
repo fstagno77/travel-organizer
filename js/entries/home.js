@@ -11,4 +11,5 @@ import '../shareModal.js';
 import '../homePage.js';
 import '../main.js';
 import '../pdfUpload.js';
+import '../parsePreview.js';
 import '../tripCreator.js';

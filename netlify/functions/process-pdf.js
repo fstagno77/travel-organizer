@@ -9,6 +9,24 @@ const { authenticateRequest, unauthorizedResponse, getCorsHeaders, handleOptions
 const { uploadPdf, downloadPdfAsBase64, moveTmpPdfToTrip, cleanupTmpPdfs } = require('./utils/storage');
 const { processPdfsWithClaude, extractPassengerFromFilename } = require('./utils/pdfProcessor');
 const { deduplicateFlights, deduplicateHotels } = require('./utils/deduplication');
+// Note: pdfProcessor is kept as fallback; primary flow now uses parsedData from parse-pdf endpoint
+
+// Count non-empty fields in extracted data for quality assessment
+function countFields(flights, hotels) {
+  const FLIGHT_KEYS = ['flightNumber', 'airline', 'date', 'departureTime', 'arrivalTime', 'class', 'seat', 'bookingReference', 'ticketNumber', 'status'];
+  const HOTEL_KEYS = ['name', 'checkIn', 'checkOut', 'nights', 'address', 'guestName', 'confirmationNumber', 'price'];
+  let filled = 0, total = 0;
+  for (const f of flights) {
+    for (const k of FLIGHT_KEYS) { total++; if (f[k] != null && f[k] !== '') filled++; }
+    if (f.departure?.code) filled++; total++;
+    if (f.arrival?.code) filled++; total++;
+    if (f.passenger?.name) filled++; total++;
+  }
+  for (const h of hotels) {
+    for (const k of HOTEL_KEYS) { total++; if (h[k] != null && h[k] !== '') filled++; }
+  }
+  return { filled, total };
+}
 
 exports.handler = async (event, context) => {
   const headers = getCorsHeaders();
@@ -39,9 +57,9 @@ exports.handler = async (event, context) => {
   let pdfCount = 0;
   let pdfFilenames = '';
 
-  const logPdfUpload = async ({ status, tripId = null, extractedSummary = null, errorMessage = null }) => {
+  const logPdfUpload = async ({ status, tripId = null, extractedSummary = null, errorMessage = null, parseLevel = null, parseMeta = null }) => {
     try {
-      await serviceClient.from('email_processing_log').insert({
+      const row = {
         source: 'upload',
         email_from: user.email,
         email_subject: pdfFilenames || 'PDF upload diretto',
@@ -50,15 +68,25 @@ exports.handler = async (event, context) => {
         trip_id: tripId,
         attachment_count: pdfCount,
         extracted_summary: extractedSummary,
-        error_message: errorMessage
-      });
+        error_message: errorMessage,
+        parse_level: parseLevel,
+        parse_meta: parseMeta,
+      };
+      const { error } = await serviceClient.from('email_processing_log').insert(row);
+      // If SmartParse columns don't exist yet, retry without them
+      if (error && (error.code === '42703' || error.message?.includes('parse_level') || error.message?.includes('parse_meta'))) {
+        delete row.parse_level;
+        delete row.parse_meta;
+        await serviceClient.from('email_processing_log').insert(row);
+      }
     } catch (logErr) {
       console.error('PDF upload log failed (non-fatal):', logErr);
     }
   };
 
   try {
-    const { pdfs } = JSON.parse(event.body);
+    const body = JSON.parse(event.body);
+    const { pdfs, parsedData, feedback, manualOverrides, editedFields } = body;
 
     if (!pdfs || pdfs.length === 0) {
       return {
@@ -75,47 +103,67 @@ exports.handler = async (event, context) => {
     const resolvedPdfs = [];
     for (const pdf of pdfs) {
       if (pdf.storagePath) {
-        // New flow: PDF was uploaded directly to Storage
         tmpPaths.push(pdf.storagePath);
         const content = await downloadPdfAsBase64(pdf.storagePath);
         resolvedPdfs.push({ filename: pdf.filename, content, storagePath: pdf.storagePath });
       } else if (pdf.content) {
-        // Legacy flow: base64 inline
         resolvedPdfs.push({ filename: pdf.filename, content: pdf.content });
       }
     }
 
-    // Process PDFs using batched Claude API calls to reduce rate limit hits
     const allFlights = [];
     const allHotels = [];
     let metadata = {};
+    let smartParseMeta = null; // SmartParse metadata for logging
 
     pdfCount = resolvedPdfs.length;
     pdfFilenames = resolvedPdfs.map(p => p.filename).join(', ');
-    console.log(`Processing ${resolvedPdfs.length} PDFs with batching...`);
 
-    const results = await processPdfsWithClaude(resolvedPdfs);
+    let results;
+    let apiError = null;
 
-    // Check for rate limit errors
-    const rateLimitError = results.find(r => r.error?.isRateLimit);
-    if (rateLimitError) {
-      const retryAfter = rateLimitError.error.retryAfter || 30;
-      return {
-        statusCode: 429,
-        headers: { ...headers, 'Retry-After': String(retryAfter) },
-        body: JSON.stringify({
-          success: false,
-          error: 'Rate limit reached. Please wait a minute before uploading another file.',
-          errorType: 'rate_limit',
-          errorCode: 'E200'
-        })
+    if (parsedData && Array.isArray(parsedData)) {
+      // ── Pre-parsed by SmartParse (from parse-pdf endpoint) ──
+      console.log(`Using pre-parsed data for ${parsedData.length} PDFs (SmartParse)`);
+      results = parsedData.map((pd, i) => ({
+        result: pd.result,
+        pdfIndex: pd.pdfIndex ?? i,
+        filename: pd.filename || resolvedPdfs[i]?.filename || `pdf-${i}`
+      }));
+      // Aggregate SmartParse metadata
+      smartParseMeta = {
+        brand: parsedData.find(p => p.brand)?.brand || null,
+        claudeCalls: parsedData.reduce((sum, p) => sum + (p.claudeCalls || 0), 0),
+        durationMs: parsedData.reduce((sum, p) => sum + (p.durationMs || 0), 0),
+        levels: parsedData.map(p => p.parseLevel),
+        feedback: feedback || null,
+        ...(editedFields?.length ? { editedFields } : {}),
       };
-    }
+    } else {
+      // ── Legacy flow: process with Claude directly ──
+      console.log(`Processing ${resolvedPdfs.length} PDFs with Claude batching...`);
+      results = await processPdfsWithClaude(resolvedPdfs);
 
-    // Check for other API errors (not rate limit)
-    const apiError = results.find(r => r.error && !r.error.isRateLimit);
-    if (apiError) {
-      console.error('Claude API error:', apiError.error.message, apiError.error.status);
+      // Check for rate limit errors
+      const rateLimitError = results.find(r => r.error?.isRateLimit);
+      if (rateLimitError) {
+        const retryAfter = rateLimitError.error.retryAfter || 30;
+        return {
+          statusCode: 429,
+          headers: { ...headers, 'Retry-After': String(retryAfter) },
+          body: JSON.stringify({
+            success: false,
+            error: 'Rate limit reached. Please wait a minute before uploading another file.',
+            errorType: 'rate_limit',
+            errorCode: 'E200'
+          })
+        };
+      }
+
+      apiError = results.find(r => r.error && !r.error.isRateLimit) || null;
+      if (apiError) {
+        console.error('Claude API error:', apiError.error.message, apiError.error.status);
+      }
     }
 
     // Collect results from all PDFs
@@ -125,16 +173,13 @@ exports.handler = async (event, context) => {
       if (result.flights) {
         result.flights.forEach(flight => {
           flight._pdfIndex = pdfIndex;
-          // If flight doesn't have its own passenger, use top-level passenger from result
           if (!flight.passenger && result.passenger) {
             flight.passenger = { ...result.passenger };
           }
-          // Fallback: extract passenger name from filename if still missing
           if (!flight.passenger) {
             const extractedName = extractPassengerFromFilename(filename);
             if (extractedName) {
               flight.passenger = { name: extractedName, type: 'ADT' };
-              console.log(`Extracted passenger "${extractedName}" from filename: ${filename}`);
             }
           }
           allFlights.push(flight);
@@ -179,6 +224,30 @@ exports.handler = async (event, context) => {
       hotels: deduplicatedHotels,
       metadata
     });
+
+    // Apply manual overrides if provided (user-entered fields take priority)
+    if (manualOverrides) {
+      if (manualOverrides.name && manualOverrides.name.trim()) {
+        const n = manualOverrides.name.trim();
+        tripData.title = { it: n, en: n };
+      }
+      if (manualOverrides.startDate) tripData.startDate = manualOverrides.startDate;
+      if (manualOverrides.endDate) tripData.endDate = manualOverrides.endDate;
+      if (manualOverrides.cities && manualOverrides.cities.length > 0) {
+        tripData.cities = manualOverrides.cities;
+        tripData.destination = manualOverrides.cities[0].name || tripData.destination;
+      }
+      // Regenerate trip ID if dates/destination changed
+      if (manualOverrides.startDate || manualOverrides.cities) {
+        const d = new Date(tripData.startDate + 'T00:00:00');
+        const mo = String(d.getMonth() + 1).padStart(2, '0');
+        const yr = d.getFullYear();
+        const sl = (tripData.destination || tripData.title.en)
+          .toLowerCase().replace(/[^a-z0-9]+/g, '-').substring(0, 20);
+        const sf = Math.random().toString(36).substring(2, 8);
+        tripData.id = `${yr}-${mo}-${sl}-${sf}`;
+      }
+    }
 
     // Upload/move PDFs and link to items (in parallel for speed)
     console.log('Uploading PDFs to storage...');
@@ -306,6 +375,10 @@ exports.handler = async (event, context) => {
     }
 
     // Log successful upload (non-fatal)
+    const primaryLevel = smartParseMeta?.levels?.[0] || null;
+    const fc = countFields(tripData.flights, tripData.hotels);
+    const textLen = parsedData ? parsedData.reduce((s, p) => s + (p.textLength || 0), 0) : 0;
+    const detDocType = parsedData?.find(p => p.detectedDocType)?.detectedDocType || null;
     await logPdfUpload({
       status: 'success',
       tripId: tripData.id,
@@ -313,10 +386,25 @@ exports.handler = async (event, context) => {
         destination: tripData.destination,
         flights: tripData.flights.length,
         hotels: tripData.hotels.length,
-        passenger: tripData.passenger?.name || null,
+        passenger: tripData.passenger?.name
+          || tripData.flights?.[0]?.passenger?.name
+          || tripData.flights?.[0]?.passengers?.[0]?.name
+          || tripData.hotels?.[0]?.guestName
+          || null,
         startDate: tripData.startDate,
-        endDate: tripData.endDate
-      }
+        endDate: tripData.endDate,
+        fieldsFilled: fc.filled,
+        fieldsTotal: fc.total,
+        detectedDocType: detDocType,
+        routes: tripData.flights.map(f => {
+          const dep = f.departure?.code || f.departureAirport || '';
+          const arr = f.arrival?.code || f.arrivalAirport || '';
+          return dep && arr ? `${dep}→${arr}` : null;
+        }).filter(Boolean).slice(0, 6),
+        hotelNames: tripData.hotels.map(h => h.name).filter(Boolean).slice(0, 3),
+      },
+      parseLevel: primaryLevel,
+      parseMeta: smartParseMeta,
     });
 
     return {
@@ -350,7 +438,6 @@ exports.handler = async (event, context) => {
     if (!isRateLimit && pdfCount > 0) {
       await logPdfUpload({ status: 'extraction_failed', errorMessage: error.message });
     }
-    const isRateLimit = error.status === 429 || error.message?.includes('rate_limit');
     const retryAfter = error.retryAfter || 30;
     return {
       statusCode: isRateLimit ? 429 : 500,

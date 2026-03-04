@@ -35,7 +35,8 @@
     "new": "New Trip",
     "newShort": "Trip",
     "createTitle": "Create new trip",
-    "uploadHint": "Drop PDF files here or click to select",
+    "previewTitle": "New Trip",
+    "uploadHint": "Drop a PDF here or click to select",
     "uploadHintMobile": "Tap to select a PDF",
     "quickUploadHint": "Drop a PDF here to add a booking",
     "quickUploadHintMobile": "Tap to add a booking",
@@ -115,7 +116,24 @@
     "editBooking": "Edit",
     "deleteBooking": "Delete",
     "confirmDelete": "Confirm deletion?",
-    "confirmDeleteBtn": "Delete"
+    "confirmDeleteBtn": "Delete",
+    "manualName": "Trip name",
+    "manualNamePlaceholder": "e.g. Japan 2026",
+    "manualStartDate": "Start date",
+    "manualEndDate": "End date",
+    "manualCities": "Cities (optional)",
+    "citySearchPlaceholder": "Search a city...",
+    "orUploadPdf": "or add a booking document",
+    "endDateError": "End date must be after start date",
+    "cityAlreadyAdded": "City already added",
+    "manualHint": "Create an empty trip and add bookings later",
+    "pdfHint": "Upload a flight or hotel confirmation to get started",
+    "dateExtendTitle": "Update trip dates",
+    "dateExtendMessage": "The booking has dates outside the trip period.",
+    "dateExtendStart": "Move start from {old} to {new}?",
+    "dateExtendEnd": "Move end from {old} to {new}?",
+    "dateExtendConfirm": "Update dates",
+    "dateExtendSkip": "Keep current dates"
   },
   "modal": {
     "cancel": "Cancel",
@@ -456,7 +474,8 @@
     "leaveConfirm": "Are you sure you want to leave this trip?",
     "leaveSuccess": "You left the trip",
     "leaveError": "Error leaving trip",
-    "ownerLabel": "by"
+    "ownerLabel": "by",
+    "copyInviteLink": "Copy the link and share it with"
   },
   "notifications": {
     "title": "Notifications",

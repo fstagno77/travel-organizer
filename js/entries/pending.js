@@ -6,5 +6,6 @@ import '../auth.js';
 import '../changelog.js';
 import '../navigation.js';
 import '../pdfUpload.js';
+import '../parsePreview.js';
 import '../tripCreator.js';
 import '../pendingBookings.js';

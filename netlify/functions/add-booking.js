@@ -5,12 +5,28 @@
  * Authenticated endpoint
  */
 
-const { authenticateRequest, unauthorizedResponse, getCorsHeaders, handleOptions } = require('./utils/auth');
+const { authenticateRequest, unauthorizedResponse, getCorsHeaders, handleOptions, getServiceClient } = require('./utils/auth');
 const { uploadPdf, downloadPdfAsBase64, moveTmpPdfToTrip, cleanupTmpPdfs } = require('./utils/storage');
 const { processPdfsWithClaude, extractPassengerFromFilename } = require('./utils/pdfProcessor');
 const { updateTripDates } = require('./utils/tripDates');
 const { deduplicateFlights, deduplicateHotels } = require('./utils/deduplication');
 const { notifyCollaborators } = require('./utils/notificationHelper');
+
+function countFields(flights, hotels) {
+  const FLIGHT_KEYS = ['flightNumber', 'airline', 'date', 'departureTime', 'arrivalTime', 'class', 'seat', 'bookingReference', 'ticketNumber', 'status'];
+  const HOTEL_KEYS = ['name', 'checkIn', 'checkOut', 'nights', 'address', 'guestName', 'confirmationNumber', 'price'];
+  let filled = 0, total = 0;
+  for (const f of flights) {
+    for (const k of FLIGHT_KEYS) { total++; if (f[k] != null && f[k] !== '') filled++; }
+    if (f.departure?.code) filled++; total++;
+    if (f.arrival?.code) filled++; total++;
+    if (f.passenger?.name) filled++; total++;
+  }
+  for (const h of hotels) {
+    for (const k of HOTEL_KEYS) { total++; if (h[k] != null && h[k] !== '') filled++; }
+  }
+  return { filled, total };
+}
 
 exports.handler = async (event, context) => {
   const headers = getCorsHeaders();
@@ -35,9 +51,11 @@ exports.handler = async (event, context) => {
   }
 
   const { supabase, user } = authResult;
+  const serviceClient = getServiceClient();
 
   try {
-    const { pdfs, tripId } = JSON.parse(event.body);
+    const body = JSON.parse(event.body);
+    const { pdfs, tripId, parsedData, feedback, skipDateUpdate, editedFields } = body;
 
     if (!pdfs || pdfs.length === 0) {
       return {
@@ -89,34 +107,53 @@ exports.handler = async (event, context) => {
 
     const tripData = tripRecord.data;
 
-    // Process PDFs using batched Claude API calls to reduce rate limit hits
     const newFlights = [];
     const newHotels = [];
+    let smartParseMeta = null;
 
-    console.log(`Processing ${resolvedPdfs.length} PDFs with batching...`);
+    let results;
+    let apiError = null;
 
-    const results = await processPdfsWithClaude(resolvedPdfs);
-
-    // Check for rate limit errors
-    const rateLimitError = results.find(r => r.error?.isRateLimit);
-    if (rateLimitError) {
-      const retryAfter = rateLimitError.error.retryAfter || 30;
-      return {
-        statusCode: 429,
-        headers: { ...headers, 'Retry-After': String(retryAfter) },
-        body: JSON.stringify({
-          success: false,
-          error: 'Rate limit reached. Please wait a minute before uploading another file.',
-          errorType: 'rate_limit',
-          errorCode: 'E200'
-        })
+    if (parsedData && Array.isArray(parsedData)) {
+      // ── Pre-parsed by SmartParse (from parse-pdf endpoint) ──
+      console.log(`Using pre-parsed data for ${parsedData.length} PDFs (SmartParse)`);
+      results = parsedData.map((pd, i) => ({
+        result: pd.result,
+        pdfIndex: pd.pdfIndex ?? i,
+        filename: pd.filename || resolvedPdfs[i]?.filename || `pdf-${i}`
+      }));
+      smartParseMeta = {
+        brand: parsedData.find(p => p.brand)?.brand || null,
+        claudeCalls: parsedData.reduce((sum, p) => sum + (p.claudeCalls || 0), 0),
+        durationMs: parsedData.reduce((sum, p) => sum + (p.durationMs || 0), 0),
+        levels: parsedData.map(p => p.parseLevel),
+        feedback: feedback || null,
+        ...(editedFields?.length ? { editedFields } : {}),
       };
-    }
+    } else {
+      // ── Legacy flow: process with Claude directly ──
+      console.log(`Processing ${resolvedPdfs.length} PDFs with Claude batching...`);
+      results = await processPdfsWithClaude(resolvedPdfs);
 
-    // Check for other API errors (not rate limit)
-    const apiError = results.find(r => r.error && !r.error.isRateLimit);
-    if (apiError) {
-      console.error('Claude API error:', apiError.error.message, apiError.error.status);
+      const rateLimitError = results.find(r => r.error?.isRateLimit);
+      if (rateLimitError) {
+        const retryAfter = rateLimitError.error.retryAfter || 30;
+        return {
+          statusCode: 429,
+          headers: { ...headers, 'Retry-After': String(retryAfter) },
+          body: JSON.stringify({
+            success: false,
+            error: 'Rate limit reached. Please wait a minute before uploading another file.',
+            errorType: 'rate_limit',
+            errorCode: 'E200'
+          })
+        };
+      }
+
+      apiError = results.find(r => r.error && !r.error.isRateLimit) || null;
+      if (apiError) {
+        console.error('Claude API error:', apiError.error.message, apiError.error.status);
+      }
     }
 
     // Collect results from all PDFs
@@ -126,16 +163,13 @@ exports.handler = async (event, context) => {
       if (result.flights) {
         result.flights.forEach(flight => {
           flight._pdfIndex = pdfIndex;
-          // If flight doesn't have its own passenger, use top-level passenger from result
           if (!flight.passenger && result.passenger) {
             flight.passenger = { ...result.passenger };
           }
-          // Fallback: extract passenger name from filename if still missing
           if (!flight.passenger) {
             const extractedName = extractPassengerFromFilename(filename);
             if (extractedName) {
               flight.passenger = { name: extractedName, type: 'ADT' };
-              console.log(`Extracted passenger "${extractedName}" from filename: ${filename}`);
             }
           }
           newFlights.push(flight);
@@ -312,8 +346,10 @@ exports.handler = async (event, context) => {
     tripData.flights = [...(tripData.flights || []), ...flightsWithIds];
     tripData.hotels = [...(tripData.hotels || []), ...hotelsWithIds];
 
-    // Update dates if needed
-    updateTripDates(tripData);
+    // Update dates if needed (skip if user chose to keep current dates)
+    if (!skipDateUpdate) {
+      updateTripDates(tripData);
+    }
 
     // Save updated trip to Supabase
     const { error: dbError } = await supabase
@@ -341,6 +377,49 @@ exports.handler = async (event, context) => {
     await notifyCollaborators(tripId, user.id, 'booking_added',
       'Ha aggiunto una prenotazione',
       'Added a booking');
+
+    // Log to email_processing_log (non-fatal)
+    try {
+      const pdfFilenames = resolvedPdfs.map(p => p.filename).join(', ');
+      const primaryLevel = smartParseMeta?.levels?.[0] || null;
+      const row = {
+        source: 'upload',
+        email_from: user.email,
+        email_subject: pdfFilenames || 'Add booking',
+        status: 'success',
+        user_id: user.id,
+        trip_id: tripId,
+        attachment_count: resolvedPdfs.length,
+        extracted_summary: {
+          flights: deduplicatedFlights.length,
+          hotels: deduplicatedHotels.length,
+          skippedFlights,
+          skippedHotels,
+          ...countFields(deduplicatedFlights, deduplicatedHotels),
+          detectedDocType: parsedData?.find(p => p.detectedDocType)?.detectedDocType || null,
+          passenger: deduplicatedFlights[0]?.passenger?.name
+            || deduplicatedFlights[0]?.passengers?.[0]?.name
+            || deduplicatedHotels[0]?.guestName
+            || null,
+          routes: deduplicatedFlights.map(f => {
+            const dep = f.departure?.code || f.departureAirport || '';
+            const arr = f.arrival?.code || f.arrivalAirport || '';
+            return dep && arr ? `${dep}→${arr}` : null;
+          }).filter(Boolean).slice(0, 6),
+          hotelNames: deduplicatedHotels.map(h => h.name).filter(Boolean).slice(0, 3),
+        },
+        parse_level: primaryLevel,
+        parse_meta: smartParseMeta,
+      };
+      const { error: logError } = await serviceClient.from('email_processing_log').insert(row);
+      if (logError && (logError.code === '42703' || logError.message?.includes('parse_level') || logError.message?.includes('parse_meta'))) {
+        delete row.parse_level;
+        delete row.parse_meta;
+        await serviceClient.from('email_processing_log').insert(row);
+      }
+    } catch (logErr) {
+      console.error('Add-booking log failed (non-fatal):', logErr);
+    }
 
     return {
       statusCode: 200,

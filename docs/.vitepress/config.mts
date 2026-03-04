@@ -50,6 +50,7 @@ export default defineConfig({
         collapsed: false,
         items: [
           { text: 'Elaborazione PDF', link: '/logica-business/elaborazione-pdf' },
+          { text: 'SmartParse — Specifica', link: '/smartparse-spec' },
           { text: 'Deduplicazione', link: '/logica-business/deduplicazione' },
           { text: 'Gestione Passeggeri', link: '/logica-business/gestione-passeggeri' },
           { text: 'Date e Rotte', link: '/logica-business/date-e-rotte' },

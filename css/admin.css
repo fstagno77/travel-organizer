@@ -423,6 +423,31 @@
   cursor: not-allowed;
 }
 
+.admin-pagination-size {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.admin-page-size-select {
+  padding: 4px 8px;
+  border: 1px solid var(--color-gray-300);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-family: inherit;
+  background: white;
+  cursor: pointer;
+}
+
+.trip-detail-row td {
+  padding: 0 !important;
+}
+
+.trip-detail-row .pdf-log-detail-panel {
+  border-top: 1px solid var(--color-gray-200);
+}
+
 /* Badges */
 .admin-badge-status {
   display: inline-block;
@@ -1331,6 +1356,109 @@
   border-radius: 3px;
   line-height: 1.6;
 }
+.sp-live-badge {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: #22c55e;
+  color: #fff;
+  padding: 1px 5px;
+  border-radius: 3px;
+  line-height: 1.6;
+}
+.sp-mode-dropdown {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 13px;
+  border: 1px solid var(--border-color, #d1d5db);
+  border-radius: 6px;
+  background: var(--bg-primary, #fff);
+  color: var(--text-primary, #1f2937);
+  cursor: pointer;
+  appearance: auto;
+}
+.sp-mode-dropdown:focus {
+  outline: none;
+  border-color: var(--color-primary, #3b82f6);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+/* Custom doctype dropdown with icons */
+.sp-doctype-dropdown {
+  position: relative;
+}
+.sp-doctype-selected {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border: 1px solid var(--border-color, #d1d5db);
+  border-radius: 6px;
+  background: var(--bg-primary, #fff);
+  color: var(--text-primary, #1f2937);
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+  transition: border-color .15s;
+}
+.sp-doctype-selected:hover {
+  border-color: var(--color-primary, #3b82f6);
+}
+.sp-doctype-chevron {
+  margin-left: auto;
+  opacity: .5;
+  transition: transform .15s;
+}
+.sp-doctype-dropdown.open .sp-doctype-chevron {
+  transform: rotate(180deg);
+}
+.sp-doctype-options {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--bg-primary, #fff);
+  border: 1px solid var(--border-color, #d1d5db);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,.1);
+  z-index: 20;
+  overflow: hidden;
+}
+.sp-doctype-dropdown.open .sp-doctype-options {
+  display: block;
+}
+.sp-doctype-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--text-primary, #1f2937);
+  transition: background .1s;
+}
+.sp-doctype-option:hover {
+  background: var(--bg-secondary, #f3f4f6);
+}
+.sp-doctype-option.sp-doctype-active {
+  background: #f0f7ff;
+  color: var(--color-primary, #3b82f6);
+  font-weight: 600;
+}
+
+/* Cache sections (Live / Beta split) */
+.sp-cache-section {
+  margin-top: 16px;
+}
+.sp-cache-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  padding: 0 2px;
+}
 
 #smart-parse-options {
   margin-top: 10px;
@@ -2173,5 +2301,55 @@
 
   .pdf-analyze-type-select {
     flex-direction: column;
+  }
+}
+
+/* ======================== */
+/* PDF Stats Cards          */
+/* ======================== */
+
+.pdf-stats-cards {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.pdf-stat-card {
+  flex: 1;
+  min-width: 100px;
+  background: var(--admin-card-bg, #fff);
+  border: 1px solid var(--admin-border, #e5e7eb);
+  border-radius: 10px;
+  padding: 14px 16px;
+  text-align: center;
+}
+
+.pdf-stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--admin-text, #111);
+}
+
+.pdf-stat-label {
+  font-size: 11px;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+.sp-level-1-text { color: #059669; }
+.sp-level-2-text { color: #2563eb; }
+.sp-level-4-text { color: #7c3aed; }
+
+@media (max-width: 640px) {
+  .pdf-stats-cards {
+    gap: 8px;
+  }
+  .pdf-stat-card {
+    min-width: 80px;
+    padding: 10px 8px;
+  }
+  .pdf-stat-value {
+    font-size: 18px;
   }
 }

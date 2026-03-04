@@ -40,3 +40,5 @@ deno.lock
 
 # Test PDF files (kept locally, not tracked)
 filebooking/
+docs/.vitepress/cache/
+supabase/.temp/

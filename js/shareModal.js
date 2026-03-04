@@ -261,8 +261,11 @@ const shareModal = {
               : (i18n.t('share.inviteSent') || 'Invito inviato');
             this._showInviteMessage(inviteMessage, msg, 'success');
             emailInput.value = '';
-            // Refresh collaborators list
-            this._loadCollaborators(tripId, userRole);
+            // Refresh collaborators list, then show invite link under the new row
+            await this._loadCollaborators(tripId, userRole);
+            if (result.inviteUrl) {
+              this._showInviteLinkUnderRow(email, result.inviteUrl);
+            }
           } else {
             const errorMessages = {
               'already_collaborator': i18n.t('share.alreadyCollaborator') || 'Utente già collaboratore',
@@ -303,6 +306,47 @@ const shareModal = {
     if (!el) return;
     el.textContent = message;
     el.className = `share-invite-message share-invite-message--${type}`;
+  },
+
+  /**
+   * Show a copyable invite link box under the collaborator row matching the email
+   */
+  _showInviteLinkUnderRow(email, inviteUrl) {
+    // Remove any existing invite link box
+    document.querySelectorAll('.share-invite-link-box').forEach(el => el.remove());
+
+    // Find the collaborator row by data-email attribute
+    const listEl = document.getElementById('share-collaborators-list');
+    if (!listEl) return;
+    const targetRow = listEl.querySelector(`.share-collaborator-row[data-email="${email.toLowerCase()}"]`);
+    if (!targetRow) return;
+
+    const label = i18n.t('share.copyInviteLink') || 'Copia il link e condividilo con';
+    const box = document.createElement('div');
+    box.className = 'share-invite-link-box';
+    box.innerHTML = `
+      <p class="share-invite-link-label">${label} <strong>${email}</strong></p>
+      <div class="share-invite-link-row">
+        <code class="share-invite-link-code">${inviteUrl}</code>
+        <button class="share-copy-icon-btn share-invite-link-copy" title="Copia">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+        </button>
+      </div>
+    `;
+    targetRow.after(box);
+
+    const copyBtn = box.querySelector('.share-invite-link-copy');
+    copyBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(inviteUrl);
+      } catch { /* fallback ignored */ }
+      copyBtn.classList.add('copied');
+      setTimeout(() => copyBtn.classList.remove('copied'), 2000);
+      utils.showToast(i18n.t('trip.linkCopied') || 'Link copiato!', 'success');
+    });
   },
 
   /**
@@ -443,7 +487,7 @@ const shareModal = {
     }
 
     return `
-      <div class="share-collaborator-row" data-item-id="${item.id || ''}">
+      <div class="share-collaborator-row" data-item-id="${item.id || ''}" data-email="${email}">
         <div class="share-collaborator-avatar">${(displayName[0] || '?').toUpperCase()}</div>
         <div class="share-collaborator-info">
           <div class="share-collaborator-name">${displayName}</div>
@@ -488,12 +532,16 @@ const shareModal = {
           const invitationId = btn.dataset.invitationId;
           const originalHTML = btn.innerHTML;
           btn.innerHTML = `<span class="spinner spinner-sm" style="border-color: rgba(255,255,255,0.4); border-top-color: white;"></span>`;
-          await utils.authFetch('/.netlify/functions/manage-collaboration', {
+          const res = await utils.authFetch('/.netlify/functions/manage-collaboration', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'resend-invite', invitationId })
           });
-          utils.showToast(i18n.t('share.inviteResent') || 'Invito reinviato', 'success');
+          const resData = await res.json();
+          if (resData.inviteUrl) {
+            const email = btn.closest('.share-collaborator-row')?.dataset.email || '';
+            shareModal._showInviteLinkUnderRow(email, resData.inviteUrl);
+          }
           btn.innerHTML = originalHTML;
           btn.disabled = false;
           return;

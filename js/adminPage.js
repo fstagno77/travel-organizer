@@ -281,8 +281,8 @@ const adminPage = {
   // Users
   // ============================================
 
-  async renderUsers(page = 1, search = '') {
-    const data = await this.api('list-users', { page, pageSize: 20, search: search || undefined });
+  async renderUsers(page = 1, search = '', pageSize = 10) {
+    const data = await this.api('list-users', { page, pageSize, search: search || undefined });
     const main = document.querySelector('.admin-content');
 
     main.innerHTML = `
@@ -294,6 +294,7 @@ const adminPage = {
       <div class="admin-card">
         <div class="admin-toolbar">
           <input type="text" class="admin-search" id="users-search" placeholder="Cerca per username o email..." value="${this.esc(search)}">
+          ${this.pageSizeSelector(pageSize)}
         </div>
         <div class="admin-table-wrapper">
           <table class="admin-table">
@@ -316,7 +317,7 @@ const adminPage = {
             </tbody>
           </table>
         </div>
-        ${this.pagination(data.total, page, 20)}
+        ${this.pagination(data.total, page, pageSize)}
       </div>
     `;
 
@@ -324,7 +325,7 @@ const adminPage = {
     let searchTimer;
     document.getElementById('users-search')?.addEventListener('input', (e) => {
       clearTimeout(searchTimer);
-      searchTimer = setTimeout(() => this.renderUsers(1, e.target.value), 400);
+      searchTimer = setTimeout(() => this.renderUsers(1, e.target.value, pageSize), 400);
     });
 
     // Row click → detail
@@ -338,7 +339,7 @@ const adminPage = {
     });
 
     // Pagination
-    this.bindPagination(() => (p) => this.renderUsers(p, document.getElementById('users-search')?.value || ''));
+    this.bindPagination(() => (p, ps) => this.renderUsers(p, document.getElementById('users-search')?.value || '', ps || pageSize));
   },
 
   async toggleUserDetail(userId) {
@@ -403,8 +404,8 @@ const adminPage = {
   // Trips
   // ============================================
 
-  async renderTrips(page = 1, search = '', statusFilter = '') {
-    const data = await this.api('list-trips', { page, pageSize: 20, search: search || undefined, status: statusFilter || undefined });
+  async renderTrips(page = 1, search = '', statusFilter = '', pageSize = 10) {
+    const data = await this.api('list-trips', { page, pageSize, search: search || undefined, status: statusFilter || undefined });
     const main = document.querySelector('.admin-content');
 
     main.innerHTML = `
@@ -422,32 +423,37 @@ const adminPage = {
             <option value="current" ${statusFilter === 'current' ? 'selected' : ''}>In corso</option>
             <option value="past" ${statusFilter === 'past' ? 'selected' : ''}>Passati</option>
           </select>
+          ${this.pageSizeSelector(pageSize)}
         </div>
         <div class="admin-table-wrapper">
           <table class="admin-table">
             <thead>
-              <tr><th>Titolo</th><th>Utente</th><th>Destinazione</th><th>Date</th><th>V/H/A</th><th></th></tr>
+              <tr><th>Titolo</th><th>Utente</th><th>Destinazione</th><th>Creato</th><th></th></tr>
             </thead>
             <tbody>
               ${data.trips.length ? data.trips.map(t => `
-                <tr class="admin-row-clickable" data-view-trip="${t.id}" title="Clicca per i dettagli">
+                <tr class="admin-row-clickable trip-row" data-trip-id="${t.id}" style="cursor:pointer" title="Clicca per dettagli">
                   <td><strong>${this.esc(t.title)}</strong></td>
                   <td>${this.esc(t.username)}</td>
                   <td>${this.esc(t.destination)}</td>
-                  <td style="white-space:nowrap">${t.startDate || '-'} ${t.endDate ? '/ ' + t.endDate : ''}</td>
-                  <td>${t.flightCount}/${t.hotelCount}/${t.activityCount}</td>
+                  <td style="white-space:nowrap;font-size:12px">${this.fmtDate(t.created_at)}</td>
                   <td class="admin-actions" onclick="event.stopPropagation()">
                     <button class="admin-btn admin-btn-danger admin-btn-sm" data-delete-trip="${t.id}" data-title="${this.esc(t.title)}">Elimina</button>
                   </td>
                 </tr>
-              `).join('') : '<tr><td colspan="6" class="admin-table-empty">Nessun viaggio trovato</td></tr>'}
+                <tr class="trip-detail-row" id="trip-detail-${t.id}" style="display:none">
+                  <td colspan="5">
+                    <div class="pdf-log-detail-panel" style="text-align:center;padding:16px">
+                      <span class="spinner"></span>
+                    </div>
+                  </td>
+                </tr>
+              `).join('') : '<tr><td colspan="5" class="admin-table-empty">Nessun viaggio trovato</td></tr>'}
             </tbody>
           </table>
         </div>
-        ${this.pagination(data.total, page, 20)}
+        ${this.pagination(data.total, page, pageSize)}
       </div>
-
-      <div id="trip-detail-container"></div>
     `;
 
     // Search
@@ -455,18 +461,18 @@ const adminPage = {
     document.getElementById('trips-search')?.addEventListener('input', (e) => {
       clearTimeout(searchTimer);
       searchTimer = setTimeout(() => {
-        this.renderTrips(1, e.target.value, document.getElementById('trips-status-filter')?.value || '');
+        this.renderTrips(1, e.target.value, document.getElementById('trips-status-filter')?.value || '', pageSize);
       }, 400);
     });
 
     // Filter
     document.getElementById('trips-status-filter')?.addEventListener('change', () => {
-      this.renderTrips(1, document.getElementById('trips-search')?.value || '', document.getElementById('trips-status-filter').value);
+      this.renderTrips(1, document.getElementById('trips-search')?.value || '', document.getElementById('trips-status-filter').value, pageSize);
     });
 
-    // Row click → trip detail
-    document.querySelectorAll('tr[data-view-trip]').forEach(row => {
-      row.addEventListener('click', () => this.showTripDetail(row.dataset.viewTrip));
+    // Row click → expand detail inline
+    document.querySelectorAll('.trip-row').forEach(row => {
+      row.addEventListener('click', () => this.toggleTripDetail(row.dataset.tripId));
     });
 
     // Delete trip
@@ -474,126 +480,106 @@ const adminPage = {
       btn.addEventListener('click', () => this.confirmDeleteTrip(btn.dataset.deleteTrip, btn.dataset.title));
     });
 
-    this.bindPagination(() => (p) => this.renderTrips(p, document.getElementById('trips-search')?.value || '', document.getElementById('trips-status-filter')?.value || ''));
+    this.bindPagination(() => (p, ps) => this.renderTrips(p, document.getElementById('trips-search')?.value || '', document.getElementById('trips-status-filter')?.value || '', ps || pageSize));
   },
 
-  async showTripDetail(tripId) {
-    const container = document.getElementById('trip-detail-container');
-    if (!container) return;
-    container.innerHTML = '<div class="admin-card"><div class="admin-loading"><span class="spinner"></span></div></div>';
-    container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  async toggleTripDetail(tripId) {
+    const detailRow = document.getElementById(`trip-detail-${tripId}`);
+    if (!detailRow) return;
 
-    let data, collabData;
+    // Toggle visibility
+    if (detailRow.style.display === 'table-row') {
+      detailRow.style.display = 'none';
+      return;
+    }
+    detailRow.style.display = 'table-row';
+
+    // If already loaded, don't reload
+    if (detailRow.dataset.loaded) return;
+
     try {
-      [data, collabData] = await Promise.all([
+      const [data, collabData] = await Promise.all([
         this.api('get-trip', { tripId }),
         this.api('get-trip-collaborators', { tripId }).catch(() => null)
       ]);
-    } catch (err) {
-      container.innerHTML = `<div class="admin-card"><p style="color:var(--color-error)">Errore: ${this.esc(err.message)}</p></div>`;
-      return;
-    }
-    const t = data.trip;
-    const d = t.data || {};
+      const t = data.trip;
+      const d = t.data || {};
+      const flights = d.flights || [];
+      const hotels = d.hotels || [];
+      const activities = d.activities || [];
+      const collabSection = collabData ? this._renderCollaboratorsSection(collabData) : '';
 
-    const flights = (d.flights || []);
-    const hotels = (d.hotels || []);
-    const activities = (d.activities || []);
-
-    // Build collaborators section
-    const collabSection = collabData ? this._renderCollaboratorsSection(collabData) : '';
-
-    container.innerHTML = `
-      <div class="admin-card">
-        <div class="admin-card-header">
-          <h3 class="admin-card-title">
-            <span id="trip-title-display">${this.esc(this.i18n(d.title) || this.i18n(d.destination) || 'Untitled')}</span>
-            <button class="admin-btn admin-btn-secondary admin-btn-sm" id="edit-title-btn" style="margin-left:8px">Modifica</button>
-          </h3>
-          <button class="admin-btn admin-btn-secondary admin-btn-sm" id="close-trip-detail">Chiudi</button>
-        </div>
-        <div class="admin-detail-grid" style="margin-bottom:16px">
-          <div><div class="admin-detail-label">Utente</div><div class="admin-detail-value">${this.esc(t.username)}</div></div>
-          <div><div class="admin-detail-label">Destinazione</div><div class="admin-detail-value">${this.esc(this.i18n(d.destination) || '-')}</div></div>
-          <div><div class="admin-detail-label">Date</div><div class="admin-detail-value">${d.startDate || '-'} - ${d.endDate || '-'}</div></div>
-          <div><div class="admin-detail-label">Creato</div><div class="admin-detail-value">${this.fmtDate(t.created_at)}</div></div>
-        </div>
-
-        ${flights.length ? `
-          <h4 style="margin:8px 0;font-size:13px;color:var(--color-gray-600)">Voli (${flights.length})</h4>
-          <div class="admin-trip-cards">
-            ${flights.map(f => `
-              <div class="admin-trip-card">
-                <div class="admin-trip-card-title">${this.esc(this.i18n(f.flightNumber) || 'Volo')}</div>
-                <div class="admin-trip-card-detail">
-                  ${this.esc(this.i18n(f.departure?.code) || '')} &rarr; ${this.esc(this.i18n(f.arrival?.code) || '')}<br>
-                  ${this.i18n(f.date) || ''} ${this.i18n(f.departureTime) || ''}<br>
-                  ${this.esc(this.i18n(f.airline) || '')} ${f.passenger?.name ? '- ' + this.esc(this.i18n(f.passenger.name)) : ''}
-                </div>
-              </div>
-            `).join('')}
+      detailRow.querySelector('td').innerHTML = `
+        <div class="pdf-log-detail-panel">
+          <div class="pdf-log-detail-grid">
+            <div><div class="admin-detail-label">Destinazione</div><div class="admin-detail-value">${this.esc(this.i18n(d.destination) || '-')}</div></div>
+            <div><div class="admin-detail-label">Date</div><div class="admin-detail-value">${d.startDate || '-'} → ${d.endDate || '-'}</div></div>
+            <div><div class="admin-detail-label">Creato</div><div class="admin-detail-value">${this.fmtDate(t.created_at)}</div></div>
+            <div><div class="admin-detail-label">Utente</div><div class="admin-detail-value">${this.esc(t.username)}</div></div>
           </div>
-        ` : ''}
 
-        ${hotels.length ? `
-          <h4 style="margin:12px 0 8px;font-size:13px;color:var(--color-gray-600)">Hotel (${hotels.length})</h4>
-          <div class="admin-trip-cards">
-            ${hotels.map(h => `
-              <div class="admin-trip-card">
-                <div class="admin-trip-card-title">${this.esc(this.i18n(h.name) || 'Hotel')}</div>
-                <div class="admin-trip-card-detail">
-                  ${this.i18n(h.checkIn) || ''} - ${this.i18n(h.checkOut) || ''}<br>
-                  ${this.esc(this.i18n(h.address) || '')}
-                </div>
+          ${flights.length ? `
+            <div class="pdf-log-extracted">
+              <div class="pdf-log-extracted-title">Voli (${flights.length})</div>
+              <div class="admin-trip-cards">
+                ${flights.map(f => `
+                  <div class="admin-trip-card">
+                    <div class="admin-trip-card-title">${this.esc(this.i18n(f.flightNumber) || 'Volo')}</div>
+                    <div class="admin-trip-card-detail">
+                      ${this.esc(this.i18n(f.departure?.code) || '')} → ${this.esc(this.i18n(f.arrival?.code) || '')}<br>
+                      ${this.i18n(f.date) || ''} ${this.i18n(f.departureTime) || ''}<br>
+                      ${this.esc(this.i18n(f.airline) || '')} ${f.passenger?.name ? '- ' + this.esc(this.i18n(f.passenger.name)) : ''}
+                    </div>
+                  </div>
+                `).join('')}
               </div>
-            `).join('')}
-          </div>
-        ` : ''}
+            </div>
+          ` : ''}
 
-        ${activities.length ? `
-          <h4 style="margin:12px 0 8px;font-size:13px;color:var(--color-gray-600)">Attivit\u00e0 (${activities.length})</h4>
-          <div class="admin-trip-cards">
-            ${activities.map(a => `
-              <div class="admin-trip-card">
-                <div class="admin-trip-card-title">${this.esc(this.i18n(a.name) || 'Attivit\u00e0')}</div>
-                <div class="admin-trip-card-detail">
-                  ${this.i18n(a.date) || ''} ${a.startTime ? a.startTime : ''} ${a.endTime ? '- ' + a.endTime : ''}
-                </div>
+          ${hotels.length ? `
+            <div class="pdf-log-extracted">
+              <div class="pdf-log-extracted-title">Hotel (${hotels.length})</div>
+              <div class="admin-trip-cards">
+                ${hotels.map(h => `
+                  <div class="admin-trip-card">
+                    <div class="admin-trip-card-title">${this.esc(this.i18n(h.name) || 'Hotel')}</div>
+                    <div class="admin-trip-card-detail">
+                      ${this.i18n(h.checkIn) || ''} - ${this.i18n(h.checkOut) || ''}<br>
+                      ${this.esc(this.i18n(h.address) || '')}
+                    </div>
+                  </div>
+                `).join('')}
               </div>
-            `).join('')}
-          </div>
-        ` : ''}
+            </div>
+          ` : ''}
 
-        ${collabSection}
-      </div>
-    `;
+          ${activities.length ? `
+            <div class="pdf-log-extracted">
+              <div class="pdf-log-extracted-title">Attività (${activities.length})</div>
+              <div class="admin-trip-cards">
+                ${activities.map(a => `
+                  <div class="admin-trip-card">
+                    <div class="admin-trip-card-title">${this.esc(this.i18n(a.name) || 'Attività')}</div>
+                    <div class="admin-trip-card-detail">
+                      ${this.i18n(a.date) || ''} ${a.startTime || ''} ${a.endTime ? '- ' + a.endTime : ''}
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
 
-    document.getElementById('close-trip-detail')?.addEventListener('click', () => container.innerHTML = '');
-
-    // Edit title
-    document.getElementById('edit-title-btn')?.addEventListener('click', () => {
-      const display = document.getElementById('trip-title-display');
-      const currentTitle = this.i18n(d.title) || this.i18n(d.destination) || '';
-      display.innerHTML = `
-        <div class="admin-inline-edit">
-          <input type="text" class="admin-inline-input" id="edit-title-input" value="${this.esc(currentTitle)}">
-          <button class="admin-btn admin-btn-primary admin-btn-sm" id="save-title-btn">Salva</button>
-          <button class="admin-btn admin-btn-secondary admin-btn-sm" id="cancel-title-btn">Annulla</button>
+          ${collabSection}
         </div>
       `;
-      document.getElementById('save-title-btn')?.addEventListener('click', async () => {
-        const newTitle = document.getElementById('edit-title-input').value.trim();
-        if (!newTitle) return;
-        try {
-          await this.api('update-trip', { tripId, updates: { title: newTitle } });
-          this.toast('Titolo aggiornato', 'success');
-          this.showTripDetail(tripId);
-        } catch (err) {
-          this.toast('Errore: ' + err.message, 'error');
-        }
-      });
-      document.getElementById('cancel-title-btn')?.addEventListener('click', () => this.showTripDetail(tripId));
-    });
+      detailRow.dataset.loaded = '1';
+    } catch (err) {
+      detailRow.querySelector('td').innerHTML = `
+        <div class="pdf-log-detail-panel">
+          <p style="color:var(--color-error)">Errore: ${this.esc(err.message)}</p>
+        </div>
+      `;
+    }
   },
 
   _renderCollaboratorsSection(collabData) {
@@ -702,8 +688,8 @@ const adminPage = {
   // Pending Bookings
   // ============================================
 
-  async renderPending(page = 1, statusFilter = '', typeFilter = '') {
-    const data = await this.api('list-pending-bookings', { page, pageSize: 20, status: statusFilter || undefined });
+  async renderPending(page = 1, statusFilter = '', typeFilter = '', pageSize = 10) {
+    const data = await this.api('list-pending-bookings', { page, pageSize, status: statusFilter || undefined });
     const main = document.querySelector('.admin-content');
 
     // Client-side type filter
@@ -732,6 +718,7 @@ const adminPage = {
             <option value="hotel" ${typeFilter === 'hotel' ? 'selected' : ''}>Hotel</option>
             <option value="unknown" ${typeFilter === 'unknown' ? 'selected' : ''}>Sconosciuto</option>
           </select>
+          ${this.pageSizeSelector(pageSize)}
         </div>
         <div class="admin-table-wrapper">
           <table class="admin-table admin-table-fixed">
@@ -764,7 +751,7 @@ const adminPage = {
             </tbody>
           </table>
         </div>
-        ${this.pagination(data.total, page, 20)}
+        ${this.pagination(data.total, page, pageSize)}
       </div>
     `;
 
@@ -775,12 +762,12 @@ const adminPage = {
 
     document.getElementById('pending-status-filter')?.addEventListener('change', () => {
       const f = getFilters();
-      this.renderPending(1, f.status, f.type);
+      this.renderPending(1, f.status, f.type, pageSize);
     });
 
     document.getElementById('pending-type-filter')?.addEventListener('change', () => {
       const f = getFilters();
-      this.renderPending(1, f.status, f.type);
+      this.renderPending(1, f.status, f.type, pageSize);
     });
 
     // Row click → booking detail
@@ -796,16 +783,16 @@ const adminPage = {
           await this.api('delete-pending-booking', { bookingId: btn.dataset.deleteBooking });
           this.toast('Prenotazione eliminata', 'success');
           const f = getFilters();
-          this.renderPending(1, f.status, f.type);
+          this.renderPending(1, f.status, f.type, pageSize);
         } catch (err) {
           this.toast('Errore: ' + err.message, 'error');
         }
       });
     });
 
-    this.bindPagination(() => (p) => {
+    this.bindPagination(() => (p, ps) => {
       const f = getFilters();
-      return this.renderPending(p, f.status, f.type);
+      return this.renderPending(p, f.status, f.type, ps || pageSize);
     });
   },
 
@@ -842,8 +829,8 @@ const adminPage = {
   // Email Logs
   // ============================================
 
-  async renderEmailLogs(page = 1, statusFilter = '') {
-    const data = await this.api('list-email-logs', { page, pageSize: 20, status: statusFilter || undefined });
+  async renderEmailLogs(page = 1, statusFilter = '', pageSize = 10) {
+    const data = await this.api('list-email-logs', { page, pageSize, status: statusFilter || undefined });
     const main = document.querySelector('.admin-content');
 
     main.innerHTML = `
@@ -861,6 +848,7 @@ const adminPage = {
             <option value="user_not_found" ${statusFilter === 'user_not_found' ? 'selected' : ''}>User not found</option>
             <option value="extraction_failed" ${statusFilter === 'extraction_failed' ? 'selected' : ''}>Extraction failed</option>
           </select>
+          ${this.pageSizeSelector(pageSize)}
         </div>
         <div class="admin-table-wrapper">
           <table class="admin-table">
@@ -880,97 +868,182 @@ const adminPage = {
             </tbody>
           </table>
         </div>
-        ${this.pagination(data.total, page, 20)}
+        ${this.pagination(data.total, page, pageSize)}
       </div>
     `;
 
     document.getElementById('email-log-filter')?.addEventListener('change', () => {
-      this.renderEmailLogs(1, document.getElementById('email-log-filter').value);
+      this.renderEmailLogs(1, document.getElementById('email-log-filter').value, pageSize);
     });
 
-    this.bindPagination(() => (p) => this.renderEmailLogs(p, document.getElementById('email-log-filter')?.value || ''));
+    this.bindPagination(() => (p, ps) => this.renderEmailLogs(p, document.getElementById('email-log-filter')?.value || '', ps || pageSize));
   },
 
   // ============================================
   // PDF Logs
   // ============================================
 
-  async renderPdfLogs(page = 1, statusFilter = '') {
-    const data = await this.api('list-pdf-logs', { page, pageSize: 20, status: statusFilter || undefined });
+  async renderPdfLogs(page = 1, statusFilter = '', pageSize = 10) {
+    const [data, statsData] = await Promise.all([
+      this.api('list-pdf-logs', { page, pageSize, status: statusFilter || undefined }),
+      page === 1 && !statusFilter ? this.api('pdf-log-stats') : Promise.resolve(null)
+    ]);
     const main = document.querySelector('.admin-content');
+    const st = statsData?.stats;
 
-    const statusOpts = ['success', 'error', 'extraction_failed', 'user_not_found'];
+    const statusOpts = [
+      { value: 'success', label: 'OK' },
+      { value: 'error', label: 'Errore' },
+      { value: 'extraction_failed', label: 'Fallito' },
+      { value: 'user_not_found', label: 'Utente non trovato' },
+    ];
 
     main.innerHTML = `
       <div class="admin-view-header">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:4px">
           <h1 style="margin:0">Elaborazioni PDF</h1>
-          <a href="#analyzer" class="admin-btn admin-btn-secondary admin-btn-sm" data-view="analyzer">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            Analizzatore
-          </a>
+          <div style="display:flex;gap:8px">
+            <button class="admin-btn admin-btn-danger admin-btn-sm" id="clear-pdf-logs-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              Svuota log
+            </button>
+            <a href="#analyzer" class="admin-btn admin-btn-secondary admin-btn-sm" data-view="analyzer">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              Analizzatore
+            </a>
+          </div>
         </div>
         <p>${data.total} elaborazioni totali</p>
       </div>
+
+      ${st ? `
+      <div class="pdf-stats-cards">
+        <div class="pdf-stat-card">
+          <div class="pdf-stat-value sp-level-1-text">${st.byLevel[1]}</div>
+          <div class="pdf-stat-label">Da cache (L1)</div>
+        </div>
+        <div class="pdf-stat-card">
+          <div class="pdf-stat-value sp-level-2-text">${st.byLevel[2]}</div>
+          <div class="pdf-stat-label">Da template (L2)</div>
+        </div>
+        <div class="pdf-stat-card">
+          <div class="pdf-stat-value sp-level-4-text">${st.byLevel[4]}</div>
+          <div class="pdf-stat-label">Con AI (L4)</div>
+        </div>
+        <div class="pdf-stat-card">
+          <div class="pdf-stat-value">${st.claudeSavingsPercent}%</div>
+          <div class="pdf-stat-label">Risparmio AI</div>
+        </div>
+        <div class="pdf-stat-card">
+          <div class="pdf-stat-value">${st.feedback.up > 0 || st.feedback.down > 0 ? `${st.feedback.up}/${st.feedback.up + st.feedback.down}` : '-'}</div>
+          <div class="pdf-stat-label">Feedback positivo</div>
+        </div>
+      </div>` : ''}
 
       <div class="admin-card">
         <div class="admin-toolbar">
           <select class="admin-filter" id="pdf-log-filter">
             <option value="">Tutti gli stati</option>
-            ${statusOpts.map(s => `<option value="${s}" ${statusFilter === s ? 'selected' : ''}>${s}</option>`).join('')}
+            ${statusOpts.map(s => `<option value="${s.value}" ${statusFilter === s.value ? 'selected' : ''}>${s.label}</option>`).join('')}
           </select>
+          ${this.pageSizeSelector(pageSize)}
         </div>
         <div class="admin-table-wrapper">
           <table class="admin-table">
             <thead>
               <tr>
-                <th>Sorgente</th>
+                <th>Livello</th>
                 <th>Stato</th>
+                <th>Brand</th>
                 <th>Utente</th>
-                <th>File / Oggetto email</th>
+                <th>File</th>
                 <th>Estratto</th>
-                <th>Errore</th>
+                <th>Feedback</th>
+                <th>Durata</th>
                 <th>Data</th>
               </tr>
             </thead>
             <tbody>
-              ${data.logs.length ? data.logs.map(l => `
+              ${data.logs.length ? data.logs.map(l => {
+                const meta = l.parse_meta || {};
+                const level = l.parse_level;
+                const levelBadge = this._pdfLevelBadge(level);
+                const brand = meta.brand || '';
+                const feedback = meta.feedback;
+                const durationMs = meta.durationMs;
+                const durationStr = durationMs ? (durationMs < 1000 ? `${durationMs}ms` : `${(durationMs / 1000).toFixed(1)}s`) : '-';
+                const feedbackIcon = feedback === 'up' ? '<span title="Positivo" style="color:#22c55e">&#x1F44D;</span>'
+                  : feedback === 'down' ? '<span title="Negativo" style="color:#ef4444">&#x1F44E;</span>' : '';
+                return `
                 <tr class="pdf-log-row" data-log-id="${this.esc(l.id)}" style="cursor:pointer" title="Clicca per dettagli">
-                  <td>${this._pdfSourceBadge(l.source)}</td>
+                  <td>${levelBadge}</td>
                   <td>${this.emailStatusBadge(l.status)}</td>
+                  <td style="font-size:12px">${this.esc(brand || '-')}</td>
                   <td>
                     <div style="font-weight:500">${this.esc(l.username || '-')}</div>
-                    <div style="font-size:11px;color:var(--color-gray-500)">${this.esc(l.userEmail || l.email_from || '')}</div>
                   </td>
-                  <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${this.esc(l.email_subject || '')}">
-                    ${this.esc((l.email_subject || '-').substring(0, 45))}
+                  <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${this.esc(l.email_subject || '')}">
+                    ${this.esc((l.email_subject || '-').substring(0, 40))}
                   </td>
-                  <td style="font-size:12px;color:var(--color-gray-600)">
-                    ${l.extracted_summary ? `${l.extracted_summary.flights || 0}✈ ${l.extracted_summary.hotels || 0}🏨` : (l.attachment_count != null ? `${l.attachment_count} file` : '-')}
+                  <td style="font-size:12px">
+                    ${l.extracted_summary ? (() => {
+                      const chips = [];
+                      const fc = l.extracted_summary.flights || 0;
+                      const hc = l.extracted_summary.hotels || 0;
+                      if (fc > 0) chips.push(`<span class="admin-badge admin-badge-flight">${fc} Vol${fc === 1 ? 'o' : 'i'}</span>`);
+                      if (hc > 0) chips.push(`<span class="admin-badge admin-badge-hotel">${hc} Hotel</span>`);
+                      return chips.length ? chips.join(' ') : '-';
+                    })() : '-'}
                   </td>
-                  <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--color-error);font-size:12px" title="${this.esc(l.error_message || '')}">${this.esc((l.error_message || '').substring(0, 35) || '-')}</td>
+                  <td style="text-align:center">${feedbackIcon}</td>
+                  <td style="font-size:12px;white-space:nowrap">${durationStr}</td>
                   <td style="white-space:nowrap">${this.fmtDate(l.created_at)}</td>
                 </tr>
                 <tr class="pdf-log-detail-row" id="pdf-log-detail-${this.esc(l.id)}" style="display:none">
-                  <td colspan="7">
+                  <td colspan="9">
                     <div class="pdf-log-detail-panel">
                       ${this._renderPdfLogDetail(l)}
                     </div>
                   </td>
                 </tr>
-              `).join('') : '<tr><td colspan="7" class="admin-table-empty">Nessun log PDF</td></tr>'}
+              `}).join('') : '<tr><td colspan="9" class="admin-table-empty">Nessun log PDF</td></tr>'}
             </tbody>
           </table>
         </div>
-        ${this.pagination(data.total, page, 20)}
+        ${this.pagination(data.total, page, pageSize)}
       </div>
-
     `;
 
     // Filter
     document.getElementById('pdf-log-filter')?.addEventListener('change', () => {
-      this.renderPdfLogs(1, document.getElementById('pdf-log-filter').value);
+      this.renderPdfLogs(1, document.getElementById('pdf-log-filter').value, pageSize);
     });
+
+    // Clear logs button
+    const clearBtn = document.getElementById('clear-pdf-logs-btn');
+    if (clearBtn) {
+      clearBtn.addEventListener('click', async () => {
+        const confirmed = await window.utils.showConfirm(
+          'Svuotare tutti i log delle elaborazioni PDF? Questa azione è irreversibile.', {
+            title: 'Svuota log',
+            confirmText: 'Svuota tutto',
+            variant: 'danger'
+          }
+        );
+        if (!confirmed) return;
+        clearBtn.disabled = true;
+        clearBtn.textContent = 'Svuotamento...';
+        try {
+          await this.api('clear-pdf-logs');
+          this.renderPdfLogs();
+        } catch (err) {
+          console.error('Clear PDF logs error:', err);
+          clearBtn.disabled = false;
+          clearBtn.textContent = 'Svuota log';
+          window.utils.showToast('Errore: ' + err.message, 'error');
+        }
+      });
+    }
 
     // Row toggle detail
     document.querySelectorAll('.pdf-log-row').forEach(row => {
@@ -983,86 +1056,149 @@ const adminPage = {
       });
     });
 
-    this.bindPagination(() => (p) => this.renderPdfLogs(p, document.getElementById('pdf-log-filter')?.value || ''));
+    // Download trip files buttons
+    document.querySelectorAll('[data-download-trip-files]').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const tripId = btn.dataset.downloadTripFiles;
+        btn.disabled = true;
+        btn.textContent = '...';
+        try {
+          const res = await this.api('get-trip-files', { tripId });
+          if (!res.files || res.files.length === 0) {
+            this.toast('Nessun file trovato', 'error');
+            return;
+          }
+          // Download each file
+          for (const f of res.files) {
+            const a = document.createElement('a');
+            a.href = f.signedUrl;
+            a.download = f.name;
+            a.target = '_blank';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+          }
+        } catch (err) {
+          this.toast('Errore download: ' + err.message, 'error');
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'Scarica PDF';
+        }
+      });
+    });
+
+    this.bindPagination(() => (p, ps) => this.renderPdfLogs(p, document.getElementById('pdf-log-filter')?.value || '', ps || pageSize));
+  },
+
+  _pdfLevelBadge(level) {
+    const map = {
+      1: { label: 'Cache (L1)', cls: 'sp-level-1' },
+      2: { label: 'Template (L2)', cls: 'sp-level-2' },
+      4: { label: 'AI (L4)', cls: 'sp-level-4' },
+    };
+    const info = map[level];
+    if (info) {
+      return `<span class="${info.cls}" style="display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px">${info.label}</span>`;
+    }
+    return `<span style="display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:#f3f4f6;color:#6b7280">Legacy</span>`;
   },
 
   _renderPdfLogDetail(log) {
-    const extracted = log.extracted_data;
-    let extractedHtml = '';
+    const meta = log.parse_meta || {};
+    const s = log.extracted_summary || {};
 
-    if (extracted) {
-      const data = typeof extracted === 'string' ? JSON.parse(extracted) : extracted;
-      extractedHtml = `
-        <div class="pdf-log-extracted">
-          <div class="pdf-log-extracted-title">Dati estratti</div>
-          <pre class="pdf-log-json">${this.esc(JSON.stringify(data, null, 2))}</pre>
-        </div>
-      `;
+    // ── Row 1: inline tags + completeness ──
+    const tags = [];
+    tags.push(this._pdfSourceBadge(log.source));
+    if (log.parse_level) tags.push(this._pdfLevelBadge(log.parse_level));
+    if (meta.brand) tags.push(`<span style="display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;background:#f0f9ff;color:#0369a1">${this.esc(meta.brand)}</span>`);
+    if (s.fieldsFilled != null && s.fieldsTotal) {
+      const pct = Math.round((s.fieldsFilled / s.fieldsTotal) * 100);
+      const color = pct >= 70 ? '#16a34a' : pct >= 40 ? '#ca8a04' : '#dc2626';
+      tags.push(`<span style="display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;background:${pct >= 70 ? '#f0fdf4' : pct >= 40 ? '#fefce8' : '#fef2f2'};color:${color}">${s.fieldsFilled}/${s.fieldsTotal} campi</span>`);
+    }
+    if (meta.claudeCalls != null && meta.claudeCalls > 0) {
+      tags.push(`<span style="display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;background:#faf5ff;color:#7c3aed">${meta.claudeCalls} chiamat${meta.claudeCalls === 1 ? 'a' : 'e'} Claude</span>`);
+    }
+    if (meta.editedFields?.length) {
+      const fieldLabels = meta.editedFields.map(f => f.replace(/^(flight|hotel)\[\d+\]\./, '')).join(', ');
+      tags.push(`<span style="display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;background:#fff7ed;color:#c2410c" title="${this.esc(meta.editedFields.join(', '))}">Modificato (${meta.editedFields.length})</span>`);
     }
 
-    // Build extracted_summary block for uploads
-    let summaryHtml = '';
-    if (log.extracted_summary && typeof log.extracted_summary === 'object') {
-      const s = log.extracted_summary;
-      summaryHtml = `
-        <div class="pdf-log-extracted">
-          <div class="pdf-log-extracted-title">Riepilogo estrazione</div>
-          <div class="pdf-result-grid" style="margin-bottom:0">
-            ${s.destination ? `<div class="pdf-result-field"><div class="pdf-result-field-label">Destinazione</div><div class="pdf-result-field-value">${this.esc(s.destination)}</div></div>` : ''}
-            ${s.flights != null ? `<div class="pdf-result-field"><div class="pdf-result-field-label">Voli estratti</div><div class="pdf-result-field-value">${s.flights}</div></div>` : ''}
-            ${s.hotels != null ? `<div class="pdf-result-field"><div class="pdf-result-field-label">Hotel estratti</div><div class="pdf-result-field-value">${s.hotels}</div></div>` : ''}
-            ${s.passenger ? `<div class="pdf-result-field"><div class="pdf-result-field-label">Passeggero</div><div class="pdf-result-field-value">${this.esc(s.passenger)}</div></div>` : ''}
-            ${s.startDate ? `<div class="pdf-result-field"><div class="pdf-result-field-label">Data inizio</div><div class="pdf-result-field-value">${this.esc(s.startDate)}</div></div>` : ''}
-            ${s.endDate ? `<div class="pdf-result-field"><div class="pdf-result-field-label">Data fine</div><div class="pdf-result-field-value">${this.esc(s.endDate)}</div></div>` : ''}
-          </div>
-        </div>
-      `;
+    // ── Row 2: file + user ──
+    const fileUser = [];
+    fileUser.push(this.esc(log.email_subject || '-'));
+    if (log.attachment_count > 1) fileUser.push(`(${log.attachment_count} file)`);
+    fileUser.push('·');
+    fileUser.push(this.esc(log.username || log.email_from || '-'));
+
+    // ── Row 3: extracted data summary ──
+    let dataHtml = '';
+    if (s && typeof s === 'object' && (s.flights || s.hotels)) {
+      const parts = [];
+      // Flights count + routes
+      if (s.flights) {
+        let flightTxt = `${s.flights} vol${s.flights === 1 ? 'o' : 'i'}`;
+        if (s.routes?.length) flightTxt += ` (${s.routes.join(', ')})`;
+        parts.push(flightTxt);
+      }
+      // Hotels count + names
+      if (s.hotels) {
+        let hotelTxt = `${s.hotels} hotel`;
+        if (s.hotelNames?.length) hotelTxt += ` (${s.hotelNames.map(n => this.esc(n)).join(', ')})`;
+        parts.push(hotelTxt);
+      }
+      // Passenger
+      if (s.passenger) parts.push(this.esc(s.passenger));
+      // Destination + dates
+      if (s.destination) parts.push(this.esc(s.destination));
+      if (s.startDate) parts.push(this.fmtDate(s.startDate + 'T00:00:00') + (s.endDate ? ` → ${this.fmtDate(s.endDate + 'T00:00:00')}` : ''));
+
+      // Warnings inline
+      const warn = [];
+      if (s.skippedFlights) warn.push(`${s.skippedFlights} duplicat${s.skippedFlights === 1 ? 'o' : 'i'}`);
+      if (s.skippedHotels) warn.push(`${s.skippedHotels} hotel dup.`);
+
+      dataHtml = `<div style="font-size:12px;color:var(--color-gray-700);margin-top:6px;display:inline">${parts.join(' · ')}</div>`;
+      if (warn.length) {
+        dataHtml += `<div style="font-size:11px;color:#b45309;margin-top:2px">⚠ ${warn.join(' · ')}</div>`;
+      }
+    } else if (log.extracted_summary && !s.flights && !s.hotels && log.status === 'success') {
+      dataHtml = `<span style="font-size:11px;color:#b45309">⚠ nessun dato estratto</span>`;
     }
 
-    const sourceLabel = log.source === 'upload' ? 'Caricamento diretto' : 'Email forwarding';
-    const emailLabel = log.source === 'upload' ? 'Utente' : 'Email da';
-    const subjectLabel = log.source === 'upload' ? 'File elaborati' : 'Oggetto email';
+    // Edited fields detail
+    if (meta.editedFields?.length) {
+      const labels = meta.editedFields.map(f => f.replace(/^(flight|hotel)\[\d+\]\./, ''));
+      dataHtml += `<div style="font-size:11px;color:#c2410c;margin-top:4px">Campi modificati: ${labels.join(', ')}</div>`;
+    }
+
+    // ── Trip link (row 1, right-aligned) ──
+    let tripLink = '';
+    if (log.trip_id) {
+      tripLink = `<a href="/trip.html?id=${encodeURIComponent(log.trip_id)}" target="_blank" style="font-size:11px;color:var(--color-primary);text-decoration:none;margin-left:auto">Apri viaggio ↗</a>`;
+    }
+
+    // ── JSON toggle (inline after data text) ──
+    const jsonId = `pdf-json-${log.id}`;
+    const hasJson = log.extracted_summary && Object.keys(log.extracted_summary).length > 0;
+    const jsonToggle = hasJson
+      ? ` <button class="admin-btn admin-btn-sm admin-btn-secondary" style="font-size:10px;padding:1px 6px;margin-left:6px" onclick="(function(b){var el=document.getElementById('${jsonId}');if(el.style.display==='none'){el.style.display='block';b.textContent='Nascondi JSON'}else{el.style.display='none';b.textContent='Mostra JSON'}})(this)">Mostra JSON</button>`
+      : '';
+    const jsonBlock = hasJson
+      ? `<pre id="${jsonId}" style="display:none;margin-top:6px;padding:8px;background:var(--color-gray-50);border:1px solid var(--color-gray-200);border-radius:6px;font-size:11px;max-height:300px;overflow:auto;white-space:pre-wrap;word-break:break-all">${this.esc(JSON.stringify(log.extracted_summary, null, 2))}</pre>`
+      : '';
 
     return `
-      <div class="pdf-log-detail-grid">
-        <div>
-          <div class="admin-detail-label">Sorgente</div>
-          <div class="admin-detail-value">${this._pdfSourceBadge(log.source)} <span style="font-size:12px;color:var(--color-gray-500);margin-left:4px">${sourceLabel}</span></div>
-        </div>
-        <div>
-          <div class="admin-detail-label">ID Log</div>
-          <div class="admin-detail-value" style="font-family:monospace;font-size:11px">${this.esc(log.id)}</div>
-        </div>
-        <div>
-          <div class="admin-detail-label">Utente</div>
-          <div class="admin-detail-value">${this.esc(log.username || log.user_id || '-')}</div>
-        </div>
-        <div>
-          <div class="admin-detail-label">${emailLabel}</div>
-          <div class="admin-detail-value">${this.esc(log.email_from || '-')}</div>
-        </div>
-        <div>
-          <div class="admin-detail-label">${subjectLabel}</div>
-          <div class="admin-detail-value">${this.esc(log.email_subject || '-')}</div>
-        </div>
-        ${log.attachment_count != null ? `
-        <div>
-          <div class="admin-detail-label">N° file</div>
-          <div class="admin-detail-value">${log.attachment_count}</div>
-        </div>` : ''}
-        ${log.trip_id ? `
-        <div>
-          <div class="admin-detail-label">Viaggio creato</div>
-          <div class="admin-detail-value" style="font-family:monospace;font-size:11px">${this.esc(log.trip_id)}</div>
-        </div>` : ''}
-        ${log.error_message ? `
-        <div style="grid-column:1/-1">
-          <div class="admin-detail-label">Messaggio errore</div>
-          <div class="admin-detail-value" style="color:var(--color-error)">${this.esc(log.error_message)}</div>
-        </div>` : ''}
+      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px">${tags.join('')}${tripLink}</div>
+      <div style="font-size:11px;color:var(--color-gray-500);margin-top:6px;display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+        <span>${fileUser.join(' ')}</span>
+        ${log.trip_id ? `<button class="admin-btn admin-btn-sm admin-btn-secondary" style="font-size:10px;padding:1px 6px;margin-left:4px" data-download-trip-files="${log.trip_id}">Scarica PDF</button>` : ''}
       </div>
-      ${summaryHtml}
-      ${extractedHtml}
+      <div style="margin-top:6px">${dataHtml}${jsonToggle}</div>
+      ${jsonBlock}
+      ${log.error_message ? `<div style="font-size:12px;color:var(--color-error);margin-top:4px">${this.esc(log.error_message)}</div>` : ''}
     `;
   },
 
@@ -1086,6 +1222,8 @@ const adminPage = {
 
     const flights = result.flights || (result.flightNumber ? [result] : []);
     const hotels = result.hotels || (result.name && result.checkIn ? [result] : []);
+    const trains = result.trains || [];
+    const buses = result.buses || [];
     const passenger = result.passenger;
     const booking = result.booking;
 
@@ -1127,7 +1265,8 @@ const adminPage = {
       const detectedDocType = smartMeta.detectedDocType;
       let detectedTypeHtml = '';
       if (detectedDocType && detectedDocType !== 'auto') {
-        const dtLabel = detectedDocType === 'flight' ? '✈ Volo rilevato' : '🏨 Hotel rilevato';
+        const dtLabels = { flight: '✈ Volo rilevato', hotel: '🏨 Hotel rilevato', train: '🚆 Treno rilevato', bus: '🚌 Autobus rilevato' };
+        const dtLabel = dtLabels[detectedDocType] || `📄 ${detectedDocType} rilevato`;
         detectedTypeHtml = `<span class="sp-detected-type">${dtLabel}</span>`;
       }
 
@@ -1151,7 +1290,8 @@ const adminPage = {
       `;
     }
 
-    const typeLabel = docType === 'flight' ? 'Volo' : docType === 'hotel' ? 'Hotel' : 'Auto';
+    const typeLabels = { flight: 'Volo', hotel: 'Hotel', train: 'Treno', bus: 'Autobus' };
+    const typeLabel = typeLabels[docType] || 'Auto';
     let html = `
       <div class="pdf-analyze-result-header">
         <span class="pdf-analyze-result-type">${typeLabel}</span>
@@ -1254,8 +1394,10 @@ const adminPage = {
           if (!v) return null;
           if (typeof v === 'string') return v;
           if (typeof v === 'object') {
+            // Prefer fullAddress when available (most complete)
+            if (v.fullAddress) return v.fullAddress;
             const parts = [v.street, v.city, v.postalCode, v.country].filter(Boolean);
-            return parts.length ? parts.join(', ') : (v.fullAddress || null);
+            return parts.length ? parts.join(', ') : null;
           }
           return String(v);
         };
@@ -1348,8 +1490,84 @@ const adminPage = {
       });
     }
 
-    if (flights.length === 0 && hotels.length === 0) {
-      html += `<div class="pdf-analyze-empty">Nessun volo o hotel riconoscibile nel documento.</div>`;
+    if (trains.length > 0) {
+      html += `<div class="pdf-section-title">Treni estratti (${trains.length})</div>`;
+      const resolveStr = (v) => {
+        if (v == null) return null;
+        if (typeof v === 'string') return v;
+        if (typeof v === 'object') return [v.date, v.time, v.value].filter(Boolean).join(' ') || JSON.stringify(v);
+        return String(v);
+      };
+      const resolvePrice = (v) => {
+        if (!v) return null;
+        if (typeof v === 'number') return String(v);
+        if (typeof v === 'string') return v;
+        if (typeof v === 'object' && v.value != null) return `${v.value}${v.currency ? ' ' + v.currency : ''}`;
+        return null;
+      };
+      trains.forEach((t, i) => {
+        html += `
+          <div class="pdf-flight-card">
+            <div class="pdf-flight-card-header">🚆 Treno ${i + 1}: ${this.esc(t.departure?.station || t.departure?.city || '?')} → ${this.esc(t.arrival?.station || t.arrival?.city || '?')}</div>
+            <div class="pdf-result-grid">
+              ${this._pdfField('N° treno', resolveStr(t.trainNumber))}
+              ${this._pdfField('Operatore', resolveStr(t.operator))}
+              ${this._pdfField('Data', resolveStr(t.date))}
+              ${this._pdfField('Partenza', `${t.departure?.station || t.departure?.city || ''} ${t.departure?.time || ''}`.trim())}
+              ${this._pdfField('Arrivo', `${t.arrival?.station || t.arrival?.city || ''} ${t.arrival?.time || ''}`.trim())}
+              ${this._pdfField('Classe', resolveStr(t.class))}
+              ${this._pdfField('Posto', resolveStr(t.seat))}
+              ${this._pdfField('Carrozza', resolveStr(t.coach))}
+              ${this._pdfField('Prenotazione', resolveStr(t.bookingReference))}
+              ${this._pdfField('Prezzo', resolvePrice(t.price))}
+            </div>
+            <div class="pdf-analyze-usage-note">
+              ⚠️ <strong>Tipo sperimentale (BETA)</strong> — non ancora integrato nel salvataggio viaggio.
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    if (buses.length > 0) {
+      html += `<div class="pdf-section-title">Autobus estratti (${buses.length})</div>`;
+      const resolveStr = (v) => {
+        if (v == null) return null;
+        if (typeof v === 'string') return v;
+        if (typeof v === 'object') return [v.date, v.time, v.value].filter(Boolean).join(' ') || JSON.stringify(v);
+        return String(v);
+      };
+      const resolvePrice = (v) => {
+        if (!v) return null;
+        if (typeof v === 'number') return String(v);
+        if (typeof v === 'string') return v;
+        if (typeof v === 'object' && v.value != null) return `${v.value}${v.currency ? ' ' + v.currency : ''}`;
+        return null;
+      };
+      buses.forEach((b, i) => {
+        html += `
+          <div class="pdf-flight-card">
+            <div class="pdf-flight-card-header">🚌 Autobus ${i + 1}: ${this.esc(b.departure?.station || b.departure?.city || '?')} → ${this.esc(b.arrival?.station || b.arrival?.city || '?')}</div>
+            <div class="pdf-result-grid">
+              ${this._pdfField('Operatore', resolveStr(b.operator))}
+              ${this._pdfField('Linea', resolveStr(b.routeNumber))}
+              ${this._pdfField('Data', resolveStr(b.date))}
+              ${this._pdfField('Partenza', `${b.departure?.station || b.departure?.city || ''} ${b.departure?.time || ''}`.trim())}
+              ${this._pdfField('Arrivo', `${b.arrival?.station || b.arrival?.city || ''} ${b.arrival?.time || ''}`.trim())}
+              ${this._pdfField('Posto', resolveStr(b.seat))}
+              ${this._pdfField('Prenotazione', resolveStr(b.bookingReference))}
+              ${this._pdfField('Prezzo', resolvePrice(b.price))}
+            </div>
+            <div class="pdf-analyze-usage-note">
+              ⚠️ <strong>Tipo sperimentale (BETA)</strong> — non ancora integrato nel salvataggio viaggio.
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    if (flights.length === 0 && hotels.length === 0 && trains.length === 0 && buses.length === 0) {
+      html += `<div class="pdf-analyze-empty">Nessun documento di viaggio riconoscibile.</div>`;
     }
 
     html += `
@@ -1644,8 +1862,8 @@ const adminPage = {
   // Audit Log
   // ============================================
 
-  async renderAudit(page = 1) {
-    const data = await this.api('get-audit-log', { page, pageSize: 50 });
+  async renderAudit(page = 1, pageSize = 10) {
+    const data = await this.api('get-audit-log', { page, pageSize });
     const main = document.querySelector('.admin-content');
 
     main.innerHTML = `
@@ -1655,6 +1873,9 @@ const adminPage = {
       </div>
 
       <div class="admin-card">
+        <div class="admin-toolbar">
+          ${this.pageSizeSelector(pageSize)}
+        </div>
         <div class="admin-table-wrapper">
           <table class="admin-table">
             <thead>
@@ -1673,11 +1894,11 @@ const adminPage = {
             </tbody>
           </table>
         </div>
-        ${this.pagination(data.total, page, 50)}
+        ${this.pagination(data.total, page, pageSize)}
       </div>
     `;
 
-    this.bindPagination(() => (p) => this.renderAudit(p));
+    this.bindPagination(() => (p, ps) => this.renderAudit(p, ps || pageSize));
   },
 
   // ============================================
@@ -1688,9 +1909,13 @@ const adminPage = {
     const main = document.querySelector('.admin-content');
     const { templates } = await this.api('smartparse-list-templates');
 
-    const typeIcon = { flight: '✈', hotel: '🏨', any: '?' };
+    const typeIcon = { flight: '✈', hotel: '🏨', train: '🚆', bus: '🚌', any: '📄' };
+    const BETA_TYPES = ['train', 'bus'];
 
-    const rows = templates.map(t => {
+    const liveTemplates = templates.filter(t => !BETA_TYPES.includes(t.doc_type));
+    const betaTemplates = templates.filter(t => BETA_TYPES.includes(t.doc_type));
+
+    const buildRows = (list) => list.map(t => {
       const icon = typeIcon[t.doc_type] || '?';
       const date = new Date(t.created_at).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: '2-digit' });
       const fpShort = t.last_sample_fingerprint ? t.last_sample_fingerprint.substring(0, 12) + '...' : '—';
@@ -1706,64 +1931,95 @@ const adminPage = {
         </tr>`;
     }).join('');
 
+    const buildTable = (list) => {
+      if (list.length === 0) {
+        return `<div style="padding:32px;text-align:center;color:var(--text-secondary)">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:.4;margin-bottom:8px;display:block;margin-inline:auto"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          <p style="margin:0;font-size:13px">Nessun documento in cache.</p>
+        </div>`;
+      }
+      return `<div class="admin-table-wrapper">
+        <table class="admin-table sp-tpl-table">
+          <thead>
+            <tr><th>Fingerprint</th><th>Tipo</th><th>Utilizzi</th><th>Creato</th><th></th></tr>
+          </thead>
+          <tbody>${buildRows(list)}</tbody>
+        </table>
+      </div>`;
+    };
+
     main.innerHTML = `
       <div class="admin-view-header">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:4px">
           <h1 style="margin:0;display:flex;align-items:center;gap:10px">
             SmartParse v2 Cache
-            <span class="sp-beta-badge" style="font-size:11px;padding:2px 8px;border-radius:4px;background:#4c1d95;color:#d8b4fe;font-weight:700;letter-spacing:.5px">BETA</span>
           </h1>
-          <div style="display:flex;gap:8px;align-items:center">
-            <button class="admin-btn admin-btn-danger" id="btn-clear-all-cache" style="font-size:12px">Svuota cache</button>
-            <button class="admin-btn admin-btn-secondary" id="btn-refresh-sptpl">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-              Aggiorna
-            </button>
-          </div>
+          <button class="admin-btn admin-btn-secondary" id="btn-refresh-sptpl">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            Aggiorna
+          </button>
         </div>
         <p style="margin:4px 0 0;color:var(--text-secondary);font-size:14px">${templates.length} documenti in cache — L1 cache hit = 0 chiamate Claude</p>
       </div>
 
-      <div class="admin-card" style="padding:0;overflow:hidden">
-        ${templates.length === 0
-          ? `<div style="padding:40px;text-align:center;color:var(--text-secondary)">
-               <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:.4;margin-bottom:12px;display:block;margin-inline:auto"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-               <p style="margin:0">Nessun documento in cache.<br>Analizza un PDF con SmartParse — la cache viene popolata automaticamente.</p>
-             </div>`
-          : `<div class="admin-table-wrapper">
-               <table class="admin-table sp-tpl-table">
-                 <thead>
-                   <tr>
-                     <th>Fingerprint</th>
-                     <th>Tipo</th>
-                     <th>Utilizzi</th>
-                     <th>Creato</th>
-                     <th></th>
-                   </tr>
-                 </thead>
-                 <tbody>${rows}</tbody>
-               </table>
-             </div>`
-        }
+      <!-- LIVE section -->
+      <div class="sp-cache-section">
+        <div class="sp-cache-section-header">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="sp-live-badge" style="font-size:10px;padding:2px 7px">LIVE</span>
+            <span style="font-size:14px;font-weight:600;color:var(--text-primary)">${liveTemplates.length} documenti</span>
+            <span style="font-size:12px;color:var(--text-secondary)">— Voli, Hotel</span>
+          </div>
+          ${liveTemplates.length > 0 ? `<button class="admin-btn admin-btn-sm admin-btn-danger" id="btn-clear-live-cache" style="font-size:11px">Svuota live</button>` : ''}
+        </div>
+        <div class="admin-card" style="padding:0;overflow:hidden">
+          ${buildTable(liveTemplates)}
+        </div>
+      </div>
+
+      <!-- BETA section -->
+      <div class="sp-cache-section">
+        <div class="sp-cache-section-header">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="sp-beta-badge" style="font-size:10px;padding:2px 7px">BETA</span>
+            <span style="font-size:14px;font-weight:600;color:var(--text-primary)">${betaTemplates.length} documenti</span>
+            <span style="font-size:12px;color:var(--text-secondary)">— Treni, Autobus</span>
+          </div>
+          ${betaTemplates.length > 0 ? `<button class="admin-btn admin-btn-sm admin-btn-danger" id="btn-clear-beta-cache" style="font-size:11px">Svuota beta</button>` : ''}
+        </div>
+        <div class="admin-card" style="padding:0;overflow:hidden">
+          ${buildTable(betaTemplates)}
+        </div>
       </div>`;
 
-    this._setupSmartCacheView(templates);
+    this._setupSmartCacheView(templates, liveTemplates, betaTemplates);
   },
 
-  _setupSmartCacheView(templates) {
+  _setupSmartCacheView(templates, liveTemplates, betaTemplates) {
     const main = document.querySelector('.admin-content');
 
     // Refresh
     main.querySelector('#btn-refresh-sptpl')?.addEventListener('click', () => this.renderSmartTemplates());
 
-    // Clear all cache
-    main.querySelector('#btn-clear-all-cache')?.addEventListener('click', async () => {
-      const confirmed = await this.confirm('Svuotare tutta la cache SmartParse? I prossimi upload richiederanno Claude.', 'Svuota cache');
+    // Clear live cache
+    main.querySelector('#btn-clear-live-cache')?.addEventListener('click', async () => {
+      const confirmed = await this.confirm(`Svuotare la cache Live (${liveTemplates.length} documenti)? I prossimi upload utente richiederanno Claude.`, 'Svuota cache Live');
       if (!confirmed) return;
-      for (const t of templates) {
+      for (const t of liveTemplates) {
         try { await this.api('smartparse-delete-template', { id: t.id }); } catch (_) {}
       }
-      this.toast('Cache svuotata', 'success');
+      this.toast('Cache Live svuotata', 'success');
+      this.renderSmartTemplates();
+    });
+
+    // Clear beta cache
+    main.querySelector('#btn-clear-beta-cache')?.addEventListener('click', async () => {
+      const confirmed = await this.confirm(`Svuotare la cache Beta (${betaTemplates.length} documenti)? I template sperimentali verranno rimossi.`, 'Svuota cache Beta');
+      if (!confirmed) return;
+      for (const t of betaTemplates) {
+        try { await this.api('smartparse-delete-template', { id: t.id }); } catch (_) {}
+      }
+      this.toast('Cache Beta svuotata', 'success');
       this.renderSmartTemplates();
     });
 
@@ -1967,17 +2223,28 @@ const adminPage = {
   },
 
   emailStatusBadge(status) {
-    const map = { success: 'success', error: 'error', extraction_failed: 'error', user_not_found: 'warning' };
-    return `<span class="admin-badge-status admin-badge-${map[status] || 'neutral'}">${status.replace(/_/g, ' ')}</span>`;
+    const styleMap = { success: 'success', error: 'error', extraction_failed: 'error', user_not_found: 'warning' };
+    const labelMap = { success: 'OK', error: 'Errore', extraction_failed: 'Fallito', user_not_found: 'Utente non trovato' };
+    return `<span class="admin-badge-status admin-badge-${styleMap[status] || 'neutral'}">${labelMap[status] || status.replace(/_/g, ' ')}</span>`;
+  },
+
+  pageSizeSelector(pageSize) {
+    return `
+      <div class="admin-pagination-size">
+        <span style="font-size:12px;color:var(--color-gray-500)">Righe per pagina</span>
+        <select class="admin-page-size-select" data-page-size>
+          ${[10, 25, 50].map(s => `<option value="${s}" ${s === pageSize ? 'selected' : ''}>${s}</option>`).join('')}
+        </select>
+      </div>
+    `;
   },
 
   pagination(total, page, pageSize) {
     const totalPages = Math.ceil(total / pageSize);
-    if (totalPages <= 1) return '';
 
     return `
       <div class="admin-pagination">
-        <div class="admin-pagination-info">${(page - 1) * pageSize + 1}-${Math.min(page * pageSize, total)} di ${total}</div>
+        <div class="admin-pagination-info">${total > 0 ? `${(page - 1) * pageSize + 1}-${Math.min(page * pageSize, total)} di ${total}` : '0 risultati'}</div>
         <div class="admin-pagination-btns">
           <button class="admin-pagination-btn" data-page="${page - 1}" ${page <= 1 ? 'disabled' : ''}>Prec</button>
           <button class="admin-pagination-btn" data-page="${page + 1}" ${page >= totalPages ? 'disabled' : ''}>Succ</button>
@@ -1991,6 +2258,12 @@ const adminPage = {
       btn.addEventListener('click', () => {
         const p = parseInt(btn.dataset.page);
         if (p > 0) getNavFn()(p);
+      });
+    });
+    document.querySelectorAll('[data-page-size]').forEach(sel => {
+      sel.addEventListener('change', () => {
+        const fn = getNavFn();
+        fn(1, parseInt(sel.value));
       });
     });
   },
@@ -2101,37 +2374,52 @@ const adminPage = {
                   <span class="pdf-parser-option-label">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:.7"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
                     SmartParse
-                    <span class="sp-beta-badge">BETA</span>
                   </span>
                 </label>
               </div>
+              <!-- SmartParse mode dropdown (visible only when SmartParse is selected) -->
+              <div id="sp-mode-select" style="margin-top:8px">
+                <select id="sp-mode-dropdown" class="sp-mode-dropdown">
+                  <option value="live" selected>Live — Voli + Hotel</option>
+                  <option value="beta">Beta — Tutti i tipi (treni, autobus...)</option>
+                </select>
+              </div>
             </div>
 
-            <!-- Tipo documento -->
+            <!-- Tipo documento (custom dropdown with icons) -->
             <div style="margin-bottom:16px">
               <label style="font-size:12px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Tipo documento</label>
-              <div class="pdf-analyze-type-select">
-                <label class="pdf-type-option">
-                  <input type="radio" name="pdf-doc-type" value="auto" checked>
-                  <span class="pdf-type-label">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
-                    Auto
-                  </span>
-                </label>
-                <label class="pdf-type-option">
-                  <input type="radio" name="pdf-doc-type" value="flight">
-                  <span class="pdf-type-label">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.4-.1.9.3 1.1l4.8 3.2-2.1 2.1-2.4-.6c-.4-.1-.8 0-1 .3l-.2.3c-.2.3-.1.7.1 1l2.2 2.2 2.2 2.2c.3.3.7.3 1 .1l.3-.2c.3-.2.4-.6.3-1l-.6-2.4 2.1-2.1 3.2 4.8c.2.4.7.5 1.1.3l.5-.3c.4-.2.6-.6.5-1.1z"/></svg>
-                    Volo
-                  </span>
-                </label>
-                <label class="pdf-type-option">
-                  <input type="radio" name="pdf-doc-type" value="hotel">
-                  <span class="pdf-type-label">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-                    Hotel
-                  </span>
-                </label>
+              <div class="sp-doctype-dropdown" id="sp-doctype-dropdown">
+                <div class="sp-doctype-selected" id="sp-doctype-selected">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                  <span>Auto-detect</span>
+                  <svg class="sp-doctype-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
+                <div class="sp-doctype-options" id="sp-doctype-options">
+                  <div class="sp-doctype-option sp-doctype-active" data-value="auto">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                    <span>Auto-detect</span>
+                  </div>
+                  <div class="sp-doctype-option" data-value="flight">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.4-.1.9.3 1.1l4.8 3.2-2.1 2.1-2.4-.6c-.4-.1-.8 0-1 .3l-.2.3c-.2.3-.1.7.1 1l2.2 2.2 2.2 2.2c.3.3.7.3 1 .1l.3-.2c.3-.2.4-.6.3-1l-.6-2.4 2.1-2.1 3.2 4.8c.2.4.7.5 1.1.3l.5-.3c.4-.2.6-.6.5-1.1z"/></svg>
+                    <span>Volo</span>
+                  </div>
+                  <div class="sp-doctype-option" data-value="hotel">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                    <span>Hotel</span>
+                  </div>
+                  <div class="sp-doctype-option sp-doctype-beta-opt" data-value="train" style="display:none">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="16" rx="2"/><path d="M4 11h16"/><path d="M12 3v8"/><circle cx="8" cy="15" r="1"/><circle cx="16" cy="15" r="1"/><path d="M8 19l-2 3"/><path d="M16 19l2 3"/></svg>
+                    <span>Treno</span>
+                    <span class="sp-beta-badge" style="margin-left:auto">BETA</span>
+                  </div>
+                  <div class="sp-doctype-option sp-doctype-beta-opt" data-value="bus" style="display:none">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"/><circle cx="7" cy="17" r="1"/><circle cx="17" cy="17" r="1"/><path d="M2 12h20"/></svg>
+                    <span>Autobus</span>
+                    <span class="sp-beta-badge" style="margin-left:auto">BETA</span>
+                  </div>
+                </div>
+                <input type="hidden" name="pdf-doc-type" id="pdf-doc-type-value" value="auto">
               </div>
             </div>
 
@@ -2232,12 +2520,71 @@ const adminPage = {
       );
     });
 
-    // Parser selector toggle
-    document.querySelectorAll('input[name="pdf-parser-type"]').forEach(radio => {
-      radio.addEventListener('change', () => {
-        // v2: no mode options to toggle
-      });
+    // ── Custom docType dropdown ──
+    const doctypeDropdown = document.getElementById('sp-doctype-dropdown');
+    const doctypeSelected = document.getElementById('sp-doctype-selected');
+    const doctypeOptions  = document.getElementById('sp-doctype-options');
+    const doctypeHidden   = document.getElementById('pdf-doc-type-value');
+
+    doctypeSelected.addEventListener('click', () => {
+      doctypeDropdown.classList.toggle('open');
     });
+    document.addEventListener('click', (e) => {
+      if (!doctypeDropdown.contains(e.target)) doctypeDropdown.classList.remove('open');
+    });
+    doctypeOptions.addEventListener('click', (e) => {
+      const opt = e.target.closest('.sp-doctype-option');
+      if (!opt || opt.style.display === 'none') return;
+      // Update hidden input
+      doctypeHidden.value = opt.dataset.value;
+      // Update selected display: clone icon + label from option
+      const svg = opt.querySelector('svg').cloneNode(true);
+      const label = opt.querySelector('span').textContent;
+      doctypeSelected.innerHTML = '';
+      doctypeSelected.appendChild(svg);
+      const span = document.createElement('span');
+      span.textContent = label;
+      doctypeSelected.appendChild(span);
+      doctypeSelected.insertAdjacentHTML('beforeend',
+        '<svg class="sp-doctype-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>');
+      // Update active state
+      doctypeOptions.querySelectorAll('.sp-doctype-option').forEach(o => o.classList.remove('sp-doctype-active'));
+      opt.classList.add('sp-doctype-active');
+      doctypeDropdown.classList.remove('open');
+    });
+
+    // ── Parser selector toggle — show/hide mode dropdown + beta docType options ──
+    const spModeSelect = document.getElementById('sp-mode-select');
+    const spModeDropdown = document.getElementById('sp-mode-dropdown');
+
+    const updateBetaVisibility = () => {
+      const isSmart = document.querySelector('input[name="pdf-parser-type"]:checked')?.value === 'smart';
+      const isBeta = isSmart && spModeDropdown.value === 'beta';
+      spModeSelect.style.display = isSmart ? '' : 'none';
+      document.querySelectorAll('.sp-doctype-beta-opt').forEach(el => {
+        el.style.display = isBeta ? '' : 'none';
+      });
+      // If a beta-only docType was selected and we switch away from beta, reset to auto
+      if (!isBeta && (doctypeHidden.value === 'train' || doctypeHidden.value === 'bus')) {
+        doctypeHidden.value = 'auto';
+        const autoOpt = doctypeOptions.querySelector('[data-value="auto"]');
+        const svg = autoOpt.querySelector('svg').cloneNode(true);
+        doctypeSelected.innerHTML = '';
+        doctypeSelected.appendChild(svg);
+        const span = document.createElement('span');
+        span.textContent = 'Auto-detect';
+        doctypeSelected.appendChild(span);
+        doctypeSelected.insertAdjacentHTML('beforeend',
+          '<svg class="sp-doctype-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>');
+        doctypeOptions.querySelectorAll('.sp-doctype-option').forEach(o => o.classList.remove('sp-doctype-active'));
+        autoOpt.classList.add('sp-doctype-active');
+      }
+    };
+
+    document.querySelectorAll('input[name="pdf-parser-type"]').forEach(radio => {
+      radio.addEventListener('change', updateBetaVisibility);
+    });
+    spModeDropdown.addEventListener('change', updateBetaVisibility);
 
     // File handling
     const MAX_PDF_FILES = 5;
@@ -2292,15 +2639,18 @@ const adminPage = {
     runBtn?.addEventListener('click', async () => {
       if (!selectedFiles.length) return;
 
-      const docType    = document.querySelector('input[name="pdf-doc-type"]:checked')?.value || 'auto';
+      const docType    = document.getElementById('pdf-doc-type-value')?.value || 'auto';
       const parserType = document.querySelector('input[name="pdf-parser-type"]:checked')?.value || 'only-claude';
+      const isSmart    = parserType === 'smart';
+      const smartMode  = isSmart ? (document.getElementById('sp-mode-dropdown').value || 'live') : 'live';
       const resultEl   = document.getElementById('pdf-analyze-result');
       const total      = selectedFiles.length;
       const isMulti    = total > 1;
 
       runBtn.disabled = true;
       resultEl.innerHTML = '';
-      spLog(`─── Analisi avviata: ${total} file, parser=${parserType}, docType=${docType} ───`, 'step');
+      const modeLabel = isSmart ? ` [${smartMode.toUpperCase()}]` : '';
+      spLog(`─── Analisi avviata: ${total} file, parser=${parserType}${modeLabel}, docType=${docType} ───`, 'step');
 
       const updateProgress = (i) => {
         runBtn.innerHTML = isMulti
@@ -2325,9 +2675,9 @@ const adminPage = {
 
         try {
           let res, html;
-          if (parserType === 'smart') {
-            spLog(`▶ [${name}] Invio a analyze-pdf-smart (docType=${docType})`, 'step');
-            res = await this.api('analyze-pdf-smart', { pdfBase64: base64, docType });
+          if (isSmart) {
+            spLog(`▶ [${name}] Invio a analyze-pdf-smart (docType=${docType}, mode=${smartMode})`, 'step');
+            res = await this.api('analyze-pdf-smart', { pdfBase64: base64, docType, mode: smartMode });
 
             // Log the core parse result
             const lvlLabel = { 1:'L1 Cache esatta', 2:'L2 Template extraction', 4:'L4 Claude AI' };
@@ -2339,7 +2689,15 @@ const adminPage = {
             }
             const hotelsFound = res.result?.hotels?.length ?? 0;
             const flightsFound = res.result?.flights?.length ?? 0;
-            spLog(`  Estratti: ${hotelsFound} hotel, ${flightsFound} voli`, hotelsFound + flightsFound > 0 ? 'ok' : 'warn');
+            const trainsFound = res.result?.trains?.length ?? 0;
+            const busesFound = res.result?.buses?.length ?? 0;
+            const totalFound = hotelsFound + flightsFound + trainsFound + busesFound;
+            let extractedParts = [];
+            if (flightsFound) extractedParts.push(`${flightsFound} voli`);
+            if (hotelsFound) extractedParts.push(`${hotelsFound} hotel`);
+            if (trainsFound) extractedParts.push(`${trainsFound} treni`);
+            if (busesFound) extractedParts.push(`${busesFound} autobus`);
+            spLog(`  Estratti: ${extractedParts.length ? extractedParts.join(', ') : '0 risultati'}`, totalFound > 0 ? 'ok' : 'warn');
             if (res.error) spLog(`  ⚠ ${res.error}`, 'warn');
 
             // If Claude timed out, show a friendly retry UI instead of an error
