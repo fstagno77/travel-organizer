@@ -154,8 +154,9 @@ const auth = {
       }
     }
 
-    // If authenticated, check for pending invite token
+    // If authenticated, handle pending invites
     if (this.session && this.profile) {
+      // Accetta inviti pendenti per token (da link di invito)
       const pendingToken = sessionStorage.getItem('pending_invite_token');
       if (pendingToken) {
         await this.acceptPendingInvite();
@@ -166,6 +167,9 @@ const auth = {
           return this;
         }
       }
+
+      // Accetta inviti pendenti per email (fire-and-forget, non blocca il caricamento)
+      this.acceptPendingInvitesByEmail();
 
       // Check for redirect from a previously accepted invite
       const redirectTrip = sessionStorage.getItem('redirect_to_trip');
