@@ -50,8 +50,37 @@ exports.handler = async (event, context) => {
     };
   }
 
-  // New user — check for a pending invitation matching their email
+  // New user — check for a pending invitation
   const email = user.email?.trim().toLowerCase();
+
+  // Controlla prima per invite token (se presente), poi per email
+  let body;
+  try {
+    body = JSON.parse(event.body || '{}');
+  } catch (e) {
+    body = {};
+  }
+
+  // Se c'è un invite token, verifica direttamente per token (indipendente dall'email)
+  if (body.invite_token) {
+    const { data: tokenInvite } = await serviceClient
+      .from('trip_invitations')
+      .select('id, email')
+      .eq('token', body.invite_token)
+      .eq('status', 'pending')
+      .maybeSingle();
+
+    if (tokenInvite) {
+      console.log(`[check-registration-access] Accesso consentito tramite invite token per: ${email} (invitato come: ${tokenInvite.email})`);
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ allowed: true, reason: 'invited_by_token' })
+      };
+    }
+  }
+
+  // Fallback: cerca invito per email
   const { data: invitation } = await serviceClient
     .from('trip_invitations')
     .select('id')

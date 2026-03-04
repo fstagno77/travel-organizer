@@ -320,13 +320,9 @@ async function handleAcceptInvite(serviceClient, user, { token }, headers) {
     };
   }
 
-  // Verify email matches
+  // Verifica email — se diversa, logga un avviso ma consenti (il possesso del token è sufficiente)
   if (user.email.toLowerCase() !== invite.email.toLowerCase()) {
-    return {
-      statusCode: 403,
-      headers,
-      body: JSON.stringify({ success: false, error: 'email_mismatch' })
-    };
+    console.log(`[accept-invite] Email diversa: invito per ${invite.email}, accettato da ${user.email} (consentito tramite token)`);
   }
 
   // Add to collaborators

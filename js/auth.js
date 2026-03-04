@@ -9,6 +9,7 @@ const auth = {
   travelers: [],
   needsUsername: false,
   initialized: false,
+  _blockingRegistration: false, // Flag per evitare redirect durante modale di blocco
 
   /**
    * Initialize Supabase client and check session
@@ -134,7 +135,10 @@ const auth = {
       } else if (event === 'SIGNED_OUT') {
         this.profile = null;
         this.needsUsername = false;
-        window.location.href = '/';
+        // Non fare redirect se stiamo mostrando la modale di registrazione bloccata
+        if (!this._blockingRegistration) {
+          window.location.href = '/';
+        }
       }
     });
 
@@ -147,6 +151,7 @@ const auth = {
       const result = await this.checkRegistrationAccess();
       if (!result.allowed) {
         console.log('[auth] Registration blocked - not invited');
+        this._blockingRegistration = true;
         await this.supabase.auth.signOut();
         this.showRegistrationBlockedModal();
       } else {
@@ -560,12 +565,15 @@ const auth = {
    */
   async checkRegistrationAccess() {
     try {
+      // Invia il token di invito se presente, così il backend può verificare anche per token
+      const inviteToken = sessionStorage.getItem('pending_invite_token');
       const response = await fetch('/.netlify/functions/check-registration-access', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${this.session.access_token}`
-        }
+        },
+        body: JSON.stringify({ invite_token: inviteToken || undefined })
       });
       const data = await response.json();
       return data;
@@ -648,6 +656,7 @@ const auth = {
       this.checkRegistrationAccess().then(result => {
         if (!result.allowed) {
           console.log('[auth] Registration blocked - not invited');
+          this._blockingRegistration = true;
           this.supabase.auth.signOut();
           this.showRegistrationBlockedModal();
         } else {
