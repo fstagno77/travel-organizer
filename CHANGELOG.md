@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.28.2 - 2026-03-04
+
+### Fix
+- **Fix accesso utenti invitati**: il token di invito viene ora verificato dal backend in `check-registration-access`, risolvendo il problema di accesso con Google OAuth quando l'email differisce da quella invitata
+- **Fix modale blocco registrazione**: aggiunto flag `_blockingRegistration` per evitare che il listener `SIGNED_OUT` faccia redirect prima che la modale sia visibile
+- **Fix accept-invite email mismatch**: rimosso il blocco rigido sull'email in `accept-invite` — il possesso del token è sufficiente
+
+### Miglioramenti
+- **SmartParse treni**: estrattore L2 dedicato per biglietti Trenitalia (stazioni, orari, PNR, passeggeri, de-duplicazione pagine)
+- **Brand detection**: aggiunto riconoscimento Trenitalia e Italo
+
 ## 0.28 - 2026-03-04
 
 ### Fix

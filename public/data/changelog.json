@@ -1,6 +1,22 @@
 {
   "versions": [
     {
+      "version": "0.28.2",
+      "date": "2026-03-04",
+      "changes": {
+        "it": [
+          "Fix accesso utenti invitati: il token di invito viene ora verificato dal backend, risolvendo il problema di accesso con Google OAuth quando l'email differisce da quella invitata",
+          "Fix modale di blocco registrazione: la modale viene ora mostrata correttamente invece di un redirect silenzioso alla schermata iniziale",
+          "SmartParse: supporto treni Trenitalia con estrattore L2 dedicato"
+        ],
+        "en": [
+          "Fix invited user access: invite token is now verified by the backend, fixing Google OAuth access when the email differs from the invited one",
+          "Fix registration blocked modal: the modal is now displayed correctly instead of a silent redirect to the home screen",
+          "SmartParse: Trenitalia train support with dedicated L2 extractor"
+        ]
+      }
+    },
+    {
       "version": "0.28",
       "date": "2026-03-04",
       "changes": {
