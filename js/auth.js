@@ -60,54 +60,69 @@ const auth = {
       }
     );
 
+    // --- DEBUG banner temporaneo (rimuovere dopo diagnosi) ---
+    const _dbg = (msg) => {
+      console.log('[auth]', msg);
+      let banner = document.getElementById('auth-debug-banner');
+      if (!banner) {
+        banner = document.createElement('div');
+        banner.id = 'auth-debug-banner';
+        banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#1a1a2e;color:#0f0;font:11px/1.4 monospace;padding:8px 12px;z-index:99999;max-height:40vh;overflow:auto;';
+        document.body.appendChild(banner);
+      }
+      banner.innerHTML += msg + '<br>';
+    };
+
     // If we have an OAuth code, exchange it manually
     if (hasCode) {
-      // Debug: show all supabase-related localStorage keys
-      console.log('[auth] LocalStorage keys with "sb-":',
-        Object.keys(localStorage).filter(k => k.includes('sb-')));
+      _dbg(`OAuth code presente, scambio in corso...`);
+      _dbg(`invite_token in sessionStorage: ${!!sessionStorage.getItem('pending_invite_token')}`);
 
       // Check if we have the PKCE code verifier stored
       const codeVerifierKey = 'sb-ftivlqthgsziuljruiqo-auth-token-code-verifier';
       const storedVerifier = localStorage.getItem(codeVerifierKey);
-      console.log('[auth] PKCE code verifier present:', !!storedVerifier);
+      _dbg(`PKCE verifier: ${storedVerifier ? 'presente' : 'MANCANTE'}`);
 
       if (!storedVerifier) {
-        console.error('[auth] No code verifier found - OAuth flow may have been interrupted');
+        _dbg('❌ ERRORE: verifier PKCE mancante — il browser potrebbe aver cancellato localStorage');
         window.history.replaceState(null, '', window.location.pathname);
       } else {
-        console.log('[auth] Exchanging OAuth code for session...');
         try {
           const { data, error } = await this.supabase.auth.exchangeCodeForSession(urlParams.get('code'));
           if (error) {
-            console.error('[auth] Code exchange error:', error.message, error);
-            // Clear the invalid code from URL
+            _dbg(`❌ Code exchange errore: ${error.message}`);
             window.history.replaceState(null, '', window.location.pathname);
           } else {
-            console.log('[auth] Code exchange successful, user:', data.session?.user?.email);
+            _dbg(`✅ Code exchange OK — email: ${data.session?.user?.email}`);
             this.session = data.session;
-            // Clean URL after successful exchange
             window.history.replaceState(null, '', window.location.pathname);
           }
         } catch (err) {
-          console.error('[auth] Code exchange exception:', err);
+          _dbg(`❌ Code exchange eccezione: ${err.message}`);
           window.history.replaceState(null, '', window.location.pathname);
         }
       }
+    } else {
+      _dbg(`Nessun OAuth code in URL (normale se non è un redirect Google)`);
     }
 
     // Check for existing session (if not already set by code exchange)
     if (!this.session) {
-      console.log('[auth] Checking for existing session...');
+      _dbg('Controllo sessione esistente...');
       const { data: { session }, error: sessionError } = await this.supabase.auth.getSession();
 
       if (sessionError) {
-        console.error('[auth] getSession error:', sessionError);
+        _dbg(`❌ getSession errore: ${sessionError.message}`);
       }
 
       this.session = session;
     }
 
-    console.log('[auth] Session:', this.session ? 'found' : 'none');
+    _dbg(`Sessione: ${this.session ? `trovata (${this.session.user?.email})` : 'nessuna'}`);
+
+    if (this.session) {
+      _dbg('Caricamento profilo...');
+    }
 
     if (this.session) {
       console.log('[auth] Loading profile...');
@@ -147,17 +162,23 @@ const auth = {
 
     // If user is logged in but needs username, validate invite access first
     if (this.session && this.needsUsername) {
-      console.log('[auth] User logged in but needs username, checking registration access...');
+      _dbg('Utente senza profilo — verifico accesso registrazione...');
+      _dbg(`invite_token: ${sessionStorage.getItem('pending_invite_token') ? 'presente' : 'assente'}`);
       const result = await this.checkRegistrationAccess();
+      _dbg(`Risultato check: ${JSON.stringify(result)}`);
       if (!result.allowed) {
-        console.log('[auth] Registration blocked - not invited');
+        _dbg(`❌ Registrazione bloccata: ${result.reason}`);
         this._blockingRegistration = true;
         await this.supabase.auth.signOut();
         this.showRegistrationBlockedModal();
       } else {
-        console.log('[auth] Registration allowed, showing username modal');
+        _dbg(`✅ Registrazione consentita: ${result.reason} — mostro modale username`);
         this.showUsernameModal();
       }
+    } else if (this.session && this.profile) {
+      _dbg(`✅ Utente autenticato con profilo: ${this.profile.username}`);
+    } else if (!this.session) {
+      _dbg('Nessuna sessione — utente non autenticato');
     }
 
     // If authenticated, check for pending invite token
