@@ -1,6 +1,24 @@
 {
   "versions": [
     {
+      "version": "0.28.3",
+      "date": "2026-03-04",
+      "changes": {
+        "it": [
+          "Fix inviti duplicati: gestione corretta quando esistono più inviti per la stessa email (errore PGRST116)",
+          "Inviti non auto-accettati: gli inviti vengono convertiti in collaborazioni pending con notifica accetta/rifiuta",
+          "Fix modale username su iOS: input visibile con colori espliciti e suggerimento nome da email",
+          "Fix accesso utenti invitati anche senza link di invito: il backend verifica l'email oltre al token"
+        ],
+        "en": [
+          "Fix duplicate invites: correct handling when multiple invitations exist for the same email (PGRST116 error)",
+          "Invites not auto-accepted: invitations are converted to pending collaborations with accept/decline notification",
+          "Fix username modal on iOS: visible input with explicit colors and name suggestion from email",
+          "Fix invited user access without invite link: backend verifies email in addition to token"
+        ]
+      }
+    },
+    {
       "version": "0.28.2",
       "date": "2026-03-04",
       "changes": {

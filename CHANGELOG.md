@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.28.3 - 2026-03-04
+
+### Fix
+- **Fix inviti duplicati**: gestione corretta con `.limit(1)` quando esistono più inviti per la stessa email in `trip_invitations` (errore PGRST116 con `maybeSingle`)
+- **Fix accesso senza link di invito**: il backend verifica l'email nella tabella `trip_invitations` oltre al token, permettendo l'accesso anche senza il link diretto
+- **Fix modale username su iOS**: aggiunto colori espliciti e `-webkit-text-fill-color` per input visibile, suggerimento nome da email
+
+### Miglioramenti
+- **Inviti non auto-accettati**: `acceptPendingInvitesByEmail` ora converte `trip_invitations` in `trip_collaborators` con `status: 'pending'` + notifica `collaboration_invite` con accetta/rifiuta (non più accettazione automatica)
+- **Conversione inviti al login**: la conversione viene eseguita ad ogni login (fire-and-forget) e dopo la creazione del profilo
+
 ## 0.28.2 - 2026-03-04
 
 ### Fix
