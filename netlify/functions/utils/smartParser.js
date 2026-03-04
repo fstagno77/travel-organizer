@@ -109,7 +109,7 @@ function normalizeFlightFields(result) {
 
 // ─── DB operations (cache entries) ──────────────────────────────────────────
 
-async function loadCacheEntries(docType) {
+async function loadCacheEntries(docType, betaMode = false) {
   const sb = getServiceClient();
   try {
     let q = sb.from(CACHE_TABLE).select('*');
@@ -121,7 +121,11 @@ async function loadCacheEntries(docType) {
       console.warn('[SmartParse] DB load error:', error.message);
       return { entries: [], loadError: error.message };
     }
-    return { entries: data || [], loadError: null };
+    // Separate live/beta cache: beta entries have ID starting with "beta:"
+    const filtered = (data || []).filter(e =>
+      betaMode ? e.id.startsWith('beta:') : !e.id.startsWith('beta:')
+    );
+    return { entries: filtered, loadError: null };
   } catch (err) {
     console.warn('[SmartParse] DB load exception:', err.message);
     return { entries: [], loadError: err.message };
@@ -139,10 +143,11 @@ async function loadCacheEntries(docType) {
 async function saveCacheEntry(fingerprint, result, docType, extra = {}) {
   const sb = getServiceClient();
   const brand = extra.brand || null;
+  const betaPrefix = extra.betaMode ? 'beta:' : '';
   // One template per brand+docType — reuses the same row
   const id = brand
-    ? `tpl-${brand.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${docType || 'any'}`
-    : `cache-${fingerprint.substring(0, 16)}`;
+    ? `${betaPrefix}tpl-${brand.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${docType || 'any'}`
+    : `${betaPrefix}cache-${fingerprint.substring(0, 16)}`;
 
   // Read existing entry to preserve known fingerprints
   let knownFingerprints = [fingerprint];
@@ -573,7 +578,7 @@ async function _parseDocumentSmartInternal(pdfBase64, docType, mode = 'auto', sk
 
   // ─ Level 1 — Exact fingerprint cache ────────────────────────────────────
   let dbLoadError = null;
-  const { entries, loadError } = await loadCacheEntries(docType);
+  const { entries, loadError } = await loadCacheEntries(docType, betaMode);
   dbLoadError = loadError;
 
   if (!loadError) {
@@ -694,6 +699,7 @@ async function _parseDocumentSmartInternal(pdfBase64, docType, mode = 'auto', sk
   // Save to cache (with L2 template data)
   const cacheResult = await saveCacheEntry(fingerprint, result, actualDocType, {
     brand,
+    betaMode,
     extractionMap: extractionMap.length > 0 ? extractionMap : undefined,
     sampleText: hasText ? extractedText : undefined,
   }).catch(err => {

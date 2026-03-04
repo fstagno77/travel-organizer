@@ -1910,10 +1910,9 @@ const adminPage = {
     const { templates } = await this.api('smartparse-list-templates');
 
     const typeIcon = { flight: '✈', hotel: '🏨', train: '🚆', bus: '🚌', any: '📄' };
-    const BETA_TYPES = ['train', 'bus'];
 
-    const liveTemplates = templates.filter(t => !BETA_TYPES.includes(t.doc_type));
-    const betaTemplates = templates.filter(t => BETA_TYPES.includes(t.doc_type));
+    const liveTemplates = templates.filter(t => !t.id.startsWith('beta:'));
+    const betaTemplates = templates.filter(t => t.id.startsWith('beta:'));
 
     const buildRows = (list) => list.map(t => {
       const icon = typeIcon[t.doc_type] || '?';
@@ -2379,10 +2378,24 @@ const adminPage = {
               </div>
               <!-- SmartParse mode dropdown (visible only when SmartParse is selected) -->
               <div id="sp-mode-select" style="margin-top:8px">
-                <select id="sp-mode-dropdown" class="sp-mode-dropdown">
-                  <option value="live" selected>Live — Voli + Hotel</option>
-                  <option value="beta">Beta — Tutti i tipi (treni, autobus...)</option>
-                </select>
+                <div class="sp-mode-dropdown-wrap" id="sp-mode-dropdown-wrap">
+                  <div class="sp-mode-selected" id="sp-mode-selected">
+                    <span class="sp-beta-badge">BETA</span>
+                    <span>Tutti i tipi (treni, autobus...)</span>
+                    <svg class="sp-doctype-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                  </div>
+                  <div class="sp-mode-options" id="sp-mode-options">
+                    <div class="sp-mode-option sp-mode-active" data-value="beta">
+                      <span class="sp-beta-badge">BETA</span>
+                      <span>Tutti i tipi (treni, autobus...)</span>
+                    </div>
+                    <div class="sp-mode-option" data-value="live">
+                      <span class="sp-live-badge">LIVE</span>
+                      <span>Voli + Hotel</span>
+                    </div>
+                  </div>
+                  <input type="hidden" id="sp-mode-value" value="beta">
+                </div>
               </div>
             </div>
 
@@ -2553,38 +2566,63 @@ const adminPage = {
       doctypeDropdown.classList.remove('open');
     });
 
-    // ── Parser selector toggle — show/hide mode dropdown + beta docType options ──
+    // ── Custom mode dropdown (Live/Beta) ──
     const spModeSelect = document.getElementById('sp-mode-select');
-    const spModeDropdown = document.getElementById('sp-mode-dropdown');
+    const spModeWrap = document.getElementById('sp-mode-dropdown-wrap');
+    const spModeSelectedEl = document.getElementById('sp-mode-selected');
+    const spModeOptionsEl = document.getElementById('sp-mode-options');
+    const spModeHidden = document.getElementById('sp-mode-value');
+
+    spModeSelectedEl.addEventListener('click', () => {
+      spModeWrap.classList.toggle('open');
+    });
+    document.addEventListener('click', (e) => {
+      if (!spModeWrap.contains(e.target)) spModeWrap.classList.remove('open');
+    });
+    spModeOptionsEl.addEventListener('click', (e) => {
+      const opt = e.target.closest('.sp-mode-option');
+      if (!opt) return;
+      spModeHidden.value = opt.dataset.value;
+      // Clone inner content (badge + label) to selected display
+      spModeSelectedEl.innerHTML = opt.innerHTML +
+        '<svg class="sp-doctype-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
+      spModeOptionsEl.querySelectorAll('.sp-mode-option').forEach(o => o.classList.remove('sp-mode-active'));
+      opt.classList.add('sp-mode-active');
+      spModeWrap.classList.remove('open');
+      updateBetaVisibility();
+    });
+
+    // ── Parser selector toggle — show/hide mode dropdown + beta docType options ──
+    const resetDoctypeToAuto = () => {
+      doctypeHidden.value = 'auto';
+      const autoOpt = doctypeOptions.querySelector('[data-value="auto"]');
+      const svg = autoOpt.querySelector('svg').cloneNode(true);
+      doctypeSelected.innerHTML = '';
+      doctypeSelected.appendChild(svg);
+      const span = document.createElement('span');
+      span.textContent = 'Auto-detect';
+      doctypeSelected.appendChild(span);
+      doctypeSelected.insertAdjacentHTML('beforeend',
+        '<svg class="sp-doctype-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>');
+      doctypeOptions.querySelectorAll('.sp-doctype-option').forEach(o => o.classList.remove('sp-doctype-active'));
+      autoOpt.classList.add('sp-doctype-active');
+    };
 
     const updateBetaVisibility = () => {
       const isSmart = document.querySelector('input[name="pdf-parser-type"]:checked')?.value === 'smart';
-      const isBeta = isSmart && spModeDropdown.value === 'beta';
+      const isBeta = isSmart && spModeHidden.value === 'beta';
       spModeSelect.style.display = isSmart ? '' : 'none';
       document.querySelectorAll('.sp-doctype-beta-opt').forEach(el => {
         el.style.display = isBeta ? '' : 'none';
       });
-      // If a beta-only docType was selected and we switch away from beta, reset to auto
       if (!isBeta && (doctypeHidden.value === 'train' || doctypeHidden.value === 'bus')) {
-        doctypeHidden.value = 'auto';
-        const autoOpt = doctypeOptions.querySelector('[data-value="auto"]');
-        const svg = autoOpt.querySelector('svg').cloneNode(true);
-        doctypeSelected.innerHTML = '';
-        doctypeSelected.appendChild(svg);
-        const span = document.createElement('span');
-        span.textContent = 'Auto-detect';
-        doctypeSelected.appendChild(span);
-        doctypeSelected.insertAdjacentHTML('beforeend',
-          '<svg class="sp-doctype-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>');
-        doctypeOptions.querySelectorAll('.sp-doctype-option').forEach(o => o.classList.remove('sp-doctype-active'));
-        autoOpt.classList.add('sp-doctype-active');
+        resetDoctypeToAuto();
       }
     };
 
     document.querySelectorAll('input[name="pdf-parser-type"]').forEach(radio => {
       radio.addEventListener('change', updateBetaVisibility);
     });
-    spModeDropdown.addEventListener('change', updateBetaVisibility);
 
     // File handling
     const MAX_PDF_FILES = 5;
@@ -2642,7 +2680,7 @@ const adminPage = {
       const docType    = document.getElementById('pdf-doc-type-value')?.value || 'auto';
       const parserType = document.querySelector('input[name="pdf-parser-type"]:checked')?.value || 'only-claude';
       const isSmart    = parserType === 'smart';
-      const smartMode  = isSmart ? (document.getElementById('sp-mode-dropdown').value || 'live') : 'live';
+      const smartMode  = isSmart ? (document.getElementById('sp-mode-value')?.value || 'beta') : 'live';
       const resultEl   = document.getElementById('pdf-analyze-result');
       const total      = selectedFiles.length;
       const isMulti    = total > 1;
