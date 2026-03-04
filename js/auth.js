@@ -60,69 +60,48 @@ const auth = {
       }
     );
 
-    // --- DEBUG banner temporaneo (rimuovere dopo diagnosi) ---
-    const _dbg = (msg) => {
-      console.log('[auth]', msg);
-      let banner = document.getElementById('auth-debug-banner');
-      if (!banner) {
-        banner = document.createElement('div');
-        banner.id = 'auth-debug-banner';
-        banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#1a1a2e;color:#0f0;font:11px/1.4 monospace;padding:8px 12px;z-index:99999;max-height:40vh;overflow:auto;';
-        document.body.appendChild(banner);
-      }
-      banner.innerHTML += msg + '<br>';
-    };
-
     // If we have an OAuth code, exchange it manually
     if (hasCode) {
-      _dbg(`OAuth code presente, scambio in corso...`);
-      _dbg(`invite_token in sessionStorage: ${!!sessionStorage.getItem('pending_invite_token')}`);
-
       // Check if we have the PKCE code verifier stored
       const codeVerifierKey = 'sb-ftivlqthgsziuljruiqo-auth-token-code-verifier';
       const storedVerifier = localStorage.getItem(codeVerifierKey);
-      _dbg(`PKCE verifier: ${storedVerifier ? 'presente' : 'MANCANTE'}`);
+      console.log('[auth] PKCE code verifier present:', !!storedVerifier);
 
       if (!storedVerifier) {
-        _dbg('❌ ERRORE: verifier PKCE mancante — il browser potrebbe aver cancellato localStorage');
+        console.error('[auth] No code verifier found - OAuth flow may have been interrupted');
         window.history.replaceState(null, '', window.location.pathname);
       } else {
+        console.log('[auth] Exchanging OAuth code for session...');
         try {
           const { data, error } = await this.supabase.auth.exchangeCodeForSession(urlParams.get('code'));
           if (error) {
-            _dbg(`❌ Code exchange errore: ${error.message}`);
+            console.error('[auth] Code exchange error:', error.message, error);
             window.history.replaceState(null, '', window.location.pathname);
           } else {
-            _dbg(`✅ Code exchange OK — email: ${data.session?.user?.email}`);
+            console.log('[auth] Code exchange successful, user:', data.session?.user?.email);
             this.session = data.session;
             window.history.replaceState(null, '', window.location.pathname);
           }
         } catch (err) {
-          _dbg(`❌ Code exchange eccezione: ${err.message}`);
+          console.error('[auth] Code exchange exception:', err);
           window.history.replaceState(null, '', window.location.pathname);
         }
       }
-    } else {
-      _dbg(`Nessun OAuth code in URL (normale se non è un redirect Google)`);
     }
 
     // Check for existing session (if not already set by code exchange)
     if (!this.session) {
-      _dbg('Controllo sessione esistente...');
+      console.log('[auth] Checking for existing session...');
       const { data: { session }, error: sessionError } = await this.supabase.auth.getSession();
 
       if (sessionError) {
-        _dbg(`❌ getSession errore: ${sessionError.message}`);
+        console.error('[auth] getSession error:', sessionError);
       }
 
       this.session = session;
     }
 
-    _dbg(`Sessione: ${this.session ? `trovata (${this.session.user?.email})` : 'nessuna'}`);
-
-    if (this.session) {
-      _dbg('Caricamento profilo...');
-    }
+    console.log('[auth] Session:', this.session ? 'found' : 'none');
 
     if (this.session) {
       console.log('[auth] Loading profile...');
@@ -162,23 +141,17 @@ const auth = {
 
     // If user is logged in but needs username, validate invite access first
     if (this.session && this.needsUsername) {
-      _dbg('Utente senza profilo — verifico accesso registrazione...');
-      _dbg(`invite_token: ${sessionStorage.getItem('pending_invite_token') ? 'presente' : 'assente'}`);
+      console.log('[auth] User logged in but needs username, checking registration access...');
       const result = await this.checkRegistrationAccess();
-      _dbg(`Risultato check: ${JSON.stringify(result)}`);
       if (!result.allowed) {
-        _dbg(`❌ Registrazione bloccata: ${result.reason}`);
+        console.log('[auth] Registration blocked - not invited');
         this._blockingRegistration = true;
         await this.supabase.auth.signOut();
         this.showRegistrationBlockedModal();
       } else {
-        _dbg(`✅ Registrazione consentita: ${result.reason} — mostro modale username`);
+        console.log('[auth] Registration allowed, showing username modal');
         this.showUsernameModal();
       }
-    } else if (this.session && this.profile) {
-      _dbg(`✅ Utente autenticato con profilo: ${this.profile.username}`);
-    } else if (!this.session) {
-      _dbg('Nessuna sessione — utente non autenticato');
     }
 
     // If authenticated, check for pending invite token
@@ -730,6 +703,30 @@ const auth = {
   },
 
   /**
+   * Accetta automaticamente tutti gli inviti pendenti per l'email dell'utente.
+   * Chiamato dopo la creazione del profilo per nuovi utenti.
+   */
+  async acceptPendingInvitesByEmail() {
+    if (!this.session) return;
+    try {
+      const response = await fetch('/.netlify/functions/manage-collaboration', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.session.access_token}`
+        },
+        body: JSON.stringify({ action: 'accept-pending-by-email' })
+      });
+      const data = await response.json();
+      if (data.success && data.accepted > 0) {
+        console.log(`[auth] Accettati ${data.accepted} inviti pendenti per email`);
+      }
+    } catch (err) {
+      console.error('[auth] Error accepting pending invites by email:', err);
+    }
+  },
+
+  /**
    * Get access token for API calls
    */
   getAccessToken() {
@@ -990,6 +987,8 @@ const auth = {
 
       try {
         await this.createProfile(username);
+        // Accetta automaticamente tutti gli inviti pendenti per questa email
+        await this.acceptPendingInvitesByEmail();
         document.body.classList.remove('modal-open');
         overlay.remove();
         window.dispatchEvent(new CustomEvent('authStateChanged'));

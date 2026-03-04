@@ -62,6 +62,8 @@ exports.handler = async (event, context) => {
         return await handleGetRole(user, body, headers);
       case 'get-past-collaborators':
         return await handleGetPastCollaborators(serviceClient, user, headers);
+      case 'accept-pending-by-email':
+        return await handleAcceptPendingByEmail(serviceClient, user, headers);
       default:
         return {
           statusCode: 400,
@@ -886,4 +888,81 @@ async function sendInviteEmail(serviceClient, email, token, inviter, tripId) {
     console.error('Failed to send invite email:', error);
     // Non-fatal: invitation is still created in the database
   }
+}
+
+/**
+ * Accetta automaticamente tutti gli inviti pendenti per l'email dell'utente.
+ * Chiamato dopo la creazione del profilo per utenti appena registrati.
+ */
+async function handleAcceptPendingByEmail(serviceClient, user, headers) {
+  const email = user.email?.trim().toLowerCase();
+  if (!email) {
+    return { statusCode: 400, headers, body: JSON.stringify({ success: false, error: 'no email' }) };
+  }
+
+  // Trova tutti gli inviti pendenti per questa email
+  const { data: invites, error } = await serviceClient
+    .from('trip_invitations')
+    .select('id, trip_id, role, invited_by')
+    .eq('email', email)
+    .eq('status', 'pending');
+
+  if (error || !invites || invites.length === 0) {
+    return { statusCode: 200, headers, body: JSON.stringify({ success: true, accepted: 0 }) };
+  }
+
+  let accepted = 0;
+  const tripIds = [];
+
+  for (const invite of invites) {
+    // Aggiungi come collaboratore
+    const { error: insertError } = await serviceClient
+      .from('trip_collaborators')
+      .insert({
+        trip_id: invite.trip_id,
+        user_id: user.id,
+        role: invite.role,
+        invited_by: invite.invited_by
+      });
+
+    if (insertError && insertError.code !== '23505') {
+      console.error(`[accept-pending-by-email] Errore inserimento collaboratore per trip ${invite.trip_id}:`, insertError);
+      continue;
+    }
+
+    // Marca invito come accettato
+    await serviceClient
+      .from('trip_invitations')
+      .update({ status: 'accepted' })
+      .eq('id', invite.id);
+
+    // Notifica l'invitante
+    const { data: trip } = await serviceClient
+      .from('trips')
+      .select('data')
+      .eq('id', invite.trip_id)
+      .single();
+
+    const tripTitle = trip?.data?.title?.it || trip?.data?.title || 'un viaggio';
+    await serviceClient.from('notifications').insert({
+      user_id: invite.invited_by,
+      type: 'invitation_accepted',
+      trip_id: invite.trip_id,
+      actor_id: user.id,
+      message: {
+        it: `Ha accettato l'invito al viaggio "${tripTitle}"`,
+        en: `Accepted the invitation to trip "${tripTitle}"`
+      }
+    }).catch(() => {});
+
+    accepted++;
+    tripIds.push(invite.trip_id);
+  }
+
+  console.log(`[accept-pending-by-email] ${email}: ${accepted}/${invites.length} inviti accettati`);
+  return {
+    statusCode: 200,
+    headers,
+    body: JSON.stringify({ success: true, accepted, tripIds })
+  };
 }
