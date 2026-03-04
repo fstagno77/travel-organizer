@@ -40,6 +40,10 @@ const BRAND_RULES = [
   { brand: 'easyjet', test: t => t.includes('easyjet') },
   { brand: 'vueling', test: t => t.includes('vueling') },
   { brand: 'wizz-air', test: t => t.includes('wizz') && t.includes('air') },
+  { brand: 'trenitalia', test: t => t.includes('trenitalia') &&
+      (t.includes('pnr') || t.includes('biglietto') || t.includes('stazione di partenza')) },
+  { brand: 'italo', test: t => (t.includes('italo') || t.includes('ntv')) &&
+      (t.includes('biglietto') || t.includes('stazione') || t.includes('treno')) },
   { brand: 'booking.com', test: t => t.includes('booking.com') &&
       (t.includes('numero di conferma') || t.includes('conferma della prenotazione') ||
        t.includes('confirmation number') || t.includes('booking confirmation')) },
@@ -67,6 +71,11 @@ const MANDATORY = {
   hotel: [
     'name', 'checkIn.date', 'checkOut.date', 'confirmationNumber',
     'address.city', 'address.fullAddress'
+  ],
+  train: [
+    'trainNumber', 'date', 'departure.station', 'departure.city',
+    'departure.time', 'arrival.station', 'arrival.city', 'arrival.time',
+    'bookingReference'
   ]
 };
 
@@ -106,6 +115,14 @@ function flattenResult(result, docType) {
     for (let hi = 0; hi < hotels.length; hi++) {
       flattenObject(hotels[hi], `hotels.${hi}`, pairs);
     }
+  }
+
+  if (docType === 'train' || result.trains?.length) {
+    const trains = result.trains || [];
+    for (let ti = 0; ti < trains.length; ti++) {
+      flattenObject(trains[ti], `trains.${ti}`, pairs);
+    }
+    if (result.passenger) flattenObject(result.passenger, 'passenger', pairs);
   }
 
   return pairs;
@@ -636,6 +653,156 @@ function extractITAPassengerFields(text) {
   return Object.keys(result).length > 0 ? result : null;
 }
 
+// ─── Trenitalia Specific Extraction ──────────────────────────────────────────
+
+/**
+ * Estrattore specifico per biglietti Trenitalia.
+ * I PDF Trenitalia hanno pagine ripetute (una per passeggero),
+ * quindi de-duplichiamo i treni basandoci su trainNumber+date.
+ */
+function extractTrenitaliaTrain(text) {
+  const lines = text.split('\n');
+  const trains = [];
+  const passengers = [];
+  let pnr = null;
+  let ticketNumber = null;
+  let totalPrice = null;
+
+  // PNR: "PNR: ACQGSN"
+  const pnrMatch = text.match(/PNR\s*:\s*([A-Z0-9]+)/i);
+  if (pnrMatch) pnr = pnrMatch[1].trim();
+
+  // Numero Titolo: "Numero Titolo: 2469297815"
+  const ticketMatch = text.match(/Numero\s+Titolo\s*:\s*(\d+)/i);
+  if (ticketMatch) ticketNumber = ticketMatch[1].trim();
+
+  // Estrai blocchi treno: cerca "Stazione di Partenza" → stazione → orario+data → "Stazione di Arrivo" → ...
+  for (let i = 0; i < lines.length; i++) {
+    if (!/^Stazione di Partenza\s*$/i.test(lines[i].trim())) continue;
+
+    const train = { operator: 'Trenitalia' };
+
+    // Stazione di partenza: riga successiva non vuota
+    let depStation = null;
+    for (let j = i + 1; j < Math.min(i + 4, lines.length); j++) {
+      const t = lines[j].trim();
+      if (t.length > 2 && !/^Ore\s/i.test(t)) { depStation = t; break; }
+    }
+    if (depStation) {
+      train.departure = { station: depStation, city: depStation.split(/\s+(Centrale|Termini|Porta|P\.)/)[0] || depStation };
+    }
+
+    // Orario partenza + data: "Ore 12:02 - 21/04/2025"
+    for (let j = i + 1; j < Math.min(i + 6, lines.length); j++) {
+      const m = lines[j].match(/Ore\s+(\d{1,2}:\d{2})\s*-\s*(\d{2})\/(\d{2})\/(\d{4})/i);
+      if (m) {
+        if (train.departure) train.departure.time = m[1];
+        train.date = `${m[4]}-${m[3]}-${m[2]}`;
+        break;
+      }
+    }
+
+    // Stazione di arrivo: cerca "Stazione di Arrivo" dopo la partenza
+    for (let j = i + 3; j < Math.min(i + 12, lines.length); j++) {
+      if (!/^Stazione di Arrivo\s*$/i.test(lines[j].trim())) continue;
+      // Stazione arrivo: riga successiva non vuota
+      for (let k = j + 1; k < Math.min(j + 4, lines.length); k++) {
+        const t = lines[k].trim();
+        if (t.length > 2 && !/^Ore\s/i.test(t)) {
+          train.arrival = { station: t, city: t.split(/\s+(Centrale|Termini|Porta|P\.)/)[0] || t };
+          break;
+        }
+      }
+      // Orario arrivo: "Ore 13:06 - 21/04/2025"
+      for (let k = j + 1; k < Math.min(j + 6, lines.length); k++) {
+        const m = lines[k].match(/Ore\s+(\d{1,2}:\d{2})\s*-\s*\d{2}\/\d{2}\/\d{4}/i);
+        if (m) {
+          if (train.arrival) train.arrival.time = m[1];
+          break;
+        }
+      }
+      break;
+    }
+
+    // Treno: "Treno: Frecciarossa 9516" o "Treno:  Frecciarossa 9519"
+    for (let j = i + 6; j < Math.min(i + 18, lines.length); j++) {
+      const m = lines[j].match(/Treno\s*:\s*(.+)/i);
+      if (m) {
+        const trainInfo = m[1].trim();
+        train.trainNumber = trainInfo;
+        // Estrai tipo servizio dalla riga successiva "Servizio: 2° Premium"
+        for (let k = j + 1; k < Math.min(j + 3, lines.length); k++) {
+          const svc = lines[k].match(/Servizio\s*:\s*(.+)/i);
+          if (svc) { train.class = svc[1].trim(); break; }
+        }
+        // Carrozza e Posti
+        for (let k = j + 1; k < Math.min(j + 5, lines.length); k++) {
+          const carr = lines[k].match(/Carrozza\s*:\s*(.+)/i);
+          if (carr) train.coach = carr[1].trim();
+          const posti = lines[k].match(/Posti\s*:\s*(.+)/i);
+          if (posti) train.seat = posti[1].trim();
+        }
+        break;
+      }
+    }
+
+    // Importo: "Importo totale* 115.80 €" o "Importo totale*: 99.00 €"
+    for (let j = i + 10; j < Math.min(i + 22, lines.length); j++) {
+      const m = lines[j].match(/Importo\s+totale\*?\s*:?\s*([\d.,]+)\s*€/i);
+      if (m) {
+        const val = parseFloat(m[1].replace(',', '.'));
+        if (!isNaN(val)) train.price = { value: val, currency: 'EUR' };
+        break;
+      }
+    }
+
+    if (pnr) train.bookingReference = pnr;
+    if (ticketNumber) train.ticketNumber = ticketNumber;
+
+    // De-duplica: stesso treno se trainNumber + date coincidono
+    if (train.trainNumber && train.date) {
+      const key = `${train.trainNumber}|${train.date}`;
+      if (!trains.some(t => `${t.trainNumber}|${t.date}` === key)) {
+        trains.push(train);
+      }
+    }
+  }
+
+  // Passeggeri: "Nome Passeggero (Adulto)\nNOME COGNOME" — de-duplica per nome
+  const seenPassengers = new Set();
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(/^Nome\s+Passeggero\s*\(([^)]+)\)\s*$/i);
+    if (!m) continue;
+    const type = m[1].trim();
+    // Nome: righe successive non vuote fino a "Dati di contatto"
+    let name = '';
+    for (let j = i + 1; j < Math.min(i + 4, lines.length); j++) {
+      const t = lines[j].trim();
+      if (!t || /^Dati di contatto/i.test(t) || /^Offerta/i.test(t)) break;
+      name += (name ? ' ' : '') + t;
+    }
+    name = name.trim();
+    if (name && !seenPassengers.has(name.toLowerCase())) {
+      seenPassengers.add(name.toLowerCase());
+      passengers.push({ name, type: type === 'Adulto' ? 'ADT' : (type === 'Ragazzo' ? 'CHD' : type) });
+    }
+  }
+
+  if (trains.length === 0) return null;
+
+  const result = { trains };
+  // Primo passeggero come passenger principale
+  if (passengers.length > 0) {
+    result.passenger = passengers[0];
+  }
+  // Tutti i passeggeri come array (utile per multi-passeggero)
+  if (passengers.length > 1) {
+    result.passengers = passengers;
+  }
+
+  return result;
+}
+
 // ─── Main L2 Functions ──────────────────────────────────────────────────────
 
 /**
@@ -644,7 +811,7 @@ function extractITAPassengerFields(text) {
  */
 function tryL2Extraction(template, newText, docType) {
   const brand = template.brand || detectBrand(newText);
-  const effectiveDocType = (template.doc_type && template.doc_type !== 'any')
+  let effectiveDocType = (template.doc_type && template.doc_type !== 'any')
     ? template.doc_type : docType;
 
   let result = null;
@@ -656,6 +823,14 @@ function tryL2Extraction(template, newText, docType) {
     if (hotel) {
       result = { hotels: [hotel] };
       method = 'booking-specific';
+    }
+  } else if (brand === 'trenitalia' && (effectiveDocType === 'train' || effectiveDocType === 'auto' || !effectiveDocType || effectiveDocType === 'any')) {
+    const trainResult = extractTrenitaliaTrain(newText);
+    if (trainResult) {
+      result = trainResult;
+      method = 'trenitalia-specific';
+      // Override docType per validazione (auto = tipo non ancora determinato)
+      if (!effectiveDocType || effectiveDocType === 'any' || effectiveDocType === 'auto') effectiveDocType = 'train';
     }
   } else if (brand === 'ita-airways' && effectiveDocType === 'flight') {
     // ITA: extract passenger fields, clone flight data from template
@@ -747,6 +922,22 @@ function validateMandatory(result, docType) {
     }
   }
 
+  if (docType === 'train') {
+    const trains = result.trains || [];
+    if (trains.length === 0) return ['trains (empty)'];
+
+    for (const field of MANDATORY.train) {
+      if (field === 'bookingReference') {
+        const atTrain = trains[0]?.bookingReference;
+        const atTop = result.booking?.reference;
+        if (!atTrain && !atTop) missing.push(field);
+      } else {
+        const val = getNestedField(trains[0], field);
+        if (val == null || val === '') missing.push(field);
+      }
+    }
+  }
+
   return missing;
 }
 
@@ -762,5 +953,6 @@ module.exports = {
   // For testing
   extractBookingComHotel,
   extractITAPassengerFields,
+  extractTrenitaliaTrain,
   MANDATORY
 };

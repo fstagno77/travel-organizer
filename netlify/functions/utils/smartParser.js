@@ -622,24 +622,39 @@ async function _parseDocumentSmartInternal(pdfBase64, docType, mode = 'auto', sk
         template.last_sample_text = template.match_rules?._sampleText || '';
       }
 
-      if (template) {
-        const effectiveDocType = (template.doc_type && template.doc_type !== 'any')
-          ? template.doc_type : (docType !== 'auto' ? docType : null);
+      // Brand con estrattori autonomi: non necessitano di un template preesistente in DB
+      const SELF_SUFFICIENT_BRANDS = ['trenitalia', 'booking.com'];
+      const templateOrDummy = template || (SELF_SUFFICIENT_BRANDS.includes(brand)
+        ? { brand, doc_type: 'any', extraction_map: [], last_sample_text: '', last_sample_result: null }
+        : null);
+
+      if (templateOrDummy) {
+        const effectiveDocType = (templateOrDummy.doc_type && templateOrDummy.doc_type !== 'any')
+          ? templateOrDummy.doc_type : (docType !== 'auto' ? docType : null);
 
         try {
-          const l2 = tryL2Extraction(template, extractedText, effectiveDocType || docType);
+          const l2 = tryL2Extraction(templateOrDummy, extractedText, effectiveDocType || docType);
           if (l2) {
-            // L2 success — register this fingerprint+result in the template for future L1
             sanitizeResult(l2.result);
-            console.log(`[SmartParse] L2 template hit: brand=${brand}, method=${l2.method}, template=${template.id}`);
+            const templateId = template ? template.id : null;
+            console.log(`[SmartParse] L2 ${template ? 'template' : 'autonomous'} hit: brand=${brand}, method=${l2.method}${templateId ? `, template=${templateId}` : ''}`);
 
-            // Add fingerprint to known list + store this result for L1 next time
-            registerL2Result(template.id, fingerprint, l2.result).catch(() => {});
+            // Salva risultato nel template per L1 futuro (await per garantire consistenza)
+            if (templateId) {
+              await registerL2Result(templateId, fingerprint, l2.result).catch(() => {});
+            } else {
+              // Crea template per questo brand+docType se non esiste
+              await saveCacheEntry(fingerprint, l2.result, l2.docType || effectiveDocType || 'any', {
+                brand,
+                betaMode,
+                sampleText: extractedText,
+              }).catch(() => {});
+            }
 
             return {
               result: l2.result,
               parseLevel: 2,
-              templateId: template.id,
+              templateId: templateId,
               brand,
               l2Method: l2.method,
               detectedDocType: l2.docType || effectiveDocType,
@@ -827,6 +842,10 @@ function sanitizeResult(result) {
     HOTEL_DATE_FIELDS.forEach(f => {
       if (h[f] != null) h[f] = sanitizeDateValue(h[f]);
     });
+  });
+
+  (result.trains || []).forEach(tr => {
+    if (tr.date != null) tr.date = sanitizeDateValue(tr.date);
   });
 
   (result.flights || []).forEach(fl => {
