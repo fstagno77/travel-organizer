@@ -538,7 +538,7 @@ const navigation = {
 
       // Aggiungi classe trip-page al body e aggiorna theme-color
       document.body.classList.add('trip-page');
-      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#eef2ff');
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#f7fafd');
 
       // Inietta template trip
       currentAppContent.innerHTML = tripTemplate;
