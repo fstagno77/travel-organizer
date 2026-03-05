@@ -20,6 +20,10 @@
    */
   async function init() {
     try {
+      // Reset sezione attiva in base all'hash corrente (necessario per SPA navigation)
+      const hashSection = window.location.hash.replace('#', '');
+      activeSection = validSections.includes(hashSection) ? hashSection : 'profile';
+
       // Initialize i18n first
       await i18n.init();
 
