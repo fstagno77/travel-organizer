@@ -1371,9 +1371,38 @@
           </div>
         </div>
       </div>
+
+      <div class="settings-card" style="margin-top: var(--spacing-4);">
+        <div class="settings-item">
+          <div class="settings-item-label">
+            <span class="settings-item-title">Versione</span>
+          </div>
+          <div class="settings-item-control">
+            <button class="lang-dropdown-btn" id="pref-changelog-btn" style="gap: var(--spacing-2);">
+              <span id="pref-version-label">...</span>
+              <span style="color: var(--color-gray-400);">|</span>
+              <span style="color: var(--color-primary);" data-i18n="footer.changelog">Changelog</span>
+            </button>
+          </div>
+        </div>
+      </div>
     `;
 
     i18n.apply(container);
+
+    // Carica versione dal changelog
+    if (typeof changelog !== 'undefined') {
+      changelog.getVersion().then(version => {
+        const label = document.getElementById('pref-version-label');
+        if (label) label.textContent = 'v' + version;
+      });
+    }
+
+    // Apri modale changelog
+    document.getElementById('pref-changelog-btn')?.addEventListener('click', () => {
+      if (typeof changelog !== 'undefined') changelog.showModal();
+    });
+
     bindPreferencesEvents();
   }
 
