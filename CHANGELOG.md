@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.29 - 2026-03-05
+
+### Novità
+- **Sidebar fissa**: nuova sidebar laterale sempre visibile su desktop (espandibile/comprimibile), sostituisce il menu hamburger
+- **Navigazione istantanea**: il passaggio tra pagine e dettaglio viaggio avviene senza ricaricare la pagina, mantenendo la sidebar sempre visibile
+- **Pagina viaggi passati**: nuova pagina dedicata ai viaggi conclusi, accessibile dalla sidebar
+
+### Miglioramenti
+- **Layout desktop migliorato**: contenuto principale si adatta alla sidebar con transizioni fluide
+- **Sidebar mobile**: si apre come overlay con animazione, chiudibile con tap fuori o ESC
+- **Stato sidebar persistente**: la scelta espansa/compressa viene salvata e ricordata
+
 ## 0.28.3 - 2026-03-04
 
 ### Fix

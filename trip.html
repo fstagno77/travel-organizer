@@ -17,7 +17,7 @@
   <!-- Preconnect & Preload -->
   <link rel="preconnect" href="https://ftivlqthgsziuljruiqo.supabase.co">
   <link rel="preload" href="./assets/fonts/inter/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="/assets/icons/travel-flow-logo-bk.png" as="image">
+
 
   <!-- CSS -->
   <link rel="stylesheet" href="./css/reset.css">
@@ -32,18 +32,16 @@
   <link rel="stylesheet" href="./css/fonts.css">
 </head>
 <body class="trip-page">
-  <script>try{if(localStorage.getItem('sb-ftivlqthgsziuljruiqo-auth-token')){document.body.classList.add('has-sidebar');if(localStorage.getItem('sidebar-collapsed')==='true')document.body.classList.add('sidebar-collapsed')}}catch(e){}</script>
+  <script>try{if(localStorage.getItem('sb-ftivlqthgsziuljruiqo-auth-token')){document.body.classList.add('has-sidebar');if(localStorage.getItem('sidebar-collapsed')==='true')document.body.classList.add('sidebar-collapsed');var sc=sessionStorage.getItem('sidebar-cache');if(sc)document.body.insertAdjacentHTML('afterbegin',sc)}}catch(e){}</script>
   <div class="page-wrapper">
     <header class="header header--trip">
       <div class="container">
         <div class="header-inner header-inner--trip">
-          <button class="trip-back-btn" id="trip-close-btn" aria-label="Indietro">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <a href="/index.html" class="trip-back-link" id="trip-close-btn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="15 18 9 12 15 6"></polyline>
             </svg>
-          </button>
-          <a href="/index.html" class="header-logo header-logo--img">
-            <img src="/assets/icons/travel-flow-logo-bk.png" alt="Travel Flow" class="header-logo-img" width="100" height="40">
+            <span>Indietro</span>
           </a>
           <div class="trip-header-spacer"></div>
         </div>

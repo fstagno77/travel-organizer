@@ -4,26 +4,13 @@
 const homePage = (function() {
   'use strict';
 
-  const CACHE_KEY = 'trips_cache';
-  const PAST_TRIPS_PAGE_SIZE = 6;
+  const CACHE_KEY = 'trips_cache_v2';
   const PHASE1_UPCOMING_COUNT = 3;
 
   let renderGeneration = 0;
-  let documentClickBound = false;
 
-  /**
-   * Get today's date, optionally overridden by ?testDate=YYYY-MM-DD query param
-   * @returns {Date}
-   */
-  function getToday() {
-    const params = new URLSearchParams(window.location.search);
-    const testDate = params.get('testDate');
-    if (testDate && /^\d{4}-\d{2}-\d{2}$/.test(testDate)) {
-      const d = new Date(testDate + 'T00:00:00');
-      if (!isNaN(d.getTime())) return d;
-    }
-    return new Date();
-  }
+  // Alias per funzioni condivise da tripCardUtils
+  const getToday = () => tripCardUtils.getToday();
 
   /**
    * Invalidate the trips cache in sessionStorage
@@ -401,33 +388,9 @@ const homePage = (function() {
     i18n.apply(container);
   }
 
-  /**
-   * Check if a trip is in the past
-   * @param {object} trip
-   * @returns {boolean}
-   */
-  function isTripPast(trip) {
-    const today = getToday();
-    today.setHours(0, 0, 0, 0);
-    const endDate = new Date(trip.endDate);
-    endDate.setHours(0, 0, 0, 0);
-    return endDate < today;
-  }
-
-  /**
-   * Check if a trip is currently active (today is between start and end)
-   * @param {object} trip
-   * @returns {boolean}
-   */
-  function isTripCurrent(trip) {
-    const today = getToday();
-    today.setHours(0, 0, 0, 0);
-    const startDate = new Date(trip.startDate);
-    startDate.setHours(0, 0, 0, 0);
-    const endDate = new Date(trip.endDate);
-    endDate.setHours(0, 0, 0, 0);
-    return startDate <= today && today <= endDate;
-  }
+  // isTripPast e isTripCurrent ora in tripCardUtils
+  const isTripPast = (trip) => tripCardUtils.isTripPast(trip);
+  const isTripCurrent = (trip) => tripCardUtils.isTripCurrent(trip);
 
   /**
    * Collect today's events from todayTrips data for a specific trip
@@ -720,118 +683,10 @@ const homePage = (function() {
     `;
   }
 
-  /**
-   * Calculate trip duration in days
-   * @param {string} startDate
-   * @param {string} endDate
-   * @returns {number}
-   */
-  function getTripDuration(startDate, endDate) {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    return Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
-  }
-
-  /**
-   * Render a section header with colored bar
-   * @param {string} title
-   * @param {string} subtitle
-   * @param {string} variant - 'upcoming', 'past'
-   * @returns {string}
-   */
-  function renderSectionHeader(title, subtitle, variant) {
-    return `
-      <div class="home-section-header">
-        <div class="home-section-bar home-section-bar--${variant}"></div>
-        <div>
-          <h2 class="home-section-title">${utils.escapeHtml(title)}</h2>
-          <p class="home-section-subtitle">${utils.escapeHtml(subtitle)}</p>
-        </div>
-      </div>
-    `;
-  }
-
-  /**
-   * Render a single trip card
-   * @param {object} trip
-   * @param {string} lang
-   * @param {boolean} isPast
-   * @param {number} index - Card position in render order (for eager/lazy loading)
-   * @returns {string}
-   */
-  function renderTripCard(trip, lang, isPast, index) {
-    const title = trip.title[lang] || trip.title.en || trip.title.it;
-    const startDate = utils.formatDate(trip.startDate, lang, { month: 'short', day: 'numeric' });
-    const endDate = utils.formatDate(trip.endDate, lang, { month: 'short', day: 'numeric', year: 'numeric' });
-    const cardClass = isPast ? 'trip-card trip-card--past' : 'trip-card';
-    const bgColor = isPast ? 'var(--color-gray-400)' : (trip.color || 'var(--color-primary)');
-
-    // Trip duration
-    const days = getTripDuration(trip.startDate, trip.endDate);
-    const dayLabel = days === 1
-      ? (i18n.t('home.day') || 'giorno')
-      : (i18n.t('home.days') || 'giorni');
-    const durationText = `${days} ${dayLabel}`;
-
-    // All trips now use dynamic page
-    const tripUrl = `trip.html?id=${trip.id}`;
-
-    // Cover photo: first 3 cards eager, rest lazy via data-bg
-    const coverPhoto = trip.coverPhoto;
-    let imageStyle = `background-color: ${coverPhoto?.color || bgColor}`;
-    let dataBg = '';
-    if (coverPhoto?.url) {
-      if (index < 3) {
-        imageStyle = `background-image: url('${coverPhoto.url}'); background-color: ${coverPhoto.color || bgColor}`;
-      } else {
-        dataBg = ` data-bg="${utils.escapeHtml(coverPhoto.url)}"`;
-      }
-    }
-
-    // Role badge for shared trips
-    const roleBadge = trip.role && trip.role !== 'proprietario'
-      ? `<span class="trip-role-badge trip-role-badge--${trip.role}">${trip.role === 'viaggiatore' ? (i18n.t('share.roleViaggiatore') || 'Viaggiatore') : (i18n.t('share.roleOspite') || 'Ospite')}</span>`
-      : '';
-
-    return `
-      <div class="trip-card-wrapper">
-        <a href="${tripUrl}" class="${cardClass}">
-          <div class="trip-card-image" style="${imageStyle}"${dataBg}>
-            ${roleBadge}
-            <div class="trip-card-overlay">
-              <h3 class="trip-card-destination">${utils.escapeHtml(title)}</h3>
-              ${trip.cities && trip.cities.length > 0 ? `
-                <div class="trip-card-cities">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                    <circle cx="12" cy="10" r="3"></circle>
-                  </svg>
-                  <span>${trip.cities.map(c => utils.escapeHtml(typeof c === 'string' ? c : (c.name || ''))).filter(Boolean).join(', ')}</span>
-                </div>
-              ` : ''}
-            </div>
-          </div>
-          <div class="trip-card-content">
-            <div class="trip-card-info">
-              <svg class="trip-card-calendar-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                <line x1="16" y1="2" x2="16" y2="6"></line>
-                <line x1="8" y1="2" x2="8" y2="6"></line>
-                <line x1="3" y1="10" x2="21" y2="10"></line>
-              </svg>
-              <span class="trip-card-dates">${startDate} - ${endDate}</span>
-              <span class="trip-card-dot">&middot;</span>
-              <span class="trip-card-duration">${durationText}</span>
-            </div>
-            <svg class="trip-card-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-              <polyline points="12 5 19 12 12 19"></polyline>
-            </svg>
-          </div>
-        </a>
-      </div>
-    `;
-  }
+  // Funzioni delegate a tripCardUtils
+  const getTripDuration = (startDate, endDate) => tripCardUtils.getTripDuration(startDate, endDate);
+  const renderSectionHeader = (title, subtitle, variant) => tripCardUtils.renderSectionHeader(title, subtitle, variant);
+  const renderTripCard = (trip, lang, isPast, index) => tripCardUtils.renderTripCard(trip, lang, isPast, index);
 
   /**
    * Render trips list
@@ -857,7 +712,9 @@ const homePage = (function() {
       const emptyBtn = document.getElementById('empty-new-trip-btn');
       if (emptyBtn) {
         emptyBtn.addEventListener('click', () => {
-          document.getElementById('new-trip-btn')?.click();
+          if (typeof tripCreator !== 'undefined' && tripCreator.open) {
+            tripCreator.open();
+          }
         });
       }
       return;
@@ -867,15 +724,12 @@ const homePage = (function() {
     const generation = ++renderGeneration;
     todayTrips = todayTrips || [];
 
-    // Separate into 3 categories: current, upcoming (future), past
+    // Separa in 2 categorie: in corso e prossimi (viaggi passati in pagina dedicata)
     const currentTrips = trips.filter(t => isTripCurrent(t));
     const upcomingTrips = trips.filter(t => !isTripCurrent(t) && !isTripPast(t));
-    const pastTrips = trips.filter(t => isTripPast(t));
 
-    // Sort upcoming by start date (closest first)
+    // Ordina prossimi per data inizio (più vicino prima)
     upcomingTrips.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
-    // Sort past by start date (most recent first)
-    pastTrips.sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
 
     let cardIndex = 0;
 
@@ -891,10 +745,13 @@ const homePage = (function() {
     const phase1Upcoming = upcomingTrips.slice(0, PHASE1_UPCOMING_COUNT);
     const phase2Upcoming = upcomingTrips.slice(PHASE1_UPCOMING_COUNT);
 
-    if (upcomingTrips.length > 0) {
-      const countLabel = upcomingTrips.length === 1
-        ? `1 ${i18n.t('home.tripPlanned') || 'viaggio pianificato'}`
-        : `${upcomingTrips.length} ${i18n.t('home.tripsPlanned') || 'viaggi pianificati'}`;
+    // Sezione "Prossimi Viaggi" — sempre visibile con pulsante "+" Nuovo Viaggio
+    {
+      const countLabel = upcomingTrips.length === 0
+        ? (i18n.t('home.noUpcoming') || 'Nessun viaggio in programma')
+        : upcomingTrips.length === 1
+          ? `1 ${i18n.t('home.tripPlanned') || 'viaggio pianificato'}`
+          : `${upcomingTrips.length} ${i18n.t('home.tripsPlanned') || 'viaggi pianificati'}`;
       const headerHtml = renderSectionHeader(
         i18n.t('home.title') || 'Prossimi Viaggi',
         countLabel,
@@ -904,7 +761,7 @@ const homePage = (function() {
       phase1Html += `
         <section class="home-section">
           ${headerHtml}
-          <div class="grid md:grid-cols-2 lg:grid-cols-3" id="upcoming-trips-grid">${cardsHtml}</div>
+          ${upcomingTrips.length > 0 ? `<div class="grid md:grid-cols-2 lg:grid-cols-3" id="upcoming-trips-grid">${cardsHtml}</div>` : ''}
         </section>
       `;
     }
@@ -916,7 +773,7 @@ const homePage = (function() {
     i18n.apply(container);
 
     // --- Phase 2: remaining cards via requestAnimationFrame ---
-    const hasPhase2 = phase2Upcoming.length > 0 || pastTrips.length > 0;
+    const hasPhase2 = phase2Upcoming.length > 0;
     if (!hasPhase2) return;
 
     requestAnimationFrame(() => {
@@ -937,68 +794,6 @@ const homePage = (function() {
         }
       }
 
-      // Append past trips section
-      if (pastTrips.length > 0) {
-        const initialPast = pastTrips.slice(0, PAST_TRIPS_PAGE_SIZE);
-        const pastCardsHtml = initialPast.map(trip => renderTripCard(trip, lang, true, cardIndex++)).join('');
-        const remaining = pastTrips.length - PAST_TRIPS_PAGE_SIZE;
-
-        const pastHeaderHtml = renderSectionHeader(
-          i18n.t('home.pastTrips') || 'Viaggi Passati',
-          i18n.t('home.pastSubtitle') || 'I tuoi ricordi',
-          'past'
-        );
-
-        const pastSection = document.createElement('section');
-        pastSection.className = 'home-section past-trips-section';
-        pastSection.innerHTML = `
-          ${pastHeaderHtml}
-          <div class="grid md:grid-cols-2 lg:grid-cols-3" id="past-trips-grid">${pastCardsHtml}</div>
-          ${remaining > 0 ? `
-            <div class="past-trips-load-more">
-              <button class="btn btn-secondary" id="load-more-past-trips">
-                <span data-i18n="home.loadMoreTrips">${i18n.t('home.loadMoreTrips') || 'Mostra altri viaggi'}</span> (${remaining})
-              </button>
-            </div>
-          ` : ''}
-        `;
-        container.appendChild(pastSection);
-
-        // Bind load-more button
-        if (pastTrips.length > PAST_TRIPS_PAGE_SIZE) {
-          let shown = PAST_TRIPS_PAGE_SIZE;
-          const loadMoreBtn = document.getElementById('load-more-past-trips');
-          const pastGrid = document.getElementById('past-trips-grid');
-
-          if (loadMoreBtn && pastGrid) {
-            loadMoreBtn.addEventListener('click', () => {
-              const nextBatch = pastTrips.slice(shown, shown + PAST_TRIPS_PAGE_SIZE);
-              const fragment = document.createDocumentFragment();
-              const tempDiv = document.createElement('div');
-
-              nextBatch.forEach(trip => {
-                tempDiv.innerHTML = renderTripCard(trip, lang, true, cardIndex++);
-                fragment.appendChild(tempDiv.firstElementChild);
-              });
-
-              pastGrid.appendChild(fragment);
-              shown += nextBatch.length;
-
-              initCoverLazyLoad(pastGrid);
-              initTripCardMenus();
-              i18n.apply(pastGrid);
-
-              const newRemaining = pastTrips.length - shown;
-              if (newRemaining > 0) {
-                loadMoreBtn.innerHTML = `<span data-i18n="home.loadMoreTrips">${i18n.t('home.loadMoreTrips') || 'Mostra altri viaggi'}</span> (${newRemaining})`;
-              } else {
-                loadMoreBtn.closest('.past-trips-load-more').remove();
-              }
-            });
-          }
-        }
-      }
-
       // Initialize Phase 2 cards
       initCoverLazyLoad(container);
       initTripCardMenus();
@@ -1006,328 +801,17 @@ const homePage = (function() {
     });
   }
 
-  /**
-   * Lazy load cover images using IntersectionObserver
-   * @param {HTMLElement} container
-   */
-  function initCoverLazyLoad(container) {
-    const lazyCards = container.querySelectorAll('.trip-card-image[data-bg]');
-    if (lazyCards.length === 0) return;
+  // Funzioni delegate a tripCardUtils
+  const initCoverLazyLoad = (container) => tripCardUtils.initCoverLazyLoad(container);
 
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          const el = entry.target;
-          el.style.backgroundImage = `url('${el.dataset.bg}')`;
-          el.removeAttribute('data-bg');
-          observer.unobserve(el);
-        }
-      });
-    }, { rootMargin: '200px' });
-
-    lazyCards.forEach(card => observer.observe(card));
-  }
-
-  /**
-   * Initialize trip card dropdown menus
-   */
   function initTripCardMenus() {
-    document.querySelectorAll('.trip-card-menu-btn:not([data-menu-init])').forEach(btn => {
-      btn.setAttribute('data-menu-init', '1');
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        const tripId = btn.dataset.tripId;
-        const dropdown = document.querySelector(`.trip-card-dropdown[data-trip-id="${tripId}"]`);
-
-        // Close all other dropdowns
-        document.querySelectorAll('.trip-card-dropdown.active').forEach(d => {
-          if (d !== dropdown) d.classList.remove('active');
-        });
-
-        dropdown.classList.toggle('active');
-      });
+    const onSuccess = () => { invalidateCache(); init(); };
+    tripCardUtils.initTripCardMenus({
+      onChangePhoto: (tripId, dest) => tripCardUtils.changePhoto(tripId, dest),
+      onShare: (tripId, role) => shareModal.show(tripId, role),
+      onRename: (tripId, name) => tripCardUtils.showRenameModal(tripId, name, onSuccess),
+      onDelete: (tripId, name) => tripCardUtils.showDeleteModal(tripId, name, onSuccess)
     });
-
-    // Handle dropdown actions
-    document.querySelectorAll('.trip-card-dropdown-item:not([data-menu-init])').forEach(item => {
-      item.setAttribute('data-menu-init', '1');
-      item.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        const action = item.dataset.action;
-        const tripId = item.dataset.tripId;
-        const tripName = item.dataset.tripName;
-        const tripDestination = item.dataset.tripDestination;
-
-        // Close dropdown
-        item.closest('.trip-card-dropdown').classList.remove('active');
-
-        if (action === 'changePhoto') {
-          changePhoto(tripId, tripDestination);
-        } else if (action === 'share') {
-          // Get trip role from the card's data attribute
-          const tripRole = item.dataset.tripRole || 'proprietario';
-          shareModal.show(tripId, tripRole);
-        } else if (action === 'rename') {
-          renameTrip(tripId, tripName);
-        } else if (action === 'delete') {
-          deleteTrip(tripId, tripName);
-        }
-      });
-    });
-
-    // Close dropdowns when clicking outside (bind once)
-    if (!documentClickBound) {
-      documentClickBound = true;
-      document.addEventListener('click', () => {
-        document.querySelectorAll('.trip-card-dropdown.active').forEach(d => {
-          d.classList.remove('active');
-        });
-      });
-    }
-  }
-
-  /**
-   * Show rename modal
-   * @param {string} tripId
-   * @param {string} currentName
-   */
-  function showRenameModal(tripId, currentName) {
-    // Remove existing modal if any
-    const existingModal = document.getElementById('rename-modal');
-    if (existingModal) existingModal.remove();
-
-    const modalHTML = `
-      <div class="modal-overlay active" id="rename-modal">
-        <div class="modal">
-          <div class="modal-header">
-            <h2 data-i18n="trip.renameTitle">Rinomina viaggio</h2>
-            <button class="modal-close" id="rename-modal-close">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
-          </div>
-          <div class="modal-body">
-            <div class="form-group">
-              <label for="rename-input" data-i18n="trip.newName">Nuovo nome</label>
-              <input type="text" id="rename-input" class="form-input" value="${utils.escapeHtml(currentName)}" autofocus>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button class="btn btn-secondary" id="rename-cancel" data-i18n="modal.cancel">Annulla</button>
-            <button class="btn btn-primary" id="rename-submit" data-i18n="modal.save">Salva</button>
-          </div>
-        </div>
-      </div>
-    `;
-
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-    document.body.style.overflow = 'hidden';
-
-    const modal = document.getElementById('rename-modal');
-    const input = document.getElementById('rename-input');
-    const closeBtn = document.getElementById('rename-modal-close');
-    const cancelBtn = document.getElementById('rename-cancel');
-    const submitBtn = document.getElementById('rename-submit');
-
-    // Select all text in input
-    input.select();
-
-    // Close modal function
-    const closeModal = () => {
-      modal.remove();
-      document.body.style.overflow = '';
-    };
-
-    // Submit function
-    const submitRename = async () => {
-      const newName = input.value.trim();
-      if (!newName) return;
-
-      submitBtn.disabled = true;
-      submitBtn.innerHTML = '<span class="spinner spinner-sm"></span>';
-
-      try {
-        const response = await utils.authFetch('/.netlify/functions/rename-trip', {
-          method: 'POST',
-          body: JSON.stringify({ tripId, title: newName })
-        });
-
-        const result = await response.json();
-        if (!response.ok || !result.success) {
-          throw new Error(result.error || 'Failed to rename trip');
-        }
-
-        closeModal();
-        invalidateCache();
-        init();
-      } catch (error) {
-        console.error('Error renaming trip:', error);
-        alert(i18n.t('trip.renameError') || 'Errore durante la rinomina');
-        submitBtn.disabled = false;
-        submitBtn.textContent = i18n.t('modal.save') || 'Salva';
-      }
-    };
-
-    // Event listeners
-    closeBtn.addEventListener('click', closeModal);
-    cancelBtn.addEventListener('click', closeModal);
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) closeModal();
-    });
-    document.addEventListener('keydown', function escHandler(e) {
-      if (e.key === 'Escape') {
-        closeModal();
-        document.removeEventListener('keydown', escHandler);
-      }
-    });
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') submitRename();
-    });
-    submitBtn.addEventListener('click', submitRename);
-
-    // Apply translations
-    i18n.apply(modal);
-  }
-
-  /**
-   * Change trip photo - opens photo selection modal
-   * @param {string} tripId
-   * @param {string} destination
-   */
-  async function changePhoto(tripId, destination) {
-    if (!destination) {
-      console.error('No destination for trip');
-      return;
-    }
-
-    try {
-      // Fetch trip data with auth
-      const response = await utils.authFetch(`/.netlify/functions/get-trip?id=${tripId}`);
-      const result = await response.json();
-
-      if (!result.success) {
-        throw new Error('Failed to load trip data');
-      }
-
-      // Open photo selection modal
-      if (window.tripCreator) {
-        window.tripCreator.openPhotoSelection(tripId, destination, result.tripData);
-      }
-    } catch (error) {
-      console.error('Error loading trip for photo change:', error);
-    }
-  }
-
-  /**
-   * Rename a trip (opens modal)
-   * @param {string} tripId
-   * @param {string} currentName
-   */
-  function renameTrip(tripId, currentName) {
-    showRenameModal(tripId, currentName);
-  }
-
-  /**
-   * Delete a trip - shows confirmation modal
-   * @param {string} tripId
-   * @param {string} tripName
-   */
-  function deleteTrip(tripId, tripName) {
-    showDeleteModal(tripId, tripName);
-  }
-
-  /**
-   * Show delete confirmation modal
-   * @param {string} tripId
-   * @param {string} tripName
-   */
-  function showDeleteModal(tripId, tripName) {
-    const existingModal = document.getElementById('delete-modal');
-    if (existingModal) existingModal.remove();
-
-    const modalHTML = `
-      <div class="modal-overlay active" id="delete-modal">
-        <div class="modal">
-          <div class="modal-header">
-            <h2 data-i18n="trip.deleteTitle">Elimina viaggio</h2>
-            <button class="modal-close" id="delete-modal-close">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
-          </div>
-          <div class="modal-body">
-            <p data-i18n="trip.deleteConfirm">Sei sicuro di voler eliminare questo viaggio?</p>
-            <p class="text-muted mt-2"><strong>${utils.escapeHtml(tripName || '')}</strong></p>
-          </div>
-          <div class="modal-footer">
-            <button class="btn btn-secondary" id="delete-cancel" data-i18n="modal.cancel">Annulla</button>
-            <button class="btn btn-danger" id="delete-confirm" data-i18n="trip.delete">Elimina</button>
-          </div>
-        </div>
-      </div>
-    `;
-
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-    document.body.style.overflow = 'hidden';
-
-    const modal = document.getElementById('delete-modal');
-    const closeBtn = document.getElementById('delete-modal-close');
-    const cancelBtn = document.getElementById('delete-cancel');
-    const confirmBtn = document.getElementById('delete-confirm');
-
-    const closeModal = () => {
-      modal.remove();
-      document.body.style.overflow = '';
-    };
-
-    const performDelete = async () => {
-      confirmBtn.disabled = true;
-      confirmBtn.innerHTML = '<span class="spinner spinner-sm"></span>';
-
-      try {
-        const response = await utils.authFetch(`/.netlify/functions/delete-trip?id=${encodeURIComponent(tripId)}`, {
-          method: 'DELETE'
-        });
-
-        const result = await response.json();
-        if (!response.ok || !result.success) {
-          throw new Error(result.error || 'Failed to delete trip');
-        }
-
-        closeModal();
-        invalidateCache();
-        init();
-      } catch (error) {
-        console.error('Error deleting trip:', error);
-        alert(i18n.t('trip.deleteError') || 'Errore durante l\'eliminazione');
-        confirmBtn.disabled = false;
-        confirmBtn.textContent = i18n.t('trip.delete') || 'Elimina';
-      }
-    };
-
-    closeBtn.addEventListener('click', closeModal);
-    cancelBtn.addEventListener('click', closeModal);
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) closeModal();
-    });
-    document.addEventListener('keydown', function escHandler(e) {
-      if (e.key === 'Escape') {
-        closeModal();
-        document.removeEventListener('keydown', escHandler);
-      }
-    });
-    confirmBtn.addEventListener('click', performDelete);
-
-    // Apply translations
-    i18n.apply(modal);
   }
 
   return { init, invalidateCache };

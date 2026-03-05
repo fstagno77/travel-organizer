@@ -3,7 +3,12 @@
     "name": "Travel Flow"
   },
   "nav": {
-    "home": "Home"
+    "home": "Home",
+    "upcomingTrips": "Upcoming trips",
+    "pastTrips": "Past trips",
+    "profile": "Profile",
+    "settings": "Settings",
+    "admin": "Admin"
   },
   "footer": {
     "changelog": "Changelog"
@@ -13,6 +18,7 @@
     "subtitle": "All your trips in one place",
     "tripsPlanned": "trips planned",
     "tripPlanned": "trip planned",
+    "noUpcoming": "No upcoming trips",
     "noTrips": "No trips yet",
     "noTripsText": "Your trips will appear here",
     "emptyTitle": "Your journey starts here!",
@@ -27,6 +33,10 @@
     "flightDetails": "Details",
     "toDestination": "To",
     "loadMoreTrips": "Show more trips",
+    "noPastTrips": "No past trips",
+    "noPastTripsText": "Completed trips will appear here",
+    "tripCompleted": "trip completed",
+    "tripsCompleted": "trips completed",
     "days": "days",
     "day": "day",
     "viewFullItinerary": "View Full Itinerary"

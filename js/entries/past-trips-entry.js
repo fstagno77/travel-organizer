@@ -1,4 +1,4 @@
-// Entry point for notifications.html
+// Entry point per past-trips.html
 import '../perf.js';
 import '../supabaseClient.js';
 import '../utils.js';

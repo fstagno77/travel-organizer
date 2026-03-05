@@ -1610,10 +1610,16 @@
     }
   }
 
-  // Initialize when DOM is ready
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
+  // Esponi su window per navigazione SPA
+  window.profilePage = { init };
+
+  // Auto-init solo se siamo sulla pagina profile
+  const isProfilePage = window.location.pathname.includes('profile.html');
+  if (isProfilePage) {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
   }
 })();

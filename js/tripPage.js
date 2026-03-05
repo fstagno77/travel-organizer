@@ -36,6 +36,53 @@
     loadSlidePanel,
     showAddBookingModal,
     showManageBookingPanel,
+
+    /**
+     * Re-init per navigazione SPA (moduli già caricati, auth/i18n già inizializzati)
+     */
+    async spaInit() {
+      // Reset stato viaggio
+      tabRendered = { activities: false, flights: false, hotels: false };
+      currentTripData = null;
+      currentUserRole = 'proprietario';
+      currentTripOwner = null;
+
+      preloadHeroFromCache();
+      i18n.apply();
+
+      // Hamburger mobile per trip header
+      const headerInner = document.querySelector('.header-inner--trip');
+      if (headerInner && !document.getElementById('hamburger-btn')) {
+        const backBtn = document.getElementById('trip-close-btn');
+        if (backBtn) {
+          backBtn.insertAdjacentHTML('afterend', `<button class="trip-back-btn" id="hamburger-btn" aria-label="Menu" style="display:none">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+          </button>`);
+          const mobileHamburger = document.getElementById('hamburger-btn');
+          if (mobileHamburger) mobileHamburger.style.display = '';
+        }
+      }
+
+      // Bind hamburger al sidebar (nuovo elemento, serve nuovo listener)
+      const hamburger = document.getElementById('hamburger-btn');
+      if (hamburger) {
+        hamburger.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const sidebar = document.getElementById('app-sidebar');
+          const overlay = document.getElementById('app-sidebar-overlay');
+          sidebar?.classList.add('sidebar--open');
+          overlay?.classList.add('app-sidebar-overlay--open');
+          document.body.style.overflow = 'hidden';
+        });
+      }
+
+      if (!auth?.requireAuth()) return;
+      await loadTripFromUrl();
+    },
   };
 
   // ===========================
@@ -123,21 +170,9 @@
       // Apply translations
       i18n.apply();
 
-      // Initialize back button
-      document.getElementById('trip-close-btn')?.addEventListener('click', () => {
-        // Reset activity panel if active
-        const slider = document.getElementById('modal-page-slider');
-        if (slider) {
-          slider.classList.remove('at-activity');
-          const activityPage = document.getElementById('modal-page-activity');
-          if (activityPage) activityPage.innerHTML = '';
-        }
-        if (document.referrer && new URL(document.referrer).origin === window.location.origin) {
-          history.back();
-        } else {
-          window.location.href = '/';
-        }
-      });
+      // Il link "Indietro" (#trip-close-btn) è un <a href="/index.html">
+      // La navigazione è gestita dal SPA navigation in initSpaNavigation()
+      // Nessun listener JS necessario qui
 
       // Initialize trip creator (for "Change photo" feature)
       if (window.tripCreator) {
@@ -203,11 +238,8 @@
 
     try {
       // Load trip from Supabase via Netlify Function (authenticated)
-      console.log('Fetching trip:', tripId);
       const response = await utils.authFetch(`/.netlify/functions/get-trip?id=${encodeURIComponent(tripId)}`);
-      console.log('Response status:', response.status);
       const result = await response.json();
-      console.log('Result:', result);
 
       if (!result.success || !result.tripData) {
         showError('Trip not found');
@@ -217,9 +249,7 @@
       currentTripData = result.tripData;
       currentUserRole = result.role || 'proprietario';
       currentTripOwner = result.owner || null;
-      console.log('Rendering trip, role:', currentUserRole);
       renderTrip(result.tripData);
-      console.log('Trip rendered successfully');
       if (typeof window.__perfMarkTripLoaded === 'function') window.__perfMarkTripLoaded();
     } catch (error) {
       console.error('Error loading trip:', error);

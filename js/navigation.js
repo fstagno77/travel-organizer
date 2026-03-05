@@ -11,7 +11,23 @@ const navigation = {
    * Initialize navigation components
    */
   async init() {
+    // Salva pagina corrente per la sidebar su trip.html
+    const path = window.location.pathname;
+    if (!path.includes('trip.html') && !path.includes('login.html') && !path.includes('admin.html') && !path.includes('share.html')) {
+      sessionStorage.setItem('sidebar-active-page', path);
+    }
+
     await this.loadHeader();
+
+    // Su pagine senza #header-placeholder (trip.html), inizializza comunque la sidebar se presente dal cache
+    if (!document.getElementById('header-placeholder') && document.getElementById('app-sidebar')) {
+      const isAuthenticated = window.auth?.isAuthenticated();
+      if (isAuthenticated) {
+        this._updateSidebarActiveLink();
+        this.initSidebar();
+      }
+    }
+
     this.setActiveNavLink();
     this.startPendingBookingsPolling();
     this.initAutoHideHeader();
@@ -136,20 +152,31 @@ const navigation = {
    * Render della sidebar (stile Claude)
    */
   renderSidebar(profile, isAdmin) {
-    // Rimuovi eventuale sidebar precedente
-    document.getElementById('app-sidebar-overlay')?.remove();
-    document.getElementById('app-sidebar')?.remove();
+    // Se la sidebar è già nel DOM (iniettata dal cache inline script), aggiorna solo il link attivo
+    if (document.getElementById('app-sidebar')) {
+      this._updateSidebarActiveLink();
+      return;
+    }
+
 
     const initial = profile?.username?.charAt(0).toUpperCase() || '?';
     const username = profile?.username || '';
     const email = profile?.email || '';
     const path = window.location.pathname;
 
-    const isHome = this.isHomePage();
-    const isPast = path.includes('past-trips.html');
-    const isProfile = path.includes('profile.html');
-    const isNotifications = path.includes('notifications.html');
-    const isPending = path.includes('pending-bookings.html');
+    // Su trip.html, mantieni il link attivo della pagina di provenienza
+    const isTrip = path.includes('trip.html');
+    let activePath = path;
+    if (isTrip) {
+      const source = sessionStorage.getItem('sidebar-active-page');
+      if (source) activePath = source;
+    }
+
+    const isHome = activePath.endsWith('/') || activePath.endsWith('index.html');
+    const isPast = activePath.includes('past-trips.html');
+    const isProfile = activePath.includes('profile.html');
+    const isNotifications = activePath.includes('notifications.html');
+    const isPending = activePath.includes('pending-bookings.html');
 
     // Icone SVG
     const toggleExpandSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>`;
@@ -206,13 +233,40 @@ const navigation = {
       </aside>
     `;
 
-    // Inserisco overlay + sidebar nel page-wrapper (prima dell'app-content)
+    // Inserisco sidebar nel body (position:fixed, non dipende dal parent)
+    // Se esiste una sidebar cached dall'inline script, la rimuovo e uso quella renderizzata
     const pageWrapper = document.querySelector('.page-wrapper');
     if (pageWrapper) {
       pageWrapper.insertAdjacentHTML('afterbegin', sidebarHtml);
     } else {
       document.body.insertAdjacentHTML('afterbegin', sidebarHtml);
     }
+
+    // Salva sidebar HTML in cache per instant-render al prossimo page load
+    try {
+      sessionStorage.setItem('sidebar-cache', sidebarHtml);
+    } catch (e) { /* sessionStorage pieno, ignora */ }
+  },
+
+  /**
+   * Aggiorna il link attivo nella sidebar (usato quando la sidebar viene da cache)
+   */
+  _updateSidebarActiveLink() {
+    const path = window.location.pathname;
+    const isTrip = path.includes('trip.html');
+    let activePath = path;
+    if (isTrip) {
+      const source = sessionStorage.getItem('sidebar-active-page');
+      if (source) activePath = source;
+    }
+
+    document.querySelectorAll('.sidebar-link').forEach(link => {
+      const linkPath = new URL(link.href, location.origin).pathname;
+      const isActive = linkPath === activePath ||
+        ((activePath.endsWith('/') || activePath.endsWith('index.html')) && linkPath === '/index.html') ||
+        (activePath === '/' && linkPath === '/index.html');
+      link.classList.toggle('sidebar-link--active', isActive);
+    });
   },
 
   /**
@@ -246,6 +300,8 @@ const navigation = {
    * Inizializza toggle e interazioni sidebar
    */
   initSidebar() {
+    if (this._sidebarInitialized) return;
+    this._sidebarInitialized = true;
     const sidebar = document.getElementById('app-sidebar');
     const overlay = document.getElementById('app-sidebar-overlay');
     const toggleBtn = document.getElementById('sidebar-toggle');
@@ -313,6 +369,299 @@ const navigation = {
     mql.addEventListener('change', (e) => {
       if (e.matches) {
         closeSidebar();
+      }
+    });
+
+    // Navigazione SPA per i link della sidebar
+    this.initSpaNavigation(closeSidebar);
+  },
+
+  /**
+   * Navigazione SPA: cambia pagina senza ricaricare la sidebar
+   */
+  initSpaNavigation(closeSidebar) {
+    // Pagine standard supportate dalla navigazione SPA
+    const spaPages = ['/', '/index.html', '/past-trips.html', '/notifications.html', '/profile.html', '/pending-bookings.html'];
+
+    // Mappa pagina → funzione init
+    const pageInitMap = {
+      '/': () => window.homePage?.init(),
+      '/index.html': () => window.homePage?.init(),
+      '/past-trips.html': () => window.pastTripsPage?.init(),
+      '/notifications.html': () => window.notificationsPage?.init(),
+      '/profile.html': () => window.profilePage?.init(),
+      '/pending-bookings.html': () => window.pendingBookingsPage?.init(),
+    };
+
+    const isSpaPage = (url) => {
+      const path = new URL(url, location.origin).pathname;
+      return spaPages.includes(path);
+    };
+
+    const isTripPage = (url) => {
+      const path = new URL(url, location.origin).pathname;
+      return path.includes('trip.html');
+    };
+
+    // Template HTML della pagina trip (iniettato nell'app-content durante SPA navigation)
+    const tripTemplate = `
+      <header class="header header--trip">
+        <div class="container">
+          <div class="header-inner header-inner--trip">
+            <a href="/index.html" class="trip-back-link" id="trip-close-btn">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="15 18 9 12 15 6"></polyline>
+              </svg>
+              <span>Indietro</span>
+            </a>
+            <div class="trip-header-spacer"></div>
+          </div>
+        </div>
+      </header>
+      <div class="trip-page-content" id="modal-page-slider">
+        <div class="trip-page-main modal-page--main" id="modal-page-main">
+          <div class="trip-hero" id="trip-hero">
+            <div class="trip-hero-overlay"></div>
+            <div class="trip-hero-content">
+              <h1 id="trip-title" class="trip-hero-title">Loading...</h1>
+              <div class="trip-hero-meta">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                <span id="trip-dates"></span>
+              </div>
+            </div>
+            <div class="trip-hero-tabs" id="trip-hero-tabs"></div>
+          </div>
+          <main>
+            <div class="container">
+              <div id="trip-content">
+                <div class="text-center py-6">
+                  <span class="spinner"></span>
+                </div>
+              </div>
+            </div>
+          </main>
+          <div id="footer-placeholder" style="display:none"></div>
+        </div>
+        <div class="modal-page modal-page--activity" id="modal-page-activity"></div>
+      </div>`;
+
+    let _navigating = false;
+
+    /**
+     * Naviga verso una pagina standard (non trip) via SPA
+     */
+    const navigateToPage = async (url, pushState) => {
+      const targetPath = new URL(url, location.origin).pathname;
+
+      // Salva pagina attiva per sidebar trip.html
+      sessionStorage.setItem('sidebar-active-page', targetPath);
+
+      // Aggiorna link attivo nella sidebar
+      document.querySelectorAll('.sidebar-link').forEach(link => {
+        const linkPath = new URL(link.href, location.origin).pathname;
+        link.classList.toggle('sidebar-link--active', linkPath === targetPath || (targetPath === '/' && linkPath === '/index.html'));
+      });
+
+      // Chiudi sidebar su mobile
+      if (window.innerWidth < 768) closeSidebar();
+
+      // Fetch della nuova pagina
+      const res = await fetch(url);
+      if (!res.ok) { window.location.href = url; return; }
+      const html = await res.text();
+
+      // Parse HTML ed estrai contenuto del page-wrapper
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      const newPageWrapper = doc.querySelector('.page-wrapper');
+      const currentAppContent = document.querySelector('.app-content');
+
+      if (!newPageWrapper || !currentAppContent) { window.location.href = url; return; }
+
+      // Sostituisci contenuto
+      currentAppContent.innerHTML = newPageWrapper.innerHTML;
+
+      // Rimuovi classi pagina-specifiche
+      document.body.classList.remove('trip-page');
+
+      // Aggiorna titolo e URL
+      document.title = doc.title;
+      if (pushState) history.pushState({ spaNav: true }, '', url);
+
+      // Ri-renderizza header
+      const headerPlaceholder = currentAppContent.querySelector('#header-placeholder');
+      if (headerPlaceholder) {
+        const isAuthenticated = window.auth?.isAuthenticated();
+        const profile = window.auth?.profile;
+        navigation.loadHomeHeader(headerPlaceholder, isAuthenticated, profile);
+
+        // Re-bind hamburger mobile
+        const newHamburger = document.getElementById('hamburger-btn');
+        if (newHamburger) {
+          newHamburger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const sidebar = document.getElementById('app-sidebar');
+            const overlay = document.getElementById('app-sidebar-overlay');
+            sidebar?.classList.add('sidebar--open');
+            overlay?.classList.add('app-sidebar-overlay--open');
+            document.body.style.overflow = 'hidden';
+          });
+        }
+        navigation.initNotificationDropdown();
+      }
+
+      // FAB mobile
+      const fabTargets = ['/', '/index.html', '/past-trips.html'];
+      const existingFab = document.getElementById('fab-new-trip');
+      if (fabTargets.includes(targetPath)) {
+        if (!existingFab) navigation.renderFab();
+      } else {
+        existingFab?.remove();
+      }
+
+      // Init pagina target
+      const initFn = pageInitMap[targetPath];
+      if (initFn) initFn();
+
+      if (typeof i18n !== 'undefined') i18n.apply();
+      navigation.refreshPendingCount?.();
+      window.scrollTo(0, 0);
+    };
+
+    /**
+     * Naviga verso trip.html via SPA (carica moduli dinamicamente)
+     */
+    const navigateToTrip = async (url, pushState) => {
+      const currentAppContent = document.querySelector('.app-content');
+      if (!currentAppContent) { window.location.href = url; return; }
+
+      // Chiudi sidebar su mobile
+      if (window.innerWidth < 768) closeSidebar();
+
+      // Aggiungi classe trip-page al body
+      document.body.classList.add('trip-page');
+
+      // Inietta template trip
+      currentAppContent.innerHTML = tripTemplate;
+
+      // Rimuovi FAB
+      document.getElementById('fab-new-trip')?.remove();
+
+      // Aggiorna URL e titolo
+      if (pushState) history.pushState({ spaNav: true, trip: true }, '', url);
+      document.title = 'Trip - Travel Flow';
+
+      // Scroll in cima
+      window.scrollTo(0, 0);
+
+      // Carica moduli trip se necessario (prima volta)
+      if (!window.tripPage) {
+        await Promise.all([
+          import('./tripFlights.js'),
+          import('./tripHotels.js'),
+          import('./airportAutocomplete.js'),
+          import('./tripActivities.js'),
+        ]);
+        // tripPage.js auto-inizializza via IIFE (chiama init → loadTripFromUrl)
+        await import('./tripPage.js');
+      } else {
+        // Moduli già caricati: re-init per nuovo viaggio
+        await window.tripPage.spaInit();
+      }
+
+      // Bind link "Indietro" per SPA navigation
+      const backLink = document.getElementById('trip-close-btn');
+      if (backLink) {
+        backLink.addEventListener('click', (e) => {
+          e.preventDefault();
+          const source = sessionStorage.getItem('sidebar-active-page') || '/index.html';
+          navigate(source);
+        });
+      }
+    };
+
+    /**
+     * Funzione navigate principale
+     */
+    const navigate = async (url, pushState = true) => {
+      const targetUrl = new URL(url, location.origin);
+      const currentUrl = new URL(location.href);
+
+      // Stessa pagina (path + search) — skip
+      if (targetUrl.pathname === currentUrl.pathname && targetUrl.search === currentUrl.search) return;
+      if (_navigating) return;
+      _navigating = true;
+
+      try {
+        if (isTripPage(url)) {
+          await navigateToTrip(url, pushState);
+        } else if (isSpaPage(url)) {
+          await navigateToPage(url, pushState);
+        } else {
+          window.location.href = url;
+        }
+      } catch (err) {
+        console.error('[nav] SPA navigation failed:', err);
+        window.location.href = url;
+      } finally {
+        _navigating = false;
+      }
+    };
+
+    // Intercetta click sui link sidebar (pagine standard)
+    document.querySelectorAll('.sidebar-link').forEach(link => {
+      if (!isSpaPage(link.href)) return;
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        navigate(link.href);
+      });
+    });
+
+    // Intercetta link "Indietro" di trip.html (se siamo su trip al caricamento)
+    const tripBackLink = document.getElementById('trip-close-btn');
+    if (tripBackLink) {
+      tripBackLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        const source = sessionStorage.getItem('sidebar-active-page') || '/index.html';
+        navigate(source);
+      });
+    }
+
+    // Intercetta link del footer sidebar (profilo)
+    document.querySelectorAll('.sidebar-user').forEach(link => {
+      if (!isSpaPage(link.href)) return;
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        navigate(link.href);
+      });
+    });
+
+    // Event delegation: intercetta click su link a trip.html ovunque nel contenuto
+    document.addEventListener('click', (e) => {
+      // Ignora se meta/ctrl (apri in nuovo tab)
+      if (e.metaKey || e.ctrlKey || e.shiftKey) return;
+
+      const link = e.target.closest('a[href*="trip.html?id="]');
+      if (!link) return;
+
+      // Verifica che sia un link interno
+      const linkUrl = new URL(link.href, location.origin);
+      if (linkUrl.origin !== location.origin) return;
+
+      e.preventDefault();
+      navigate(link.href);
+    });
+
+    // Gestione back/forward del browser
+    window.addEventListener('popstate', (e) => {
+      const href = location.href;
+      if (isSpaPage(href) || isTripPage(href)) {
+        navigate(href, false);
       }
     });
   },

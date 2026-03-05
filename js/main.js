@@ -61,6 +61,10 @@
     if (path.includes('notifications.html') && typeof notificationsPage !== 'undefined') {
       notificationsPage.init();
     }
+
+    if (path.includes('past-trips.html') && typeof pastTripsPage !== 'undefined') {
+      pastTripsPage.init();
+    }
   }
 
   // Listen for language changes to re-render dynamic content

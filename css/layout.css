@@ -1,25 +1,5 @@
 /* Layout CSS - Struttura pagina, grid, container */
 
-/* View Transitions API: cross-fade fluido tra pagine */
-@view-transition {
-  navigation: auto;
-}
-
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation-duration: 0.15s;
-}
-
-/* Sidebar non partecipa alla transizione (persiste tra pagine) */
-.app-sidebar {
-  view-transition-name: sidebar;
-}
-
-::view-transition-old(sidebar),
-::view-transition-new(sidebar) {
-  animation: none;
-}
-
 /* Container */
 .container {
   width: 100%;
@@ -613,12 +593,6 @@ body:has(> .modal-overlay.active) .header {
   }
 }
 
-.footer-right {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-2);
-}
-
 .footer-copyright {
   font-size: var(--font-size-sm);
   color: var(--color-gray-500);
@@ -867,6 +841,29 @@ body:has(> .modal-overlay.active) .header {
 /* ─── Desktop: sidebar fissa ─────────────────────────────────────────── */
 
 @media (min-width: 768px) {
+  /* Skeleton: mostra area sidebar istantaneamente (prima che JS carichi) */
+  body.has-sidebar::before {
+    content: '';
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: var(--sidebar-width);
+    background: var(--color-white);
+    border-right: 1px solid var(--color-gray-200);
+    z-index: 100;
+  }
+
+  body.sidebar-collapsed::before {
+    width: var(--sidebar-collapsed-width);
+    border-right-color: transparent;
+  }
+
+  /* Nascondi skeleton quando la sidebar reale è presente (dal cache o da JS) */
+  body.has-sidebar:has(.app-sidebar)::before {
+    display: none;
+  }
+
   body.has-sidebar .page-wrapper {
     margin-left: var(--sidebar-width);
     transition: margin-left var(--sidebar-transition);
@@ -938,6 +935,10 @@ body:has(> .modal-overlay.active) .header {
 }
 
 @media (max-width: 767px) {
+  .sidebar-toggle {
+    display: none !important;
+  }
+
   .sidebar-close {
     display: flex;
   }
@@ -959,7 +960,7 @@ body:has(> .modal-overlay.active) .header {
   width: calc(100% - var(--spacing-2));
   height: 40px;
   margin: var(--spacing-2) auto var(--spacing-3);
-  padding: 0 7px;
+  padding: 0 3px;
   background: transparent;
   color: var(--color-gray-700);
   border: none;
@@ -1003,7 +1004,7 @@ body:has(> .modal-overlay.active) .header {
   gap: var(--spacing-3);
   width: calc(100% - var(--spacing-2));
   height: 40px;
-  padding: 0 var(--spacing-3);
+  padding: 0 8px;
   margin: 2px auto;
   color: var(--color-gray-600);
   font-size: var(--font-size-sm);
@@ -1035,9 +1036,9 @@ body:has(> .modal-overlay.active) .header {
 
 /* Separatore */
 .sidebar-separator {
-  height: 1px;
-  background: var(--color-gray-200);
-  margin: var(--spacing-2) var(--spacing-2);
+  height: 0;
+  background: transparent;
+  margin: var(--spacing-4) var(--spacing-2);
 }
 
 /* ─── Sidebar: footer con avatar ─────────────────────────────────────── */
@@ -1051,7 +1052,7 @@ body:has(> .modal-overlay.active) .header {
   display: flex;
   align-items: center;
   gap: var(--spacing-3);
-  padding: var(--spacing-2) var(--spacing-3);
+  padding: var(--spacing-2) 6px;
   border-radius: var(--radius-md);
   text-decoration: none;
   color: var(--color-gray-700);
@@ -1101,13 +1102,27 @@ body:has(> .modal-overlay.active) .header {
   white-space: nowrap;
 }
 
-/* ─── Sidebar: logo ───────────────────────────────────────────────────── */
+/* ─── Sidebar: logo e back ────────────────────────────────────────────── */
 
 .sidebar-logo {
   display: flex;
   align-items: center;
   flex: 1;
   min-width: 0;
+}
+
+.sidebar-back {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  flex: 1;
+  min-width: 0;
+  text-decoration: none;
+  color: var(--color-gray-600);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .sidebar-logo-img {
@@ -1120,30 +1135,22 @@ body:has(> .modal-overlay.active) .header {
 
 @media (min-width: 768px) {
   .sidebar--collapsed .sidebar-cta span,
-  .sidebar--collapsed .sidebar-link span,
-  .sidebar--collapsed .sidebar-user-info {
+  .sidebar--collapsed .sidebar-link span {
     display: none;
   }
 
+  .sidebar--collapsed .sidebar-user-info {
+    opacity: 0;
+    width: 0;
+    overflow: hidden;
+  }
+
   .sidebar--collapsed .sidebar-cta {
-    justify-content: center;
-    width: 40px;
-    padding: 0;
-    margin-left: auto;
-    margin-right: auto;
     background: transparent;
   }
 
   .sidebar--collapsed .sidebar-cta:hover {
     background: transparent;
-  }
-
-  .sidebar--collapsed .sidebar-link {
-    justify-content: center;
-    width: 40px;
-    padding: 0;
-    margin-left: auto;
-    margin-right: auto;
   }
 
   /* Compresso: nascondere la selezione attiva (come Claude) */
@@ -1158,14 +1165,10 @@ body:has(> .modal-overlay.active) .header {
     color: var(--color-gray-900);
   }
 
-  .sidebar--collapsed .sidebar-user {
-    justify-content: center;
-  }
-
   .sidebar--collapsed .sidebar-header {
-    justify-content: center;
     padding-left: 0;
     padding-right: 0;
+    justify-content: center;
   }
 
   .app-sidebar.sidebar--collapsed {
@@ -1176,13 +1179,13 @@ body:has(> .modal-overlay.active) .header {
     border-top-color: transparent;
   }
 
-  .sidebar--collapsed .sidebar-logo {
+  .sidebar--collapsed .sidebar-logo,
+  .sidebar--collapsed .sidebar-back {
     display: none;
   }
 
   .sidebar--collapsed .sidebar-separator {
     opacity: 0;
-    margin: var(--spacing-1) auto;
   }
 
   /* Tooltip CSS su hover quando compressa */

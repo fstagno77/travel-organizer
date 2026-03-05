@@ -21,6 +21,7 @@ export default defineConfig({
         share: resolve(__dirname, 'share.html'),
         admin: resolve(__dirname, 'admin.html'),
         notifications: resolve(__dirname, 'notifications.html'),
+        'past-trips': resolve(__dirname, 'past-trips.html'),
       },
       output: {
         manualChunks(id) {

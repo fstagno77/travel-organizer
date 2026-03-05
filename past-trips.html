@@ -3,16 +3,22 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Changelog - Travel Flow</title>
+  <title>Viaggi Passati - Travel Flow</title>
 
   <!-- Favicon & PWA -->
   <link rel="icon" type="image/svg+xml" href="assets/icons/favicon.svg">
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#2563eb">
+
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Travel Flow">
+
+  <!-- Preconnect & Preload -->
+  <link rel="preconnect" href="https://ftivlqthgsziuljruiqo.supabase.co">
+  <link rel="preload" href="./assets/fonts/inter/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+
 
   <!-- CSS -->
   <link rel="stylesheet" href="css/reset.css">
@@ -27,19 +33,17 @@
   <!-- Fonts (self-hosted) -->
   <link rel="stylesheet" href="./css/fonts.css">
 </head>
-<body class="changelog-page">
+<body>
   <script>try{if(localStorage.getItem('sb-ftivlqthgsziuljruiqo-auth-token')){document.body.classList.add('has-sidebar');if(localStorage.getItem('sidebar-collapsed')==='true')document.body.classList.add('sidebar-collapsed');var sc=sessionStorage.getItem('sidebar-cache');if(sc)document.body.insertAdjacentHTML('afterbegin',sc)}sessionStorage.setItem('sidebar-active-page',location.pathname)}catch(e){}</script>
   <div class="page-wrapper">
     <div id="header-placeholder"></div>
 
-    <main>
-      <div class="container">
-        <header class="changelog-header">
-          <h1 class="changelog-title" data-i18n="changelog.title">Changelog</h1>
-        </header>
-
-        <div id="changelog-list" class="changelog-list">
-          <!-- Changelog entries will be loaded dynamically -->
+    <main class="home-main">
+      <div class="home-container">
+        <div id="past-trips-container">
+          <div class="text-center py-6">
+            <span class="spinner"></span>
+          </div>
         </div>
       </div>
     </main>
@@ -48,6 +52,6 @@
   </div>
 
   <!-- JS -->
-  <script type="module" src="/js/entries/changelog-entry.js"></script>
+  <script type="module" src="/js/entries/past-trips-entry.js"></script>
 </body>
 </html>

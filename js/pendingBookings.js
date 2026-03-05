@@ -697,10 +697,16 @@
     return div.innerHTML;
   }
 
-  // Initialize when DOM is ready
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
+  // Esponi su window per navigazione SPA
+  window.pendingBookingsPage = { init };
+
+  // Auto-init solo se siamo sulla pagina pending-bookings
+  const isPendingPage = window.location.pathname.includes('pending-bookings.html');
+  if (isPendingPage) {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
   }
 })();

@@ -1367,29 +1367,27 @@
   justify-self: end;
 }
 
-/* Back button */
-.trip-back-btn {
+/* Back link */
+.trip-back-link {
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 9999px;
-  background: none;
-  border: none;
+  gap: var(--spacing-2);
   color: var(--color-gray-600);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  padding: 0;
+  text-decoration: none;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  padding: var(--spacing-2) var(--spacing-3);
+  border-radius: var(--radius-lg);
+  transition: background var(--transition-fast), color var(--transition-fast);
 }
 
-.trip-back-btn:hover {
-  background-color: var(--color-gray-100);
+.trip-back-link:hover {
+  background-color: var(--color-gray-200);
   color: var(--color-gray-900);
 }
 
-.trip-back-btn:active {
-  transform: scale(0.95);
+.trip-back-link svg {
+  flex-shrink: 0;
 }
 
 /* Header right area (menu) */
@@ -1407,7 +1405,7 @@
 }
 
 .trip-header-spacer .section-menu-btn:hover {
-  background-color: var(--color-gray-100);
+  background-color: var(--color-gray-200);
   color: var(--color-gray-900);
 }
 
@@ -1910,6 +1908,56 @@ input[type="time"].form-input {
 }
 
 /* Section Header with Colored Bar */
+/* Riga header sezione con pulsante "Nuovo Viaggio" a destra */
+.home-section-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.home-section-header-row .home-section-header {
+  margin-bottom: 0;
+}
+
+.home-section-new-trip-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.home-section-new-trip-btn:hover {
+  background: var(--color-primary-dark, #1a4fd4);
+  transform: translateY(-1px);
+}
+
+.home-section-new-trip-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+@media (max-width: 480px) {
+  .home-section-new-trip-btn span {
+    display: none;
+  }
+  .home-section-new-trip-btn {
+    padding: 8px;
+    border-radius: 9999px;
+  }
+}
+
 .home-section-header {
   display: flex;
   align-items: center;
@@ -2276,6 +2324,16 @@ input[type="time"].form-input {
   align-items: center;
   justify-content: space-between;
   padding: 20px;
+}
+
+@media (max-width: 576px) {
+  .trip-card-content {
+    justify-content: center;
+  }
+
+  .trip-card-arrow {
+    display: none;
+  }
 }
 
 .trip-card-info {
