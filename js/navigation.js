@@ -489,8 +489,9 @@ const navigation = {
       // Sostituisci contenuto
       currentAppContent.innerHTML = newPageWrapper.innerHTML;
 
-      // Rimuovi classi pagina-specifiche
+      // Rimuovi classi pagina-specifiche e ripristina theme-color
       document.body.classList.remove('trip-page');
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#ffffff');
 
       // Aggiorna titolo e URL
       document.title = doc.title;
@@ -535,8 +536,9 @@ const navigation = {
       // Chiudi sidebar su mobile
       if (window.innerWidth < 768) closeSidebar();
 
-      // Aggiungi classe trip-page al body
+      // Aggiungi classe trip-page al body e aggiorna theme-color
       document.body.classList.add('trip-page');
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#f8fafc');
 
       // Inietta template trip
       currentAppContent.innerHTML = tripTemplate;
