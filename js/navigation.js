@@ -12,7 +12,6 @@ const navigation = {
    */
   async init() {
     await this.loadHeader();
-    await this.loadFooter();
     this.setActiveNavLink();
     this.startPendingBookingsPolling();
     this.initAutoHideHeader();
@@ -41,7 +40,15 @@ const navigation = {
   },
 
   /**
-   * Load home page header variant (gradient + glass icons)
+   * Verifica se la pagina corrente mostra il FAB "Nuovo Viaggio"
+   */
+  isPageWithFab() {
+    const path = window.location.pathname;
+    return this.isHomePage() || path.includes('past-trips.html');
+  },
+
+  /**
+   * Load header con hamburger menu + CTA desktop + FAB mobile
    */
   loadHomeHeader(placeholder, isAuthenticated, profile) {
     const bellSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -49,43 +56,31 @@ const navigation = {
       <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
     </svg>`;
 
-    const plusSvg = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="12" cy="12" r="10"></circle>
-      <line x1="12" y1="8" x2="12" y2="16"></line>
-      <line x1="8" y1="12" x2="16" y2="12"></line>
-    </svg>`;
-
-    // Left side: Logo + CTA button
-    const ctaBtn = isAuthenticated ? `
-      <button class="header-cta-btn" id="new-trip-btn">
-        ${plusSvg}
-        <span class="header-cta-label-full" data-i18n="trip.new">Nuovo Viaggio</span>
-        <span class="header-cta-label-short" data-i18n="trip.newShort">Viaggio</span>
-      </button>
-    ` : '';
-
-    // Right side: Glass notification bell + profile avatar
-    const adminSvg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="12" cy="12" r="3"/>
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    const hamburgerSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
     </svg>`;
 
     const isAdmin = window.auth?.session?.user?.email === 'fstagno@idibgroup.com';
 
+    // Sinistra: solo hamburger
+    const leftActions = `
+      <button class="header-glass-btn" id="hamburger-btn" title="Menu" aria-label="Menu">
+        ${hamburgerSvg}
+      </button>
+    `;
+
+    // Destra: solo notifiche (o login se non autenticato)
     let rightActions = '';
     if (isAuthenticated) {
-      const initial = profile?.username?.charAt(0).toUpperCase() || '?';
       rightActions = `
-        ${isAdmin ? `<a href="/admin.html" class="header-glass-btn" title="Admin">${adminSvg}</a>` : ''}
         <div class="notif-bell-wrap">
           <button class="header-glass-btn" id="notification-bell" title="Notifications" aria-haspopup="true" aria-expanded="false">
             ${bellSvg}
             <span class="header-glass-badge" id="notification-badge" style="display: none;">0</span>
           </button>
         </div>
-        <a href="/profile.html" class="header-glass-btn" title="@${profile?.username || ''}">
-          <span class="header-glass-avatar">${initial}</span>
-        </a>
       `;
     } else {
       rightActions = `
@@ -100,10 +95,10 @@ const navigation = {
         <div class="container">
           <div class="header-inner header-inner--three">
             <div class="header-actions">
-              ${ctaBtn}
+              ${leftActions}
             </div>
             <a href="/index.html" class="header-logo header-logo--img">
-              <img src="/assets/icons/travel-flow-logo.png" alt="Travel Flow" class="header-logo-img" width="161" height="40">
+              <img src="/assets/icons/travel-flow-logo-bk.png" alt="Travel Flow" class="header-logo-img" width="161" height="40">
             </a>
             <div class="header-actions">
               ${rightActions}
@@ -113,7 +108,7 @@ const navigation = {
       </header>
     `;
 
-    // Bind login button if not authenticated
+    // Bind login button se non autenticato
     if (!isAuthenticated) {
       const loginBtn = document.getElementById('login-btn');
       if (loginBtn) {
@@ -123,9 +118,225 @@ const navigation = {
       }
     }
 
+    // Sidebar (sostituisce il drawer)
     if (isAuthenticated) {
+      this.wrapContentArea();
+      this.renderSidebar(profile, isAdmin);
+      this.initSidebar();
       this.initNotificationDropdown();
     }
+
+    // FAB mobile (solo pagine home e past-trips)
+    if (isAuthenticated && this.isPageWithFab()) {
+      this.renderFab();
+    }
+  },
+
+  /**
+   * Render della sidebar (stile Claude)
+   */
+  renderSidebar(profile, isAdmin) {
+    // Rimuovi eventuale sidebar precedente
+    document.getElementById('app-sidebar-overlay')?.remove();
+    document.getElementById('app-sidebar')?.remove();
+
+    const initial = profile?.username?.charAt(0).toUpperCase() || '?';
+    const username = profile?.username || '';
+    const email = profile?.email || '';
+    const path = window.location.pathname;
+
+    const isHome = this.isHomePage();
+    const isPast = path.includes('past-trips.html');
+    const isProfile = path.includes('profile.html');
+    const isNotifications = path.includes('notifications.html');
+    const isPending = path.includes('pending-bookings.html');
+
+    // Icone SVG
+    const toggleExpandSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>`;
+    const closeSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+    const plusCircleSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>`;
+    const planeSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.4-.1.9.3 1.1l4.8 3.2-2.1 2.1-2.4-.6c-.4-.1-.8 0-1 .3l-.2.3c-.2.3-.1.7.1 1l2.2 2.2 2.2 2.2c.3.3.7.3 1 .1l.3-.2c.3-.2.4-.6.3-1l-.6-2.4 2.1-2.1 3.2 4.8c.2.4.7.5 1.1.3l.5-.3c.4-.2.6-.6.5-1.1z"/></svg>`;
+    const clockSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>`;
+    const gearSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
+    const shieldSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`;
+
+    const sidebarHtml = `
+      <div class="app-sidebar-overlay" id="app-sidebar-overlay"></div>
+      <aside class="app-sidebar" id="app-sidebar">
+        <div class="sidebar-header">
+          <a href="/index.html" class="sidebar-logo">
+            <img src="/assets/icons/travel-flow-logo-bk.png" alt="Travel Flow" class="sidebar-logo-img">
+          </a>
+          <button class="sidebar-toggle" id="sidebar-toggle" title="Toggle sidebar">${toggleExpandSvg}</button>
+          <button class="sidebar-close" id="sidebar-close">${closeSvg}</button>
+        </div>
+        <nav class="sidebar-nav">
+          <button class="sidebar-cta" id="sidebar-new-trip-btn" data-tooltip="Nuovo Viaggio">
+            ${plusCircleSvg}
+            <span data-i18n="trip.new">Nuovo Viaggio</span>
+          </button>
+          <a href="/index.html" class="sidebar-link${isHome ? ' sidebar-link--active' : ''}" data-tooltip="Prossimi viaggi">
+            ${planeSvg}
+            <span data-i18n="nav.upcomingTrips">Prossimi viaggi</span>
+          </a>
+          <a href="/past-trips.html" class="sidebar-link${isPast ? ' sidebar-link--active' : ''}" data-tooltip="Viaggi passati">
+            ${clockSvg}
+            <span data-i18n="nav.pastTrips">Viaggi passati</span>
+          </a>
+          <div class="sidebar-separator"></div>
+          <a href="/profile.html" class="sidebar-link${isProfile ? ' sidebar-link--active' : ''}" data-tooltip="Impostazioni">
+            ${gearSvg}
+            <span data-i18n="nav.settings">Impostazioni</span>
+          </a>
+          ${isAdmin ? `
+          <a href="/admin.html" class="sidebar-link" data-tooltip="Admin">
+            ${shieldSvg}
+            <span data-i18n="nav.admin">Admin</span>
+          </a>` : ''}
+        </nav>
+        <div class="sidebar-footer">
+          <a href="/profile.html" class="sidebar-user">
+            <div class="sidebar-avatar">${initial}</div>
+            <div class="sidebar-user-info">
+              <span class="sidebar-username">${utils.escapeHtml(username)}</span>
+              ${email ? `<span class="sidebar-email">${utils.escapeHtml(email)}</span>` : ''}
+            </div>
+          </a>
+        </div>
+      </aside>
+    `;
+
+    // Inserisco overlay + sidebar nel page-wrapper (prima dell'app-content)
+    const pageWrapper = document.querySelector('.page-wrapper');
+    if (pageWrapper) {
+      pageWrapper.insertAdjacentHTML('afterbegin', sidebarHtml);
+    } else {
+      document.body.insertAdjacentHTML('afterbegin', sidebarHtml);
+    }
+  },
+
+  /**
+   * Wrappa il contenuto esistente in .app-content (per layout sidebar)
+   */
+  wrapContentArea() {
+    const pageWrapper = document.querySelector('.page-wrapper');
+    if (!pageWrapper || pageWrapper.querySelector('.app-content')) return;
+
+    const appContent = document.createElement('div');
+    appContent.className = 'app-content';
+
+    // Sposta tutti i figli di page-wrapper dentro app-content
+    // (escluso sidebar e overlay che verranno aggiunti dopo)
+    while (pageWrapper.firstChild) {
+      appContent.appendChild(pageWrapper.firstChild);
+    }
+    pageWrapper.appendChild(appContent);
+
+    // Aggiungi classi body per il layout
+    document.body.classList.add('has-sidebar');
+
+    // Recupera stato compresso da localStorage
+    const collapsed = localStorage.getItem('sidebar-collapsed') === 'true';
+    if (collapsed) {
+      document.body.classList.add('sidebar-collapsed');
+    }
+  },
+
+  /**
+   * Inizializza toggle e interazioni sidebar
+   */
+  initSidebar() {
+    const sidebar = document.getElementById('app-sidebar');
+    const overlay = document.getElementById('app-sidebar-overlay');
+    const toggleBtn = document.getElementById('sidebar-toggle');
+    const closeBtn = document.getElementById('sidebar-close');
+    const hamburger = document.getElementById('hamburger-btn');
+
+    if (!sidebar) return;
+
+    // Stato iniziale da localStorage
+    const collapsed = localStorage.getItem('sidebar-collapsed') === 'true';
+    if (collapsed) {
+      sidebar.classList.add('sidebar--collapsed');
+    }
+
+    // Toggle espandi/comprimi (solo desktop)
+    toggleBtn?.addEventListener('click', () => {
+      const isCollapsed = sidebar.classList.toggle('sidebar--collapsed');
+      document.body.classList.toggle('sidebar-collapsed', isCollapsed);
+      localStorage.setItem('sidebar-collapsed', isCollapsed);
+    });
+
+    // Mobile: apertura sidebar
+    const openSidebar = () => {
+      sidebar.classList.add('sidebar--open');
+      overlay?.classList.add('app-sidebar-overlay--open');
+      document.body.style.overflow = 'hidden';
+    };
+
+    const closeSidebar = () => {
+      sidebar.classList.remove('sidebar--open');
+      overlay?.classList.remove('app-sidebar-overlay--open');
+      document.body.style.overflow = '';
+    };
+
+    // Hamburger apre sidebar su mobile
+    hamburger?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openSidebar();
+    });
+
+    // Chiudi sidebar mobile
+    overlay?.addEventListener('click', closeSidebar);
+    closeBtn?.addEventListener('click', closeSidebar);
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && sidebar.classList.contains('sidebar--open')) {
+        closeSidebar();
+      }
+    });
+
+    // CTA "Nuovo Viaggio"
+    const ctaBtn = document.getElementById('sidebar-new-trip-btn');
+    if (ctaBtn) {
+      ctaBtn.addEventListener('click', () => {
+        // Chiudi su mobile
+        if (window.innerWidth < 768) closeSidebar();
+        if (typeof tripCreator !== 'undefined' && tripCreator.open) {
+          tripCreator.open();
+        }
+      });
+    }
+
+    // Gestione resize: chiudi overlay mobile se si passa a desktop
+    const mql = window.matchMedia('(min-width: 768px)');
+    mql.addEventListener('change', (e) => {
+      if (e.matches) {
+        closeSidebar();
+      }
+    });
+  },
+
+  /**
+   * Render del FAB mobile "Nuovo Viaggio"
+   */
+  renderFab() {
+    const existing = document.getElementById('fab-new-trip');
+    if (existing) existing.remove();
+
+    const fabHtml = `
+      <button class="fab-new-trip" id="fab-new-trip">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+        <span data-i18n="trip.newShort">Viaggio</span>
+      </button>
+    `;
+    document.body.insertAdjacentHTML('beforeend', fabHtml);
+
+    document.getElementById('fab-new-trip')?.addEventListener('click', () => {
+      if (typeof tripCreator !== 'undefined' && tripCreator.open) {
+        tripCreator.open();
+      }
+    });
   },
 
   // ─── Notification Dropdown ─────────────────────────────────────────────────
