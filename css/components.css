@@ -1336,7 +1336,7 @@
 .header.header--trip {
   position: relative;
   background-color: #f7fafd;
-  border-bottom: 1px solid var(--color-gray-200);
+  border-bottom: none;
 }
 
 .header-inner.header-inner--trip {
