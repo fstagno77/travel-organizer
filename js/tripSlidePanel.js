@@ -535,7 +535,7 @@
       </div>
       <div class="form-group">
         <label data-i18n="activity.date">${i18n.t('activity.date') || 'Date'}</label>
-        <input type="date" class="form-input" id="activity-date" required value="${date || act.date || ''}">
+        <input type="date" class="form-input" id="activity-date" required value="${date || act.date || window.tripPage?.currentTripData?.startDate || ''}">
       </div>
       <div class="form-group">
         <label data-i18n="activity.time">${i18n.t('activity.time') || 'Time'}</label>
