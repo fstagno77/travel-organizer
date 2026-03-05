@@ -1345,9 +1345,9 @@
 }
 
 .header-inner.header-inner--trip {
-  display: grid;
-  grid-template-columns: 48px 1fr 48px;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   height: 64px;
 }
 
@@ -1355,16 +1355,8 @@
   height: 30px;
 }
 
-.header-inner.header-inner--trip > :first-child {
-  justify-self: start;
-}
-
-.header-inner.header-inner--trip > :nth-child(2) {
-  justify-self: center;
-}
-
 .header-inner.header-inner--trip > :last-child {
-  justify-self: end;
+  margin-left: auto;
 }
 
 /* Trip header left: hamburger + back link */
