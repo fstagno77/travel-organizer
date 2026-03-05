@@ -428,9 +428,11 @@
   z-index: 1;
 }
 
-.settings-nav-item:hover:not(.active) {
-  background: var(--color-gray-100);
-  color: var(--color-text);
+@media (hover: hover) {
+  .settings-nav-item:hover:not(.active) {
+    background: var(--color-gray-100);
+    color: var(--color-text);
+  }
 }
 
 .settings-nav-item.active {
@@ -447,9 +449,11 @@
   color: var(--color-danger);
 }
 
-.settings-nav-logout:hover {
-  background: var(--color-danger-light, #fff5f5);
-  color: var(--color-danger);
+@media (hover: hover) {
+  .settings-nav-logout:hover {
+    background: var(--color-danger-light, #fff5f5);
+    color: var(--color-danger);
+  }
 }
 
 /* Content Area */

@@ -1,6 +1,18 @@
 {
   "versions": [
     {
+      "version": "0.29.1",
+      "date": "2026-03-05",
+      "changes": {
+        "it": [
+          "Fix hover appiccicoso su smartphone: i tab delle impostazioni non restano più evidenziati dopo il tap"
+        ],
+        "en": [
+          "Fix sticky hover on mobile: settings tabs no longer stay highlighted after tap on touch devices"
+        ]
+      }
+    },
+    {
       "version": "0.29",
       "date": "2026-03-05",
       "changes": {

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.29.1 - 2026-03-05
+
+### Fix
+- **Fix hover appiccicoso su smartphone**: i tab delle impostazioni non restano più evidenziati dopo il tap su dispositivi touch
+
 ## 0.29 - 2026-03-05
 
 ### Novità
