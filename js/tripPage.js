@@ -50,35 +50,7 @@
       preloadHeroFromCache();
       i18n.apply();
 
-      // Hamburger mobile per trip header
-      const headerInner = document.querySelector('.header-inner--trip');
-      if (headerInner && !document.getElementById('hamburger-btn')) {
-        const backBtn = document.getElementById('trip-close-btn');
-        if (backBtn) {
-          backBtn.insertAdjacentHTML('afterend', `<button class="trip-back-btn" id="hamburger-btn" aria-label="Menu" style="display:none">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="3" y1="6" x2="21" y2="6"></line>
-              <line x1="3" y1="12" x2="21" y2="12"></line>
-              <line x1="3" y1="18" x2="21" y2="18"></line>
-            </svg>
-          </button>`);
-          const mobileHamburger = document.getElementById('hamburger-btn');
-          if (mobileHamburger) mobileHamburger.style.display = '';
-        }
-      }
-
-      // Bind hamburger al sidebar (nuovo elemento, serve nuovo listener)
-      const hamburger = document.getElementById('hamburger-btn');
-      if (hamburger) {
-        hamburger.addEventListener('click', (e) => {
-          e.stopPropagation();
-          const sidebar = document.getElementById('app-sidebar');
-          const overlay = document.getElementById('app-sidebar-overlay');
-          sidebar?.classList.add('sidebar--open');
-          overlay?.classList.add('app-sidebar-overlay--open');
-          document.body.style.overflow = 'hidden';
-        });
-      }
+      // Hamburger gestito via event delegation in navigation.initSidebar
 
       if (!auth?.requireAuth()) return;
       await loadTripFromUrl();
@@ -185,31 +157,13 @@
       }
 
       // Sidebar (trip.html non chiama navigation.init, quindi inizializziamo qui)
+      // Hamburger ora è nell'HTML statico, gestito via event delegation
       if (auth?.isAuthenticated() && window.navigation) {
         const profile = auth.profile;
         const isAdmin = auth.session?.user?.email === 'fstagno@idibgroup.com';
         window.navigation.wrapContentArea();
         window.navigation.renderSidebar(profile, isAdmin);
         window.navigation.initSidebar();
-
-        // Hamburger per aprire sidebar su mobile (accanto al back button)
-        const headerActions = document.querySelector('.header-inner--trip');
-        if (headerActions && !document.getElementById('hamburger-btn')) {
-          const hamburgerHtml = `<button class="trip-back-btn" id="hamburger-btn" aria-label="Menu" style="display:none">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="3" y1="6" x2="21" y2="6"></line>
-              <line x1="3" y1="12" x2="21" y2="12"></line>
-              <line x1="3" y1="18" x2="21" y2="18"></line>
-            </svg>
-          </button>`;
-          const backBtn = document.getElementById('trip-close-btn');
-          if (backBtn) {
-            backBtn.insertAdjacentHTML('afterend', hamburgerHtml);
-            // Mostra solo su mobile (nascosto su desktop da CSS body.has-sidebar)
-            const mobileHamburger = document.getElementById('hamburger-btn');
-            if (mobileHamburger) mobileHamburger.style.display = '';
-          }
-        }
       }
 
       // Load trip data from URL parameter (requires auth)

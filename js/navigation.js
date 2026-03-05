@@ -336,10 +336,13 @@ const navigation = {
       document.body.style.overflow = '';
     };
 
-    // Hamburger apre sidebar su mobile
-    hamburger?.addEventListener('click', (e) => {
-      e.stopPropagation();
-      openSidebar();
+    // Hamburger apre sidebar su mobile (event delegation: funziona con hamburger creati dopo SPA navigation)
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('#hamburger-btn');
+      if (btn) {
+        e.stopPropagation();
+        openSidebar();
+      }
     });
 
     // Chiudi sidebar mobile
@@ -408,12 +411,21 @@ const navigation = {
       <header class="header header--trip">
         <div class="container">
           <div class="header-inner header-inner--trip">
-            <a href="/index.html" class="trip-back-link" id="trip-close-btn">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="15 18 9 12 15 6"></polyline>
-              </svg>
-              <span>Indietro</span>
-            </a>
+            <div class="trip-header-left">
+              <button class="trip-header-hamburger" id="hamburger-btn" aria-label="Menu">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="3" y1="6" x2="21" y2="6"></line>
+                  <line x1="3" y1="12" x2="21" y2="12"></line>
+                  <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+              </button>
+              <a href="/index.html" class="trip-back-link" id="trip-close-btn">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+                <span>Indietro</span>
+              </a>
+            </div>
             <div class="trip-header-spacer"></div>
           </div>
         </div>
@@ -500,18 +512,7 @@ const navigation = {
         const profile = window.auth?.profile;
         navigation.loadHomeHeader(headerPlaceholder, isAuthenticated, profile);
 
-        // Re-bind hamburger mobile
-        const newHamburger = document.getElementById('hamburger-btn');
-        if (newHamburger) {
-          newHamburger.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const sidebar = document.getElementById('app-sidebar');
-            const overlay = document.getElementById('app-sidebar-overlay');
-            sidebar?.classList.add('sidebar--open');
-            overlay?.classList.add('app-sidebar-overlay--open');
-            document.body.style.overflow = 'hidden';
-          });
-        }
+        // Hamburger gestito via event delegation in initSidebar
         navigation.initNotificationDropdown();
       }
 
@@ -1182,8 +1183,22 @@ const navigation = {
     let lastScrollY = window.scrollY;
     let ticking = false;
     const threshold = 5;
+    const mql = window.matchMedia('(min-width: 768px)');
 
     function update() {
+      // Su mobile, header sempre visibile (serve hamburger per aprire menu)
+      if (!mql.matches) {
+        header.classList.remove('header--hidden');
+        const scrollY = window.scrollY;
+        if (scrollY > 0) {
+          header.classList.add('header--scrolled');
+        } else {
+          header.classList.remove('header--scrolled');
+        }
+        ticking = false;
+        return;
+      }
+
       const scrollY = window.scrollY;
       const diff = scrollY - lastScrollY;
 

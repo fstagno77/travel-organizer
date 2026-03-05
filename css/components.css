@@ -1367,6 +1367,40 @@
   justify-self: end;
 }
 
+/* Trip header left: hamburger + back link */
+.trip-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.trip-header-hamburger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: none;
+  color: var(--color-gray-600);
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: background var(--transition-fast);
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.trip-header-hamburger:hover {
+  background: var(--color-gray-200);
+}
+
+/* Su desktop con sidebar, nascondi hamburger nella trip page */
+@media (min-width: 768px) {
+  body.has-sidebar .trip-header-hamburger {
+    display: none;
+  }
+}
+
 /* Back link */
 .trip-back-link {
   display: flex;
