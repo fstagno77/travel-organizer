@@ -1334,13 +1334,8 @@
 /* Trip header - transparent at top, solid when scrolled
    .header.header--trip (0,2,0) overrides .header in layout.css (0,1,0) */
 .header.header--trip {
+  position: relative;
   background-color: transparent;
-  border-bottom: none;
-  transition: transform 0.3s ease, background-color 0.3s ease, border-color 0.3s ease;
-}
-
-.header.header--trip.header--scrolled {
-  background-color: #f4f8fd;
   border-bottom: none;
 }
 
