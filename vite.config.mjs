@@ -28,7 +28,9 @@ export default defineConfig({
           if (id.includes('/js/utils.js') ||
               id.includes('/js/i18n.js') ||
               id.includes('/js/auth.js') ||
-              id.includes('/js/navigation.js')) {
+              id.includes('/js/navigation.js') ||
+              id.includes('/js/main.js') ||
+              id.includes('/js/perf.js')) {
             return 'shared';
           }
         },
