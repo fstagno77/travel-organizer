@@ -356,18 +356,27 @@
       document.body.classList.add('role-viaggiatore');
     }
 
-    // Show owner info badge if not the owner
-    if (currentTripOwner && currentUserRole !== 'proprietario') {
-      const titleEl = document.getElementById('trip-title');
-      if (titleEl) {
+    // Badge ruolo nell'hero (alto a destra)
+    if (currentUserRole !== 'proprietario') {
+      const badgeEl = document.getElementById('trip-hero-role-badge');
+      if (badgeEl) {
         const roleLabel = currentUserRole === 'viaggiatore'
           ? (i18n.t('share.roleViaggiatore') || 'Viaggiatore')
           : (i18n.t('share.roleOspite') || 'Ospite');
         const badgeClass = currentUserRole === 'viaggiatore' ? 'trip-role-badge--viaggiatore' : 'trip-role-badge--ospite';
-        titleEl.insertAdjacentHTML('afterend',
+        badgeEl.className = `trip-hero-role-badge trip-role-badge ${badgeClass}`;
+        badgeEl.textContent = roleLabel;
+      }
+    }
+
+    // Organizzatore sotto le date
+    if (currentTripOwner && currentUserRole !== 'proprietario') {
+      const metaEl = document.querySelector('.trip-hero-meta');
+      if (metaEl) {
+        const ownerDisplayName = currentTripOwner.fullName || currentTripOwner.username || currentTripOwner.email;
+        metaEl.insertAdjacentHTML('afterend',
           `<div class="trip-owner-info">
-            <span class="trip-role-badge ${badgeClass}">${roleLabel}</span>
-            <span class="trip-owner-name">${esc(currentTripOwner.username || currentTripOwner.email)}</span>
+            <span class="trip-owner-name">${i18n.t('trip.organizer') || 'Organizzatore'}: <strong>${esc(ownerDisplayName)}</strong></span>
           </div>`);
       }
     }

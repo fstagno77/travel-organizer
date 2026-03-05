@@ -1607,6 +1607,26 @@
   filter: drop-shadow(0 10px 8px rgb(0 0 0 / 0.04)) drop-shadow(0 4px 3px rgb(0 0 0 / 0.1));
 }
 
+/* Badge ruolo nell'hero (alto a destra) */
+.trip-hero-role-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+}
+
+/* Organizzatore sotto le date */
+.trip-owner-info {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  margin-top: var(--spacing-2);
+  color: #fff;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  filter: drop-shadow(0 4px 3px rgb(0 0 0 / 0.1));
+}
+
 /* Floating tab bar at bottom of hero */
 .trip-hero-tabs {
   position: absolute;

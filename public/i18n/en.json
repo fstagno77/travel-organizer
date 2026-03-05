@@ -75,6 +75,7 @@
     "deleteModeBooking": "Bookings",
     "renameTitle": "Rename trip",
     "newName": "New name",
+    "organizer": "Organizer",
     "renameError": "Error renaming trip",
     "deleteConfirm": "Are you sure you want to delete this trip?",
     "deleteError": "Error deleting trip",

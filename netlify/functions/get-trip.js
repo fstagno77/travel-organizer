@@ -67,12 +67,24 @@ exports.handler = async (event, context) => {
       // Get owner info if not the owner
       if (data.user_id !== user.id) {
         const serviceClient = getServiceClient();
-        const { data: ownerProfile } = await serviceClient
-          .from('profiles')
-          .select('username, email')
-          .eq('id', data.user_id)
-          .single();
-        owner = ownerProfile ? { username: ownerProfile.username, email: ownerProfile.email } : null;
+        const [{ data: ownerProfile }, { data: ownerTraveler }] = await Promise.all([
+          serviceClient
+            .from('profiles')
+            .select('username, email')
+            .eq('id', data.user_id)
+            .single(),
+          serviceClient
+            .from('travelers')
+            .select('first_name, last_name')
+            .eq('user_id', data.user_id)
+            .eq('is_owner', true)
+            .single()
+        ]);
+        owner = ownerProfile ? {
+          username: ownerProfile.username,
+          email: ownerProfile.email,
+          fullName: ownerTraveler ? `${ownerTraveler.first_name} ${ownerTraveler.last_name}`.trim() : null
+        } : null;
       }
     } catch (roleErr) {
       console.error('Error fetching role/owner info:', roleErr);

@@ -75,6 +75,7 @@
     "deleteModeBooking": "Prenotazioni",
     "renameTitle": "Rinomina viaggio",
     "newName": "Nuovo nome",
+    "organizer": "Organizzatore",
     "renameError": "Errore durante la rinomina",
     "deleteConfirm": "Sei sicuro di voler eliminare questo viaggio?",
     "deleteError": "Errore durante l'eliminazione",
