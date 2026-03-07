@@ -17,7 +17,7 @@
   let currentTripData = null;
   let currentUserRole = 'proprietario'; // 'proprietario', 'viaggiatore', 'ospite'
   let currentTripOwner = null; // { username, email } if not owner
-  let tabRendered = { activities: false, flights: false, hotels: false };
+  let tabRendered = { activities: false, flights: false, hotels: false, trains: false, buses: false };
 
   // ===========================
   // Shared API exposed to modules
@@ -42,7 +42,7 @@
      */
     async spaInit() {
       // Reset stato viaggio
-      tabRendered = { activities: false, flights: false, hotels: false };
+      tabRendered = { activities: false, flights: false, hotels: false, trains: false, buses: false };
       currentTripData = null;
       currentUserRole = 'proprietario';
       currentTripOwner = null;
@@ -286,6 +286,16 @@
           <span class="material-symbols-outlined" style="font-size: 20px;">bed</span>
           <span data-i18n="trip.hotels">Hotels</span>
         </button>
+        <button class="segmented-control-btn" data-tab="trains">
+          <span class="material-symbols-outlined" style="font-size: 20px;">train</span>
+          <span class="segmented-label" data-i18n="trip.trains">Treni</span>
+          <span class="beta-badge-tab">Beta</span>
+        </button>
+        <button class="segmented-control-btn" data-tab="buses">
+          <span class="material-symbols-outlined" style="font-size: 20px;">directions_bus</span>
+          <span class="segmented-label" data-i18n="trip.buses">Bus</span>
+          <span class="beta-badge-tab">Beta</span>
+        </button>
       </div>
     `;
 
@@ -301,12 +311,20 @@
       <div id="hotels-tab" class="tab-content">
         <div id="hotels-container"></div>
       </div>
+
+      <div id="trains-tab" class="tab-content">
+        <div id="trains-container"></div>
+      </div>
+
+      <div id="buses-tab" class="tab-content">
+        <div id="buses-container"></div>
+      </div>
     `;
 
     container.innerHTML = html;
 
     // Reset tab render state
-    tabRendered = { activities: false, flights: false, hotels: false };
+    tabRendered = { activities: false, flights: false, hotels: false, trains: false, buses: false };
 
     // Initialize tab switching
     initTabSwitching();
@@ -320,7 +338,7 @@
     const navEntry = performance.getEntriesByType('navigation')[0];
     const isRefresh = navEntry && navEntry.type === 'reload';
     const savedTab = isRefresh ? sessionStorage.getItem('tripActiveTab') : null;
-    const activeTab = (urlTab && ['flights', 'hotels', 'activities'].includes(urlTab)) ? urlTab : (savedTab || 'activities');
+    const activeTab = (urlTab && ['flights', 'hotels', 'activities', 'trains', 'buses'].includes(urlTab)) ? urlTab : (savedTab || 'activities');
 
     // Render only the active tab (lazy rendering — others rendered on first access)
     renderTab(activeTab);
@@ -469,6 +487,116 @@
   }
 
   /**
+   * Upload PDF per un passeggero che ne è sprovvisto
+   */
+  async function handleUploadPassengerPdf(btn) {
+    const flightId = btn.dataset.flightId;
+    const passengerIndex = parseInt(btn.dataset.passengerIndex);
+    const passengerName = btn.dataset.passengerName;
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/pdf';
+    input.onchange = async () => {
+      const file = input.files[0];
+      if (!file) return;
+
+      btn.disabled = true;
+      const origText = btn.querySelector('span');
+      if (origText) origText.textContent = '...';
+
+      try {
+        const base64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+
+        const response = await utils.authFetch('/.netlify/functions/add-booking', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'upload-passenger-pdf',
+            tripId: currentTripData?.id,
+            flightId,
+            passengerIndex,
+            pdfBase64: base64,
+            fileName: file.name
+          })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+          utils.showToast('PDF caricato', 'success');
+
+          // Aggiorna currentTripData in-place
+          const normN = s => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+          const thisFlight = currentTripData?.flights?.find(f => f.id === flightId);
+          const bookingRef = (thisFlight?.bookingReference || '').toLowerCase().trim();
+          const paxNorm = normN(passengerName);
+
+          // Aggiorna tutti i voli con stesso bookingRef per lo stesso passeggero
+          for (const f of (currentTripData?.flights || [])) {
+            if (bookingRef && (f.bookingReference || '').toLowerCase().trim() !== bookingRef) continue;
+            if (!bookingRef && f.id !== flightId) continue;
+            if (!f.passengers) continue;
+
+            const pIdx = f.passengers.findIndex(p => normN(p.name) === paxNorm);
+            if (pIdx >= 0) {
+              f.passengers[pIdx].pdfPath = result.pdfPath;
+
+              // Aggiorna la card UI: sostituisci bottone upload con download
+              const flightCard = document.querySelector(`.flight-card[data-id="${f.id}"]`);
+              if (!flightCard) continue;
+              const paxItems = flightCard.querySelectorAll('.flight-passenger-item');
+              const paxItem = paxItems[pIdx];
+              if (!paxItem) continue;
+
+              const uploadBtn = paxItem.querySelector('.btn-upload-pdf-small');
+              if (uploadBtn) {
+                const downloadBtn = document.createElement('button');
+                downloadBtn.className = 'btn-download-pdf-small';
+                downloadBtn.dataset.pdfPath = result.pdfPath;
+                downloadBtn.title = 'Download PDF';
+                downloadBtn.innerHTML = `
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                  </svg>
+                  <span>PDF</span>`;
+                uploadBtn.replaceWith(downloadBtn);
+              }
+
+              // Aggiorna anche nel menu dropdown
+              const menuUploadBtn = paxItem.querySelector('[data-action="upload-pdf"]');
+              if (menuUploadBtn) {
+                menuUploadBtn.dataset.action = 'download-pdf';
+                menuUploadBtn.dataset.pdfPath = result.pdfPath;
+                delete menuUploadBtn.dataset.flightId;
+                delete menuUploadBtn.dataset.passengerIndex;
+                delete menuUploadBtn.dataset.passengerName;
+                menuUploadBtn.querySelector('svg polyline')?.setAttribute('points', '7 10 12 15 17 10');
+                const label = menuUploadBtn.querySelector('span');
+                if (label) label.textContent = i18n.t('flight.downloadPdf') || 'Scarica PDF';
+              }
+            }
+          }
+        } else {
+          throw new Error(result.error);
+        }
+      } catch (error) {
+        console.error('Error uploading passenger PDF:', error);
+        utils.showToast('Errore nel caricamento', 'error');
+        btn.disabled = false;
+        if (origText) origText.textContent = 'Carica PDF';
+      }
+    };
+    input.click();
+  }
+
+  /**
    * Handle copy to clipboard
    */
   async function handleCopyValue(btn) {
@@ -495,17 +623,29 @@
    * Handle toggle details (flights or hotels) with lazy rendering
    */
   function handleToggleDetails(btn, type) {
-    const isFlightToggle = type === 'flight';
-    const indexAttr = isFlightToggle ? 'flightIndex' : 'hotelIndex';
+    const indexAttrMap = { flight: 'flightIndex', hotel: 'hotelIndex', train: 'trainIndex', bus: 'busIndex' };
+    const indexAttr = indexAttrMap[type] || 'flightIndex';
     const index = btn.dataset[indexAttr];
-    const detailsId = isFlightToggle ? `flight-details-${index}` : `hotel-details-${index}`;
+    const detailsId = `${type}-details-${index}`;
     const details = document.getElementById(detailsId);
     if (!details) return;
 
     // Lazy render details on first expand
     if (!details.dataset.rendered) {
-      const items = isFlightToggle ? window.tripFlights._flights : window.tripHotels._hotels;
-      const renderFn = isFlightToggle ? window.tripFlights.renderDetails : window.tripHotels.renderDetails;
+      const itemsMap = {
+        flight: window.tripFlights._flights,
+        hotel: window.tripHotels._hotels,
+        train: window.tripTrains._trains,
+        bus: window.tripBuses._buses
+      };
+      const renderFnMap = {
+        flight: window.tripFlights.renderDetails,
+        hotel: window.tripHotels.renderDetails,
+        train: window.tripTrains.renderDetails,
+        bus: window.tripBuses.renderDetails
+      };
+      const items = itemsMap[type];
+      const renderFn = renderFnMap[type];
       if (items && items[index] && renderFn) {
         details.innerHTML = renderFn(items[index], index);
         details.dataset.rendered = 'true';
@@ -518,8 +658,8 @@
 
     const textSpan = btn.querySelector('span[data-i18n]');
     if (textSpan) {
-      const hideKey = isFlightToggle ? 'flight.hideDetails' : 'hotel.hideDetails';
-      const showKey = isFlightToggle ? 'flight.showDetails' : 'hotel.showDetails';
+      const hideKey = 'flight.hideDetails';
+      const showKey = 'flight.showDetails';
       textSpan.dataset.i18n = isActive ? hideKey : showKey;
       textSpan.textContent = i18n.t(textSpan.dataset.i18n);
     }
@@ -558,6 +698,10 @@
         const smallPdfBtn = target.closest('.btn-download-pdf-small');
         if (smallPdfBtn) { e.stopPropagation(); handlePdfDownload(smallPdfBtn.dataset.pdfPath, smallPdfBtn); return; }
 
+        // Upload PDF per passeggero senza PDF
+        const uploadPdfBtn = target.closest('.btn-upload-pdf-small');
+        if (uploadPdfBtn) { e.stopPropagation(); handleUploadPassengerPdf(uploadPdfBtn); return; }
+
         // Delete passenger
         const delPassBtn = target.closest('.btn-delete-passenger');
         if (delPassBtn) {
@@ -587,6 +731,8 @@
 
           if (action === 'download-pdf') {
             handlePdfDownload(menuItem.dataset.pdfPath, menuItem);
+          } else if (action === 'upload-pdf') {
+            handleUploadPassengerPdf(menuItem);
           } else if (action === 'delete-passenger') {
             window.tripFlights.showDeletePassengerModal(menuItem.dataset.passengerName, menuItem.dataset.bookingRef);
           }
@@ -627,6 +773,42 @@
         // Header confirmation copy
         const confBtn = target.closest('.hotel-header-confirmation');
         if (confBtn) { e.preventDefault(); handleCopyValue(confBtn); return; }
+      });
+    }
+
+    // --- Trains container delegation ---
+    const trainsContainer = document.getElementById('trains-container');
+    if (trainsContainer) {
+      trainsContainer.addEventListener('click', (e) => {
+        const target = e.target;
+        const toggleBtn = target.closest('.train-toggle-details');
+        if (toggleBtn) { handleToggleDetails(toggleBtn, 'train'); return; }
+        const editBtn = target.closest('.btn-edit-item[data-type="train"]');
+        if (editBtn) { e.stopPropagation(); openEditPanelForItem('train', editBtn.dataset.id); return; }
+        const deleteBtn = target.closest('.btn-delete-item[data-type="train"]');
+        if (deleteBtn) { e.stopPropagation(); showDeleteItemModal('train', deleteBtn.dataset.id); return; }
+        const pdfBtn = target.closest('.btn-download-pdf');
+        if (pdfBtn) { e.stopPropagation(); handlePdfDownload(pdfBtn.dataset.pdfPath, pdfBtn); return; }
+        const copyBtn = target.closest('.btn-copy-value');
+        if (copyBtn) { handleCopyValue(copyBtn); return; }
+      });
+    }
+
+    // --- Buses container delegation ---
+    const busesContainer = document.getElementById('buses-container');
+    if (busesContainer) {
+      busesContainer.addEventListener('click', (e) => {
+        const target = e.target;
+        const toggleBtn = target.closest('.bus-toggle-details');
+        if (toggleBtn) { handleToggleDetails(toggleBtn, 'bus'); return; }
+        const editBtn = target.closest('.btn-edit-item[data-type="bus"]');
+        if (editBtn) { e.stopPropagation(); openEditPanelForItem('bus', editBtn.dataset.id); return; }
+        const deleteBtn = target.closest('.btn-delete-item[data-type="bus"]');
+        if (deleteBtn) { e.stopPropagation(); showDeleteItemModal('bus', deleteBtn.dataset.id); return; }
+        const pdfBtn = target.closest('.btn-download-pdf');
+        if (pdfBtn) { e.stopPropagation(); handlePdfDownload(pdfBtn.dataset.pdfPath, pdfBtn); return; }
+        const copyBtn = target.closest('.btn-copy-value');
+        if (copyBtn) { handleCopyValue(copyBtn); return; }
       });
     }
 
@@ -750,6 +932,10 @@
       window.tripFlights.render(document.getElementById('flights-container'), currentTripData.flights);
     } else if (tabName === 'hotels') {
       window.tripHotels.render(document.getElementById('hotels-container'), currentTripData.hotels);
+    } else if (tabName === 'trains') {
+      window.tripTrains.render(document.getElementById('trains-container'), currentTripData.trains);
+    } else if (tabName === 'buses') {
+      window.tripBuses.render(document.getElementById('buses-container'), currentTripData.buses);
     }
     tabRendered[tabName] = true;
     if (typeof window.__perfMarkTabRender === 'function') {
@@ -1120,38 +1306,67 @@
         phraseController.stop();
         _parsedResults = result.parsedResults;
 
-        // Show preview
         const modalHeader = modal.querySelector('.modal-header h2');
-        if (modalHeader) {
-          const hasFlights = _parsedResults.some(pr => pr.result?.flights?.length);
-          const hasHotels = _parsedResults.some(pr => pr.result?.hotels?.length);
-          let previewTitle = 'Aggiungi prenotazione';
-          if (hasFlights && hasHotels) previewTitle = 'Voli e Hotel';
-          else if (hasFlights) previewTitle = 'Voli';
-          else if (hasHotels) previewTitle = 'Hotel';
-          modalHeader.textContent = previewTitle;
-        }
 
-        parsePreview.render(modalBody, _parsedResults, {
-          onConfirm: async (feedback, updatedResults, editedFields) => {
-            if (updatedResults) _parsedResults = updatedResults;
-            _editedFields = editedFields || [];
-            let skipDateUpdate = false;
-            const dateExt = checkDateExtension(_parsedResults);
-            if (dateExt) {
-              const shouldExtend = await showDateExtensionDialog(dateExt);
-              if (!shouldExtend) skipDateUpdate = true;
+        // Rileva aggiornamenti confrontando con i booking esistenti nel viaggio
+        const updateCheck = updatePreview.detectUpdates(_parsedResults, currentTripData);
+
+        if (updateCheck.hasUpdates) {
+          // ── Mostra subito il confronto aggiornamenti ──
+          if (modalHeader) modalHeader.textContent = i18n.t('trip.updateDetected') || 'Aggiornamenti rilevati';
+
+          updatePreview.render(modalBody, updateCheck.updates, updateCheck.pendingNew, {
+            onConfirm: async (selectedUpdates, pendingNew) => {
+              let skipDateUpdate = false;
+              // Controlla estensione date per i nuovi booking
+              if (pendingNew) {
+                const dateExt = checkDateExtension(_parsedResults);
+                if (dateExt) {
+                  const shouldExtend = await showDateExtensionDialog(dateExt);
+                  if (!shouldExtend) skipDateUpdate = true;
+                }
+              }
+              await confirmUpdates(selectedUpdates, pendingNew, skipDateUpdate);
+            },
+            onCancel: () => {
+              modalBody.innerHTML = originalBodyContent;
+              modalFooter.style.display = '';
+              i18n.apply(modalBody);
+              bindUploadZoneEvents();
             }
-            confirmAddBooking(feedback, skipDateUpdate);
-          },
-          onCancel: () => {
-            // Reset to upload state
-            modalBody.innerHTML = originalBodyContent;
-            modalFooter.style.display = '';
-            i18n.apply(modalBody);
-            bindUploadZoneEvents();
+          }, currentTripData);
+        } else {
+          // ── Nessun aggiornamento: preview normale ──
+          if (modalHeader) {
+            const hasFlights = _parsedResults.some(pr => pr.result?.flights?.length);
+            const hasHotels = _parsedResults.some(pr => pr.result?.hotels?.length);
+            let previewTitle = 'Aggiungi prenotazione';
+            if (hasFlights && hasHotels) previewTitle = 'Voli e Hotel';
+            else if (hasFlights) previewTitle = 'Voli';
+            else if (hasHotels) previewTitle = 'Hotel';
+            modalHeader.textContent = previewTitle;
           }
-        });
+
+          parsePreview.render(modalBody, _parsedResults, {
+            onConfirm: async (feedback, updatedResults, editedFields) => {
+              if (updatedResults) _parsedResults = updatedResults;
+              _editedFields = editedFields || [];
+              let skipDateUpdate = false;
+              const dateExt = checkDateExtension(_parsedResults);
+              if (dateExt) {
+                const shouldExtend = await showDateExtensionDialog(dateExt);
+                if (!shouldExtend) skipDateUpdate = true;
+              }
+              confirmAddBooking(feedback, skipDateUpdate);
+            },
+            onCancel: () => {
+              modalBody.innerHTML = originalBodyContent;
+              modalFooter.style.display = '';
+              i18n.apply(modalBody);
+              bindUploadZoneEvents();
+            }
+          });
+        }
 
       } catch (error) {
         console.error('Error parsing booking:', error);
@@ -1232,6 +1447,86 @@
 
         const modalBody = modal.querySelector('.modal-body');
         const modalFooter = modal.querySelector('.modal-footer');
+        showBookingError(error, modalBody, modalFooter, originalBodyContent);
+      }
+    };
+
+    /** Step 3: Conferma aggiornamenti (2a chiamata ad add-booking) */
+    const confirmUpdates = async (selectedUpdates, pendingNew, skipDateUpdate) => {
+      const modalBody = modal.querySelector('.modal-body');
+      const modalFooter = modal.querySelector('.modal-footer');
+
+      modalBody.innerHTML = `
+        <div class="processing-state">
+          <div class="spinner"></div>
+          <p class="processing-phrase loading-phrase"></p>
+        </div>
+      `;
+      modalFooter.style.display = 'none';
+
+      const phraseElement = modalBody.querySelector('.processing-phrase');
+      phraseController = utils.startLoadingPhrases(phraseElement, 3000);
+
+      try {
+        // Converti file extra passeggeri in base64
+        for (const update of selectedUpdates) {
+          if (update.extraPassengerPdfs) {
+            for (const extra of update.extraPassengerPdfs) {
+              if (extra.file) {
+                const reader = new FileReader();
+                extra.fileBase64 = await new Promise((resolve, reject) => {
+                  reader.onload = () => resolve(reader.result);
+                  reader.onerror = reject;
+                  reader.readAsDataURL(extra.file);
+                });
+                extra.fileName = extra.file.name;
+                delete extra.file;
+              } else {
+                delete extra.file;
+              }
+            }
+          }
+        }
+
+        const response = await utils.authFetch('/.netlify/functions/add-booking', {
+          method: 'POST',
+          body: JSON.stringify({
+            pdfs: _uploadedPdfs,
+            tripId,
+            confirmedUpdates: selectedUpdates,
+            pendingNew,
+            skipDateUpdate
+          })
+        });
+
+        let result;
+        try {
+          result = await response.json();
+        } catch {
+          throw Object.assign(new Error('server_error'), { errorCode: `HTTP${response.status}` });
+        }
+
+        if (!response.ok || !result.success) {
+          throw Object.assign(
+            new Error(result.error || 'Failed to apply updates'),
+            { errorCode: result.errorCode }
+          );
+        }
+
+        phraseController.stop();
+        closeModal();
+        await loadTripFromUrl();
+
+        if (originTab) switchToTab(originTab);
+
+        const totalUpdated = result.updated ? Object.values(result.updated).reduce((a, b) => a + b, 0) : 0;
+        const totalAdded = result.added ? Object.values(result.added).reduce((a, b) => a + b, 0) : 0;
+        let toastMsg = i18n.t('trip.updateSuccess') || 'Prenotazioni aggiornate';
+        if (totalAdded > 0) toastMsg += ` (+${totalAdded} ${totalAdded === 1 ? 'nuova' : 'nuove'})`;
+        utils.showToast(toastMsg, 'success');
+      } catch (error) {
+        console.error('Error confirming updates:', error);
+        if (phraseController) phraseController.stop();
         showBookingError(error, modalBody, modalFooter, originalBodyContent);
       }
     };
@@ -1424,10 +1719,15 @@
     if (existingModal) existingModal.remove();
 
     const currentTab = document.querySelector('.segmented-control-btn.active')?.dataset.tab || 'flights';
-    const type = currentTab === 'hotels' ? 'hotel' : 'flight';
-    const items = type === 'flight'
-      ? (currentTripData?.flights || [])
-      : (currentTripData?.hotels || []);
+    const typeMap = { flights: 'flight', hotels: 'hotel', trains: 'train', buses: 'bus' };
+    const type = typeMap[currentTab] || 'flight';
+    const itemsMap = {
+      flight: currentTripData?.flights || [],
+      hotel: currentTripData?.hotels || [],
+      train: currentTripData?.trains || [],
+      bus: currentTripData?.buses || []
+    };
+    const items = itemsMap[type] || [];
 
     // Build single-items list
     let singleListHTML = '';
@@ -2226,10 +2526,15 @@
     if (!alreadyOpen) slider._savedScrollTop = savedScrollTop;
 
     const currentTab = document.querySelector('.segmented-control-btn.active')?.dataset.tab || 'flights';
-    const type = currentTab === 'hotels' ? 'hotel' : 'flight';
-    const items = type === 'flight'
-      ? (currentTripData?.flights || [])
-      : (currentTripData?.hotels || []);
+    const typeMap = { flights: 'flight', hotels: 'hotel', trains: 'train', buses: 'bus' };
+    const type = typeMap[currentTab] || 'flight';
+    const itemsMap = {
+      flight: currentTripData?.flights || [],
+      hotel: currentTripData?.hotels || [],
+      train: currentTripData?.trains || [],
+      bus: currentTripData?.buses || []
+    };
+    const items = itemsMap[type] || [];
 
     // Build booking list grouped by bookingReference/confirmation
     let listHTML = '';
@@ -2238,9 +2543,11 @@
     } else {
       const groups = {};
       for (const item of items) {
-        const key = type === 'flight'
-          ? (item.bookingReference || item.id)
-          : (item.confirmationNumber || item.confirmation || item.id);
+        let key;
+        if (type === 'flight') key = item.bookingReference || item.id;
+        else if (type === 'hotel') key = item.confirmationNumber || item.confirmation || item.id;
+        else if (type === 'train') key = item.bookingReference || item.id;
+        else key = item.bookingReference || item.id;
         if (!groups[key]) groups[key] = [];
         groups[key].push(item);
       }
@@ -2293,7 +2600,7 @@
                 </span>
               </div>`;
           }
-        } else {
+        } else if (type === 'hotel') {
           const hotelLines = groupItems.map(h => {
             const checkIn = h.checkIn?.date || '';
             const checkOut = h.checkOut?.date || '';
@@ -2314,6 +2621,29 @@
               <span class="manage-booking-item-label">
                 <span><strong>${esc(ref)}</strong>${names ? ` &middot; ${esc(names)}` : ''}</span>
                 <div class="manage-booking-flights">${hotelLines}</div>
+              </span>
+            </div>`;
+        } else {
+          // Treni e bus
+          const lines = groupItems.map(item => {
+            const dep = item.departure?.station || item.departure?.city || '';
+            const arr = item.arrival?.station || item.arrival?.city || '';
+            const date = item.date || '';
+            const time = item.departure?.time || '';
+            const num = item.trainNumber || item.routeNumber || '';
+            return `<div class="manage-booking-flight-row">
+              ${num ? `<span class="manage-booking-flight-num">${esc(num)}</span>` : ''}
+              <span>${esc(dep)} → ${esc(arr)}</span>
+              ${date ? `<span class="manage-booking-flight-date">${date}${time ? ' ' + time : ''}</span>` : ''}
+            </div>`;
+          }).join('');
+
+          const passengerName = groupItems[0]?.passenger?.name || '';
+          listHTML += `
+            <div class="manage-booking-item" data-value="${itemIds}" data-type="${type}" data-mode="booking" data-ref="${esc(ref)}">
+              <span class="manage-booking-item-label">
+                <span><strong>${esc(ref)}</strong>${passengerName ? ` &middot; ${esc(passengerName)}` : ''}</span>
+                <div class="manage-booking-flights">${lines}</div>
               </span>
             </div>`;
         }
@@ -2421,9 +2751,7 @@
         const itemLabel = selectedType === 'flight'
           ? `${item.flightNumber || ''} ${item.departure?.code || ''} → ${item.arrival?.code || ''}`
           : (item.name || 'Hotel');
-        const form = selectedType === 'flight'
-          ? window.tripFlights.buildFullEditForm(item)
-          : window.tripHotels.buildFullEditForm(item);
+        const form = ({ flight: window.tripFlights, hotel: window.tripHotels, train: window.tripTrains, bus: window.tripBuses }[selectedType] || window.tripFlights).buildFullEditForm(item);
         formHTML = `
           <div class="manage-edit-item" data-item-id="${item.id}">
             <div class="manage-edit-item-header">${esc(itemLabel)}</div>
@@ -2513,9 +2841,7 @@
 
         try {
           if (selectedItems.length === 1) {
-            const updates = selectedType === 'flight'
-              ? window.tripFlights.collectFullUpdates(panelBody)
-              : window.tripHotels.collectFullUpdates(panelBody);
+            const updates = ({ flight: window.tripFlights, hotel: window.tripHotels, train: window.tripTrains, bus: window.tripBuses }[selectedType] || window.tripFlights).collectFullUpdates(panelBody);
 
             const response = await utils.authFetch('/.netlify/functions/edit-booking', {
               method: 'POST',
@@ -2527,9 +2853,7 @@
             const itemSections = panelBody.querySelectorAll('.manage-edit-item');
             for (const section of itemSections) {
               const itemId = section.dataset.itemId;
-              const updates = selectedType === 'flight'
-                ? window.tripFlights.collectFullUpdates(section)
-                : window.tripHotels.collectFullUpdates(section);
+              const updates = ({ flight: window.tripFlights, hotel: window.tripHotels, train: window.tripTrains, bus: window.tripBuses }[selectedType] || window.tripFlights).collectFullUpdates(section);
 
               const response = await utils.authFetch('/.netlify/functions/edit-booking', {
                 method: 'POST',
@@ -2622,10 +2946,15 @@
 
             // Optimistic update
             const deleteIds = new Set(ids);
-            if (selected.dataset.type === 'flight') {
+            const dtype = selected.dataset.type;
+            if (dtype === 'flight') {
               currentTripData.flights = (currentTripData.flights || []).filter(f => !deleteIds.has(f.id));
-            } else {
+            } else if (dtype === 'hotel') {
               currentTripData.hotels = (currentTripData.hotels || []).filter(h => !deleteIds.has(h.id));
+            } else if (dtype === 'train') {
+              currentTripData.trains = (currentTripData.trains || []).filter(t => !deleteIds.has(t.id));
+            } else if (dtype === 'bus') {
+              currentTripData.buses = (currentTripData.buses || []).filter(b => !deleteIds.has(b.id));
             }
           }
 
@@ -2652,9 +2981,13 @@
     const tripId = currentTripData?.id;
     if (!tripId) return;
 
-    const items = type === 'flight'
-      ? (currentTripData?.flights || [])
-      : (currentTripData?.hotels || []);
+    const itemsMap = {
+      flight: currentTripData?.flights || [],
+      hotel: currentTripData?.hotels || [],
+      train: currentTripData?.trains || [],
+      bus: currentTripData?.buses || []
+    };
+    const items = itemsMap[type] || [];
 
     const item = items.find(i => i.id === itemId);
     if (!item) {
@@ -2678,9 +3011,13 @@
     const savedScrollTop = alreadyOpen ? (slider._savedScrollTop || 0) : mainPage.scrollTop;
     if (!alreadyOpen) slider._savedScrollTop = savedScrollTop;
 
-    const formHTML = type === 'flight'
-      ? window.tripFlights.buildEditForm(item)
-      : window.tripHotels.buildEditForm(item);
+    const formBuilders = {
+      flight: window.tripFlights.buildEditForm,
+      hotel: window.tripHotels.buildEditForm,
+      train: window.tripTrains.buildEditForm,
+      bus: window.tripBuses.buildEditForm
+    };
+    const formHTML = (formBuilders[type] || formBuilders.flight)(item);
 
     activityPage.innerHTML = `
       <div class="slide-panel-header">
@@ -2761,9 +3098,13 @@
       saveBtn.innerHTML = '<span class="spinner spinner-sm"></span>';
 
       try {
-        const updates = type === 'flight'
-          ? window.tripFlights.collectUpdates(panelBody)
-          : window.tripHotels.collectUpdates(panelBody);
+        const updateCollectors = {
+          flight: window.tripFlights.collectUpdates,
+          hotel: window.tripHotels.collectUpdates,
+          train: window.tripTrains.collectUpdates,
+          bus: window.tripBuses.collectUpdates
+        };
+        const updates = (updateCollectors[type] || updateCollectors.flight)(panelBody);
 
         const response = await utils.authFetch('/.netlify/functions/edit-booking', {
           method: 'POST',
@@ -2816,11 +3157,26 @@
       if (hotel) {
         itemDescription = esc(hotel.name);
       }
+    } else if (type === 'train') {
+      const train = currentTripData?.trains?.find(t => t.id === itemId);
+      if (train) {
+        const date = utils.formatFlightDate(train.date, lang);
+        itemDescription = `${esc(train.trainNumber || '')} - ${esc(train.departure?.station || '')} → ${esc(train.arrival?.station || '')} (${date})`;
+      }
+    } else if (type === 'bus') {
+      const bus = currentTripData?.buses?.find(b => b.id === itemId);
+      if (bus) {
+        const date = utils.formatFlightDate(bus.date, lang);
+        itemDescription = `${esc(bus.operator || '')} - ${esc(bus.departure?.city || '')} → ${esc(bus.arrival?.city || '')} (${date})`;
+      }
     }
 
-    const titleKey = type === 'flight' ? 'flight.deleteTitle' : 'hotel.deleteTitle';
-    const confirmKey = type === 'flight' ? 'flight.deleteConfirm' : 'hotel.deleteConfirm';
-    const deleteKey = type === 'flight' ? 'flight.delete' : 'hotel.delete';
+    const titleKeyMap = { flight: 'flight.deleteTitle', hotel: 'hotel.deleteTitle', train: 'train.deleteTitle', bus: 'bus.deleteTitle' };
+    const confirmKeyMap = { flight: 'flight.deleteConfirm', hotel: 'hotel.deleteConfirm', train: 'train.deleteConfirm', bus: 'bus.deleteConfirm' };
+    const deleteKeyMap = { flight: 'flight.delete', hotel: 'hotel.delete', train: 'train.delete', bus: 'bus.delete' };
+    const titleKey = titleKeyMap[type] || 'flight.deleteTitle';
+    const confirmKey = confirmKeyMap[type] || 'flight.deleteConfirm';
+    const deleteKey = deleteKeyMap[type] || 'flight.delete';
 
     const modalHTML = `
       <div class="modal-overlay" id="delete-item-modal">
@@ -3157,102 +3513,186 @@
       const modalBody = document.getElementById('modal-body');
       const modalHeader = modal?.querySelector('.modal-header h2');
 
-      if (modalHeader) {
-        const hasFlights = parsedResults.some(pr => pr.result?.flights?.length);
-        const hasHotels = parsedResults.some(pr => pr.result?.hotels?.length);
-        let title = i18n.t('trip.addBookingTitle') || 'Aggiungi prenotazione';
-        if (hasFlights && !hasHotels) title = i18n.t('trip.addFlightTitle') || 'Aggiungi Voli';
-        else if (hasHotels && !hasFlights) title = i18n.t('trip.addHotelTitle') || 'Aggiungi Hotel';
-        modalHeader.textContent = title;
-      }
-
       modal.classList.add('active');
       document.body.style.overflow = 'hidden';
       tripCreator.showFooter(false);
 
-      parsePreview.render(modalBody, parsedResults, {
-        onConfirm: async (feedback, updatedResults, editedFields) => {
-          const finalResults = updatedResults || parsedResults;
+      // Rileva aggiornamenti confrontando con i booking esistenti
+      const updateCheck = updatePreview.detectUpdates(parsedResults, currentTripData);
 
-          // Check if booking dates extend the trip
-          let skipDateUpdate = false;
-          const dateExt = checkDateExtension(finalResults);
-          if (dateExt) {
-            const shouldExtend = await showDateExtensionDialog(dateExt);
-            if (!shouldExtend) skipDateUpdate = true;
-          }
+      if (updateCheck.hasUpdates) {
+        // ── Mostra subito il confronto aggiornamenti ──
+        if (modalHeader) modalHeader.textContent = i18n.t('trip.updateDetected') || 'Aggiornamenti rilevati';
 
-          // Show saving state
-          modalBody.innerHTML = `
-            <div class="processing-state">
-              <span class="spinner"></span>
-              <p class="processing-phrase loading-phrase"></p>
-            </div>
-          `;
-          const phraseEl = modalBody.querySelector('.processing-phrase');
-          const savingPhrases = utils.startLoadingPhrases(phraseEl, 3000);
+        updatePreview.render(modalBody, updateCheck.updates, updateCheck.pendingNew, {
+          onConfirm: async (selectedUpdates, pendingNew) => {
+            modalBody.innerHTML = `
+              <div class="processing-state">
+                <span class="spinner"></span>
+                <p class="processing-phrase loading-phrase"></p>
+              </div>
+            `;
+            const phraseEl = modalBody.querySelector('.processing-phrase');
+            const savingPhrases = utils.startLoadingPhrases(phraseEl, 3000);
 
-          try {
-            const saveResponse = await utils.authFetch('/.netlify/functions/add-booking', {
-              method: 'POST',
-              body: JSON.stringify({
-                pdfs,
-                tripId: currentTripData.id,
-                parsedData: finalResults,
-                feedback,
-                skipDateUpdate,
-                ...(editedFields?.length ? { editedFields } : {})
-              })
-            });
-
-            let saveResult;
             try {
-              saveResult = await saveResponse.json();
-            } catch {
-              throw Object.assign(new Error('server_error'), { errorCode: `HTTP${saveResponse.status}` });
-            }
+              // Converti file extra passeggeri in base64
+              for (const update of selectedUpdates) {
+                if (update.extraPassengerPdfs) {
+                  for (const extra of update.extraPassengerPdfs) {
+                    if (extra.file) {
+                      const reader = new FileReader();
+                      extra.fileBase64 = await new Promise((resolve, reject) => {
+                        reader.onload = () => resolve(reader.result);
+                        reader.onerror = reject;
+                        reader.readAsDataURL(extra.file);
+                      });
+                      extra.fileName = extra.file.name;
+                      delete extra.file;
+                    } else {
+                      delete extra.file;
+                    }
+                  }
+                }
+              }
 
-            if (saveResponse.status === 429 || saveResult.errorType === 'rate_limit') {
-              throw new Error('rate_limit');
-            }
-            if (saveResponse.status === 409 || saveResult.errorType === 'duplicate') {
-              const err = new Error('duplicate');
-              err.tripName = saveResult.tripName;
-              throw err;
-            }
-            if (!saveResponse.ok || !saveResult.success) {
-              throw Object.assign(
-                new Error(saveResult.error || 'Failed to add booking'),
-                { errorCode: saveResult.errorCode }
-              );
-            }
+              const saveResponse = await utils.authFetch('/.netlify/functions/add-booking', {
+                method: 'POST',
+                body: JSON.stringify({
+                  pdfs,
+                  tripId: currentTripData.id,
+                  confirmedUpdates: selectedUpdates,
+                  pendingNew,
+                  skipDateUpdate: false
+                })
+              });
 
-            savingPhrases.stop();
+              const saveResult = await saveResponse.json();
+              savingPhrases.stop();
 
-            // Close modal and reload trip
+              if (!saveResponse.ok || !saveResult.success) {
+                throw new Error(saveResult.error || 'Failed to apply updates');
+              }
+
+              modal.classList.remove('active');
+              document.body.style.overflow = '';
+              tripCreator.reset();
+
+              const currentTab = document.querySelector('.segmented-control-btn.active')?.dataset.tab;
+              await loadTripFromUrl();
+              if (currentTab) switchToTab(currentTab);
+
+              const totalUpdated = saveResult.updated ? Object.values(saveResult.updated).reduce((a, b) => a + b, 0) : 0;
+              const totalAdded = saveResult.added ? Object.values(saveResult.added).reduce((a, b) => a + b, 0) : 0;
+              let toastMsg = i18n.t('trip.updateSuccess') || 'Prenotazioni aggiornate';
+              if (totalAdded > 0) toastMsg += ` (+${totalAdded} ${totalAdded === 1 ? 'nuova' : 'nuove'})`;
+              utils.showToast(toastMsg, 'success');
+            } catch (saveError) {
+              savingPhrases.stop();
+              modal.classList.remove('active');
+              document.body.style.overflow = '';
+              tripCreator.reset();
+              handleQuickUploadError(saveError);
+            }
+          },
+          onCancel: () => {
             modal.classList.remove('active');
             document.body.style.overflow = '';
             tripCreator.reset();
-
-            const currentTab = document.querySelector('.segmented-control-btn.active')?.dataset.tab;
-            await loadTripFromUrl();
-            if (currentTab) switchToTab(currentTab);
-
-            utils.showToast(i18n.t('trip.addSuccess') || 'Booking added', 'success');
-          } catch (saveError) {
-            savingPhrases.stop();
-            modal.classList.remove('active');
-            document.body.style.overflow = '';
-            tripCreator.reset();
-            handleQuickUploadError(saveError);
           }
-        },
-        onCancel: () => {
-          modal.classList.remove('active');
-          document.body.style.overflow = '';
-          tripCreator.reset();
+        }, currentTripData);
+      } else {
+        // ── Nessun aggiornamento: preview normale ──
+        if (modalHeader) {
+          const hasFlights = parsedResults.some(pr => pr.result?.flights?.length);
+          const hasHotels = parsedResults.some(pr => pr.result?.hotels?.length);
+          let title = i18n.t('trip.addBookingTitle') || 'Aggiungi prenotazione';
+          if (hasFlights && !hasHotels) title = i18n.t('trip.addFlightTitle') || 'Aggiungi Voli';
+          else if (hasHotels && !hasFlights) title = i18n.t('trip.addHotelTitle') || 'Aggiungi Hotel';
+          modalHeader.textContent = title;
         }
-      });
+
+        parsePreview.render(modalBody, parsedResults, {
+          onConfirm: async (feedback, updatedResults, editedFields) => {
+            const finalResults = updatedResults || parsedResults;
+
+            let skipDateUpdate = false;
+            const dateExt = checkDateExtension(finalResults);
+            if (dateExt) {
+              const shouldExtend = await showDateExtensionDialog(dateExt);
+              if (!shouldExtend) skipDateUpdate = true;
+            }
+
+            modalBody.innerHTML = `
+              <div class="processing-state">
+                <span class="spinner"></span>
+                <p class="processing-phrase loading-phrase"></p>
+              </div>
+            `;
+            const phraseEl = modalBody.querySelector('.processing-phrase');
+            const savingPhrases = utils.startLoadingPhrases(phraseEl, 3000);
+
+            try {
+              const saveResponse = await utils.authFetch('/.netlify/functions/add-booking', {
+                method: 'POST',
+                body: JSON.stringify({
+                  pdfs,
+                  tripId: currentTripData.id,
+                  parsedData: finalResults,
+                  feedback,
+                  skipDateUpdate,
+                  ...(editedFields?.length ? { editedFields } : {})
+                })
+              });
+
+              let saveResult;
+              try {
+                saveResult = await saveResponse.json();
+              } catch {
+                throw Object.assign(new Error('server_error'), { errorCode: `HTTP${saveResponse.status}` });
+              }
+
+              if (saveResponse.status === 429 || saveResult.errorType === 'rate_limit') {
+                throw new Error('rate_limit');
+              }
+              if (saveResponse.status === 409 || saveResult.errorType === 'duplicate') {
+                const err = new Error('duplicate');
+                err.tripName = saveResult.tripName;
+                throw err;
+              }
+              if (!saveResponse.ok || !saveResult.success) {
+                throw Object.assign(
+                  new Error(saveResult.error || 'Failed to add booking'),
+                  { errorCode: saveResult.errorCode }
+                );
+              }
+
+              savingPhrases.stop();
+
+              modal.classList.remove('active');
+              document.body.style.overflow = '';
+              tripCreator.reset();
+
+              const currentTab = document.querySelector('.segmented-control-btn.active')?.dataset.tab;
+              await loadTripFromUrl();
+              if (currentTab) switchToTab(currentTab);
+
+              utils.showToast(i18n.t('trip.addSuccess') || 'Booking added', 'success');
+            } catch (saveError) {
+              savingPhrases.stop();
+              modal.classList.remove('active');
+              document.body.style.overflow = '';
+              tripCreator.reset();
+              handleQuickUploadError(saveError);
+            }
+          },
+          onCancel: () => {
+            modal.classList.remove('active');
+            document.body.style.overflow = '';
+            tripCreator.reset();
+          }
+        });
+      }
 
     } catch (error) {
       resetCards();

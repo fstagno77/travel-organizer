@@ -8,7 +8,7 @@
 const { authenticateRequest, unauthorizedResponse, getCorsHeaders, handleOptions, getServiceClient } = require('./utils/auth');
 const { uploadPdf, downloadPdfAsBase64, moveTmpPdfToTrip, cleanupTmpPdfs } = require('./utils/storage');
 const { processPdfsWithClaude, extractPassengerFromFilename } = require('./utils/pdfProcessor');
-const { deduplicateFlights, deduplicateHotels } = require('./utils/deduplication');
+const { deduplicateFlights, deduplicateHotels, deduplicateTrains, deduplicateBuses } = require('./utils/deduplication');
 // Note: pdfProcessor is kept as fallback; primary flow now uses parsedData from parse-pdf endpoint
 
 // Count non-empty fields in extracted data for quality assessment
@@ -113,6 +113,8 @@ exports.handler = async (event, context) => {
 
     const allFlights = [];
     const allHotels = [];
+    const allTrains = [];
+    const allBuses = [];
     let metadata = {};
     let smartParseMeta = null; // SmartParse metadata for logging
 
@@ -191,6 +193,24 @@ exports.handler = async (event, context) => {
           allHotels.push(hotel);
         });
       }
+      if (result.trains) {
+        result.trains.forEach(train => {
+          train._pdfIndex = pdfIndex;
+          if (!train.passenger && result.passenger) {
+            train.passenger = { ...result.passenger };
+          }
+          allTrains.push(train);
+        });
+      }
+      if (result.buses) {
+        result.buses.forEach(bus => {
+          bus._pdfIndex = pdfIndex;
+          if (!bus.passenger && result.passenger) {
+            bus.passenger = { ...result.passenger };
+          }
+          allBuses.push(bus);
+        });
+      }
       if (result.passenger) {
         metadata.passenger = result.passenger;
       }
@@ -199,7 +219,7 @@ exports.handler = async (event, context) => {
       }
     }
 
-    if (!allFlights.length && !allHotels.length) {
+    if (!allFlights.length && !allHotels.length && !allTrains.length && !allBuses.length) {
       const errorCode = apiError ? 'E201' : 'E103';
       return {
         statusCode: 400,
@@ -214,14 +234,18 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Deduplicate hotels and flights within the batch
+    // Deduplicate within the batch
     const { deduplicatedHotels } = deduplicateHotels(allHotels);
     const { deduplicatedFlights } = deduplicateFlights(allFlights);
+    const { deduplicatedTrains } = deduplicateTrains(allTrains);
+    const { deduplicatedBuses } = deduplicateBuses(allBuses);
 
     // Generate trip data
     const tripData = createTripFromExtractedData({
       flights: deduplicatedFlights,
       hotels: deduplicatedHotels,
+      trains: deduplicatedTrains,
+      buses: deduplicatedBuses,
       metadata
     });
 
@@ -298,6 +322,60 @@ exports.handler = async (event, context) => {
         }
       }
 
+      // Treni: upload PDF per ogni treno dal PDF corrente
+      const trainsFromPdf = tripData.trains.filter(t => t._pdfIndex === pdfIndex);
+      for (const train of trainsFromPdf) {
+        const itemId = train.id;
+        if (isFromStorage && firstMoveForThisPdf) {
+          firstMoveForThisPdf = false;
+          movedTmpPaths.add(pdf.storagePath);
+          uploadPromises.push(
+            moveTmpPdfToTrip(pdf.storagePath, tripData.id, itemId)
+              .then(pdfPath => {
+                train.pdfPath = pdfPath;
+                console.log(`Moved PDF for ${train.id}: ${pdfPath}`);
+              })
+              .catch(err => console.error(`Error moving PDF for ${train.id}:`, err))
+          );
+        } else {
+          uploadPromises.push(
+            uploadPdf(pdf.content, tripData.id, itemId)
+              .then(pdfPath => {
+                train.pdfPath = pdfPath;
+                console.log(`Uploaded PDF for ${train.id}: ${pdfPath}`);
+              })
+              .catch(err => console.error(`Error uploading PDF for ${train.id}:`, err))
+          );
+        }
+      }
+
+      // Bus: upload PDF per ogni bus dal PDF corrente
+      const busesFromPdf = tripData.buses.filter(b => b._pdfIndex === pdfIndex);
+      for (const bus of busesFromPdf) {
+        const itemId = bus.id;
+        if (isFromStorage && firstMoveForThisPdf) {
+          firstMoveForThisPdf = false;
+          movedTmpPaths.add(pdf.storagePath);
+          uploadPromises.push(
+            moveTmpPdfToTrip(pdf.storagePath, tripData.id, itemId)
+              .then(pdfPath => {
+                bus.pdfPath = pdfPath;
+                console.log(`Moved PDF for ${bus.id}: ${pdfPath}`);
+              })
+              .catch(err => console.error(`Error moving PDF for ${bus.id}:`, err))
+          );
+        } else {
+          uploadPromises.push(
+            uploadPdf(pdf.content, tripData.id, itemId)
+              .then(pdfPath => {
+                bus.pdfPath = pdfPath;
+                console.log(`Uploaded PDF for ${bus.id}: ${pdfPath}`);
+              })
+              .catch(err => console.error(`Error uploading PDF for ${bus.id}:`, err))
+          );
+        }
+      }
+
       // Hotels remain linked at hotel level
       const hotelsFromPdf = tripData.hotels.filter(h => h._pdfIndex === pdfIndex);
       for (const hotel of hotelsFromPdf) {
@@ -345,6 +423,8 @@ exports.handler = async (event, context) => {
       }
     });
     tripData.hotels.forEach(h => delete h._pdfIndex);
+    tripData.trains.forEach(t => delete t._pdfIndex);
+    tripData.buses.forEach(b => delete b._pdfIndex);
 
     // Always show photo selection when there's a destination
     // User can choose from cached, Unsplash, or upload custom photo
@@ -417,7 +497,9 @@ exports.handler = async (event, context) => {
         destination: tripData.destination,
         summary: {
           flights: allFlights.length,
-          hotels: allHotels.length
+          hotels: allHotels.length,
+          trains: allTrains.length,
+          buses: allBuses.length
         }
       })
     };
@@ -457,7 +539,7 @@ exports.handler = async (event, context) => {
  * Create trip data structure from extracted data
  */
 function createTripFromExtractedData(data) {
-  const { flights, hotels, metadata } = data;
+  const { flights, hotels, trains = [], buses = [], metadata } = data;
 
   let startDate = null;
   let endDate = null;
@@ -497,6 +579,20 @@ function createTripFromExtractedData(data) {
     }
   }
 
+  if (trains.length > 0) {
+    trains.sort((a, b) => new Date(a.date) - new Date(b.date));
+    if (!startDate) startDate = trains[0].date;
+    if (!endDate) endDate = trains[trains.length - 1].date;
+    if (!destination) destination = trains[trains.length - 1].arrival?.city || '';
+  }
+
+  if (buses.length > 0) {
+    buses.sort((a, b) => new Date(a.date) - new Date(b.date));
+    if (!startDate) startDate = buses[0].date;
+    if (!endDate) endDate = buses[buses.length - 1].date;
+    if (!destination) destination = buses[buses.length - 1].arrival?.city || '';
+  }
+
   const date = new Date(startDate);
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const year = date.getFullYear();
@@ -528,6 +624,8 @@ function createTripFromExtractedData(data) {
     passenger: metadata.passenger || { name: '', type: 'ADT' },
     flights: flights.map((f, i) => ({ ...f, id: `flight-${i + 1}` })),
     hotels: hotels.map((h, i) => ({ ...h, id: `hotel-${i + 1}` })),
+    trains: trains.map((t, i) => ({ ...t, id: `train-${i + 1}` })),
+    buses: buses.map((b, i) => ({ ...b, id: `bus-${i + 1}` })),
     booking: metadata.booking || null
   };
 }

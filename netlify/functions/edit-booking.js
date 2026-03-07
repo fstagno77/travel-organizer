@@ -40,11 +40,11 @@ exports.handler = async (event, context) => {
       };
     }
 
-    if (type !== 'flight' && type !== 'hotel') {
+    if (!['flight', 'hotel', 'train', 'bus'].includes(type)) {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ success: false, error: 'type must be flight or hotel' })
+        body: JSON.stringify({ success: false, error: 'type must be flight, hotel, train or bus' })
       };
     }
 
@@ -64,7 +64,13 @@ exports.handler = async (event, context) => {
     }
 
     const tripData = tripRecord.data;
-    const items = type === 'flight' ? tripData.flights : tripData.hotels;
+    const itemsMap = {
+      flight: tripData.flights,
+      hotel: tripData.hotels,
+      train: tripData.trains,
+      bus: tripData.buses
+    };
+    const items = itemsMap[type];
 
     if (!items) {
       return {
@@ -153,6 +159,20 @@ const ALLOWED_HOTEL_FIELDS = [
   'checkIn', 'checkOut', 'address', 'price', 'breakfast', 'payment', 'cancellation'
 ];
 
+const ALLOWED_TRAIN_FIELDS = [
+  'date', 'trainNumber', 'operator',
+  'departure', 'arrival',
+  'class', 'seat', 'coach', 'bookingReference', 'ticketNumber',
+  'price', 'passenger'
+];
+
+const ALLOWED_BUS_FIELDS = [
+  'date', 'operator', 'routeNumber',
+  'departure', 'arrival',
+  'seat', 'bookingReference',
+  'price', 'passenger'
+];
+
 function filterUpdates(updates, allowedFields) {
   const filtered = {};
   const blocked = [];
@@ -173,7 +193,13 @@ function filterUpdates(updates, allowedFields) {
  * Apply updates to an item, handling nested objects
  */
 function applyUpdates(item, updates, type) {
-  const allowedFields = type === 'flight' ? ALLOWED_FLIGHT_FIELDS : ALLOWED_HOTEL_FIELDS;
+  const allowedMap = {
+    flight: ALLOWED_FLIGHT_FIELDS,
+    hotel: ALLOWED_HOTEL_FIELDS,
+    train: ALLOWED_TRAIN_FIELDS,
+    bus: ALLOWED_BUS_FIELDS
+  };
+  const allowedFields = allowedMap[type];
   updates = filterUpdates(updates, allowedFields);
 
   if (type === 'flight') {
@@ -284,6 +310,48 @@ function applyUpdates(item, updates, type) {
         if (item.guests.children.length > count) item.guests.children = item.guests.children.slice(0, count);
         item.guests.total = (item.guests.adults || 0) + count;
       }
+    }
+  } else if (type === 'train') {
+    const simpleFields = ['date', 'trainNumber', 'operator', 'class', 'seat', 'coach', 'bookingReference', 'ticketNumber'];
+    for (const field of simpleFields) {
+      if (updates[field] !== undefined) item[field] = updates[field];
+    }
+    if (updates.departure) {
+      if (!item.departure) item.departure = {};
+      Object.assign(item.departure, updates.departure);
+    }
+    if (updates.arrival) {
+      if (!item.arrival) item.arrival = {};
+      Object.assign(item.arrival, updates.arrival);
+    }
+    if (updates.price) {
+      if (!item.price) item.price = {};
+      Object.assign(item.price, updates.price);
+    }
+    if (updates.passenger) {
+      if (!item.passenger) item.passenger = {};
+      Object.assign(item.passenger, updates.passenger);
+    }
+  } else if (type === 'bus') {
+    const simpleFields = ['date', 'operator', 'routeNumber', 'seat', 'bookingReference'];
+    for (const field of simpleFields) {
+      if (updates[field] !== undefined) item[field] = updates[field];
+    }
+    if (updates.departure) {
+      if (!item.departure) item.departure = {};
+      Object.assign(item.departure, updates.departure);
+    }
+    if (updates.arrival) {
+      if (!item.arrival) item.arrival = {};
+      Object.assign(item.arrival, updates.arrival);
+    }
+    if (updates.price) {
+      if (!item.price) item.price = {};
+      Object.assign(item.price, updates.price);
+    }
+    if (updates.passenger) {
+      if (!item.passenger) item.passenger = {};
+      Object.assign(item.passenger, updates.passenger);
     }
   }
 }

@@ -9,7 +9,7 @@ const parsePreview = {
   _parsedResults: null,
   _editedFields: [], // ['flight[0].flightNumber', 'hotel[0].checkIn', ...]
   _activeSegment: 0,
-  _segments: [], // { type: 'flight'|'hotel', index, label, icon }
+  _segments: [], // { type: 'flight'|'hotel'|'train'|'bus', index, label, icon }
 
   /**
    * Render extraction preview into a container element.
@@ -26,6 +26,8 @@ const parsePreview = {
 
     const allFlights = [];
     const allHotels = [];
+    const allTrains = [];
+    const allBuses = [];
     let passenger = null;
     let booking = null;
 
@@ -33,6 +35,8 @@ const parsePreview = {
       if (!pr.result) continue;
       if (pr.result.flights) allFlights.push(...pr.result.flights);
       if (pr.result.hotels) allHotels.push(...pr.result.hotels);
+      if (pr.result.trains) allTrains.push(...pr.result.trains);
+      if (pr.result.buses) allBuses.push(...pr.result.buses);
       if (pr.result.passenger && !passenger) passenger = pr.result.passenger;
       if (pr.result.booking && !booking) booking = pr.result.booking;
     }
@@ -48,6 +52,18 @@ const parsePreview = {
       const name = h.name || 'Hotel';
       const short = name.length > 16 ? name.substring(0, 14) + '…' : name;
       this._segments.push({ type: 'hotel', index: i, label: short, icon: 'hotel' });
+    });
+    allTrains.forEach((t, i) => {
+      const dep = t.departure?.station || t.departure?.city || '?';
+      const arr = t.arrival?.station || t.arrival?.city || '?';
+      const short = s => s.length > 10 ? s.substring(0, 8) + '…' : s;
+      this._segments.push({ type: 'train', index: i, label: `${short(dep)}→${short(arr)}`, icon: 'train' });
+    });
+    allBuses.forEach((b, i) => {
+      const dep = b.departure?.station || b.departure?.city || '?';
+      const arr = b.arrival?.station || b.arrival?.city || '?';
+      const short = s => s.length > 10 ? s.substring(0, 8) + '…' : s;
+      this._segments.push({ type: 'bus', index: i, label: `${short(dep)}→${short(arr)}`, icon: 'directions_bus' });
     });
 
     const totalItems = this._segments.length;
@@ -163,6 +179,81 @@ const parsePreview = {
       html += this._field('Colazione', breakfast, 'breakfast');
       html += this._field('Cancellazione', cancellation, 'cancellation');
       html += this._field('Fonte', h.source, 'source');
+      html += `</div>`;
+      html += `</div>`;
+      html += `</div>`;
+    });
+
+    allTrains.forEach((t, i) => {
+      const segIdx = allFlights.length + allHotels.length + i;
+      const depStation = t.departure?.station || t.departure?.city || '?';
+      const arrStation = t.arrival?.station || t.arrival?.city || '?';
+      const depTime = t.departure?.time || '';
+      const arrTime = t.arrival?.time || '';
+
+      html += `<div class="parse-panel${segIdx === 0 ? ' active' : ''}" data-panel="${segIdx}">`;
+      html += `<div class="parse-train-card" data-type="train" data-index="${i}">`;
+      html += `<div class="parse-flight-route">
+        <div class="parse-flight-endpoint">
+          <span class="parse-flight-code" style="font-size:1.3rem">${this._esc(depStation)}</span>
+          ${depTime ? `<span class="parse-flight-time">${this._esc(depTime)}</span>` : ''}
+        </div>
+        <div class="parse-flight-arrow">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </div>
+        <div class="parse-flight-endpoint">
+          <span class="parse-flight-code" style="font-size:1.3rem">${this._esc(arrStation)}</span>
+          ${arrTime ? `<span class="parse-flight-time">${this._esc(arrTime)}</span>` : ''}
+        </div>
+      </div>`;
+
+      html += `<div class="parse-detail-grid">`;
+      html += this._field('Treno', t.trainNumber, 'trainNumber');
+      html += this._field('Operatore', t.operator, 'operator');
+      html += this._field('Data', this._fmtDate(t.date), 'date', 'date', t.date);
+      html += this._field('Classe', t.class, 'class');
+      html += this._field('Passeggero', t.passenger?.name, 'passenger.name');
+      html += this._field('PNR', t.bookingReference, 'bookingReference');
+      html += this._field('Biglietto', t.ticketNumber, 'ticketNumber');
+      html += this._field('Posto', t.seat, 'seat');
+      html += this._field('Carrozza', t.coach, 'coach');
+      html += this._field('Prezzo', this._resolvePrice(t.price), 'price');
+      html += `</div>`;
+      html += `</div>`;
+      html += `</div>`;
+    });
+
+    allBuses.forEach((b, i) => {
+      const segIdx = allFlights.length + allHotels.length + allTrains.length + i;
+      const depStation = b.departure?.station || b.departure?.city || '?';
+      const arrStation = b.arrival?.station || b.arrival?.city || '?';
+      const depTime = b.departure?.time || '';
+      const arrTime = b.arrival?.time || '';
+
+      html += `<div class="parse-panel${segIdx === 0 ? ' active' : ''}" data-panel="${segIdx}">`;
+      html += `<div class="parse-bus-card" data-type="bus" data-index="${i}">`;
+      html += `<div class="parse-flight-route">
+        <div class="parse-flight-endpoint">
+          <span class="parse-flight-code" style="font-size:1.3rem">${this._esc(depStation)}</span>
+          ${depTime ? `<span class="parse-flight-time">${this._esc(depTime)}</span>` : ''}
+        </div>
+        <div class="parse-flight-arrow">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </div>
+        <div class="parse-flight-endpoint">
+          <span class="parse-flight-code" style="font-size:1.3rem">${this._esc(arrStation)}</span>
+          ${arrTime ? `<span class="parse-flight-time">${this._esc(arrTime)}</span>` : ''}
+        </div>
+      </div>`;
+
+      html += `<div class="parse-detail-grid">`;
+      html += this._field('Operatore', b.operator, 'operator');
+      html += this._field('Linea', b.routeNumber, 'routeNumber');
+      html += this._field('Data', this._fmtDate(b.date), 'date', 'date', b.date);
+      html += this._field('Passeggero', b.passenger?.name, 'passenger.name');
+      html += this._field('PNR', b.bookingReference, 'bookingReference');
+      html += this._field('Posto', b.seat, 'seat');
+      html += this._field('Prezzo', this._resolvePrice(b.price), 'price');
       html += `</div>`;
       html += `</div>`;
       html += `</div>`;
@@ -342,6 +433,8 @@ const parsePreview = {
     this._editedFields = [];
     let flightIdx = 0;
     let hotelIdx = 0;
+    let trainIdx = 0;
+    let busIdx = 0;
 
     for (const pr of this._parsedResults) {
       if (!pr.result) continue;
@@ -374,6 +467,22 @@ const parsePreview = {
             this._applyCardEdits(card, hotel, `hotel[${hotelIdx}]`);
           }
           hotelIdx++;
+        }
+      }
+
+      if (pr.result.trains) {
+        for (const train of pr.result.trains) {
+          const card = container.querySelector(`.parse-train-card[data-index="${trainIdx}"]`);
+          if (card) this._applyCardEdits(card, train, `train[${trainIdx}]`);
+          trainIdx++;
+        }
+      }
+
+      if (pr.result.buses) {
+        for (const bus of pr.result.buses) {
+          const card = container.querySelector(`.parse-bus-card[data-index="${busIdx}"]`);
+          if (card) this._applyCardEdits(card, bus, `bus[${busIdx}]`);
+          busIdx++;
         }
       }
     }

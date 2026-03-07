@@ -560,8 +560,6 @@ const homePage = (function() {
     const title = trip.title[lang] || trip.title.en || trip.title.it;
     const startDate = utils.formatDate(trip.startDate, lang, { month: 'short', day: 'numeric' });
     const endDate = utils.formatDate(trip.endDate, lang, { month: 'short', day: 'numeric', year: 'numeric' });
-    const days = getTripDuration(trip.startDate, trip.endDate);
-    const dayLabel = days === 1 ? (i18n.t('home.day') || 'giorno') : (i18n.t('home.days') || 'giorni');
     const tripUrl = `trip.html?id=${trip.id}`;
     const todayStr = formatTodayDate(lang);
 
@@ -649,13 +647,6 @@ const homePage = (function() {
                   </svg>
                   <span>${startDate} - ${endDate}</span>
                 </div>
-                <div class="current-trip-meta-item">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <polyline points="12 6 12 12 16 14"></polyline>
-                  </svg>
-                  <span>${days} ${dayLabel}</span>
-                </div>
               </div>
             </div>
             <div class="current-trip-arrow">
@@ -684,7 +675,6 @@ const homePage = (function() {
   }
 
   // Funzioni delegate a tripCardUtils
-  const getTripDuration = (startDate, endDate) => tripCardUtils.getTripDuration(startDate, endDate);
   const renderSectionHeader = (title, subtitle, variant) => tripCardUtils.renderSectionHeader(title, subtitle, variant);
   const renderTripCard = (trip, lang, isPast, index) => tripCardUtils.renderTripCard(trip, lang, isPast, index);
 

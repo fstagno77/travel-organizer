@@ -44,11 +44,11 @@ exports.handler = async (event, context) => {
       };
     }
 
-    if (!type || !['flight', 'hotel'].includes(type)) {
+    if (!type || !['flight', 'hotel', 'train', 'bus'].includes(type)) {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ success: false, error: 'Type must be "flight" or "hotel"' })
+        body: JSON.stringify({ success: false, error: 'Type must be "flight", "hotel", "train" or "bus"' })
       };
     }
 
@@ -113,6 +113,34 @@ exports.handler = async (event, context) => {
       }
 
       tripData.hotels = tripData.hotels.filter(h => h.id !== itemId);
+    } else if (type === 'train') {
+      const trainToDelete = (tripData.trains || []).find(t => t.id === itemId);
+      if (!trainToDelete) {
+        return {
+          statusCode: 404,
+          headers,
+          body: JSON.stringify({ success: false, error: 'Train not found' })
+        };
+      }
+      if (trainToDelete.pdfPath) {
+        console.log(`Deleting PDF: ${trainToDelete.pdfPath}`);
+        await deletePdf(trainToDelete.pdfPath);
+      }
+      tripData.trains = tripData.trains.filter(t => t.id !== itemId);
+    } else if (type === 'bus') {
+      const busToDelete = (tripData.buses || []).find(b => b.id === itemId);
+      if (!busToDelete) {
+        return {
+          statusCode: 404,
+          headers,
+          body: JSON.stringify({ success: false, error: 'Bus not found' })
+        };
+      }
+      if (busToDelete.pdfPath) {
+        console.log(`Deleting PDF: ${busToDelete.pdfPath}`);
+        await deletePdf(busToDelete.pdfPath);
+      }
+      tripData.buses = tripData.buses.filter(b => b.id !== itemId);
     }
 
     // Update trip dates based on remaining flights and hotels

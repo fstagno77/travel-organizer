@@ -44,6 +44,13 @@ const BRAND_RULES = [
       (t.includes('pnr') || t.includes('biglietto') || t.includes('stazione di partenza')) },
   { brand: 'italo', test: t => (t.includes('italo') || t.includes('ntv')) &&
       (t.includes('biglietto') || t.includes('stazione') || t.includes('treno')) },
+  { brand: 'sais-autolinee', test: t => (t.includes('saisautolinee') || t.includes('sais autolinee')) &&
+      (t.includes('biglietto') || t.includes('partenza')) },
+  { brand: 'flixbus', test: t => t.includes('flixbus') &&
+      (t.includes('booking') || t.includes('departure') || t.includes('partenza')) },
+  { brand: 'marinobus', test: t => t.includes('marinobus') || t.includes('marino bus') },
+  { brand: 'itabus', test: t => t.includes('itabus') &&
+      (t.includes('biglietto') || t.includes('partenza')) },
   { brand: 'booking.com', test: t => t.includes('booking.com') &&
       (t.includes('numero di conferma') || t.includes('conferma della prenotazione') ||
        t.includes('confirmation number') || t.includes('booking confirmation')) },
@@ -74,6 +81,11 @@ const MANDATORY = {
   ],
   train: [
     'trainNumber', 'date', 'departure.station', 'departure.city',
+    'departure.time', 'arrival.station', 'arrival.city', 'arrival.time',
+    'bookingReference'
+  ],
+  bus: [
+    'date', 'departure.station', 'departure.city',
     'departure.time', 'arrival.station', 'arrival.city', 'arrival.time',
     'bookingReference'
   ]
@@ -121,6 +133,14 @@ function flattenResult(result, docType) {
     const trains = result.trains || [];
     for (let ti = 0; ti < trains.length; ti++) {
       flattenObject(trains[ti], `trains.${ti}`, pairs);
+    }
+    if (result.passenger) flattenObject(result.passenger, 'passenger', pairs);
+  }
+
+  if (docType === 'bus' || result.buses?.length) {
+    const buses = result.buses || [];
+    for (let bi = 0; bi < buses.length; bi++) {
+      flattenObject(buses[bi], `buses.${bi}`, pairs);
     }
     if (result.passenger) flattenObject(result.passenger, 'passenger', pairs);
   }
@@ -803,6 +823,79 @@ function extractTrenitaliaTrain(text) {
   return result;
 }
 
+// ─── SAIS Autolinee Specific Extraction ──────────────────────────────────────
+
+/**
+ * Estrattore specifico per biglietti SAIS Autolinee.
+ * Formato: label su riga separata, valore sulla riga successiva.
+ * "Partenza DD/MM/YYYY HH:MM\nFermata partenza\n\nArrivo DD/MM/YYYY HH:MM\nFermata arrivo"
+ */
+function extractSaisAutolineeBus(text) {
+  const lines = text.split('\n');
+  const bus = { operator: 'SAIS Autolinee' };
+
+  // Codice biglietto (booking reference): "Biglietto MMQ287562"
+  // La riga è "Biglietto CODICE" dove CODICE è alfanumerico (3+ chars)
+  const ticketMatch = text.match(/^Biglietto\s+([A-Z0-9]{3,})\s*$/im);
+  if (ticketMatch) bus.bookingReference = ticketMatch[1].trim();
+
+  // Passeggero: riga dopo "Passeggero"
+  let passenger = null;
+  for (let i = 0; i < lines.length; i++) {
+    if (/^Passeggero\s*$/i.test(lines[i].trim())) {
+      const name = lines[i + 1]?.trim();
+      if (name && name.length > 2) passenger = { name };
+      break;
+    }
+  }
+
+  // Partenza: "Partenza DD/MM/YYYY HH:MM" → riga successiva = fermata
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(/^Partenza\s+(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}:\d{2})/i);
+    if (m) {
+      bus.date = `${m[3]}-${m[2]}-${m[1]}`;
+      bus.departure = { time: m[4] };
+      // Fermata partenza: riga successiva non vuota
+      const station = lines[i + 1]?.trim();
+      if (station && station.length > 2) {
+        bus.departure.station = station;
+        // Città: parte prima del trattino (es. "Messina-Stazione..." → "Messina")
+        const cityMatch = station.match(/^([^-]+)/);
+        bus.departure.city = cityMatch ? cityMatch[1].trim() : station;
+      }
+      break;
+    }
+  }
+
+  // Arrivo: "Arrivo DD/MM/YYYY HH:MM" → riga successiva = fermata
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(/^Arrivo\s+(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}:\d{2})/i);
+    if (m) {
+      bus.arrival = { time: m[4] };
+      const station = lines[i + 1]?.trim();
+      if (station && station.length > 2) {
+        bus.arrival.station = station;
+        const cityMatch = station.match(/^([^-]+)/);
+        bus.arrival.city = cityMatch ? cityMatch[1].trim() : station;
+      }
+      break;
+    }
+  }
+
+  // Prezzo: "X,XX €"
+  const priceMatch = text.match(/([\d.,]+)\s*€/);
+  if (priceMatch) {
+    const val = parseFloat(priceMatch[1].replace(',', '.'));
+    if (!isNaN(val)) bus.price = { value: val, currency: 'EUR' };
+  }
+
+  if (!bus.departure || !bus.arrival) return null;
+
+  const result = { buses: [bus] };
+  if (passenger) result.passenger = passenger;
+  return result;
+}
+
 // ─── Main L2 Functions ──────────────────────────────────────────────────────
 
 /**
@@ -831,6 +924,13 @@ function tryL2Extraction(template, newText, docType) {
       method = 'trenitalia-specific';
       // Override docType per validazione (auto = tipo non ancora determinato)
       if (!effectiveDocType || effectiveDocType === 'any' || effectiveDocType === 'auto') effectiveDocType = 'train';
+    }
+  } else if (brand === 'sais-autolinee' && (effectiveDocType === 'bus' || effectiveDocType === 'auto' || !effectiveDocType || effectiveDocType === 'any')) {
+    const busResult = extractSaisAutolineeBus(newText);
+    if (busResult) {
+      result = busResult;
+      method = 'sais-specific';
+      if (!effectiveDocType || effectiveDocType === 'any' || effectiveDocType === 'auto') effectiveDocType = 'bus';
     }
   } else if (brand === 'ita-airways' && effectiveDocType === 'flight') {
     // ITA: extract passenger fields, clone flight data from template
@@ -938,6 +1038,22 @@ function validateMandatory(result, docType) {
     }
   }
 
+  if (docType === 'bus') {
+    const buses = result.buses || [];
+    if (buses.length === 0) return ['buses (empty)'];
+
+    for (const field of MANDATORY.bus) {
+      if (field === 'bookingReference') {
+        const atBus = buses[0]?.bookingReference;
+        const atTop = result.booking?.reference;
+        if (!atBus && !atTop) missing.push(field);
+      } else {
+        const val = getNestedField(buses[0], field);
+        if (val == null || val === '') missing.push(field);
+      }
+    }
+  }
+
   return missing;
 }
 
@@ -954,5 +1070,6 @@ module.exports = {
   extractBookingComHotel,
   extractITAPassengerFields,
   extractTrenitaliaTrain,
+  extractSaisAutolineeBus,
   MANDATORY
 };

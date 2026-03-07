@@ -1,9 +1,94 @@
 /**
  * Deduplication - Shared logic for deduplicating flights and hotels
  * Used by both process-pdf.js (batch-only) and add-booking.js (existing + batch).
+ *
+ * Supporta anche il rilevamento di aggiornamenti (update detection):
+ * quando un booking matcha per chiave "soft" (es. bookingRef + flightNumber senza data)
+ * ma ha campi diversi, viene segnalato come update invece che duplicato.
  */
 
 const { buildPassengersArray, buildPassengerEntry } = require('./passengerBuilder');
+
+// ── Campi da confrontare per rilevamento aggiornamenti ──
+
+const FLIGHT_COMPARE_FIELDS = [
+  { path: 'date', label: 'Data' },
+  { path: 'departureTime', label: 'Ora partenza' },
+  { path: 'arrivalTime', label: 'Ora arrivo' },
+  { path: 'departure.code', label: 'Aeroporto partenza' },
+  { path: 'departure.city', label: 'Città partenza' },
+  { path: 'arrival.code', label: 'Aeroporto arrivo' },
+  { path: 'arrival.city', label: 'Città arrivo' },
+  { path: 'seat', label: 'Posto' },
+  { path: 'class', label: 'Classe' },
+  { path: 'status', label: 'Stato' },
+];
+
+const HOTEL_COMPARE_FIELDS = [
+  { path: 'checkIn.date', label: 'Check-in' },
+  { path: 'checkOut.date', label: 'Check-out' },
+  { path: 'name', label: 'Nome hotel' },
+  { path: 'roomType', label: 'Camera' },
+  { path: 'guestName', label: 'Ospite' },
+];
+
+const TRAIN_COMPARE_FIELDS = [
+  { path: 'date', label: 'Data' },
+  { path: 'departure.time', label: 'Ora partenza' },
+  { path: 'arrival.time', label: 'Ora arrivo' },
+  { path: 'departure.station', label: 'Stazione partenza' },
+  { path: 'arrival.station', label: 'Stazione arrivo' },
+  { path: 'seat', label: 'Posto' },
+  { path: 'coach', label: 'Carrozza' },
+  { path: 'class', label: 'Classe' },
+];
+
+const BUS_COMPARE_FIELDS = [
+  { path: 'date', label: 'Data' },
+  { path: 'departure.time', label: 'Ora partenza' },
+  { path: 'arrival.time', label: 'Ora arrivo' },
+  { path: 'departure.station', label: 'Fermata partenza' },
+  { path: 'arrival.station', label: 'Fermata arrivo' },
+  { path: 'seat', label: 'Posto' },
+];
+
+// ── Utility per confronto campi ──
+
+/**
+ * Legge un valore annidato da un oggetto (es. 'departure.code' → obj.departure.code)
+ */
+function getNestedValue(obj, path) {
+  if (!obj || !path) return undefined;
+  const parts = path.split('.');
+  let val = obj;
+  for (const p of parts) {
+    if (val == null) return undefined;
+    val = val[p];
+  }
+  return val;
+}
+
+/**
+ * Confronta campi specifici tra un booking esistente e uno nuovo.
+ * Ritorna solo i campi che differiscono.
+ * @returns {Array<{field: string, label: string, oldValue: *, newValue: *}>}
+ */
+function diffFields(existing, incoming, compareFields) {
+  const changes = [];
+  for (const { path, label } of compareFields) {
+    const oldVal = getNestedValue(existing, path);
+    const newVal = getNestedValue(incoming, path);
+    // Ignora se il nuovo valore è vuoto
+    if (newVal == null || newVal === '') continue;
+    // Confronto normalizzato (stringhe lowercase trim)
+    const oldNorm = typeof oldVal === 'string' ? oldVal.toLowerCase().trim() : oldVal;
+    const newNorm = typeof newVal === 'string' ? newVal.toLowerCase().trim() : newVal;
+    if (oldNorm !== newNorm) {
+      changes.push({ field: path, label, oldValue: oldVal ?? null, newValue: newVal });
+    }
+  }
+  return changes;
+}
 
 /**
  * Merge non-null fields from source into target without overwriting existing values.
@@ -25,13 +110,16 @@ function mergeFlightFields(target, source) {
  * Deduplicate hotels against existing hotels and within the new batch.
  * When existingHotels is empty, only deduplicates within the batch.
  *
+ * Rileva anche aggiornamenti: stesso confirmationNumber ma date diverse.
+ *
  * @param {Array} newHotels - New hotels to deduplicate
  * @param {Array} [existingHotels=[]] - Existing hotels in the trip (from DB)
- * @returns {{ deduplicatedHotels: Array, skippedHotels: number }}
+ * @returns {{ deduplicatedHotels: Array, skippedHotels: number, updatedHotels: Array }}
  */
 function deduplicateHotels(newHotels, existingHotels = []) {
   const deduplicatedHotels = [];
   let skippedHotels = 0;
+  const updatedHotels = [];
 
   for (const newHotel of newHotels) {
     const confirmNum = newHotel.confirmationNumber?.toLowerCase()?.trim();
@@ -40,15 +128,43 @@ function deduplicateHotels(newHotels, existingHotels = []) {
     const checkOut = newHotel.checkOut?.date;
 
     let isDuplicate = false;
+    let isUpdate = false;
 
     if (confirmNum) {
-      const existingHotel = existingHotels.find(h =>
-        h.confirmationNumber?.toLowerCase()?.trim() === confirmNum
+      // Match esatto: confirmationNumber + date check-in + date check-out
+      const exactMatch = existingHotels.find(h =>
+        h.confirmationNumber?.toLowerCase()?.trim() === confirmNum &&
+        h.checkIn?.date === checkIn &&
+        h.checkOut?.date === checkOut
       );
       const alreadyInBatch = deduplicatedHotels.find(h =>
         h.confirmationNumber?.toLowerCase()?.trim() === confirmNum
       );
-      isDuplicate = !!(existingHotel || alreadyInBatch);
+
+      if (exactMatch || alreadyInBatch) {
+        isDuplicate = true;
+      } else if (existingHotels.length > 0) {
+        // SOFT MATCH: stesso confirmationNumber ma date diverse → potenziale update
+        const softMatch = existingHotels.find(h =>
+          h.confirmationNumber?.toLowerCase()?.trim() === confirmNum
+        );
+        if (softMatch) {
+          const changes = diffFields(softMatch, newHotel, HOTEL_COMPARE_FIELDS);
+          if (changes.length > 0) {
+            updatedHotels.push({
+              type: 'hotel',
+              existingId: softMatch.id,
+              existing: softMatch,
+              incoming: newHotel,
+              changes,
+              pdfIndex: newHotel._pdfIndex
+            });
+            isUpdate = true;
+          } else {
+            isDuplicate = true;
+          }
+        }
+      }
     } else if (hotelName && checkIn && checkOut) {
       const existingHotel = existingHotels.find(h =>
         h.name?.toLowerCase()?.trim() === hotelName &&
@@ -63,7 +179,9 @@ function deduplicateHotels(newHotels, existingHotels = []) {
       isDuplicate = !!(existingHotel || alreadyInBatch);
     }
 
-    if (isDuplicate) {
+    if (isUpdate) {
+      console.log(`Detected update for hotel: ${confirmNum} (${newHotel.name})`);
+    } else if (isDuplicate) {
       console.log(`Skipping duplicate hotel: ${confirmNum || hotelName} (${newHotel.name})`);
       skippedHotels++;
     } else {
@@ -71,7 +189,7 @@ function deduplicateHotels(newHotels, existingHotels = []) {
     }
   }
 
-  return { deduplicatedHotels, skippedHotels };
+  return { deduplicatedHotels, skippedHotels, updatedHotels };
 }
 
 /**
@@ -80,13 +198,18 @@ function deduplicateHotels(newHotels, existingHotels = []) {
  * Aggregates passengers when the same flight appears multiple times (different passengers).
  * Mutates existingFlights in place when adding passengers to existing flights.
  *
+ * Rileva anche aggiornamenti: stesso bookingRef + flightNumber ma data/orari diversi.
+ *
  * @param {Array} newFlights - New flights to deduplicate
  * @param {Array} [existingFlights=[]] - Existing flights in the trip (from DB)
- * @returns {{ deduplicatedFlights: Array, skippedFlights: number }}
+ * @returns {{ deduplicatedFlights: Array, skippedFlights: number, updatedFlights: Array }}
  */
 function deduplicateFlights(newFlights, existingFlights = []) {
   const deduplicatedFlights = [];
   let skippedFlights = 0;
+  const updatedFlights = [];
+  // Traccia gli id già segnalati come update per evitare duplicati nel batch
+  const updatedExistingIds = new Set();
 
   for (const newFlight of newFlights) {
     const bookingRef = newFlight.bookingReference?.toLowerCase()?.trim();
@@ -144,6 +267,31 @@ function deduplicateFlights(newFlights, existingFlights = []) {
       }
 
     } else {
+      // SOFT MATCH contro esistenti: bookingRef + flightNumber (senza data) → potenziale update
+      if (existingFlights.length > 0 && bookingRef && flightNum) {
+        const softMatch = existingFlights.find(f =>
+          f.bookingReference?.toLowerCase()?.trim() === bookingRef &&
+          f.flightNumber?.toLowerCase()?.trim()    === flightNum &&
+          !updatedExistingIds.has(f.id) // non segnalare lo stesso volo due volte
+        );
+        if (softMatch) {
+          const changes = diffFields(softMatch, newFlight, FLIGHT_COMPARE_FIELDS);
+          if (changes.length > 0) {
+            updatedExistingIds.add(softMatch.id);
+            updatedFlights.push({
+              type: 'flight',
+              existingId: softMatch.id,
+              existing: softMatch,
+              incoming: newFlight,
+              changes,
+              pdfIndex: newFlight._pdfIndex
+            });
+            console.log(`Detected update for flight: ${flightNum} (existing: ${softMatch.date} → new: ${flightDate})`);
+            continue;
+          }
+        }
+      }
+
       // PRIMARY MATCH within current upload batch
       let alreadyAdded = (bookingRef && flightNum && flightDate)
         ? deduplicatedFlights.find(f =>
@@ -201,7 +349,151 @@ function deduplicateFlights(newFlights, existingFlights = []) {
     }
   }
 
-  return { deduplicatedFlights, skippedFlights };
+  return { deduplicatedFlights, skippedFlights, updatedFlights };
 }
 
-module.exports = { deduplicateFlights, deduplicateHotels };
+/**
+ * Deduplica treni contro esistenti e all'interno del batch.
+ * Match su trainNumber + date oppure bookingReference.
+ * Rileva aggiornamenti: stesso bookingReference o trainNumber ma data/orari diversi.
+ */
+function deduplicateTrains(newTrains, existingTrains = []) {
+  const deduplicatedTrains = [];
+  let skippedTrains = 0;
+  const updatedTrains = [];
+
+  for (const newTrain of newTrains) {
+    const trainNum = newTrain.trainNumber?.toLowerCase()?.trim();
+    const trainDate = newTrain.date;
+    const bookingRef = newTrain.bookingReference?.toLowerCase()?.trim();
+
+    let isDuplicate = false;
+    let isUpdate = false;
+    const allTrains = [...existingTrains, ...deduplicatedTrains];
+
+    // Match esatto: trainNumber + date oppure bookingReference
+    if (trainNum && trainDate) {
+      isDuplicate = !!allTrains.find(t =>
+        t.trainNumber?.toLowerCase()?.trim() === trainNum && t.date === trainDate
+      );
+    } else if (bookingRef) {
+      isDuplicate = !!allTrains.find(t =>
+        t.bookingReference?.toLowerCase()?.trim() === bookingRef
+      );
+    }
+
+    // SOFT MATCH: stesso trainNumber (senza data) o stesso bookingRef con data diversa → update
+    if (!isDuplicate && existingTrains.length > 0) {
+      let softMatch = null;
+      if (trainNum) {
+        softMatch = existingTrains.find(t =>
+          t.trainNumber?.toLowerCase()?.trim() === trainNum && t.date !== trainDate
+        );
+      }
+      if (!softMatch && bookingRef) {
+        softMatch = existingTrains.find(t =>
+          t.bookingReference?.toLowerCase()?.trim() === bookingRef && t.date !== trainDate
+        );
+      }
+      if (softMatch) {
+        const changes = diffFields(softMatch, newTrain, TRAIN_COMPARE_FIELDS);
+        if (changes.length > 0) {
+          updatedTrains.push({
+            type: 'train',
+            existingId: softMatch.id,
+            existing: softMatch,
+            incoming: newTrain,
+            changes,
+            pdfIndex: newTrain._pdfIndex
+          });
+          isUpdate = true;
+        }
+      }
+    }
+
+    if (isUpdate) {
+      console.log(`Detected update for train: ${trainNum || bookingRef}`);
+    } else if (isDuplicate) {
+      console.log(`Skipping duplicate train: ${trainNum || bookingRef}`);
+      skippedTrains++;
+    } else {
+      deduplicatedTrains.push(newTrain);
+    }
+  }
+
+  return { deduplicatedTrains, skippedTrains, updatedTrains };
+}
+
+/**
+ * Deduplica bus contro esistenti e all'interno del batch.
+ * Match su routeNumber + date oppure bookingReference.
+ * Rileva aggiornamenti: stesso bookingReference o routeNumber ma data/orari diversi.
+ */
+function deduplicateBuses(newBuses, existingBuses = []) {
+  const deduplicatedBuses = [];
+  let skippedBuses = 0;
+  const updatedBuses = [];
+
+  for (const newBus of newBuses) {
+    const routeNum = newBus.routeNumber?.toLowerCase()?.trim();
+    const busDate = newBus.date;
+    const bookingRef = newBus.bookingReference?.toLowerCase()?.trim();
+
+    let isDuplicate = false;
+    let isUpdate = false;
+    const allBuses = [...existingBuses, ...deduplicatedBuses];
+
+    // Match esatto: routeNumber + date oppure bookingReference
+    if (routeNum && busDate) {
+      isDuplicate = !!allBuses.find(b =>
+        b.routeNumber?.toLowerCase()?.trim() === routeNum && b.date === busDate
+      );
+    } else if (bookingRef) {
+      isDuplicate = !!allBuses.find(b =>
+        b.bookingReference?.toLowerCase()?.trim() === bookingRef
+      );
+    }
+
+    // SOFT MATCH: stesso routeNumber (senza data) o stesso bookingRef con data diversa → update
+    if (!isDuplicate && existingBuses.length > 0) {
+      let softMatch = null;
+      if (routeNum) {
+        softMatch = existingBuses.find(b =>
+          b.routeNumber?.toLowerCase()?.trim() === routeNum && b.date !== busDate
+        );
+      }
+      if (!softMatch && bookingRef) {
+        softMatch = existingBuses.find(b =>
+          b.bookingReference?.toLowerCase()?.trim() === bookingRef && b.date !== busDate
+        );
+      }
+      if (softMatch) {
+        const changes = diffFields(softMatch, newBus, BUS_COMPARE_FIELDS);
+        if (changes.length > 0) {
+          updatedBuses.push({
+            type: 'bus',
+            existingId: softMatch.id,
+            existing: softMatch,
+            incoming: newBus,
+            changes,
+            pdfIndex: newBus._pdfIndex
+          });
+          isUpdate = true;
+        }
+      }
+    }
+
+    if (isUpdate) {
+      console.log(`Detected update for bus: ${routeNum || bookingRef}`);
+    } else if (isDuplicate) {
+      console.log(`Skipping duplicate bus: ${routeNum || bookingRef}`);
+      skippedBuses++;
+    } else {
+      deduplicatedBuses.push(newBus);
+    }
+  }
+
+  return { deduplicatedBuses, skippedBuses, updatedBuses };
+}
+
+module.exports = { deduplicateFlights, deduplicateHotels, deduplicateTrains, deduplicateBuses };

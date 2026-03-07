@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.30 - 2026-03-07
+
+### Novità
+- **Rilevamento aggiornamenti prenotazioni**: caricando un PDF aggiornato su un viaggio esistente, il sistema rileva automaticamente le modifiche (date, orari, etc.) e mostra un confronto prima/dopo
+- **Gestione PDF multi-passeggero**: dopo aver aggiornato una prenotazione, puoi caricare le ricevute aggiornate anche per gli altri passeggeri
+- **Carica PDF mancanti**: nuova azione "Carica PDF" nelle card passeggero, per aggiungere ricevute mancanti direttamente dal dettaglio volo
+
+### Miglioramenti
+- **Propagazione PDF automatica**: il PDF caricato viene associato automaticamente a tutti i voli della stessa prenotazione per lo stesso passeggero
+- **Supporto treni e bus**: il parsing e l'aggiunta prenotazioni supportano ora anche treni e bus con rilevamento aggiornamenti
+
 ## 0.29.1 - 2026-03-05
 
 ### Fix

@@ -1,6 +1,26 @@
 {
   "versions": [
     {
+      "version": "0.30",
+      "date": "2026-03-07",
+      "changes": {
+        "it": [
+          "Rilevamento automatico aggiornamenti prenotazioni con confronto prima/dopo",
+          "Gestione PDF multi-passeggero: carica ricevute aggiornate per ogni passeggero",
+          "Nuova azione \"Carica PDF\" nel dettaglio volo per ricevute mancanti",
+          "Propagazione automatica PDF a tutti i voli della stessa prenotazione",
+          "Supporto treni e bus con rilevamento aggiornamenti"
+        ],
+        "en": [
+          "Automatic booking update detection with before/after comparison",
+          "Multi-passenger PDF management: upload updated receipts for each passenger",
+          "New \"Upload PDF\" action in flight detail for missing receipts",
+          "Automatic PDF propagation to all flights in the same booking",
+          "Train and bus support with update detection"
+        ]
+      }
+    },
+    {
       "version": "0.29.1",
       "date": "2026-03-05",
       "changes": {

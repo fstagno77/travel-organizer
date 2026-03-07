@@ -25,6 +25,18 @@ function updateTripDates(tripData) {
     });
   }
 
+  if (tripData.trains) {
+    tripData.trains.forEach(t => {
+      if (t.date) dates.push(new Date(t.date));
+    });
+  }
+
+  if (tripData.buses) {
+    tripData.buses.forEach(b => {
+      if (b.date) dates.push(new Date(b.date));
+    });
+  }
+
   if (dates.length > 0) {
     dates.sort((a, b) => a - b);
     tripData.startDate = dates[0].toISOString().split('T')[0];

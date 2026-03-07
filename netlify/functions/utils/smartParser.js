@@ -431,7 +431,7 @@ ${BUS_SCHEMA}`;
 // ─── Claude API call with prompt caching ────────────────────────────────────
 
 const BETA_DOC_TYPES = ['flight', 'hotel', 'train', 'bus'];
-const LIVE_DOC_TYPES = ['flight', 'hotel'];
+const LIVE_DOC_TYPES = ['flight', 'hotel', 'train', 'bus'];
 
 function getSchemaForDocType(docType) {
   switch (docType) {
@@ -445,8 +445,8 @@ function getSchemaForDocType(docType) {
 async function parseWithClaude(pdfBase64, docType, extractedText = '', betaMode = false) {
   const client = new Anthropic();
   const useTextMode = extractedText.length > 200;
-  const systemPrompt = betaMode ? BETA_SYSTEM_PROMPT : SYSTEM_PROMPT;
-  const validTypes = betaMode ? BETA_DOC_TYPES : LIVE_DOC_TYPES;
+  const systemPrompt = BETA_SYSTEM_PROMPT;
+  const validTypes = LIVE_DOC_TYPES;
 
   let userPrompt;
   if (docType === 'auto') {
@@ -623,7 +623,7 @@ async function _parseDocumentSmartInternal(pdfBase64, docType, mode = 'auto', sk
       }
 
       // Brand con estrattori autonomi: non necessitano di un template preesistente in DB
-      const SELF_SUFFICIENT_BRANDS = ['trenitalia', 'booking.com'];
+      const SELF_SUFFICIENT_BRANDS = ['trenitalia', 'booking.com', 'sais-autolinee'];
       const templateOrDummy = template || (SELF_SUFFICIENT_BRANDS.includes(brand)
         ? { brand, doc_type: 'any', extraction_map: [], last_sample_text: '', last_sample_result: null }
         : null);
@@ -846,6 +846,10 @@ function sanitizeResult(result) {
 
   (result.trains || []).forEach(tr => {
     if (tr.date != null) tr.date = sanitizeDateValue(tr.date);
+  });
+
+  (result.buses || []).forEach(b => {
+    if (b.date != null) b.date = sanitizeDateValue(b.date);
   });
 
   (result.flights || []).forEach(fl => {

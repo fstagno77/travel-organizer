@@ -72,6 +72,16 @@
       }
     }
 
+    const trains = tripData.trains || [];
+    for (const train of trains) {
+      events.push({ date: train.date, time: train.departure?.time || null, type: 'train', data: train });
+    }
+
+    const buses = tripData.buses || [];
+    for (const bus of buses) {
+      events.push({ date: bus.date, time: bus.departure?.time || null, type: 'bus', data: bus });
+    }
+
     for (const activity of customActivities) {
       events.push({ date: activity.date, time: activity.startTime || null, type: 'activity', data: activity });
     }
@@ -96,7 +106,7 @@
     }
     allDates.sort();
 
-    const typePriority = { 'hotel-checkout': 0, 'flight': 1, 'hotel-checkin': 2, 'hotel-stay': 3, 'activity': 4 };
+    const typePriority = { 'hotel-checkout': 0, 'flight': 1, 'train': 1.5, 'bus': 1.5, 'hotel-checkin': 2, 'hotel-stay': 3, 'activity': 4 };
     for (const date of allDates) {
       if (grouped[date]) {
         grouped[date].sort((a, b) => {
@@ -284,6 +294,20 @@
           text = `<strong>${esc(event.data.name || 'Hotel')}</strong> - Check-out`;
           tab = 'hotels';
           itemId = event.data.id;
+        } else if (event.type === 'train') {
+          const dep = event.data.departure?.station || event.data.departure?.city || '';
+          const dest = event.data.arrival?.station || event.data.arrival?.city || '';
+          const num = event.data.trainNumber ? ` (${esc(event.data.trainNumber)})` : '';
+          text = `Treno da <strong>${esc(dep)}</strong> → <strong>${esc(dest)}</strong>${num}`;
+          tab = 'trains';
+          itemId = event.data.id;
+        } else if (event.type === 'bus') {
+          const dep = event.data.departure?.station || event.data.departure?.city || '';
+          const dest = event.data.arrival?.station || event.data.arrival?.city || '';
+          const op = event.data.operator ? ` (${esc(event.data.operator)})` : '';
+          text = `Bus da <strong>${esc(dep)}</strong> → <strong>${esc(dest)}</strong>${op}`;
+          tab = 'buses';
+          itemId = event.data.id;
         } else if (event.type === 'activity') {
           const desc = event.data.description ? ' - ' + esc(event.data.description) : '';
           text = `<strong>${esc(event.data.name)}</strong>${desc}`;
@@ -293,8 +317,11 @@
 
         let timeLabel = event.time || '';
         if (timeLabel && event.type === 'flight' && event.data.arrivalTime) {
-          timeLabel += ' \u2192 ' + event.data.arrivalTime;
+          timeLabel += ' → ' + event.data.arrivalTime;
           if (event.data.arrivalNextDay) timeLabel += ' +1';
+        }
+        if (timeLabel && (event.type === 'train' || event.type === 'bus') && event.data.arrival?.time) {
+          timeLabel += ' → ' + event.data.arrival.time;
         }
         if (timeLabel && event.type === 'activity' && event.data.endTime) {
           timeLabel += ' \u2013 ' + event.data.endTime;
@@ -462,8 +489,40 @@
   function renderEventCard(event) {
     if (event.type === 'flight') return renderFlightCard(event);
     if (event.type.startsWith('hotel-')) return renderHotelCard(event);
+    if (event.type === 'train') return renderTransportCard(event, 'train', 'trains');
+    if (event.type === 'bus') return renderTransportCard(event, 'bus', 'buses');
     if (event.type === 'activity') return renderCustomActivityCard(event);
     return '';
+  }
+
+  function renderTransportCard(event, type, tab) {
+    const d = event.data;
+    const dep = d.departure?.station || d.departure?.city || '';
+    const arr = d.arrival?.station || d.arrival?.city || '';
+    const num = d.trainNumber || d.routeNumber || '';
+    const operator = d.operator || '';
+    const depTime = d.departure?.time || '';
+    const arrTime = d.arrival?.time || '';
+    const trainSvg = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8 2 4 3 4 7v9.5C4 18.43 5.57 20 7.5 20L6 21.5v.5h2l2-2h4l2 2h2v-.5L16.5 20c1.93 0 3.5-1.57 3.5-3.5V7c0-4-4-5-8-5m-1.5 16h-3C6.67 18 6 17.33 6 16.5S6.67 15 7.5 15h3v3m5.5 0h-3v-3h3c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5M18 13H6V7h12v6Z"/></svg>';
+    const busSvg = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M4 16c0 .88.39 1.67 1 2.22V20c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h8v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10m3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17m9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5M18 11H6V6h12v5Z"/></svg>';
+    const iconSvg = type === 'train' ? trainSvg : busSvg;
+    const colorClass = type === 'train' ? 'train' : 'bus';
+
+    return `
+      <a href="#" class="activity-card activity-card--${colorClass} activity-item-link" data-tab="${tab}" data-item-id="${d.id}">
+        <div class="activity-card-icon activity-card-icon--${colorClass}">
+          ${iconSvg}
+        </div>
+        <div class="activity-card-content">
+          <div class="activity-card-title">${esc(dep)} → ${esc(arr)}</div>
+          <div class="activity-card-subtitle">
+            ${num ? `<span>${esc(num)}</span>` : ''}
+            ${operator ? `<span>${esc(operator)}</span>` : ''}
+            ${depTime ? `<span>${esc(depTime)}${arrTime ? ' → ' + esc(arrTime) : ''}</span>` : ''}
+          </div>
+        </div>
+      </a>
+    `;
   }
 
   function renderCardView(container, dayData) {
@@ -550,7 +609,7 @@
     const linkClass = isCustom ? 'activity-item-link--custom' : 'activity-item-link';
     const dataAttrs = isCustom
       ? `data-activity-id="${event.data.id}"`
-      : `data-tab="${event.type === 'flight' ? 'flights' : 'hotels'}" data-item-id="${event.data.id}"`;
+      : `data-tab="${{flight:'flights',hotel:'hotels',train:'trains',bus:'buses'}[event.type] || 'flights'}" data-item-id="${event.data.id}"`;
 
     return `
       <a class="calendar-activity-item ${linkClass}" href="#" ${dataAttrs}>
@@ -884,9 +943,11 @@
   function renderActivities(container, tripData) {
     const flights = tripData.flights || [];
     const hotels = tripData.hotels || [];
+    const trains = tripData.trains || [];
+    const buses = tripData.buses || [];
     const customActivities = tripData.activities || [];
 
-    if (flights.length === 0 && hotels.length === 0 && customActivities.length === 0) {
+    if (flights.length === 0 && hotels.length === 0 && trains.length === 0 && buses.length === 0 && customActivities.length === 0) {
       container.innerHTML = `
         <div class="empty-state">
           <h3 class="empty-state-title" data-i18n="trip.noActivities">No activities</h3>

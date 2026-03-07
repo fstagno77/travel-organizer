@@ -130,8 +130,6 @@ const tripCardUtils = (function() {
                 <line x1="3" y1="10" x2="21" y2="10"></line>
               </svg>
               <span class="trip-card-dates">${startDate} - ${endDate}</span>
-              <span class="trip-card-dot">&middot;</span>
-              <span class="trip-card-duration">${durationText}</span>
             </div>
             <svg class="trip-card-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="5" y1="12" x2="19" y2="12"></line>

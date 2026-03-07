@@ -271,7 +271,16 @@
                           </svg>
                           <span data-i18n="flight.downloadPdf">PDF</span>
                         </button>
-                        ` : ''}
+                        ` : `
+                        <button class="btn-upload-pdf-small" data-flight-id="${flight.id}" data-passenger-index="${pIndex}" data-passenger-name="${esc(p.name)}" title="Carica PDF">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                          </svg>
+                          <span data-i18n="flight.uploadPdf">Carica PDF</span>
+                        </button>
+                        `}
                         <button class="btn-delete-passenger" data-passenger-name="${esc(p.name)}" data-booking-ref="${esc(flight.bookingReference)}" title="Remove passenger">
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -297,8 +306,17 @@
                             </svg>
                             <span data-i18n="flight.downloadPdf">Scarica PDF</span>
                           </button>
-                          ` : ''}
-                          ${p.pdfPath ? `<div class="passenger-menu-divider"></div>` : ''}
+                          ` : `
+                          <button class="passenger-menu-item" data-action="upload-pdf" data-flight-id="${flight.id}" data-passenger-index="${pIndex}" data-passenger-name="${esc(p.name)}">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                              <polyline points="17 8 12 3 7 8"></polyline>
+                              <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                            <span data-i18n="flight.uploadPdf">Carica PDF</span>
+                          </button>
+                          `}
+                          <div class="passenger-menu-divider"></div>
                           <button class="passenger-menu-item passenger-menu-item--danger" data-action="delete-passenger" data-passenger-name="${esc(p.name)}" data-booking-ref="${esc(flight.bookingReference)}">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                               <line x1="18" y1="6" x2="6" y2="18"></line>

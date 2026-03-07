@@ -40,6 +40,24 @@
   --color-hotel-700: #257a56;
   --color-hotel-800: #1c5f43;
 
+  /* Colors - Train orange theme (base: #e67e22) */
+  --color-train-50: #fef6ee;
+  --color-train-100: #fde8d0;
+  --color-train-200: #f9c88e;
+  --color-train-300: #f5a54d;
+  --color-train-600: #e67e22;
+  --color-train-700: #c96b1a;
+  --color-train-800: #a85614;
+
+  /* Colors - Bus violet theme (base: #8e44ad) */
+  --color-bus-50: #f5eef8;
+  --color-bus-100: #e8d5f0;
+  --color-bus-200: #d0aae0;
+  --color-bus-300: #b87fd1;
+  --color-bus-600: #8e44ad;
+  --color-bus-700: #763891;
+  --color-bus-800: #5e2d74;
+
   /* Colors - Semantic */
   --color-success: #10b981;
   --color-warning: #f59e0b;
