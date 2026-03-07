@@ -1003,14 +1003,20 @@
 }
 
 /* Action buttons container (side-by-side) */
-.flight-detail-actions {
+.flight-detail-actions,
+.train-detail-actions,
+.bus-detail-actions {
   display: flex;
   gap: var(--spacing-3);
   margin-top: var(--spacing-3);
 }
 
 .flight-detail-actions .btn-edit-item,
-.flight-detail-actions .btn-delete-item {
+.flight-detail-actions .btn-delete-item,
+.train-detail-actions .btn-edit-item,
+.train-detail-actions .btn-delete-item,
+.bus-detail-actions .btn-edit-item,
+.bus-detail-actions .btn-delete-item {
   flex: 1;
   margin-top: 0;
   width: auto;
@@ -3280,6 +3286,38 @@ input[type="time"].form-input {
   font-size: 20px;
 }
 
+.train-toggle-details {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-2);
+  width: 100%;
+  padding: var(--spacing-3);
+  color: var(--color-train-600);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.train-toggle-details:hover span {
+  text-decoration: underline;
+}
+
+.train-toggle-details:hover {
+  background-color: transparent;
+}
+
+.train-toggle-details svg {
+  transition: transform var(--transition-fast);
+}
+
+.train-toggle-details.active svg {
+  transform: rotate(180deg);
+}
+
 .train-details {
   overflow: hidden;
   max-height: 0;
@@ -3522,6 +3560,38 @@ input[type="time"].form-input {
 
 .bus-arrow .material-symbols-outlined {
   font-size: 20px;
+}
+
+.bus-toggle-details {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-2);
+  width: 100%;
+  padding: var(--spacing-3);
+  color: var(--color-bus-600);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.bus-toggle-details:hover span {
+  text-decoration: underline;
+}
+
+.bus-toggle-details:hover {
+  background-color: transparent;
+}
+
+.bus-toggle-details svg {
+  transition: transform var(--transition-fast);
+}
+
+.bus-toggle-details.active svg {
+  transform: rotate(180deg);
 }
 
 .bus-details {
