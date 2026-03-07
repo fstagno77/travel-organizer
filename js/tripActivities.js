@@ -242,12 +242,6 @@
               ${iconCards}
             </button>
           </div>
-          <button class="activity-header-add-btn" id="activity-header-add-btn">
-            ${icons.plusCircle}
-            <span class="activity-header-add-label">Aggiungi Attivit\u00e0</span>
-            <span class="activity-header-add-label-short">Attivit\u00e0</span>
-
-          </button>
         </div>
       </div>
     `;

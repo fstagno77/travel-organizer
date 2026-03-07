@@ -1,6 +1,24 @@
 {
   "versions": [
     {
+      "version": "0.31",
+      "date": "2026-03-07",
+      "changes": {
+        "it": [
+          "Tab dinamiche: i tab appaiono solo quando ci sono prenotazioni del tipo corrispondente",
+          "Nuovo pulsante \"+\" per caricare prenotazioni o aggiungere attività",
+          "Nuovo stato vuoto con azioni rapide per iniziare ad organizzare il viaggio",
+          "Interfaccia più pulita: rimossi bottoni e card di upload ripetuti dai singoli tab"
+        ],
+        "en": [
+          "Dynamic tabs: tabs appear only when there are bookings of that type",
+          "New \"+\" button to upload bookings or add activities",
+          "New empty state with quick actions to start organising your trip",
+          "Cleaner interface: removed repeated upload buttons and cards from individual tabs"
+        ]
+      }
+    },
+    {
       "version": "0.30",
       "date": "2026-03-07",
       "changes": {

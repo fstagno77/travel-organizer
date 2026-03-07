@@ -8254,3 +8254,239 @@ a.notification-trip:hover {
     flex-wrap: wrap;
   }
 }
+
+/* =============================
+   FAB (Floating Action Button)
+   ============================= */
+
+.trip-fab {
+  position: fixed;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--spacing-6));
+  right: var(--spacing-6);
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  box-shadow: var(--shadow-lg);
+  cursor: pointer;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.trip-fab:hover {
+  background: var(--color-primary-700, #1a4fd4);
+  transform: scale(1.05);
+}
+
+.trip-fab:active {
+  transform: scale(0.95);
+}
+
+.trip-fab-icon {
+  transition: transform 0.25s ease;
+}
+
+.trip-fab.active .trip-fab-icon {
+  transform: rotate(45deg);
+}
+
+.trip-fab.loading {
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.trip-fab.loading .trip-fab-icon {
+  animation: fab-spin 1s linear infinite;
+}
+
+@keyframes fab-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Nascosto per ospiti */
+.role-ospite .trip-fab { display: none !important; }
+
+/* =============================
+   FAB Bottom Sheet
+   ============================= */
+
+.fab-bottom-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 100;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.fab-bottom-sheet-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.fab-bottom-sheet {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--color-white);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  padding: var(--spacing-4) var(--spacing-6) calc(env(safe-area-inset-bottom, 0px) + var(--spacing-6));
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fab-bottom-sheet-overlay.active .fab-bottom-sheet {
+  transform: translateY(0);
+}
+
+.fab-bottom-sheet-handle {
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-gray-300);
+  margin: 0 auto var(--spacing-5);
+}
+
+.fab-bottom-sheet-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.fab-bottom-sheet-option {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-4);
+  width: 100%;
+  padding: var(--spacing-4);
+  border: none;
+  background: none;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  text-align: left;
+  transition: background-color var(--transition-fast);
+}
+
+.fab-bottom-sheet-option:hover {
+  background: var(--color-gray-50);
+}
+
+.fab-bottom-sheet-option:active {
+  background: var(--color-gray-100);
+}
+
+.fab-bottom-sheet-option-icon {
+  font-size: 24px;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-lg);
+  flex-shrink: 0;
+}
+
+.fab-bottom-sheet-option-icon--upload {
+  color: var(--color-primary);
+  background: var(--color-primary-50, #eff6ff);
+}
+
+.fab-bottom-sheet-option-icon--activity {
+  color: var(--color-hotel-600);
+  background: var(--color-hotel-50, #ecfdf5);
+}
+
+.fab-bottom-sheet-option-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fab-bottom-sheet-option-title {
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-base);
+  color: var(--color-gray-800);
+}
+
+.fab-bottom-sheet-option-desc {
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-500);
+}
+
+/* Desktop: popover sopra il FAB */
+@media (min-width: 768px) {
+  .fab-bottom-sheet-overlay {
+    background: transparent;
+    position: fixed;
+    inset: 0;
+  }
+
+  .fab-bottom-sheet {
+    position: fixed;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + var(--spacing-6) + 56px + var(--spacing-3));
+    right: var(--spacing-6);
+    left: auto;
+    width: 320px;
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-xl, 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1));
+    transform: translateY(8px);
+    opacity: 0;
+    padding: var(--spacing-5) var(--spacing-5) var(--spacing-5);
+  }
+
+  .fab-bottom-sheet-overlay.active .fab-bottom-sheet {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  .fab-bottom-sheet-handle {
+    display: none;
+  }
+}
+
+/* =============================
+   Trip Empty State
+   ============================= */
+
+.trip-empty-state {
+  text-align: center;
+  padding: var(--spacing-16, 64px) var(--spacing-6);
+}
+
+.trip-empty-state-icon {
+  color: var(--color-gray-300);
+  margin-bottom: var(--spacing-4);
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.trip-empty-state-title {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-gray-800);
+  margin-bottom: var(--spacing-2);
+}
+
+.trip-empty-state-text {
+  font-size: var(--font-size-base);
+  color: var(--color-gray-500);
+  margin-bottom: var(--spacing-8, 32px);
+}
+
+.trip-empty-state-actions {
+  display: flex;
+  gap: var(--spacing-3);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.role-ospite .trip-empty-state-actions { display: none; }

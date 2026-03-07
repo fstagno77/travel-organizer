@@ -637,11 +637,17 @@
     requestAnimationFrame(() => {
       slider.classList.add('at-activity');
       activityPage.scrollTop = 0;
+      // Nasconde il FAB quando il pannello è aperto
+      const fab = document.getElementById('trip-fab');
+      if (fab) fab.style.display = 'none';
     });
 
     // Navigate back function
     const navigateBack = (onComplete) => {
       slider.classList.remove('at-activity');
+      // Mostra di nuovo il FAB
+      const fab = document.getElementById('trip-fab');
+      if (fab) fab.style.display = '';
       activityPage.addEventListener('transitionend', function onEnd(e) {
         if (e.target !== activityPage) return;
         activityPage.removeEventListener('transitionend', onEnd);

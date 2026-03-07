@@ -18,6 +18,7 @@
   let currentUserRole = 'proprietario'; // 'proprietario', 'viaggiatore', 'ospite'
   let currentTripOwner = null; // { username, email } if not owner
   let tabRendered = { activities: false, flights: false, hotels: false, trains: false, buses: false };
+  let visibleTabs = []; // tab attualmente visibili (calcolati dinamicamente)
 
   // ===========================
   // Shared API exposed to modules
@@ -32,7 +33,6 @@
     loadTripFromUrl,
     switchToTab,
     rerenderCurrentTab,
-    initQuickUploadCard,
     loadSlidePanel,
     showAddBookingModal,
     showManageBookingPanel,
@@ -43,9 +43,16 @@
     async spaInit() {
       // Reset stato viaggio
       tabRendered = { activities: false, flights: false, hotels: false, trains: false, buses: false };
+      visibleTabs = [];
       currentTripData = null;
       currentUserRole = 'proprietario';
       currentTripOwner = null;
+
+      // Cleanup FAB e bottom sheet dalla navigazione precedente
+      const oldFab = document.getElementById('trip-fab');
+      if (oldFab) oldFab.remove();
+      const oldSheet = document.getElementById('fab-bottom-sheet');
+      if (oldSheet) oldSheet.remove();
 
       preloadHeroFromCache();
       i18n.apply();
@@ -72,7 +79,8 @@
    * Re-render the current tab and reset activities (which derives from flights+hotels)
    */
   function rerenderCurrentTab() {
-    const activeTab = document.querySelector('.segmented-control-btn.active')?.dataset.tab || 'flights';
+    const activeTab = document.querySelector('.segmented-control-btn.active')?.dataset.tab
+      || (visibleTabs.length > 0 ? visibleTabs[0] : 'activities');
     // Reset the active tab and activities (since activities depends on flights+hotels)
     tabRendered[activeTab] = false;
     tabRendered.activities = false;
@@ -263,87 +271,130 @@
     renderTripContent(document.getElementById('trip-content'), tripData);
   }
 
+  // Configurazione icone e label per ciascun tab
+  const TAB_CONFIG = {
+    activities: { icon: 'calendar_today', i18nKey: 'trip.activities', fallback: 'Attività' },
+    flights:    { icon: 'travel',         i18nKey: 'trip.flights',    fallback: 'Voli' },
+    hotels:     { icon: 'bed',            i18nKey: 'trip.hotels',     fallback: 'Hotel' },
+    trains:     { icon: 'train',          i18nKey: 'trip.trains',     fallback: 'Treni', beta: true },
+    buses:      { icon: 'directions_bus', i18nKey: 'trip.buses',      fallback: 'Bus', beta: true },
+  };
+
   /**
-   * Render trip content with segmented control
+   * Calcola i tab da mostrare in base ai dati del viaggio
+   */
+  function getVisibleTabs(tripData) {
+    const tabs = [];
+    const hasAnyData = (tripData.flights?.length > 0) ||
+                       (tripData.hotels?.length > 0) ||
+                       (tripData.trains?.length > 0) ||
+                       (tripData.buses?.length > 0) ||
+                       (tripData.activities?.length > 0);
+    if (hasAnyData) tabs.push('activities');
+    if (tripData.flights?.length > 0) tabs.push('flights');
+    if (tripData.hotels?.length > 0) tabs.push('hotels');
+    if (tripData.trains?.length > 0) tabs.push('trains');
+    if (tripData.buses?.length > 0) tabs.push('buses');
+    return tabs;
+  }
+
+  /**
+   * Render trip content with dynamic segmented control
    * @param {HTMLElement} container
    * @param {Object} tripData
    */
   function renderTripContent(container, tripData) {
-    // Render floating tab bar inside hero
+    // Calcola tab visibili
+    visibleTabs = getVisibleTabs(tripData);
+
+    // Render floating tab bar inside hero (solo se 2+ tab)
     const heroTabs = document.getElementById('trip-hero-tabs');
-    heroTabs.innerHTML = `
-      <div class="segmented-control">
-        <div class="segmented-indicator"></div>
-        <button class="segmented-control-btn" data-tab="activities">
-          <span class="material-symbols-outlined" style="font-size: 20px;">calendar_today</span>
-          <span data-i18n="trip.activities">Activities</span>
-        </button>
-        <button class="segmented-control-btn" data-tab="flights">
-          <span class="material-symbols-outlined" style="font-size: 20px;">travel</span>
-          <span data-i18n="trip.flights">Flights</span>
-        </button>
-        <button class="segmented-control-btn" data-tab="hotels">
-          <span class="material-symbols-outlined" style="font-size: 20px;">bed</span>
-          <span data-i18n="trip.hotels">Hotels</span>
-        </button>
-        <button class="segmented-control-btn" data-tab="trains">
-          <span class="material-symbols-outlined" style="font-size: 20px;">train</span>
-          <span class="segmented-label" data-i18n="trip.trains">Treni</span>
-          <span class="beta-badge-tab">Beta</span>
-        </button>
-        <button class="segmented-control-btn" data-tab="buses">
-          <span class="material-symbols-outlined" style="font-size: 20px;">directions_bus</span>
-          <span class="segmented-label" data-i18n="trip.buses">Bus</span>
-          <span class="beta-badge-tab">Beta</span>
-        </button>
-      </div>
-    `;
+    if (visibleTabs.length >= 2) {
+      const tabButtons = visibleTabs.map(tabName => {
+        const cfg = TAB_CONFIG[tabName];
+        return `
+          <button class="segmented-control-btn" data-tab="${tabName}">
+            <span class="material-symbols-outlined" style="font-size: 20px;">${cfg.icon}</span>
+            <span${tabName === 'trains' || tabName === 'buses' ? ' class="segmented-label"' : ''} data-i18n="${cfg.i18nKey}">${cfg.fallback}</span>
+            ${cfg.beta ? '<span class="beta-badge-tab">Beta</span>' : ''}
+          </button>
+        `;
+      }).join('');
 
-    const html = `
-      <div id="activities-tab" class="tab-content">
-        <div id="activities-container"></div>
-      </div>
+      heroTabs.innerHTML = `
+        <div class="segmented-control">
+          <div class="segmented-indicator"></div>
+          ${tabButtons}
+        </div>
+      `;
+    } else {
+      heroTabs.innerHTML = '';
+    }
 
-      <div id="flights-tab" class="tab-content">
-        <div id="flights-container"></div>
-      </div>
-
-      <div id="hotels-tab" class="tab-content">
-        <div id="hotels-container"></div>
-      </div>
-
-      <div id="trains-tab" class="tab-content">
-        <div id="trains-container"></div>
-      </div>
-
-      <div id="buses-tab" class="tab-content">
-        <div id="buses-container"></div>
-      </div>
-    `;
-
-    container.innerHTML = html;
+    // Genera contenitori tab solo per quelli visibili (o empty state se 0 tab)
+    if (visibleTabs.length === 0) {
+      // Trip vuoto: empty state globale
+      const luggageSvg = '<svg class="trip-empty-state-icon" width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="7" width="12" height="14" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/><line x1="6" y1="12" x2="18" y2="12"/><line x1="8" y1="21" x2="8" y2="22"/><line x1="16" y1="21" x2="16" y2="22"/></svg>';
+      const uploadBtnSvg = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>';
+      const eventBtnSvg = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="12" y1="14" x2="12" y2="18"/><line x1="10" y1="16" x2="14" y2="16"/></svg>';
+      container.innerHTML = `
+        <div class="trip-empty-state">
+          ${luggageSvg}
+          <h2 class="trip-empty-state-title" data-i18n="trip.emptyTripTitle">Inizia ad organizzare il tuo viaggio</h2>
+          <p class="trip-empty-state-text" data-i18n="trip.emptyTripText">Carica un PDF di prenotazione o aggiungi un'attività personalizzata</p>
+          <div class="trip-empty-state-actions">
+            <button class="btn btn-primary" id="empty-trip-upload">
+              ${uploadBtnSvg}
+              <span data-i18n="trip.uploadBooking">Carica prenotazione</span>
+            </button>
+            <button class="btn btn-outline" id="empty-trip-activity">
+              ${eventBtnSvg}
+              <span data-i18n="trip.addActivity">Aggiungi attività</span>
+            </button>
+          </div>
+        </div>
+      `;
+    } else {
+      // Genera solo i tab-content necessari
+      const tabsHtml = visibleTabs.map(tabName => `
+        <div id="${tabName}-tab" class="tab-content">
+          <div id="${tabName}-container"></div>
+        </div>
+      `).join('');
+      container.innerHTML = tabsHtml;
+    }
 
     // Reset tab render state
     tabRendered = { activities: false, flights: false, hotels: false, trains: false, buses: false };
 
-    // Initialize tab switching
-    initTabSwitching();
+    // Initialize tab switching (solo se ci sono tab)
+    if (visibleTabs.length >= 2) {
+      initTabSwitching();
+    }
 
-    // Determine which tab to show:
-    // 1. URL param ?tab= (deep link from home page)
-    // 2. Page refresh → restore saved tab
-    // 3. New navigation → always Activities
+    // Determine which tab to show
     const urlParams = new URLSearchParams(window.location.search);
     const urlTab = urlParams.get('tab');
     const navEntry = performance.getEntriesByType('navigation')[0];
     const isRefresh = navEntry && navEntry.type === 'reload';
     const savedTab = isRefresh ? sessionStorage.getItem('tripActiveTab') : null;
-    const activeTab = (urlTab && ['flights', 'hotels', 'activities', 'trains', 'buses'].includes(urlTab)) ? urlTab : (savedTab || 'activities');
 
-    // Render only the active tab (lazy rendering — others rendered on first access)
-    renderTab(activeTab);
-    switchToTab(activeTab);
-    showIndicator();
+    let activeTab;
+    if (visibleTabs.length === 0) {
+      activeTab = null;
+    } else if (urlTab && visibleTabs.includes(urlTab)) {
+      activeTab = urlTab;
+    } else if (savedTab && visibleTabs.includes(savedTab)) {
+      activeTab = savedTab;
+    } else {
+      activeTab = visibleTabs[0];
+    }
+
+    if (activeTab) {
+      renderTab(activeTab);
+      switchToTab(activeTab);
+      if (visibleTabs.length >= 2) showIndicator();
+    }
 
     // Render header menu (three dots in top-right)
     renderHeaderMenu();
@@ -351,6 +402,17 @@
 
     // Setup event delegation on tab containers
     setupEventDelegation();
+
+    // FAB per aggiungere contenuti
+    renderFab(tripData.id);
+
+    // Empty state CTA wiring
+    if (visibleTabs.length === 0) {
+      const uploadBtn = document.getElementById('empty-trip-upload');
+      if (uploadBtn) uploadBtn.addEventListener('click', () => triggerFabUpload());
+      const activityBtn = document.getElementById('empty-trip-activity');
+      if (activityBtn) activityBtn.addEventListener('click', () => triggerFabActivity());
+    }
 
     // Apply permission-based UI gating
     applyPermissionGating();
@@ -361,6 +423,112 @@
 
     // Deep link: scroll to specific item or open activity panel
     handleDeepLink(urlParams, tripData);
+  }
+
+  // ===========================
+  // FAB + Bottom Sheet
+  // ===========================
+
+  function renderFab(tripId) {
+    // Rimuovi FAB precedente se esiste
+    const existingFab = document.getElementById('trip-fab');
+    if (existingFab) existingFab.remove();
+    const existingSheet = document.getElementById('fab-bottom-sheet');
+    if (existingSheet) existingSheet.remove();
+
+    // FAB
+    const fab = document.createElement('button');
+    fab.className = 'trip-fab';
+    fab.id = 'trip-fab';
+    fab.setAttribute('aria-label', i18n.t('modal.add') || 'Aggiungi');
+    fab.innerHTML = '<svg class="trip-fab-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+    document.body.appendChild(fab);
+
+    // SVG per le opzioni del bottom sheet
+    const uploadSvg = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>`;
+    const eventSvg = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="12" y1="14" x2="12" y2="18"/><line x1="10" y1="16" x2="14" y2="16"/></svg>`;
+
+    // Bottom Sheet overlay
+    const sheetOverlay = document.createElement('div');
+    sheetOverlay.className = 'fab-bottom-sheet-overlay';
+    sheetOverlay.id = 'fab-bottom-sheet';
+    sheetOverlay.innerHTML = `
+      <div class="fab-bottom-sheet">
+        <div class="fab-bottom-sheet-handle"></div>
+        <div class="fab-bottom-sheet-options">
+          <button class="fab-bottom-sheet-option" data-action="upload">
+            <span class="fab-bottom-sheet-option-icon fab-bottom-sheet-option-icon--upload">${uploadSvg}</span>
+            <div class="fab-bottom-sheet-option-text">
+              <span class="fab-bottom-sheet-option-title" data-i18n="trip.uploadBooking">Carica prenotazione</span>
+              <span class="fab-bottom-sheet-option-desc" data-i18n="trip.uploadBookingDesc">PDF di volo, hotel, treno o bus</span>
+            </div>
+          </button>
+          <button class="fab-bottom-sheet-option" data-action="activity">
+            <span class="fab-bottom-sheet-option-icon fab-bottom-sheet-option-icon--activity">${eventSvg}</span>
+            <div class="fab-bottom-sheet-option-text">
+              <span class="fab-bottom-sheet-option-title" data-i18n="trip.addActivity">Aggiungi attività</span>
+              <span class="fab-bottom-sheet-option-desc" data-i18n="trip.addActivityDesc">Escursione, ristorante, visita...</span>
+            </div>
+          </button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(sheetOverlay);
+    i18n.apply(sheetOverlay);
+
+    const toggleSheet = (show) => {
+      if (show) {
+        sheetOverlay.classList.add('active');
+        fab.classList.add('active');
+      } else {
+        sheetOverlay.classList.remove('active');
+        fab.classList.remove('active');
+      }
+    };
+
+    fab.addEventListener('click', () => {
+      toggleSheet(!sheetOverlay.classList.contains('active'));
+    });
+
+    // Chiudi cliccando fuori
+    sheetOverlay.addEventListener('click', (e) => {
+      if (e.target === sheetOverlay) toggleSheet(false);
+    });
+
+    // Azioni
+    sheetOverlay.querySelectorAll('.fab-bottom-sheet-option').forEach(opt => {
+      opt.addEventListener('click', () => {
+        toggleSheet(false);
+        if (opt.dataset.action === 'upload') {
+          triggerFabUpload();
+        } else if (opt.dataset.action === 'activity') {
+          triggerFabActivity();
+        }
+      });
+    });
+
+    // Chiudi con Escape
+    const escHandler = (e) => {
+      if (e.key === 'Escape' && sheetOverlay.classList.contains('active')) {
+        toggleSheet(false);
+      }
+    };
+    document.addEventListener('keydown', escHandler);
+  }
+
+  function triggerFabUpload() {
+    const tripId = currentTripData?.id;
+    if (tripId) showAddBookingModal(tripId);
+  }
+
+  async function triggerFabActivity() {
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const defaultDate = (currentTripData && todayStr >= currentTripData.startDate && todayStr <= currentTripData.endDate)
+      ? todayStr
+      : (currentTripData?.startDate || todayStr);
+    const sp = await loadSlidePanel();
+    sp.show('create', defaultDate, null);
   }
 
   /**
@@ -945,9 +1113,14 @@
 
   /**
    * Switch to a specific tab
-   * @param {string} tabName - 'flights', 'hotels', or 'activities'
+   * @param {string} tabName - 'flights', 'hotels', 'activities', 'trains', or 'buses'
    */
   function switchToTab(tabName) {
+    // Guard: se il tab non è tra quelli visibili, fallback al primo disponibile
+    if (visibleTabs.length > 0 && !visibleTabs.includes(tabName)) {
+      tabName = visibleTabs[0];
+    }
+
     // Lazy render the tab if needed
     renderTab(tabName);
     const tabs = document.querySelectorAll('.segmented-control-btn');
@@ -1106,78 +1279,6 @@
    * Show choice modal (Volo / Hotel / Attività) from Activities tab
    * @param {string} tripId
    */
-  function showAddChoiceModal(tripId) {
-    const existingModal = document.getElementById('add-choice-modal');
-    if (existingModal) existingModal.remove();
-
-    const modalHTML = `
-      <div class="modal-overlay" id="add-choice-modal">
-        <div class="modal">
-          <div class="modal-header">
-            <h2 data-i18n="modal.add">Add</h2>
-            <button class="modal-close" id="add-choice-close">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
-          </div>
-          <div class="modal-body">
-            <div class="add-choice-grid">
-              <button class="add-choice-block" data-choice="flight">
-                <span class="material-symbols-outlined add-choice-icon">travel</span>
-                <span data-i18n="trip.addFlight">Flights</span>
-              </button>
-              <button class="add-choice-block" data-choice="hotel">
-                <span class="material-symbols-outlined add-choice-icon">bed</span>
-                <span data-i18n="trip.addHotel">Hotel</span>
-              </button>
-              <button class="add-choice-block" data-choice="activity">
-                <span class="material-symbols-outlined add-choice-icon">event</span>
-                <span data-i18n="trip.activities">Activities</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-    const modal = document.getElementById('add-choice-modal');
-    i18n.apply(modal);
-    const closeBtn = document.getElementById('add-choice-close');
-
-    // Trigger reflow then add active class for CSS transition
-    modal.offsetHeight;
-    modal.classList.add('active');
-
-    const closeModal = () => modal.remove();
-
-    closeBtn.addEventListener('click', closeModal);
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) closeModal();
-    });
-
-    modal.querySelectorAll('.add-choice-block').forEach(block => {
-      block.addEventListener('click', async () => {
-        const choice = block.dataset.choice;
-        if (choice === 'flight' || choice === 'hotel') {
-          closeModal();
-          showAddBookingModal(tripId, choice);
-        } else if (choice === 'activity') {
-          closeModal();
-          const today = new Date();
-          const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-          const defaultDate = (currentTripData && todayStr >= currentTripData.startDate && todayStr <= currentTripData.endDate)
-            ? todayStr
-            : (currentTripData?.startDate || todayStr);
-          const sp = await loadSlidePanel();
-          sp.show('create', defaultDate, null);
-        }
-      });
-    });
-  }
-
   /**
    * Show modal to add booking
    * @param {string} tripId
@@ -3294,56 +3395,8 @@
    * Initialize quick upload card
    * @param {string} cardId - The ID of the quick upload card
    */
-  function initQuickUploadCard(cardId) {
-    const card = document.getElementById(cardId);
-    if (!card) return;
-
-    const input = card.querySelector('.quick-upload-input');
-
-    // Click to select file
-    card.addEventListener('click', (e) => {
-      if (e.target !== input) {
-        input.click();
-      }
-    });
-
-    // File selected
-    input.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (file && file.type === 'application/pdf') {
-        handleQuickUpload(file);
-      }
-      input.value = ''; // Reset for next upload
-    });
-
-    // Drag & drop
-    card.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      card.classList.add('dragover');
-    });
-
-    card.addEventListener('dragleave', (e) => {
-      e.preventDefault();
-      card.classList.remove('dragover');
-    });
-
-    card.addEventListener('drop', (e) => {
-      e.preventDefault();
-      card.classList.remove('dragover');
-
-      const pdfFiles = Array.from(e.dataTransfer.files).filter(f => f.type === 'application/pdf');
-      if (pdfFiles.length > 1) {
-        utils.showToast(i18n.t('trip.maxFilesReached') || 'You can only upload one file at a time', 'error');
-        return;
-      }
-      if (pdfFiles.length === 1) {
-        handleQuickUpload(pdfFiles[0]);
-      }
-    });
-  }
-
   /**
-   * Handle quick upload — two-step: parse → preview in modal → confirm saves to trip
+   * Handle upload — two-step: parse → preview in modal → confirm saves to trip
    * @param {File} file - The PDF file to upload
    */
   /**
@@ -3451,31 +3504,12 @@
   }
 
   async function handleQuickUpload(file) {
-    // Show loading state on all quick upload cards
-    const cards = document.querySelectorAll('.quick-upload-card');
-    const phraseControllers = [];
+    // Mostra stato loading sul FAB
+    const fab = document.getElementById('trip-fab');
+    if (fab) fab.classList.add('loading');
 
-    cards.forEach(card => {
-      card.classList.add('uploading');
-      const text = card.querySelector('.quick-upload-text');
-      if (text) {
-        text.dataset.originalText = text.textContent;
-        text.classList.add('loading-phrase');
-        const controller = utils.startLoadingPhrases(text, 3000);
-        phraseControllers.push(controller);
-      }
-    });
-
-    const resetCards = () => {
-      phraseControllers.forEach(c => c.stop());
-      cards.forEach(card => {
-        card.classList.remove('uploading');
-        const text = card.querySelector('.quick-upload-text');
-        if (text) {
-          text.classList.remove('loading-phrase', 'phrase-visible');
-          if (text.dataset.originalText) text.textContent = text.dataset.originalText;
-        }
-      });
+    const resetFab = () => {
+      if (fab) fab.classList.remove('loading');
     };
 
     try {
@@ -3504,7 +3538,7 @@
       }
 
       // Step 2: Show preview in modal
-      resetCards();
+      resetFab();
 
       const parsedResults = parseResult.parsedResults;
 
@@ -3695,7 +3729,7 @@
       }
 
     } catch (error) {
-      resetCards();
+      resetFab();
       handleQuickUploadError(error);
     }
   }

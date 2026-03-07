@@ -180,33 +180,12 @@
       `;
     }).join('');
 
-    // Add quick upload card at the end
-    const quickUploadCard = `
-      <div class="quick-upload-card" id="quick-upload-flights">
-        <input type="file" class="quick-upload-input" accept=".pdf" hidden>
-        <svg class="quick-upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-          <polyline points="17 8 12 3 7 8"></polyline>
-          <line x1="12" y1="3" x2="12" y2="15"></line>
-        </svg>
-        <div class="quick-upload-spinner"></div>
-        <span class="quick-upload-text" data-i18n="trip.quickUploadHint">Drop a PDF here to add a booking</span>
-      </div>
-    `;
-
-    const plusSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>`;
-
     const editSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`;
 
     const sectionHeader = `
       <div class="section-header">
         <h2 class="section-header-title">I miei voli</h2>
         <div class="section-header-actions">
-          <button class="section-header-cta btn btn-primary" id="flights-add-booking-btn">
-            ${plusSvg}
-            <span class="section-header-cta-label-full">Aggiungi</span>
-            <span class="section-header-cta-label-short">Aggiungi</span>
-          </button>
           <button class="section-header-cta btn btn-outline" id="flights-manage-booking-btn">
             ${editSvg}
             <span class="section-header-cta-label-full">Modifica</span>
@@ -216,20 +195,10 @@
       </div>
     `;
 
-    container.innerHTML = sectionHeader + html + quickUploadCard;
+    container.innerHTML = sectionHeader + html;
     // Store sorted flights for lazy detail rendering
     window.tripFlights._flights = sortedFlights;
     i18n.apply(container);
-    window.tripPage.initQuickUploadCard('quick-upload-flights');
-
-    // Connect CTA to add-booking modal
-    const addBtn = document.getElementById('flights-add-booking-btn');
-    if (addBtn) {
-      addBtn.addEventListener('click', () => {
-        const tripId = window.tripPage.currentTripData?.id;
-        if (tripId) window.tripPage.showAddBookingModal(tripId, 'flight');
-      });
-    }
 
     // Connect CTA to manage-booking panel
     const manageBtn = document.getElementById('flights-manage-booking-btn');

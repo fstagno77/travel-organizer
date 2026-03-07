@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.31 - 2026-03-07
+
+### Novità
+- **Tab dinamiche**: i tab (Voli, Hotel, Treni, Bus) appaiono solo quando ci sono prenotazioni del tipo corrispondente
+- **Bottone "+" per aggiungere**: nuovo pulsante fisso in basso a destra per caricare prenotazioni o aggiungere attività
+- **Pagina viaggio vuota rinnovata**: nuovo stato vuoto con azioni rapide per iniziare ad organizzare il viaggio
+
+### Miglioramenti
+- Rimossi i bottoni "Aggiungi" e le card di upload dai singoli tab — tutto passa dal pulsante "+"
+- Interfaccia più pulita con meno elementi ripetuti
+
 ## 0.30 - 2026-03-07
 
 ### Novità
