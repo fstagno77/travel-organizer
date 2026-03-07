@@ -141,6 +141,13 @@
     if (event.type.startsWith('hotel')) {
       return s(d.name) || s(d.address);
     }
+    if (event.type === 'train' || event.type === 'bus') {
+      const parts = [
+        d.departure?.station, d.departure?.city, d.arrival?.station, d.arrival?.city,
+        d.trainNumber, d.routeNumber, d.operator
+      ];
+      return parts.some(p => p && p.toLowerCase().includes(q));
+    }
     // custom activity
     return s(d.name) || s(d.description) || s(d.address);
   }
@@ -491,29 +498,39 @@
 
   function renderTransportCard(event, type, tab) {
     const d = event.data;
-    const dep = d.departure?.station || d.departure?.city || '';
-    const arr = d.arrival?.station || d.arrival?.city || '';
-    const num = d.trainNumber || d.routeNumber || '';
-    const operator = d.operator || '';
+    const category = type === 'train' ? cats().CATEGORIES.treno : cats().CATEGORIES.bus;
+    const catKey = type === 'train' ? 'treno' : 'bus';
+    const depCity = d.departure?.city || d.departure?.station || '';
+    const depStation = d.departure?.station || '';
+    const arrCity = d.arrival?.city || d.arrival?.station || '';
+    const arrStation = d.arrival?.station || '';
+    const fullNum = d.trainNumber || d.routeNumber || '';
     const depTime = d.departure?.time || '';
-    const arrTime = d.arrival?.time || '';
-    const trainSvg = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8 2 4 3 4 7v9.5C4 18.43 5.57 20 7.5 20L6 21.5v.5h2l2-2h4l2 2h2v-.5L16.5 20c1.93 0 3.5-1.57 3.5-3.5V7c0-4-4-5-8-5m-1.5 16h-3C6.67 18 6 17.33 6 16.5S6.67 15 7.5 15h3v3m5.5 0h-3v-3h3c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5M18 13H6V7h12v6Z"/></svg>';
-    const busSvg = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M4 16c0 .88.39 1.67 1 2.22V20c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h8v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10m3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17m9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5M18 11H6V6h12v5Z"/></svg>';
-    const iconSvg = type === 'train' ? trainSvg : busSvg;
-    const colorClass = type === 'train' ? 'train' : 'bus';
+
+    // Badge: solo numero (es. "9516" da "Frecciarossa 9516")
+    const shortNum = fullNum.includes(' ') ? fullNum.split(' ').pop() : fullNum;
+
+    // Titolo: "Milano → Torino", sottotitolo: "Milano Centrale → Torino Porta Nuova"
+    const title = `${depCity} → ${arrCity}`;
+    const depSub = depStation && depStation !== depCity ? depStation : '';
+    const arrSub = arrStation && arrStation !== arrCity ? arrStation : '';
+    const subtitle = (depSub || arrSub)
+      ? `${depSub || depCity} → ${arrSub || arrCity}`
+      : '';
 
     return `
-      <a href="#" class="activity-card activity-card--${colorClass} activity-item-link" data-tab="${tab}" data-item-id="${d.id}">
-        <div class="activity-card-icon activity-card-icon--${colorClass}">
-          ${iconSvg}
-        </div>
-        <div class="activity-card-content">
-          <div class="activity-card-title">${esc(dep)} → ${esc(arr)}</div>
-          <div class="activity-card-subtitle">
-            ${num ? `<span>${esc(num)}</span>` : ''}
-            ${operator ? `<span>${esc(operator)}</span>` : ''}
-            ${depTime ? `<span>${esc(depTime)}${arrTime ? ' → ' + esc(arrTime) : ''}</span>` : ''}
+      <a class="activity-card activity-item-link"
+         href="#" data-tab="${tab}" data-item-id="${d.id}" data-category="${catKey}">
+        <div class="activity-card-header">
+          <div class="activity-card-icon-container" style="background: ${category.gradient}">
+            ${category.svg}
           </div>
+          ${shortNum ? `<span class="activity-card-flight-badge">${esc(shortNum)}</span>` : ''}
+          ${depTime ? `<span class="activity-card-time-badge" style="background: ${category.gradient}">${clockIcon}${esc(depTime)}</span>` : ''}
+        </div>
+        <div class="activity-card-body">
+          <span class="activity-card-title">${esc(title)}</span>
+          ${subtitle ? `<span class="activity-card-subtitle">${esc(subtitle)}</span>` : ''}
         </div>
       </a>
     `;
@@ -571,6 +588,7 @@
     museo: 'activity-indicator-museum',
     attrazione: 'activity-indicator-attraction',
     treno: 'activity-indicator-train',
+    bus: 'activity-indicator-bus',
     luogo: 'activity-indicator-place'
   };
 
@@ -587,6 +605,12 @@
       label = event.data.name || 'Hotel';
     } else if (event.type === 'hotel-stay') {
       label = event.data.name || 'Hotel';
+    } else if (event.type === 'train') {
+      const arr = event.data.arrival?.station || event.data.arrival?.city || '';
+      label = `Treno per ${arr}`;
+    } else if (event.type === 'bus') {
+      const arr = event.data.arrival?.station || event.data.arrival?.city || '';
+      label = `Bus per ${arr}`;
     } else if (event.type === 'activity') {
       label = event.data.name || '';
     }

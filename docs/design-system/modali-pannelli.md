@@ -356,6 +356,36 @@ Su dispositivi mobili il pannello occupa l'intera larghezza dello schermo.
 }
 ```
 
+### SafeClose (protezione modifiche non salvate)
+
+Il pannello implementa il pattern **SafeClose** per proteggere le modifiche in corso. Quando l'utente tenta di chiudere il pannello (click overlay, ESC, pulsante Annulla) con modifiche non salvate:
+
+1. Lo stato del form viene confrontato con lo snapshot catturato all'apertura
+2. Se ci sono differenze (dirty state), appare una barra di conferma dal basso
+3. L'utente puo' scegliere "Esci senza salvare" o annullare la chiusura
+
+```css
+.safe-close-interrupt {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  transform: translateY(100%);
+  opacity: 0;
+  transition: transform 0.25s ease, opacity 0.2s ease;
+}
+
+.safe-close-interrupt.active {
+  transform: translateY(0);
+  opacity: 1;
+}
+```
+
+Il dirty check confronta: nome, data, indirizzo, descrizione, orari, URL, categoria, luogo e file allegati.
+
+La pressione di **ESC** segue la stessa logica: in modalita' view chiude direttamente, in modalita' form verifica il dirty state. Un secondo ESC mentre l'interrupt e' visibile lo chiude senza uscire.
+
 ### Tre Modalita
 
 Il pannello slide-in opera in tre modalita distinte:

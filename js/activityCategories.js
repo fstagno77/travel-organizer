@@ -91,12 +91,24 @@
       labelIt: 'Treno',
       labelEn: 'Train',
       svg: msIcon('train'),
-      gradient: 'linear-gradient(135deg, #f87171, #ef4444)',
-      gradientHover: 'linear-gradient(135deg, #ef4444, #dc2626)',
-      color: '#ef4444',
-      hoverBg: '#fef2f2',
-      cardBg: 'linear-gradient(135deg, #fef2f2, #fef2f2)',
-      cardBorder: '#fecaca'
+      gradient: 'linear-gradient(135deg, #f5a54d, #e67e22)',
+      gradientHover: 'linear-gradient(135deg, #e67e22, #c96b1a)',
+      color: '#e67e22',
+      hoverBg: '#fef6ee',
+      cardBg: 'linear-gradient(135deg, #fef6ee, #fde8d0)',
+      cardBorder: '#f9c88e'
+    },
+    bus: {
+      key: 'bus',
+      labelIt: 'Bus',
+      labelEn: 'Bus',
+      svg: msIcon('directions_bus'),
+      gradient: 'linear-gradient(135deg, #b87fd1, #8e44ad)',
+      gradientHover: 'linear-gradient(135deg, #8e44ad, #763891)',
+      color: '#8e44ad',
+      hoverBg: '#f5eef8',
+      cardBg: 'linear-gradient(135deg, #f5eef8, #e8d5f0)',
+      cardBorder: '#d0aae0'
     },
     luogo: {
       key: 'luogo',
@@ -112,7 +124,7 @@
     }
   };
 
-  const CATEGORY_ORDER = ['ristorante', 'volo', 'hotel', 'museo', 'attrazione', 'treno', 'luogo'];
+  const CATEGORY_ORDER = ['ristorante', 'volo', 'hotel', 'museo', 'attrazione', 'treno', 'bus', 'luogo'];
 
   const CATEGORY_KEYWORDS = {
     ristorante: [
@@ -154,6 +166,8 @@
   function getCategoryForEvent(event) {
     if (event.type === 'flight') return CATEGORIES.volo;
     if (event.type.startsWith('hotel-')) return CATEGORIES.hotel;
+    if (event.type === 'train') return CATEGORIES.treno;
+    if (event.type === 'bus') return CATEGORIES.bus;
     if (event.type === 'activity') {
       const cat = event.data.category || detectCategory(event.data.name, event.data.description);
       return CATEGORIES[cat] || CATEGORIES.luogo;
@@ -164,6 +178,8 @@
   function eventToCategoryKey(event) {
     if (event.type === 'flight') return 'volo';
     if (event.type.startsWith('hotel-')) return 'hotel';
+    if (event.type === 'train') return 'treno';
+    if (event.type === 'bus') return 'bus';
     if (event.type === 'activity') {
       return event.data.category || detectCategory(event.data.name, event.data.description);
     }

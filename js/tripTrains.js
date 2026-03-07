@@ -15,6 +15,17 @@
     );
   }
 
+  function calcDuration(depTime, arrTime) {
+    if (!depTime || !arrTime) return '';
+    const [dH, dM] = depTime.split(':').map(Number);
+    const [aH, aM] = arrTime.split(':').map(Number);
+    let diff = (aH * 60 + aM) - (dH * 60 + dM);
+    if (diff <= 0) return '';
+    const h = Math.floor(diff / 60);
+    const m = diff % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  }
+
   function isTrainPast(train) {
     const now = new Date();
     const today = now.toISOString().split('T')[0];
@@ -68,11 +79,15 @@
       const depCity = toTitleCase(train.departure?.city || '');
       const arrCity = toTitleCase(train.arrival?.city || '');
 
+      // Calcola durata dal tempo di partenza e arrivo
+      const duration = calcDuration(train.departure?.time, train.arrival?.time);
+      const durationStr = duration ? utils.formatDuration(duration, lang) : '';
+
       return `
         <div class="train-card${isPast ? ' past' : ''}" data-id="${train.id}">
           <div class="train-card-header">
-            <span class="train-date">${esc(formattedDate)}</span>
-            <span class="train-number">${esc(train.trainNumber || '')}</span>
+            <span class="train-header-date">${esc(formattedDate)}</span>
+            <span class="train-header-number">${esc(train.trainNumber || '')}</span>
           </div>
 
           <div class="train-card-body">
@@ -83,28 +98,25 @@
 
             <div class="train-route">
               <div class="train-endpoint">
+                <div class="train-time-lg">${esc(train.departure?.time || '')}</div>
                 <div class="train-station-name">${esc(depStation)}</div>
-                <div class="train-time-sm">
-                  <svg class="train-time-icon-sm" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8 2 4 3 4 7v9.5C4 18.43 5.57 20 7.5 20L6 21.5v.5h2l2-2h4l2 2h2v-.5L16.5 20c1.93 0 3.5-1.57 3.5-3.5V7c0-4-4-5-8-5m-1.5 16h-3C6.67 18 6 17.33 6 16.5S6.67 15 7.5 15h3v3m5.5 0h-3v-3h3c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5M18 13H6V7h12v6Z"/></svg>
-                  ${esc(train.departure?.time || '')}
-                </div>
               </div>
 
               <div class="train-arc">
                 <div class="train-arc-line">
-                  <img class="train-arc-img" src="/img/flight-arc.svg" alt="" />
+                  <svg class="train-arc-img" width="160" height="28" viewBox="0 0 160 28" fill="none">
+                    <line x1="4" y1="14" x2="156" y2="14" stroke="#22c55e" stroke-width="3" stroke-dasharray="10 6" stroke-linecap="round"/>
+                  </svg>
                   <div class="train-arc-vehicle">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="var(--color-train-600)"><path d="M12 2C8 2 4 3 4 7v9.5C4 18.43 5.57 20 7.5 20L6 21.5v.5h2l2-2h4l2 2h2v-.5L16.5 20c1.93 0 3.5-1.57 3.5-3.5V7c0-4-4-5-8-5m-1.5 16h-3C6.67 18 6 17.33 6 16.5S6.67 15 7.5 15h3v3m5.5 0h-3v-3h3c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5M18 13H6V7h12v6Z"/></svg>
                   </div>
                 </div>
+                ${durationStr ? `<div class="train-duration">${esc(durationStr)}</div>` : ''}
               </div>
 
               <div class="train-endpoint">
+                <div class="train-time-lg">${esc(train.arrival?.time || '')}</div>
                 <div class="train-station-name">${esc(arrStation)}</div>
-                <div class="train-time-sm">
-                  ${esc(train.arrival?.time || '')}
-                  <svg class="train-time-icon-sm" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8 2 4 3 4 7v9.5C4 18.43 5.57 20 7.5 20L6 21.5v.5h2l2-2h4l2 2h2v-.5L16.5 20c1.93 0 3.5-1.57 3.5-3.5V7c0-4-4-5-8-5m-1.5 16h-3C6.67 18 6 17.33 6 16.5S6.67 15 7.5 15h3v3m5.5 0h-3v-3h3c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5M18 13H6V7h12v6Z"/></svg>
-                </div>
               </div>
             </div>
           </div>
@@ -127,7 +139,7 @@
       <div class="section-header">
         <h2 class="section-header-title">I miei treni <span class="beta-badge">Beta</span></h2>
         <div class="section-header-actions">
-          <button class="section-header-cta btn btn-outline" id="trains-manage-booking-btn">
+          <button class="section-header-cta btn btn-outline train-cta-outline" id="trains-manage-booking-btn">
             ${editSvg}
             <span class="section-header-cta-label-full">Modifica</span>
             <span class="section-header-cta-label-short">Modifica</span>
@@ -154,89 +166,78 @@
       ? `${train.price.value} ${train.price.currency || '€'}`
       : '';
 
+    const copyIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
+    const downloadIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`;
+    const editIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`;
+    const trashIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`;
+
     return `
-            <div class="train-section-header">
-              <svg class="train-section-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M22 10V6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v4c1.1 0 2 .9 2 2s-.9 2-2 2v4c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-4c-1.1 0-2-.9-2-2s.9-2 2-2m-2-1.46c-1.19.69-2 1.99-2 3.46s.81 2.77 2 3.46V18H4v-2.54c1.19-.69 2-1.99 2-3.46 0-1.48-.81-2.77-2-3.46V6h16v2.54z"/></svg>
-              <span class="train-detail-label" data-i18n="train.bookingDetails">Dettagli Prenotazione</span>
-            </div>
-            <div class="train-details-grid">
-              <div class="train-detail-item">
-                <span class="train-detail-label" data-i18n="train.bookingRef">Riferimento</span>
-                <span class="train-detail-value-wrapper">
-                  <span class="train-detail-value">${esc(train.bookingReference || '-')}</span>
-                  ${train.bookingReference ? `<button class="btn-copy-value" data-copy="${esc(train.bookingReference)}" title="Copia">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                    </svg>
-                  </button>` : ''}
-                </span>
-              </div>
-              <div class="train-detail-item">
-                <span class="train-detail-label" data-i18n="train.ticketNumber">Biglietto</span>
-                <span class="train-detail-value-wrapper">
-                  <span class="train-detail-value">${esc(train.ticketNumber || '-')}</span>
-                  ${train.ticketNumber ? `<button class="btn-copy-value" data-copy="${esc(train.ticketNumber)}" title="Copia">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                    </svg>
-                  </button>` : ''}
-                </span>
-              </div>
-              <div class="train-detail-item">
-                <span class="train-detail-label" data-i18n="train.class">Classe</span>
-                <span class="train-detail-value">${esc(train.class || '-')}</span>
-              </div>
-              <div class="train-detail-item">
-                <span class="train-detail-label" data-i18n="train.seat">Posto</span>
-                <span class="train-detail-value">${esc(train.seat || '-')}</span>
-              </div>
-              ${train.coach ? `
-              <div class="train-detail-item">
-                <span class="train-detail-label" data-i18n="train.coach">Carrozza</span>
-                <span class="train-detail-value">${esc(train.coach)}</span>
-              </div>
-              ` : ''}
-              ${train.passenger?.name ? `
-              <div class="train-detail-item">
-                <span class="train-detail-label" data-i18n="train.passenger">Passeggero</span>
-                <span class="train-detail-value">${esc(train.passenger.name)}</span>
-              </div>
-              ` : ''}
-              ${priceStr ? `
-              <div class="train-detail-item">
-                <span class="train-detail-label" data-i18n="train.price">Prezzo</span>
-                <span class="train-detail-value train-price-value">${esc(priceStr)}</span>
-              </div>
-              ` : ''}
-            </div>
-            ${train.pdfPath ? `
-            <button class="btn-download-pdf" data-pdf-path="${train.pdfPath}">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="7 10 12 15 17 10"></polyline>
-                <line x1="12" y1="15" x2="12" y2="3"></line>
-              </svg>
-              <span data-i18n="train.booking">Prenotazione</span>
-            </button>
-            ` : ''}
-            <div class="train-detail-actions">
-              <button class="btn-edit-item" data-type="train" data-id="${train.id}">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                </svg>
-                <span data-i18n="train.edit">Modifica treno</span>
-              </button>
-              <button class="btn-delete-item" data-type="train" data-id="${train.id}">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <polyline points="3 6 5 6 21 6"></polyline>
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                </svg>
-                <span data-i18n="train.delete">Elimina treno</span>
-              </button>
-            </div>
+      <div class="train-details-box">
+        <div class="train-details-grid">
+          <div class="train-detail-item">
+            <span class="train-detail-label" data-i18n="train.bookingRef">Riferimento</span>
+            <span class="train-detail-value">
+              ${esc(train.bookingReference || '-')}
+              ${train.bookingReference ? `<button class="btn-copy-value" data-copy="${esc(train.bookingReference)}" title="Copia">${copyIcon}</button>` : ''}
+            </span>
+          </div>
+          <div class="train-detail-item">
+            <span class="train-detail-label" data-i18n="train.ticketNumber">Biglietto</span>
+            <span class="train-detail-value">
+              ${esc(train.ticketNumber || '-')}
+              ${train.ticketNumber ? `<button class="btn-copy-value" data-copy="${esc(train.ticketNumber)}" title="Copia">${copyIcon}</button>` : ''}
+            </span>
+          </div>
+        </div>
+        <div class="train-details-grid">
+          <div class="train-detail-item">
+            <span class="train-detail-label" data-i18n="train.class">Classe</span>
+            <span class="train-detail-value">${esc(train.class || '-')}</span>
+          </div>
+          <div class="train-detail-item">
+            <span class="train-detail-label" data-i18n="train.seat">Posto</span>
+            <span class="train-detail-value">${esc(train.seat || '-')}</span>
+          </div>
+        </div>
+        <div class="train-details-grid">
+          ${train.coach ? `
+          <div class="train-detail-item">
+            <span class="train-detail-label" data-i18n="train.coach">Carrozza</span>
+            <span class="train-detail-value">${esc(train.coach)}</span>
+          </div>
+          ` : ''}
+          ${train.passenger?.name ? `
+          <div class="train-detail-item">
+            <span class="train-detail-label" data-i18n="train.passenger">Passeggero</span>
+            <span class="train-detail-value">${esc(train.passenger.name)}</span>
+          </div>
+          ` : ''}
+        </div>
+      </div>
+
+      ${priceStr ? `
+      <div class="train-price-box">
+        <span class="train-price-label" data-i18n="train.price">Prezzo</span>
+        <span class="train-price-amount">${esc(priceStr)}</span>
+      </div>
+      ` : ''}
+
+      <div class="train-actions">
+        ${train.pdfPath ? `
+        <button class="train-btn train-btn--primary btn-download-pdf" data-pdf-path="${train.pdfPath}">
+          ${downloadIcon}
+          <span data-i18n="train.booking">Prenotazione</span>
+        </button>
+        ` : `<div></div>`}
+        <button class="train-btn train-btn--outline btn-edit-item" data-type="train" data-id="${train.id}">
+          ${editIcon}
+          <span data-i18n="train.edit">Modifica</span>
+        </button>
+        <button class="train-btn train-btn--danger btn-delete-item" data-type="train" data-id="${train.id}">
+          ${trashIcon}
+          <span data-i18n="train.delete">Elimina</span>
+        </button>
+      </div>
     `;
   }
 

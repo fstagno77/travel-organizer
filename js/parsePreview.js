@@ -82,8 +82,8 @@ const parsePreview = {
       html += `</div></div>`;
     }
 
-    // ── Passenger (top, if document-level, not per-flight) ──
-    if (passenger && allFlights.length === 0) {
+    // ── Passenger (top, solo se nessun tipo di trasporto ha il campo passeggero) ──
+    if (passenger && allFlights.length === 0 && allTrains.length === 0 && allBuses.length === 0) {
       html += `<div class="parse-preview-booking">`;
       html += `<div class="parse-section-header"><span>Passeggero</span></div>`;
       html += `<div class="parse-detail-grid">`;
@@ -193,17 +193,17 @@ const parsePreview = {
 
       html += `<div class="parse-panel${segIdx === 0 ? ' active' : ''}" data-panel="${segIdx}">`;
       html += `<div class="parse-train-card" data-type="train" data-index="${i}">`;
-      html += `<div class="parse-flight-route">
-        <div class="parse-flight-endpoint">
-          <span class="parse-flight-code" style="font-size:1.3rem">${this._esc(depStation)}</span>
-          ${depTime ? `<span class="parse-flight-time">${this._esc(depTime)}</span>` : ''}
+      html += `<div class="parse-transport-route">
+        <div class="parse-transport-endpoint">
+          <span class="parse-transport-station">${this._esc(depStation)}</span>
+          ${depTime ? `<span class="parse-transport-time">${this._esc(depTime)}</span>` : ''}
         </div>
-        <div class="parse-flight-arrow">
+        <div class="parse-transport-arrow">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
         </div>
-        <div class="parse-flight-endpoint">
-          <span class="parse-flight-code" style="font-size:1.3rem">${this._esc(arrStation)}</span>
-          ${arrTime ? `<span class="parse-flight-time">${this._esc(arrTime)}</span>` : ''}
+        <div class="parse-transport-endpoint">
+          <span class="parse-transport-station">${this._esc(arrStation)}</span>
+          ${arrTime ? `<span class="parse-transport-time">${this._esc(arrTime)}</span>` : ''}
         </div>
       </div>`;
 
@@ -232,17 +232,17 @@ const parsePreview = {
 
       html += `<div class="parse-panel${segIdx === 0 ? ' active' : ''}" data-panel="${segIdx}">`;
       html += `<div class="parse-bus-card" data-type="bus" data-index="${i}">`;
-      html += `<div class="parse-flight-route">
-        <div class="parse-flight-endpoint">
-          <span class="parse-flight-code" style="font-size:1.3rem">${this._esc(depStation)}</span>
-          ${depTime ? `<span class="parse-flight-time">${this._esc(depTime)}</span>` : ''}
+      html += `<div class="parse-transport-route">
+        <div class="parse-transport-endpoint">
+          <span class="parse-transport-station">${this._esc(depStation)}</span>
+          ${depTime ? `<span class="parse-transport-time">${this._esc(depTime)}</span>` : ''}
         </div>
-        <div class="parse-flight-arrow">
+        <div class="parse-transport-arrow">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
         </div>
-        <div class="parse-flight-endpoint">
-          <span class="parse-flight-code" style="font-size:1.3rem">${this._esc(arrStation)}</span>
-          ${arrTime ? `<span class="parse-flight-time">${this._esc(arrTime)}</span>` : ''}
+        <div class="parse-transport-endpoint">
+          <span class="parse-transport-station">${this._esc(arrStation)}</span>
+          ${arrTime ? `<span class="parse-transport-time">${this._esc(arrTime)}</span>` : ''}
         </div>
       </div>`;
 

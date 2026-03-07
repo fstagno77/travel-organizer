@@ -1,6 +1,26 @@
 {
   "versions": [
     {
+      "version": "0.31.1",
+      "date": "2026-03-07",
+      "changes": {
+        "it": [
+          "Animazione skeleton loading nella pagina viaggio",
+          "Protezione modifiche non salvate (SafeClose) nel pannello attività",
+          "Categorie treni e bus con icona e colore dedicati nella tab Attività",
+          "Card treni/bus nella vista card con layout uniforme alle card voli",
+          "Fix errore caricamento PDF dal pulsante \"+\""
+        ],
+        "en": [
+          "Skeleton loading animation on trip page",
+          "Unsaved changes protection (SafeClose) in activity panel",
+          "Train and bus categories with dedicated icons and colours in Activities tab",
+          "Train/bus cards in card view with uniform flight card layout",
+          "Fix PDF upload error from \"+\" button"
+        ]
+      }
+    },
+    {
       "version": "0.31",
       "date": "2026-03-07",
       "changes": {

@@ -15,6 +15,17 @@
     );
   }
 
+  function calcDuration(depTime, arrTime) {
+    if (!depTime || !arrTime) return '';
+    const [dH, dM] = depTime.split(':').map(Number);
+    const [aH, aM] = arrTime.split(':').map(Number);
+    let diff = (aH * 60 + aM) - (dH * 60 + dM);
+    if (diff <= 0) return '';
+    const h = Math.floor(diff / 60);
+    const m = diff % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  }
+
   function isBusPast(bus) {
     const now = new Date();
     const today = now.toISOString().split('T')[0];
@@ -68,11 +79,15 @@
       const depCity = toTitleCase(bus.departure?.city || '');
       const arrCity = toTitleCase(bus.arrival?.city || '');
 
+      // Calcola durata dal tempo di partenza e arrivo
+      const duration = calcDuration(bus.departure?.time, bus.arrival?.time);
+      const durationStr = duration ? utils.formatDuration(duration, lang) : '';
+
       return `
         <div class="bus-card${isPast ? ' past' : ''}" data-id="${bus.id}">
           <div class="bus-card-header">
-            <span class="bus-date">${esc(formattedDate)}</span>
-            ${bus.routeNumber ? `<span class="bus-route-number">${esc(bus.routeNumber)}</span>` : ''}
+            <span class="bus-header-date">${esc(formattedDate)}</span>
+            ${bus.routeNumber ? `<span class="bus-header-route">${esc(bus.routeNumber)}</span>` : ''}
           </div>
 
           <div class="bus-card-body">
@@ -83,28 +98,25 @@
 
             <div class="bus-route">
               <div class="bus-endpoint">
+                <div class="bus-time-lg">${esc(bus.departure?.time || '')}</div>
                 <div class="bus-station-name">${esc(depStation)}</div>
-                <div class="bus-time-sm">
-                  <svg class="bus-time-icon-sm" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M4 16c0 .88.39 1.67 1 2.22V20c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h8v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10m3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17m9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5M18 11H6V6h12v5Z"/></svg>
-                  ${esc(bus.departure?.time || '')}
-                </div>
               </div>
 
               <div class="bus-arc">
                 <div class="bus-arc-line">
-                  <img class="bus-arc-img" src="/img/flight-arc.svg" alt="" />
+                  <svg class="bus-arc-img" width="160" height="28" viewBox="0 0 160 28" fill="none">
+                    <path d="M4 18 C16 6 24 24 42 8 C56 -2 62 26 80 20 C94 16 100 4 118 10 C132 14 140 24 156 12" stroke="#22c55e" stroke-width="3" stroke-dasharray="10 6" stroke-linecap="round" fill="none"/>
+                  </svg>
                   <div class="bus-arc-vehicle">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="var(--color-bus-600)"><path d="M4 16c0 .88.39 1.67 1 2.22V20c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h8v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10m3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17m9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5M18 11H6V6h12v5Z"/></svg>
                   </div>
                 </div>
+                ${durationStr ? `<div class="bus-duration">${esc(durationStr)}</div>` : ''}
               </div>
 
               <div class="bus-endpoint">
+                <div class="bus-time-lg">${esc(bus.arrival?.time || '')}</div>
                 <div class="bus-station-name">${esc(arrStation)}</div>
-                <div class="bus-time-sm">
-                  ${esc(bus.arrival?.time || '')}
-                  <svg class="bus-time-icon-sm" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M4 16c0 .88.39 1.67 1 2.22V20c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h8v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10m3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17m9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5M18 11H6V6h12v5Z"/></svg>
-                </div>
               </div>
             </div>
           </div>
@@ -127,7 +139,7 @@
       <div class="section-header">
         <h2 class="section-header-title">I miei bus <span class="beta-badge">Beta</span></h2>
         <div class="section-header-actions">
-          <button class="section-header-cta btn btn-outline" id="buses-manage-booking-btn">
+          <button class="section-header-cta btn btn-outline bus-cta-outline" id="buses-manage-booking-btn">
             ${editSvg}
             <span class="section-header-cta-label-full">Modifica</span>
             <span class="section-header-cta-label-short">Modifica</span>
@@ -154,69 +166,59 @@
       ? `${bus.price.value} ${bus.price.currency || '€'}`
       : '';
 
+    const copyIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
+    const downloadIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`;
+    const editIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`;
+    const trashIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`;
+
     return `
-            <div class="bus-section-header">
-              <svg class="bus-section-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M22 10V6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v4c1.1 0 2 .9 2 2s-.9 2-2 2v4c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-4c-1.1 0-2-.9-2-2s.9-2 2-2m-2-1.46c-1.19.69-2 1.99-2 3.46s.81 2.77 2 3.46V18H4v-2.54c1.19-.69 2-1.99 2-3.46 0-1.48-.81-2.77-2-3.46V6h16v2.54z"/></svg>
-              <span class="bus-detail-label" data-i18n="bus.bookingDetails">Dettagli Prenotazione</span>
-            </div>
-            <div class="bus-details-grid">
-              <div class="bus-detail-item">
-                <span class="bus-detail-label" data-i18n="bus.bookingRef">Riferimento</span>
-                <span class="bus-detail-value-wrapper">
-                  <span class="bus-detail-value">${esc(bus.bookingReference || '-')}</span>
-                  ${bus.bookingReference ? `<button class="btn-copy-value" data-copy="${esc(bus.bookingReference)}" title="Copia">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                    </svg>
-                  </button>` : ''}
-                </span>
-              </div>
-              ${bus.seat ? `
-              <div class="bus-detail-item">
-                <span class="bus-detail-label" data-i18n="bus.seat">Posto</span>
-                <span class="bus-detail-value">${esc(bus.seat)}</span>
-              </div>
-              ` : ''}
-              ${bus.passenger?.name ? `
-              <div class="bus-detail-item">
-                <span class="bus-detail-label" data-i18n="bus.passenger">Passeggero</span>
-                <span class="bus-detail-value">${esc(bus.passenger.name)}</span>
-              </div>
-              ` : ''}
-              ${priceStr ? `
-              <div class="bus-detail-item">
-                <span class="bus-detail-label" data-i18n="bus.price">Prezzo</span>
-                <span class="bus-detail-value bus-price-value">${esc(priceStr)}</span>
-              </div>
-              ` : ''}
-            </div>
-            ${bus.pdfPath ? `
-            <button class="btn-download-pdf" data-pdf-path="${bus.pdfPath}">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="7 10 12 15 17 10"></polyline>
-                <line x1="12" y1="15" x2="12" y2="3"></line>
-              </svg>
-              <span data-i18n="bus.booking">Prenotazione</span>
-            </button>
-            ` : ''}
-            <div class="bus-detail-actions">
-              <button class="btn-edit-item" data-type="bus" data-id="${bus.id}">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                </svg>
-                <span data-i18n="bus.edit">Modifica bus</span>
-              </button>
-              <button class="btn-delete-item" data-type="bus" data-id="${bus.id}">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <polyline points="3 6 5 6 21 6"></polyline>
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                </svg>
-                <span data-i18n="bus.delete">Elimina bus</span>
-              </button>
-            </div>
+      <div class="bus-details-box">
+        <div class="bus-details-grid">
+          <div class="bus-detail-item">
+            <span class="bus-detail-label" data-i18n="bus.bookingRef">Riferimento</span>
+            <span class="bus-detail-value">
+              ${esc(bus.bookingReference || '-')}
+              ${bus.bookingReference ? `<button class="btn-copy-value" data-copy="${esc(bus.bookingReference)}" title="Copia">${copyIcon}</button>` : ''}
+            </span>
+          </div>
+          ${bus.seat ? `
+          <div class="bus-detail-item">
+            <span class="bus-detail-label" data-i18n="bus.seat">Posto</span>
+            <span class="bus-detail-value">${esc(bus.seat)}</span>
+          </div>
+          ` : ''}
+          ${bus.passenger?.name ? `
+          <div class="bus-detail-item">
+            <span class="bus-detail-label" data-i18n="bus.passenger">Passeggero</span>
+            <span class="bus-detail-value">${esc(bus.passenger.name)}</span>
+          </div>
+          ` : ''}
+        </div>
+      </div>
+
+      ${priceStr ? `
+      <div class="bus-price-box">
+        <span class="bus-price-label" data-i18n="bus.price">Prezzo</span>
+        <span class="bus-price-amount">${esc(priceStr)}</span>
+      </div>
+      ` : ''}
+
+      <div class="bus-actions">
+        ${bus.pdfPath ? `
+        <button class="bus-btn bus-btn--primary btn-download-pdf" data-pdf-path="${bus.pdfPath}">
+          ${downloadIcon}
+          <span data-i18n="bus.booking">Prenotazione</span>
+        </button>
+        ` : `<div></div>`}
+        <button class="bus-btn bus-btn--outline btn-edit-item" data-type="bus" data-id="${bus.id}">
+          ${editIcon}
+          <span data-i18n="bus.edit">Modifica</span>
+        </button>
+        <button class="bus-btn bus-btn--danger btn-delete-item" data-type="bus" data-id="${bus.id}">
+          ${trashIcon}
+          <span data-i18n="bus.delete">Elimina</span>
+        </button>
+      </div>
     `;
   }
 

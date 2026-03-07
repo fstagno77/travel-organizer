@@ -121,6 +121,10 @@
         const end = utils.formatDate(trip.endDate, lang, { month: 'short', day: 'numeric', year: 'numeric' });
         datesEl.textContent = `${start} - ${end}`;
       }
+      // Rimuovi skeleton se i dati dalla cache sono sufficienti
+      if (hero && trip.title) {
+        hero.classList.remove('is-loading');
+      }
     } catch (e) {
       // Cache miss or parse error — no problem, API will fill it
     }
@@ -266,6 +270,7 @@
     if (tripData.coverPhoto?.url) {
       hero.style.backgroundImage = `url('${tripData.coverPhoto.url}')`;
     }
+    hero.classList.remove('is-loading');
 
     // Render content
     renderTripContent(document.getElementById('trip-content'), tripData);
@@ -322,7 +327,7 @@
       }).join('');
 
       heroTabs.innerHTML = `
-        <div class="segmented-control">
+        <div class="segmented-control${visibleTabs.length >= 4 ? ' segmented-control--compact' : ''}">
           <div class="segmented-indicator"></div>
           ${tabButtons}
         </div>
@@ -1410,13 +1415,13 @@
         const modalHeader = modal.querySelector('.modal-header h2');
 
         // Rileva aggiornamenti confrontando con i booking esistenti nel viaggio
-        const updateCheck = updatePreview.detectUpdates(_parsedResults, currentTripData);
+        const updateCheck = window.updatePreview.detectUpdates(_parsedResults, currentTripData);
 
         if (updateCheck.hasUpdates) {
           // ── Mostra subito il confronto aggiornamenti ──
           if (modalHeader) modalHeader.textContent = i18n.t('trip.updateDetected') || 'Aggiornamenti rilevati';
 
-          updatePreview.render(modalBody, updateCheck.updates, updateCheck.pendingNew, {
+          window.updatePreview.render(modalBody, updateCheck.updates, updateCheck.pendingNew, {
             onConfirm: async (selectedUpdates, pendingNew) => {
               let skipDateUpdate = false;
               // Controlla estensione date per i nuovi booking
@@ -1448,7 +1453,7 @@
             modalHeader.textContent = previewTitle;
           }
 
-          parsePreview.render(modalBody, _parsedResults, {
+          window.parsePreview.render(modalBody, _parsedResults, {
             onConfirm: async (feedback, updatedResults, editedFields) => {
               if (updatedResults) _parsedResults = updatedResults;
               _editedFields = editedFields || [];
@@ -2009,6 +2014,22 @@
       const selected = [...activeView.querySelectorAll('input[type="checkbox"]')].filter(cb => cb.checked);
       if (selected.length === 0) return;
 
+      // Verifica se la cancellazione cambia le date del viaggio
+      let skipDateUpdate = false;
+      const deletions = selected.map(cb => {
+        if (cb.dataset.passenger) {
+          const ids = cb.value.split(',');
+          const flight = (currentTripData?.flights || []).find(f => f.id === ids[0]);
+          return { passenger: cb.dataset.passenger, bookingRef: flight?.bookingReference || '' };
+        }
+        return { type: cb.dataset.type, ids: cb.value.split(',') };
+      });
+      const shrinkInfo = checkDateShrinkOnDelete(deletions);
+      if (shrinkInfo) {
+        const shouldUpdate = await showDateShrinkDialog(shrinkInfo);
+        if (!shouldUpdate) skipDateUpdate = true;
+      }
+
       confirmBtn.disabled = true;
       confirmBtn.innerHTML = '<span class="spinner spinner-sm"></span>';
 
@@ -2053,7 +2074,8 @@
                 body: JSON.stringify({
                   tripId,
                   type: cb.dataset.type,
-                  itemId: id
+                  itemId: id,
+                  skipDateUpdate
                 })
               });
               if (!response.ok) {
@@ -2065,8 +2087,12 @@
             const deleteIds = new Set(ids);
             if (deleteType === 'flight') {
               currentTripData.flights = (currentTripData.flights || []).filter(f => !deleteIds.has(f.id));
-            } else {
+            } else if (deleteType === 'hotel') {
               currentTripData.hotels = (currentTripData.hotels || []).filter(h => !deleteIds.has(h.id));
+            } else if (deleteType === 'train') {
+              currentTripData.trains = (currentTripData.trains || []).filter(t => !deleteIds.has(t.id));
+            } else if (deleteType === 'bus') {
+              currentTripData.buses = (currentTripData.buses || []).filter(b => !deleteIds.has(b.id));
             }
           }
         }
@@ -3002,6 +3028,18 @@
       document.getElementById('manage-delete-confirm').addEventListener('click', async (e) => {
         e.stopPropagation();
         const confirmBtn = document.getElementById('manage-delete-confirm');
+
+        // Verifica se la cancellazione cambia le date del viaggio
+        let skipDateUpdate = false;
+        const deletion = passengerName
+          ? { passenger: passengerName, bookingRef }
+          : { type: selected.dataset.type, ids: selected.dataset.value.split(',') };
+        const shrinkInfo = checkDateShrinkOnDelete([deletion]);
+        if (shrinkInfo) {
+          const shouldUpdate = await showDateShrinkDialog(shrinkInfo);
+          if (!shouldUpdate) skipDateUpdate = true;
+        }
+
         confirmBtn.disabled = true;
         confirmBtn.innerHTML = '<span class="spinner spinner-sm"></span>';
 
@@ -3039,7 +3077,8 @@
                 body: JSON.stringify({
                   tripId,
                   type: selected.dataset.type,
-                  itemId: id
+                  itemId: id,
+                  skipDateUpdate
                 })
               });
               if (!response.ok) throw new Error('Failed to delete booking');
@@ -3316,6 +3355,14 @@
     };
 
     const performDelete = async () => {
+      // Verifica se la cancellazione cambia le date del viaggio
+      let skipDateUpdate = false;
+      const shrinkInfo = checkDateShrinkOnDelete([{ type, ids: [itemId] }]);
+      if (shrinkInfo) {
+        const shouldUpdate = await showDateShrinkDialog(shrinkInfo);
+        if (!shouldUpdate) skipDateUpdate = true;
+      }
+
       confirmBtn.disabled = true;
       confirmBtn.innerHTML = '<span class="spinner spinner-sm"></span>';
 
@@ -3325,7 +3372,8 @@
           body: JSON.stringify({
             tripId: currentTripData.id,
             type: type,
-            itemId: itemId
+            itemId: itemId,
+            skipDateUpdate
           })
         });
 
@@ -3340,12 +3388,20 @@
         // Optimistic update: remove item from local data
         if (type === 'flight') {
           currentTripData.flights = (currentTripData.flights || []).filter(f => f.id !== itemId);
-        } else {
+        } else if (type === 'hotel') {
           currentTripData.hotels = (currentTripData.hotels || []).filter(h => h.id !== itemId);
+        } else if (type === 'train') {
+          currentTripData.trains = (currentTripData.trains || []).filter(t => t.id !== itemId);
+        } else if (type === 'bus') {
+          currentTripData.buses = (currentTripData.buses || []).filter(b => b.id !== itemId);
         }
 
         // Check if this was the last booking
-        if ((currentTripData.flights || []).length === 0 && (currentTripData.hotels || []).length === 0) {
+        const allEmpty = (currentTripData.flights || []).length === 0 &&
+          (currentTripData.hotels || []).length === 0 &&
+          (currentTripData.trains || []).length === 0 &&
+          (currentTripData.buses || []).length === 0;
+        if (allEmpty) {
           try {
             await utils.authFetch(`/.netlify/functions/delete-trip?id=${encodeURIComponent(currentTripData.id)}`, {
               method: 'DELETE'
@@ -3420,6 +3476,16 @@
           const checkOut = typeof h.checkOut === 'object' ? h.checkOut?.date : h.checkOut;
           if (checkIn) dates.push(checkIn);
           if (checkOut) dates.push(checkOut);
+        }
+      }
+      if (pr.result.trains) {
+        for (const t of pr.result.trains) {
+          if (t.date) dates.push(t.date);
+        }
+      }
+      if (pr.result.buses) {
+        for (const b of pr.result.buses) {
+          if (b.date) dates.push(b.date);
         }
       }
     }
@@ -3503,6 +3569,130 @@
     });
   }
 
+  /**
+   * Simula la rimozione di item e verifica se le date del viaggio cambiano.
+   * @param {Array} deletions - Array di { type, ids } oppure { type: 'passenger', bookingRef, name }
+   * @returns {{ oldStart, newStart, oldEnd, newEnd } | null}
+   */
+  function checkDateShrinkOnDelete(deletions) {
+    if (!currentTripData?.startDate || !currentTripData?.endDate) return null;
+
+    // Clona le liste rilevanti
+    let flights = [...(currentTripData.flights || [])];
+    let hotels = [...(currentTripData.hotels || [])];
+    let trains = [...(currentTripData.trains || [])];
+    let buses = [...(currentTripData.buses || [])];
+
+    for (const del of deletions) {
+      if (del.passenger) {
+        // Rimozione passeggero: rimuovi solo se il volo resta con 0 passeggeri
+        flights = flights.map(f => {
+          if (f.bookingReference?.toLowerCase()?.trim() === del.bookingRef?.toLowerCase()?.trim()) {
+            const remaining = (f.passengers || []).filter(p =>
+              p.name?.toLowerCase()?.trim() !== del.passenger?.toLowerCase()?.trim()
+            );
+            return { ...f, passengers: remaining };
+          }
+          return f;
+        }).filter(f => !f.passengers || f.passengers.length > 0);
+      } else {
+        const idsSet = new Set(del.ids);
+        if (del.type === 'flight') flights = flights.filter(f => !idsSet.has(f.id));
+        else if (del.type === 'hotel') hotels = hotels.filter(h => !idsSet.has(h.id));
+        else if (del.type === 'train') trains = trains.filter(t => !idsSet.has(t.id));
+        else if (del.type === 'bus') buses = buses.filter(b => !idsSet.has(b.id));
+      }
+    }
+
+    // Ricalcola le date come farebbe updateTripDates
+    const dates = [];
+    flights.forEach(f => { if (f.date) dates.push(f.date); });
+    hotels.forEach(h => {
+      const ci = typeof h.checkIn === 'object' ? h.checkIn?.date : h.checkIn;
+      const co = typeof h.checkOut === 'object' ? h.checkOut?.date : h.checkOut;
+      if (ci) dates.push(ci);
+      if (co) dates.push(co);
+    });
+    trains.forEach(t => { if (t.date) dates.push(t.date); });
+    buses.forEach(b => { if (b.date) dates.push(b.date); });
+
+    if (dates.length === 0) return null; // Trip resterebbe vuoto, niente da confrontare
+
+    dates.sort();
+    const newStart = dates[0];
+    const newEnd = dates[dates.length - 1];
+
+    const changed = newStart !== currentTripData.startDate || newEnd !== currentTripData.endDate;
+    if (!changed) return null;
+
+    return {
+      oldStart: currentTripData.startDate,
+      newStart,
+      oldEnd: currentTripData.endDate,
+      newEnd
+    };
+  }
+
+  /**
+   * Mostra dialogo di conferma cambio date dopo cancellazione.
+   * Ritorna true se l'utente conferma l'aggiornamento, false se vuole mantenere le date attuali.
+   */
+  function showDateShrinkDialog(shrinkInfo) {
+    return new Promise((resolve) => {
+      const fmtDate = (str) => {
+        if (!str) return '';
+        try {
+          const d = new Date(str + 'T00:00:00');
+          const months = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
+          return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+        } catch { return str; }
+      };
+
+      let details = '';
+      if (shrinkInfo.newStart !== shrinkInfo.oldStart) {
+        const msg = (i18n.t('trip.dateShrinkStart') || 'Start date: from {old} to {new}')
+          .replace('{old}', fmtDate(shrinkInfo.oldStart))
+          .replace('{new}', fmtDate(shrinkInfo.newStart));
+        details += `<p class="date-extend-detail">${msg}</p>`;
+      }
+      if (shrinkInfo.newEnd !== shrinkInfo.oldEnd) {
+        const msg = (i18n.t('trip.dateShrinkEnd') || 'End date: from {old} to {new}')
+          .replace('{old}', fmtDate(shrinkInfo.oldEnd))
+          .replace('{new}', fmtDate(shrinkInfo.newEnd));
+        details += `<p class="date-extend-detail">${msg}</p>`;
+      }
+
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay date-extend-overlay active';
+      overlay.innerHTML = `
+        <div class="modal date-extend-modal">
+          <div class="modal-header">
+            <h2>${i18n.t('trip.dateShrinkTitle') || 'Trip dates changed'}</h2>
+          </div>
+          <div class="modal-body">
+            <p>${i18n.t('trip.dateShrinkMessage') || 'Deleting this booking changes the trip dates.'}</p>
+            ${details}
+          </div>
+          <div class="modal-footer date-extend-footer">
+            <button class="btn btn-secondary date-shrink-skip">${i18n.t('trip.dateShrinkSkip') || 'Keep current dates'}</button>
+            <button class="btn btn-primary date-shrink-confirm">${i18n.t('trip.dateShrinkConfirm') || 'Update dates'}</button>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(overlay);
+
+      overlay.querySelector('.date-shrink-confirm').addEventListener('click', () => {
+        overlay.remove();
+        resolve(true);
+      });
+      overlay.querySelector('.date-shrink-skip').addEventListener('click', () => {
+        overlay.remove();
+        resolve(false);
+      });
+    });
+  }
+
   async function handleQuickUpload(file) {
     // Mostra stato loading sul FAB
     const fab = document.getElementById('trip-fab');
@@ -3552,13 +3742,13 @@
       tripCreator.showFooter(false);
 
       // Rileva aggiornamenti confrontando con i booking esistenti
-      const updateCheck = updatePreview.detectUpdates(parsedResults, currentTripData);
+      const updateCheck = window.updatePreview.detectUpdates(parsedResults, currentTripData);
 
       if (updateCheck.hasUpdates) {
         // ── Mostra subito il confronto aggiornamenti ──
         if (modalHeader) modalHeader.textContent = i18n.t('trip.updateDetected') || 'Aggiornamenti rilevati';
 
-        updatePreview.render(modalBody, updateCheck.updates, updateCheck.pendingNew, {
+        window.updatePreview.render(modalBody, updateCheck.updates, updateCheck.pendingNew, {
           onConfirm: async (selectedUpdates, pendingNew) => {
             modalBody.innerHTML = `
               <div class="processing-state">
@@ -3646,7 +3836,7 @@
           modalHeader.textContent = title;
         }
 
-        parsePreview.render(modalBody, parsedResults, {
+        window.parsePreview.render(modalBody, parsedResults, {
           onConfirm: async (feedback, updatedResults, editedFields) => {
             const finalResults = updatedResults || parsedResults;
 

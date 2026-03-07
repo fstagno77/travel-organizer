@@ -50,11 +50,11 @@
 
     <div class="trip-page-content" id="modal-page-slider">
       <div class="trip-page-main modal-page--main" id="modal-page-main">
-        <div class="trip-hero" id="trip-hero">
+        <div class="trip-hero is-loading" id="trip-hero">
           <div class="trip-hero-overlay"></div>
           <div id="trip-hero-role-badge" class="trip-hero-role-badge"></div>
           <div class="trip-hero-content">
-            <h1 id="trip-title" class="trip-hero-title">Loading...</h1>
+            <h1 id="trip-title" class="trip-hero-title"></h1>
             <div class="trip-hero-meta">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
@@ -71,8 +71,37 @@
         <main>
           <div class="container">
             <div id="trip-content">
-              <div class="text-center py-6">
-                <span class="spinner"></span>
+              <div class="skeleton-days">
+                <div class="skeleton-day">
+                  <div class="skeleton-day-sidebar">
+                    <div class="skeleton-day-number"></div>
+                    <div class="skeleton-day-meta"></div>
+                  </div>
+                  <div class="skeleton-day-list">
+                    <div class="skeleton-item"><div class="skeleton-item-icon"></div><div class="skeleton-item-time"></div><div class="skeleton-item-text"></div></div>
+                    <div class="skeleton-item"><div class="skeleton-item-icon"></div><div class="skeleton-item-time"></div><div class="skeleton-item-text skeleton-item-text--short"></div></div>
+                    <div class="skeleton-item"><div class="skeleton-item-icon"></div><div class="skeleton-item-text skeleton-item-text--med"></div></div>
+                  </div>
+                </div>
+                <div class="skeleton-day">
+                  <div class="skeleton-day-sidebar">
+                    <div class="skeleton-day-number"></div>
+                    <div class="skeleton-day-meta"></div>
+                  </div>
+                  <div class="skeleton-day-list">
+                    <div class="skeleton-item"><div class="skeleton-item-icon"></div><div class="skeleton-item-time"></div><div class="skeleton-item-text skeleton-item-text--med"></div></div>
+                    <div class="skeleton-item"><div class="skeleton-item-icon"></div><div class="skeleton-item-text"></div></div>
+                  </div>
+                </div>
+                <div class="skeleton-day">
+                  <div class="skeleton-day-sidebar">
+                    <div class="skeleton-day-number"></div>
+                    <div class="skeleton-day-meta"></div>
+                  </div>
+                  <div class="skeleton-day-list">
+                    <div class="skeleton-item"><div class="skeleton-item-icon"></div><div class="skeleton-item-time"></div><div class="skeleton-item-text skeleton-item-text--short"></div></div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

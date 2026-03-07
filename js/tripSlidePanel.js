@@ -568,8 +568,101 @@
     `;
   }
 
-  // Track active escape handler for cleanup
+  // ===========================
+  // SafeClose — protezione chiusura con dirty state
+  // ===========================
+
   let _escapeHandler = null;
+
+  /**
+   * Cattura snapshot iniziale dei campi form per dirty checking
+   */
+  function captureFormSnapshot() {
+    return {
+      name: (document.getElementById('activity-name')?.value || ''),
+      date: (document.getElementById('activity-date')?.value || ''),
+      address: (document.getElementById('activity-address')?.value || ''),
+      description: (document.getElementById('activity-description')?.value || ''),
+      startTime: getTimePickerValue('activity-start-time') || '',
+      endTime: getTimePickerValue('activity-end-time') || '',
+      urls: collectUrls().join('|'),
+      category: document.querySelector('.activity-category-chip.active')?.dataset.category || '',
+      _hasPlace: !!document.querySelector('#activity-place-card .place-card'),
+    };
+  }
+
+  /**
+   * Confronta lo stato corrente con lo snapshot
+   * Controlla anche file aggiunti/rimossi
+   */
+  function isFormDirty(snapshot) {
+    const current = captureFormSnapshot();
+    if (Object.keys(snapshot).some(k => snapshot[k] !== current[k])) return true;
+    // Controlla file: nuovi file aggiunti o attachment esistenti rimossi
+    const newFilesPreview = document.getElementById('new-files-preview');
+    if (newFilesPreview && newFilesPreview.children.length > 0) return true;
+    const removedItems = document.querySelectorAll('.file-preview-item[data-removed]');
+    if (removedItems.length > 0) return true;
+    // Controlla place card aggiunto/rimosso
+    const placeCard = document.querySelector('#activity-place-card .place-card');
+    const hadPlace = snapshot._hasPlace || false;
+    if (!!placeCard !== hadPlace) return true;
+    return false;
+  }
+
+  /**
+   * Mostra l'interrupt SafeClose dentro il panel
+   * @returns {Promise<boolean>} true se l'utente vuole uscire
+   */
+  function showSafeCloseInterrupt() {
+    return new Promise(resolve => {
+      const existing = document.querySelector('.safe-close-interrupt');
+      if (existing) { resolve(false); return; }
+
+      const panel = document.querySelector('.modal-page--activity');
+      if (!panel) { resolve(true); return; }
+
+      const interrupt = document.createElement('div');
+      interrupt.className = 'safe-close-interrupt';
+      interrupt.innerHTML = `
+        <div class="safe-close-content">
+          <p class="safe-close-message">${i18n.t('activity.unsavedChanges') || 'Hai modifiche non salvate. Vuoi uscire comunque?'}</p>
+          <div class="safe-close-actions">
+            <button class="btn btn-primary btn-sm" id="safe-close-stay">${i18n.t('activity.keepEditing') || 'Continua a modificare'}</button>
+            <button class="btn btn-outline btn-sm" id="safe-close-discard">${i18n.t('activity.discardExit') || 'Esci e scarta'}</button>
+          </div>
+        </div>
+      `;
+      panel.appendChild(interrupt);
+
+      // Animate in
+      requestAnimationFrame(() => interrupt.classList.add('active'));
+
+      const cleanup = (result) => {
+        interrupt.classList.remove('active');
+        interrupt.addEventListener('transitionend', () => interrupt.remove(), { once: true });
+        // Fallback nel caso transitionend non parta
+        setTimeout(() => { if (interrupt.parentNode) interrupt.remove(); }, 300);
+        resolve(result);
+      };
+
+      document.getElementById('safe-close-stay').addEventListener('click', () => cleanup(false));
+      document.getElementById('safe-close-discard').addEventListener('click', () => cleanup(true));
+    });
+  }
+
+  /**
+   * Wrappa navigateBack con SafeClose: se il form è dirty, mostra l'interrupt
+   */
+  function safeClose(navigateBack, snapshot) {
+    if (!isFormDirty(snapshot)) {
+      navigateBack();
+      return;
+    }
+    showSafeCloseInterrupt().then(shouldExit => {
+      if (shouldExit) navigateBack();
+    });
+  }
 
   /**
    * Show the activity panel as an in-modal page (slides within the trip modal)
@@ -637,17 +730,16 @@
     requestAnimationFrame(() => {
       slider.classList.add('at-activity');
       activityPage.scrollTop = 0;
-      // Nasconde il FAB quando il pannello è aperto
-      const fab = document.getElementById('trip-fab');
-      if (fab) fab.style.display = 'none';
     });
 
-    // Navigate back function
+    // Navigate back function (chiusura effettiva)
     const navigateBack = (onComplete) => {
+      // Rimuovi ESC handler
+      if (_escapeHandler) {
+        document.removeEventListener('keydown', _escapeHandler);
+        _escapeHandler = null;
+      }
       slider.classList.remove('at-activity');
-      // Mostra di nuovo il FAB
-      const fab = document.getElementById('trip-fab');
-      if (fab) fab.style.display = '';
       activityPage.addEventListener('transitionend', function onEnd(e) {
         if (e.target !== activityPage) return;
         activityPage.removeEventListener('transitionend', onEnd);
@@ -658,14 +750,50 @@
       }, { once: false });
     };
 
-    // Close button handler
-    document.getElementById('activity-panel-close').addEventListener('click', () => navigateBack());
+    // SafeClose: cattura snapshot dopo render form (solo per create/edit)
+    const isFormMode = !isView;
+    let formSnapshot = null;
+    if (isFormMode) {
+      // Snapshot catturato dopo un tick per dare tempo ai time picker di inizializzarsi
+      setTimeout(() => { formSnapshot = captureFormSnapshot(); }, 50);
+    }
+
+    // requestClose: gestisce chiusura con dirty check
+    const requestClose = () => {
+      if (isFormMode && formSnapshot) {
+        safeClose(navigateBack, formSnapshot);
+      } else {
+        navigateBack();
+      }
+    };
+
+    // ESC handler
+    if (_escapeHandler) document.removeEventListener('keydown', _escapeHandler);
+    _escapeHandler = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        // Se c'è l'interrupt aperto, chiudilo (equivale a "Continua a modificare")
+        const interrupt = document.querySelector('.safe-close-interrupt');
+        if (interrupt) {
+          interrupt.classList.remove('active');
+          interrupt.addEventListener('transitionend', () => interrupt.remove(), { once: true });
+          setTimeout(() => { if (interrupt.parentNode) interrupt.remove(); }, 300);
+          return;
+        }
+        requestClose();
+      }
+    };
+    document.addEventListener('keydown', _escapeHandler);
+
+    // Close button handler (usa requestClose)
+    document.getElementById('activity-panel-close').addEventListener('click', () => requestClose());
 
     // Mode-specific handlers
     if (isView) {
       initViewModeHandlers(activity, navigateBack);
     } else {
-      initFormModeHandlers(mode, date, activity, navigateBack);
+      initFormModeHandlers(mode, date, activity, navigateBack, requestClose);
     }
   }
 
@@ -740,14 +868,14 @@
   /**
    * Initialize form mode handlers (save, URL management, file previews)
    */
-  function initFormModeHandlers(mode, date, activity, navigateBack) {
+  function initFormModeHandlers(mode, date, activity, navigateBack, requestClose) {
     const isCreate = mode === 'create';
     let newFiles = []; // Track newly selected files
     let removedAttachmentPaths = []; // Track removed existing attachments
     let locationData = activity?.location || null; // Track Google Maps location
 
-    // Cancel button
-    document.getElementById('activity-cancel-btn').addEventListener('click', () => navigateBack());
+    // Cancel button (usa SafeClose)
+    document.getElementById('activity-cancel-btn').addEventListener('click', () => requestClose());
 
     // Time pickers (Google Calendar-style)
     initTimePickers();

@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.31.1 - 2026-03-07
+
+### Novità
+- **Skeleton loading**: la pagina viaggio mostra un'animazione di caricamento elegante al posto della schermata blu "Loading..."
+- **Protezione modifiche non salvate (SafeClose)**: chiudendo il pannello attività con modifiche in corso, viene mostrata una conferma per evitare perdite accidentali
+- **Categorie treni e bus nelle attività**: treni e bus ora appaiono con icona, colore e filtro dedicati nella tab Attività
+
+### Miglioramenti
+- Card treni e bus nella vista card attività ora seguono lo stesso layout delle card voli (badge numero, orario partenza, percorso)
+- Colori treni (arancione) e bus (viola) allineati tra tab Attività e card prenotazioni
+- Le icone nei tab si nascondono solo quando ci sono 4+ tab (prima sparivano sempre su mobile)
+
+### Fix
+- Corretto errore "updatePreview is not defined" al caricamento PDF dal pulsante "+"
+- Corretta categorizzazione treni/bus nella tab Attività (prima apparivano come "luogo")
+
 ## 0.31 - 2026-03-07
 
 ### Novità

@@ -164,6 +164,12 @@
     "dateExtendEnd": "Move end from {old} to {new}?",
     "dateExtendConfirm": "Update dates",
     "dateExtendSkip": "Keep current dates",
+    "dateShrinkTitle": "Trip dates changed",
+    "dateShrinkMessage": "Deleting this booking will change the trip dates.",
+    "dateShrinkStart": "Start: from {old} to {new}",
+    "dateShrinkEnd": "End: from {old} to {new}",
+    "dateShrinkConfirm": "Update dates",
+    "dateShrinkSkip": "Keep current dates",
     "trains": "Trains",
     "buses": "Buses",
     "noTrains": "No trains",
@@ -529,7 +535,10 @@
     "locationNotFound": "Place not found",
     "reviews": "reviews",
     "openInMaps": "Open in Google Maps",
-    "navigateTo": "Directions"
+    "navigateTo": "Directions",
+    "unsavedChanges": "You have unsaved changes. Do you want to exit anyway?",
+    "keepEditing": "Keep editing",
+    "discardExit": "Discard and exit"
   },
   "share": {
     "linkTitle": "Share link",

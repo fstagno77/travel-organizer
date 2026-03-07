@@ -63,6 +63,7 @@ Categoria dell'attivita', usata per l'icona e la visualizzazione nel frontend. L
 | `museo` | Musei, mostre, gallerie | Edificio classico |
 | `attrazione` | Attrazioni turistiche, monumenti | Stella |
 | `treno` | Trasferimenti in treno | Treno |
+| `bus` | Trasferimenti in bus | Bus |
 | `luogo` | Categoria generica (default) | Segnaposto |
 
 La categoria viene **rilevata automaticamente** dal nome e dalla descrizione dell'attivita' tramite un sistema di keywords. Ad esempio:

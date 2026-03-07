@@ -34,7 +34,7 @@ exports.handler = async (event, context) => {
   const { supabase, user } = authResult;
 
   try {
-    const { tripId, type, itemId } = JSON.parse(event.body);
+    const { tripId, type, itemId, skipDateUpdate } = JSON.parse(event.body);
 
     if (!tripId) {
       return {
@@ -143,8 +143,8 @@ exports.handler = async (event, context) => {
       tripData.buses = tripData.buses.filter(b => b.id !== itemId);
     }
 
-    // Update trip dates based on remaining flights and hotels
-    updateTripDates(tripData);
+    // Update trip dates based on remaining bookings
+    if (!skipDateUpdate) updateTripDates(tripData);
 
     // Save updated trip (RLS ensures user can only update own trips)
     const { error: updateError } = await supabase

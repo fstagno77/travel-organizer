@@ -115,9 +115,13 @@ Al click sul pulsante filtro, si apre un dropdown con le pill delle categorie. O
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
         Attrazione
       </button>
-      <button style="display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px; font-size: 14px; border-radius: 6px; border: none; background: linear-gradient(135deg, #f87171, #ef4444); color: white; cursor: pointer; font-weight: 500;">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+      <button style="display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px; font-size: 14px; border-radius: 6px; border: none; background: linear-gradient(135deg, #f5a54d, #e67e22); color: white; cursor: pointer; font-weight: 500;">
+        <span style="font-family: 'Material Symbols Outlined'; font-size: 14px;">train</span>
         Treno
+      </button>
+      <button style="display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px; font-size: 14px; border-radius: 6px; border: none; background: linear-gradient(135deg, #b87fd1, #8e44ad); color: white; cursor: pointer; font-weight: 500;">
+        <span style="font-family: 'Material Symbols Outlined'; font-size: 14px;">directions_bus</span>
+        Bus
       </button>
       <button style="display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px; font-size: 14px; border-radius: 6px; border: none; background: linear-gradient(135deg, #22d3ee, #06b6d4); color: white; cursor: pointer; font-weight: 500;">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
@@ -191,6 +195,8 @@ La timeline mostra **tutti i giorni** del viaggio, anche quelli senza eventi pro
 - **Hotel check-in**: giorno di ingresso nella struttura
 - **Hotel stay** (pernottamento): giorni intermedi di permanenza
 - **Hotel check-out**: giorno di uscita dalla struttura
+- **Treni**: partenze in treno programmate per quel giorno
+- **Bus**: partenze in bus programmate per quel giorno
 - **Attivita custom**: attivita personalizzate create dall'utente
 
 ### Vista lista (default)
@@ -329,6 +335,8 @@ All'interno di ciascun giorno, gli eventi seguono un ordinamento a tre livelli:
 |------|----------|-------------|
 | Check-out | 0 | Massima priorita (prima azione della giornata) |
 | Volo | 1 | Spostamenti aerei |
+| Treno | 1.5 | Spostamenti in treno |
+| Bus | 1.5 | Spostamenti in bus |
 | Check-in | 2 | Arrivo in struttura |
 | Stay | 3 | Pernottamento in corso |
 | Attivita | 4 | Attivita personalizzate |
@@ -393,7 +401,8 @@ Ogni categoria di evento ha un **gradiente di sfondo**, un **colore di bordo** e
 | **Hotel** | `#ecfdf5` → `#f0fdfa` | `#a7f3d0` | `#34d399` → `#14b8a6` |
 | **Museo** | `#faf5ff` | `#e9d5ff` | `#c084fc` → `#a855f7` |
 | **Attrazione** | `#fdf2f8` | `#fbcfe8` | `#f472b6` → `#ec4899` |
-| **Treno** | `#fef2f2` | `#fecaca` | `#f87171` → `#ef4444` |
+| **Treno** | `#fef6ee` → `#fde8d0` | `#f9c88e` | `#f5a54d` → `#e67e22` |
+| **Bus** | `#f5eef8` → `#e8d5f0` | `#d0aae0` | `#b87fd1` → `#8e44ad` |
 | **Luogo** | `#ecfeff` | `#a5f3fc` | `#22d3ee` → `#06b6d4` |
 
 ### Card CSS
@@ -524,7 +533,8 @@ Ogni evento nel calendario e preceduto da un indicatore verticale colorato (`4px
 | <span style="display:inline-block;width:4px;height:14px;border-radius:9999px;background:#10b981;vertical-align:middle;"></span> | `#10b981` | Hotel |
 | <span style="display:inline-block;width:4px;height:14px;border-radius:9999px;background:#a855f7;vertical-align:middle;"></span> | `#a855f7` | Museo |
 | <span style="display:inline-block;width:4px;height:14px;border-radius:9999px;background:#ec4899;vertical-align:middle;"></span> | `#ec4899` | Attrazione |
-| <span style="display:inline-block;width:4px;height:14px;border-radius:9999px;background:#ef4444;vertical-align:middle;"></span> | `#ef4444` | Treno |
+| <span style="display:inline-block;width:4px;height:14px;border-radius:9999px;background:#e67e22;vertical-align:middle;"></span> | `#e67e22` | Treno |
+| <span style="display:inline-block;width:4px;height:14px;border-radius:9999px;background:#8e44ad;vertical-align:middle;"></span> | `#8e44ad` | Bus |
 | <span style="display:inline-block;width:4px;height:14px;border-radius:9999px;background:#06b6d4;vertical-align:middle;"></span> | `#06b6d4` | Luogo |
 
 ### Classi CSS calendario

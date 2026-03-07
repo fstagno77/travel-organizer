@@ -164,6 +164,12 @@
     "dateExtendEnd": "Posticipare la fine da {old} a {new}?",
     "dateExtendConfirm": "Aggiorna date",
     "dateExtendSkip": "Mantieni date attuali",
+    "dateShrinkTitle": "Date del viaggio modificate",
+    "dateShrinkMessage": "Eliminando questa prenotazione, le date del viaggio cambieranno.",
+    "dateShrinkStart": "Inizio: da {old} a {new}",
+    "dateShrinkEnd": "Fine: da {old} a {new}",
+    "dateShrinkConfirm": "Aggiorna date",
+    "dateShrinkSkip": "Mantieni date attuali",
     "trains": "Treni",
     "buses": "Bus",
     "noTrains": "Nessun treno",
@@ -529,7 +535,10 @@
     "locationNotFound": "Luogo non trovato",
     "reviews": "recensioni",
     "openInMaps": "Apri in Google Maps",
-    "navigateTo": "Naviga"
+    "navigateTo": "Naviga",
+    "unsavedChanges": "Hai modifiche non salvate. Vuoi uscire comunque?",
+    "keepEditing": "Continua a modificare",
+    "discardExit": "Esci e scarta"
   },
   "share": {
     "linkTitle": "Link di condivisione",
