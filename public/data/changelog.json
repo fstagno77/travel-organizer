@@ -1,6 +1,18 @@
 {
   "versions": [
     {
+      "version": "0.31.2",
+      "date": "2026-03-08",
+      "changes": {
+        "it": [
+          "Ripristinato layout card viaggio su mobile con data e freccia allineati"
+        ],
+        "en": [
+          "Restored trip card layout on mobile with date and arrow properly aligned"
+        ]
+      }
+    },
+    {
       "version": "0.31.1",
       "date": "2026-03-07",
       "changes": {

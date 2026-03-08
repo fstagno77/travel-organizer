@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.31.2 - 2026-03-08
+
+### Fix
+- Ripristinato layout card viaggio su mobile: data a sinistra e freccia a destra come su desktop
+
 ## 0.31.1 - 2026-03-07
 
 ### Novità

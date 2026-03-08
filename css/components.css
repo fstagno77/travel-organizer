@@ -2711,11 +2711,7 @@ input[type="time"].form-input {
 
 @media (max-width: 576px) {
   .trip-card-content {
-    justify-content: center;
-  }
-
-  .trip-card-arrow {
-    display: none;
+    justify-content: space-between;
   }
 }
 
