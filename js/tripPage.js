@@ -799,11 +799,9 @@
     const indexAttrMap = { flight: 'flightIndex', hotel: 'hotelIndex', train: 'trainIndex', bus: 'busIndex' };
     const indexAttr = indexAttrMap[type] || 'flightIndex';
     const index = btn.dataset[indexAttr];
-    // DEBUG — rimuovere dopo test mobile
-    if (type === 'train' || type === 'bus') utils.showToast(`[DBG] toggle ${type} idx=${index}`, 'info');
     const detailsId = `${type}-details-${index}`;
     const details = document.getElementById(detailsId);
-    if (!details) { if (type === 'train' || type === 'bus') utils.showToast(`[DBG] #${detailsId} NOT FOUND`, 'error'); return; }
+    if (!details) return;
 
     // Lazy render details on first expand
     if (!details.dataset.rendered) {
