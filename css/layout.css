@@ -893,6 +893,13 @@ body:has(> .modal-overlay.active) .header {
   min-height: 64px;
 }
 
+/* PWA standalone su iOS: la sidebar va sotto la status bar */
+@media (display-mode: standalone) {
+  .sidebar-header {
+    padding-top: calc(env(safe-area-inset-top, 0px) + var(--spacing-3));
+  }
+}
+
 .sidebar-toggle {
   display: flex;
   align-items: center;
