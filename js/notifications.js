@@ -41,10 +41,10 @@ const notificationsPage = (() => {
         ? bookingsData.bookings.map(b => ({ ...b, _kind: 'booking' }))
         : [];
 
-      // Show mark-all-read if there are unread notifications
-      if (notifData?.unreadCount > 0) {
-        const markAllBtn = document.getElementById('mark-all-read-btn');
-        if (markAllBtn) markAllBtn.style.display = '';
+      // Abilita il pulsante solo se ci sono notifiche non lette
+      const markAllBtn = document.getElementById('mark-all-read-btn');
+      if (markAllBtn) {
+        markAllBtn.disabled = !(notifData?.unreadCount > 0);
       }
 
       if (!notifications.length && !bookings.length) {
@@ -336,7 +336,8 @@ const notificationsPage = (() => {
         el.classList.remove('notification-item--unread');
         el.querySelector('.notification-unread-dot')?.remove();
       });
-      document.getElementById('mark-all-read-btn')?.setAttribute('style', 'display: none;');
+      const markBtn = document.getElementById('mark-all-read-btn');
+      if (markBtn) markBtn.disabled = true;
 
       if (window.navigation) navigation.refreshPendingCount();
     } catch (err) {
