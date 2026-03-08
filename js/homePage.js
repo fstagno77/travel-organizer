@@ -488,6 +488,102 @@ const homePage = (function() {
   }
 
   /**
+   * Trova il prossimo evento dopo oggi per un viaggio
+   */
+  function collectNextEvent(tripId, todayTrips, lang) {
+    const d = getToday();
+    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const cats = window.activityCategories;
+    const tripData = todayTrips.find(t => t.id === tripId);
+    if (!tripData) return null;
+
+    const futureEvents = [];
+
+    // Voli futuri
+    for (const flight of (tripData.flights || [])) {
+      if (flight.date > today) {
+        const depCity = flight.departure?.city || '';
+        const arrCity = flight.arrival?.city || '';
+        const cat = cats?.CATEGORIES?.volo;
+        futureEvents.push({
+          type: 'flight',
+          id: flight.id,
+          date: flight.date,
+          time: flight.departureTime || '',
+          title: `${depCity} → ${arrCity}`,
+          description: flight.flightNumber || '',
+          location: flight.departure?.airport || '',
+          category: cat || null
+        });
+      }
+    }
+
+    // Hotel check-in futuri
+    for (const hotel of (tripData.hotels || [])) {
+      const checkInDate = hotel.checkIn?.date;
+      if (checkInDate && checkInDate > today) {
+        const cat = cats?.CATEGORIES?.hotel;
+        futureEvents.push({
+          type: 'hotel',
+          id: hotel.id,
+          date: checkInDate,
+          time: hotel.checkIn?.time || '15:00',
+          title: hotel.name || 'Hotel',
+          description: i18n.t('hotel.checkIn') || 'Check-in',
+          location: hotel.address?.city || hotel.address?.fullAddress || '',
+          category: cat || null
+        });
+      }
+    }
+
+    // Attivita future
+    for (const activity of (tripData.activities || [])) {
+      if (activity.date > today) {
+        const catKey = cats?.detectCategory?.(activity.name, activity.description) || 'luogo';
+        const cat = cats?.CATEGORIES?.[activity.category || catKey];
+        futureEvents.push({
+          type: 'activity',
+          id: activity.id,
+          date: activity.date,
+          time: activity.startTime || '',
+          title: activity.name || '',
+          description: activity.description || '',
+          location: activity.address || '',
+          category: cat || null
+        });
+      }
+    }
+
+    if (futureEvents.length === 0) return null;
+
+    // Ordina per data e orario, prendi il primo
+    futureEvents.sort((a, b) => {
+      const dateCmp = a.date.localeCompare(b.date);
+      if (dateCmp !== 0) return dateCmp;
+      if (!a.time && b.time) return 1;
+      if (a.time && !b.time) return -1;
+      return (a.time || '').localeCompare(b.time || '');
+    });
+
+    const next = futureEvents[0];
+
+    // Calcola label data relativa
+    const eventDate = new Date(next.date + 'T00:00:00');
+    const todayDate = new Date(today + 'T00:00:00');
+    const diffDays = Math.round((eventDate - todayDate) / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 1) {
+      next.dateLabel = i18n.t('home.tomorrow') || 'Domani';
+    } else if (diffDays <= 7) {
+      next.dateLabel = (i18n.t('home.inDays') || 'Tra {n} giorni').replace('{n}', diffDays);
+    } else {
+      next.dateLabel = utils.formatDate(next.date, lang, { day: 'numeric', month: 'short' });
+    }
+
+    return next;
+  }
+
+  /**
    * Get color config for event type
    * @param {string} type
    * @returns {object}
@@ -547,6 +643,142 @@ const homePage = (function() {
 
       window.location.href = url.toString();
     });
+  }
+
+  /**
+   * Renderizza la sezione summary quando non ci sono eventi oggi:
+   * progress bar, riepilogo numerico, prossimo evento
+   */
+  function renderTripSummary(trip, todayTrips, lang) {
+    const tripData = todayTrips.find(t => t.id === trip.id);
+
+    // Progress: Giorno X di Y
+    const today = getToday();
+    const start = new Date(trip.startDate + 'T00:00:00');
+    const end = new Date(trip.endDate + 'T00:00:00');
+    const totalDays = Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1;
+    const currentDay = Math.min(Math.round((today - start) / (1000 * 60 * 60 * 24)) + 1, totalDays);
+    const progressPct = Math.round((currentDay / totalDays) * 100);
+    const progressLabel = (i18n.t('home.dayProgress') || 'Giorno {current} di {total}')
+      .replace('{current}', currentDay)
+      .replace('{total}', totalDays);
+
+    // Riepilogo numerico
+    const flightCount = (tripData?.flights || []).length;
+    const hotelCount = (tripData?.hotels || []).length;
+    const activityCount = (tripData?.activities || []).length;
+
+    const statItems = [];
+    if (flightCount > 0) {
+      statItems.push(`
+        <div class="current-trip-stat">
+          <div class="current-trip-stat-icon" style="background: linear-gradient(135deg, #3b82f6, #4f46e5)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.4-.1.9.3 1.1L11 12l-2 3H6l-1 1 3 2 2 3 1-1v-3l3-2 3.7 7.3c.2.4.7.5 1.1.3l.5-.3c.4-.2.6-.6.5-1.1z"/>
+            </svg>
+          </div>
+          <span class="current-trip-stat-count">${flightCount}</span>
+          <span class="current-trip-stat-label">${i18n.t('trip.flights') || 'Voli'}</span>
+        </div>
+      `);
+    }
+    if (hotelCount > 0) {
+      statItems.push(`
+        <div class="current-trip-stat">
+          <div class="current-trip-stat-icon" style="background: linear-gradient(135deg, #34d399, #14b8a6)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 7v11a2 2 0 002 2h14a2 2 0 002-2V7"></path>
+              <path d="M3 14h18"></path>
+              <path d="M7 10h0"></path>
+              <path d="M3 7l9-4 9 4"></path>
+            </svg>
+          </div>
+          <span class="current-trip-stat-count">${hotelCount}</span>
+          <span class="current-trip-stat-label">Hotel</span>
+        </div>
+      `);
+    }
+    if (activityCount > 0) {
+      statItems.push(`
+        <div class="current-trip-stat">
+          <div class="current-trip-stat-icon" style="background: linear-gradient(135deg, #a855f7, #7c3aed)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polygon points="10 8 16 12 10 16 10 8"></polygon>
+            </svg>
+          </div>
+          <span class="current-trip-stat-count">${activityCount}</span>
+          <span class="current-trip-stat-label">${i18n.t('trip.activities') || 'Attività'}</span>
+        </div>
+      `);
+    }
+
+    // Prossimo evento
+    const nextEvent = collectNextEvent(trip.id, todayTrips, lang);
+    let nextEventHtml = '';
+    if (nextEvent) {
+      const cat = nextEvent.category;
+      const bg = cat?.cardBg || 'linear-gradient(135deg, #faf5ff, #faf5ff)';
+      const border = cat?.cardBorder || '#e9d5ff';
+      const iconGradient = cat?.gradient || 'linear-gradient(135deg, #a855f7, #7c3aed)';
+      const iconHtml = cat?.svg || '<span class="material-symbols-outlined" style="font-size:16px">event</span>';
+
+      const tabMap = { flight: 'flights', hotel: 'hotels', activity: 'activities' };
+      const nextTab = tabMap[nextEvent.type] || 'activities';
+
+      nextEventHtml = `
+        <div class="current-trip-next">
+          <h4 class="current-trip-next-label">${i18n.t('home.nextEvent') || 'Prossimo'} &middot; ${utils.escapeHtml(nextEvent.dateLabel)}</h4>
+          <div class="current-event-card" style="background: ${bg}; border-color: ${border}"
+               data-event-type="${nextEvent.type}" data-event-id="${nextEvent.id || ''}" data-event-tab="${nextTab}">
+            <div class="current-event-icon" style="background: ${iconGradient}">
+              <span style="color: white; display: flex; align-items: center; justify-content: center">${iconHtml}</span>
+            </div>
+            <div class="current-event-info">
+              <div class="current-event-header-row">
+                ${nextEvent.time ? `<span class="current-event-time">${utils.escapeHtml(nextEvent.time)}</span><span class="current-event-dot">&middot;</span>` : ''}
+                <span class="current-event-title">${utils.escapeHtml(nextEvent.title)}</span>
+              </div>
+              ${nextEvent.description ? `<span class="current-event-description">${utils.escapeHtml(nextEvent.description)}</span>` : ''}
+              ${nextEvent.location ? `
+                <div class="current-event-location">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                    <circle cx="12" cy="10" r="3"></circle>
+                  </svg>
+                  <span>${utils.escapeHtml(nextEvent.location)}</span>
+                </div>
+              ` : ''}
+            </div>
+            <div class="current-event-arrow">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.4">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="current-trip-summary">
+        <div class="current-trip-progress">
+          <div class="current-trip-progress-header">
+            <span class="current-trip-progress-label">${progressLabel}</span>
+            <span class="current-trip-progress-pct">${progressPct}%</span>
+          </div>
+          <div class="current-trip-progress-bar">
+            <div class="current-trip-progress-fill" style="width: ${progressPct}%"></div>
+          </div>
+        </div>
+        ${statItems.length > 0 ? `
+          <div class="current-trip-stats">
+            ${statItems.join('')}
+          </div>
+        ` : ''}
+        ${nextEventHtml}
+      </div>
+    `;
   }
 
   /**
@@ -650,6 +882,7 @@ const homePage = (function() {
               </div>
             </div>
             <div class="current-trip-arrow">
+              <span class="current-trip-arrow-label">${i18n.t('home.viewFullItinerary') || 'Visualizza Itinerario Completo'}</span>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="5" y1="12" x2="19" y2="12"></line>
                 <polyline points="12 5 19 12 12 19"></polyline>
@@ -661,7 +894,7 @@ const homePage = (function() {
               <h4 class="current-trip-today-label">${i18n.t('home.todayLabel') || 'Oggi'} &middot; ${todayStr}</h4>
               <div class="current-trip-events">${eventsHtml}</div>
             </div>
-          ` : ''}
+          ` : renderTripSummary(trip, todayTrips, lang)}
           <div class="current-trip-cta">
             <span>${i18n.t('home.viewFullItinerary') || 'Visualizza Itinerario Completo'}</span>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

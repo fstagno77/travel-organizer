@@ -385,19 +385,211 @@ const adminPage = {
   },
 
   async confirmDeleteUser(userId, username) {
-    const confirmed = await this.confirm(
-      `Eliminare l'utente <strong>${this.esc(username)}</strong>?<br><br>Verranno eliminati tutti i dati: viaggi, viaggiatori, prenotazioni pendenti e file.`,
-      'Elimina utente'
-    );
-    if (!confirmed) return;
-
+    // Step 1: pre-check — raccoglie tutte le dipendenze
+    let checkData;
     try {
-      await this.api('delete-user', { userId });
-      this.toast('Utente eliminato', 'success');
-      this.renderUsers();
+      const overlay = document.createElement('div');
+      overlay.className = 'admin-modal-overlay';
+      overlay.id = 'delete-check-loading';
+      overlay.innerHTML = `<div class="admin-modal" style="max-width:360px;text-align:center;padding:32px">
+        <span class="spinner" style="display:inline-block;width:28px;height:28px;margin-bottom:12px"></span>
+        <p style="margin:0;color:var(--color-gray-600)">Analisi dipendenze utente...</p>
+      </div>`;
+      document.body.appendChild(overlay);
+
+      checkData = await this.api('pre-delete-check', { userId });
     } catch (err) {
-      this.toast('Errore: ' + err.message, 'error');
+      document.getElementById('delete-check-loading')?.remove();
+      this.toast('Errore analisi: ' + err.message, 'error');
+      return;
     }
+    document.getElementById('delete-check-loading')?.remove();
+
+    // Step 2: mostra modale con checklist dettagliata
+    const c = checkData.counts;
+    const hasImpact = c.impactedCollaborators > 0 || c.collaboratingOn > 0 || c.receivedInvitations > 0;
+
+    // Costruisce le sezioni della checklist
+    let sections = '';
+
+    // Viaggi di proprietà
+    sections += `<div class="delete-check-section">
+      <div class="delete-check-icon">${c.trips > 0 ? '⚠️' : '✅'}</div>
+      <div class="delete-check-content">
+        <strong>${c.trips} viaggi di proprietà</strong>
+        ${c.trips > 0 ? '<span class="delete-check-badge delete-check-badge-danger">Verranno eliminati</span>' : '<span class="delete-check-badge">Nessuno</span>'}
+        ${checkData.ownedTrips.length > 0 ? `<ul class="delete-check-list">${checkData.ownedTrips.map(t =>
+          `<li>${this.esc(t.title)} <span class="delete-check-meta">${t.flights}V ${t.hotels}H ${t.activities}A</span></li>`
+        ).join('')}</ul>` : ''}
+      </div>
+    </div>`;
+
+    // Collaboratori impattati
+    sections += `<div class="delete-check-section">
+      <div class="delete-check-icon">${c.impactedCollaborators > 0 ? '⚠️' : '✅'}</div>
+      <div class="delete-check-content">
+        <strong>${c.impactedCollaborators} collaboratori impattati</strong>
+        ${c.impactedCollaborators > 0 ? '<span class="delete-check-badge delete-check-badge-warning">Perderanno accesso</span>' : '<span class="delete-check-badge">Nessuno</span>'}
+        ${checkData.impactedCollaborators.length > 0 ? `<ul class="delete-check-list">${checkData.impactedCollaborators.map(ic =>
+          `<li>${this.esc(ic.username || ic.email)} → ${this.esc(ic.tripTitle)} <span class="delete-check-meta">${ic.role}${ic.type === 'invitation' ? ' (invito)' : ''}</span></li>`
+        ).join('')}</ul>` : ''}
+      </div>
+    </div>`;
+
+    // Viaggi dove collabora
+    sections += `<div class="delete-check-section">
+      <div class="delete-check-icon">${c.collaboratingOn > 0 ? 'ℹ️' : '✅'}</div>
+      <div class="delete-check-content">
+        <strong>${c.collaboratingOn} collaborazioni su viaggi altrui</strong>
+        ${c.collaboratingOn > 0 ? '<span class="delete-check-badge delete-check-badge-info">Verrà rimosso</span>' : '<span class="delete-check-badge">Nessuna</span>'}
+        ${checkData.collaboratingOn.length > 0 ? `<ul class="delete-check-list">${checkData.collaboratingOn.map(co =>
+          `<li>${this.esc(co.title)} <span class="delete-check-meta">di ${this.esc(co.ownerUsername)}, ${co.role}</span></li>`
+        ).join('')}</ul>` : ''}
+      </div>
+    </div>`;
+
+    // Inviti pending ricevuti
+    if (c.receivedInvitations > 0) {
+      sections += `<div class="delete-check-section">
+        <div class="delete-check-icon">ℹ️</div>
+        <div class="delete-check-content">
+          <strong>${c.receivedInvitations} inviti pending ricevuti</strong>
+          <span class="delete-check-badge delete-check-badge-info">Verranno revocati</span>
+          <ul class="delete-check-list">${checkData.receivedInvitations.map(ri =>
+            `<li>${this.esc(ri.tripTitle)} <span class="delete-check-meta">${ri.role}</span></li>`
+          ).join('')}</ul>
+        </div>
+      </div>`;
+    }
+
+    // Dati personali
+    sections += `<div class="delete-check-section">
+      <div class="delete-check-icon">🗑️</div>
+      <div class="delete-check-content">
+        <strong>Dati personali</strong>
+        <span class="delete-check-badge delete-check-badge-danger">Cancellazione definitiva</span>
+        <ul class="delete-check-list">
+          <li>${c.travelers} profili viaggiatore</li>
+          <li>${c.pendingBookings} prenotazioni pendenti</li>
+          <li>${c.notifications} notifiche</li>
+          <li>${c.storageFiles} file PDF in storage</li>
+        </ul>
+      </div>
+    </div>`;
+
+    // Azioni di cleanup
+    const cleanupActions = [];
+    if (c.impactedCollaborators > 0) cleanupActions.push('Notifica collaboratori impattati');
+    if (c.receivedInvitations > 0) cleanupActions.push('Revoca inviti pending ricevuti');
+    if (c.collaboratingOn > 0) cleanupActions.push('Notifica owner dei viaggi condivisi');
+    if (c.storageFiles > 0) cleanupActions.push('Pulizia file da Supabase Storage');
+    cleanupActions.push('Cancellazione account e cascade dati');
+    cleanupActions.push('Registrazione in audit log');
+
+    const cleanupHtml = `<div class="delete-check-cleanup">
+      <strong>Azioni di cleanup automatiche:</strong>
+      <ol>${cleanupActions.map(a => `<li>${a}</li>`).join('')}</ol>
+    </div>`;
+
+    const modalHtml = `
+      <div class="admin-modal-overlay" id="delete-user-modal">
+        <div class="admin-modal delete-user-check-modal">
+          <div class="admin-modal-header">
+            <h3>Eliminazione utente: ${this.esc(username)}</h3>
+            <button class="admin-modal-close" id="delete-modal-close">&times;</button>
+          </div>
+          <div class="admin-modal-body">
+            <div class="delete-check-user-info">
+              <span>${this.esc(checkData.user.email)}</span>
+              <span>Registrato: ${this.fmtDate(checkData.user.created_at)}</span>
+            </div>
+            ${hasImpact ? '<div class="delete-check-warning">Questa operazione impatta altri utenti. Verranno notificati automaticamente.</div>' : ''}
+            <div class="delete-check-sections">${sections}</div>
+            ${cleanupHtml}
+          </div>
+          <div class="admin-modal-footer">
+            <button class="admin-btn admin-btn-secondary" id="delete-modal-cancel">Annulla</button>
+            <button class="admin-btn admin-btn-danger" id="delete-modal-confirm">
+              Elimina definitivamente
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    // Bind eventi
+    const modal = document.getElementById('delete-user-modal');
+    const close = () => modal?.remove();
+
+    document.getElementById('delete-modal-close').addEventListener('click', close);
+    document.getElementById('delete-modal-cancel').addEventListener('click', close);
+    modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+
+    document.getElementById('delete-modal-confirm').addEventListener('click', async () => {
+      const btn = document.getElementById('delete-modal-confirm');
+      btn.disabled = true;
+      btn.textContent = 'Eliminazione in corso...';
+
+      try {
+        await this.api('delete-user', { userId });
+        close();
+        this.showDeleteSummary(username, checkData);
+        this.renderUsers();
+      } catch (err) {
+        btn.disabled = false;
+        btn.textContent = 'Elimina definitivamente';
+        this.toast('Errore: ' + err.message, 'error');
+      }
+    });
+  },
+
+  /**
+   * Modale riepilogo post-cancellazione
+   */
+  showDeleteSummary(username, checkData) {
+    const c = checkData.counts;
+    const items = [];
+    if (c.trips > 0) items.push(`${c.trips} viaggi eliminati`);
+    if (c.impactedCollaborators > 0) items.push(`${c.impactedCollaborators} collaboratori notificati`);
+    if (c.collaboratingOn > 0) items.push(`${c.collaboratingOn} collaborazioni rimosse`);
+    if (c.receivedInvitations > 0) items.push(`${c.receivedInvitations} inviti revocati`);
+    if (c.travelers > 0) items.push(`${c.travelers} profili viaggiatore rimossi`);
+    if (c.pendingBookings > 0) items.push(`${c.pendingBookings} prenotazioni pendenti rimosse`);
+    if (c.notifications > 0) items.push(`${c.notifications} notifiche rimosse`);
+    if (c.storageFiles > 0) items.push(`${c.storageFiles} file PDF rimossi dallo storage`);
+
+    const html = `
+      <div class="admin-modal-overlay" id="delete-summary-modal">
+        <div class="admin-modal" style="max-width:440px">
+          <div class="admin-modal-header">
+            <h3>Utente eliminato</h3>
+            <button class="admin-modal-close" id="summary-modal-close">&times;</button>
+          </div>
+          <div class="admin-modal-body">
+            <div class="delete-summary-header">
+              <div class="delete-summary-check">&#10003;</div>
+              <strong>${this.esc(username)}</strong> (${this.esc(checkData.user.email)})
+            </div>
+            <div class="delete-summary-list">
+              ${items.map(i => `<div class="delete-summary-item">&#10003; ${i}</div>`).join('')}
+              <div class="delete-summary-item">&#10003; Account rimosso da Supabase Auth</div>
+              <div class="delete-summary-item">&#10003; Azione registrata in audit log</div>
+            </div>
+          </div>
+          <div class="admin-modal-footer">
+            <button class="admin-btn admin-btn-primary" id="summary-modal-ok">Chiudi</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', html);
+    const modal = document.getElementById('delete-summary-modal');
+    const closeModal = () => modal?.remove();
+    document.getElementById('summary-modal-close').addEventListener('click', closeModal);
+    document.getElementById('summary-modal-ok').addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
   },
 
   // ============================================
@@ -1862,6 +2054,58 @@ const adminPage = {
   // Audit Log
   // ============================================
 
+  /**
+   * Formatta i dettagli audit in HTML leggibile
+   */
+  formatAuditDetails(action, details) {
+    if (!details) return '<span style="color:var(--color-gray-400)">Nessun dettaglio</span>';
+    const items = [];
+
+    // Campi comuni
+    if (details.username) items.push(`<strong>Username:</strong> ${this.esc(details.username)}`);
+    if (details.email) items.push(`<strong>Email:</strong> ${this.esc(details.email)}`);
+    if (details.title) items.push(`<strong>Titolo:</strong> ${this.esc(details.title)}`);
+
+    // Specifici per delete_user
+    if (action === 'delete_user') {
+      if (details.tripsDeleted != null) items.push(`<strong>Viaggi eliminati:</strong> ${details.tripsDeleted}`);
+      if (details.collaboratorsNotified != null) items.push(`<strong>Collaboratori notificati:</strong> ${details.collaboratorsNotified}`);
+      if (details.storageCleanup) items.push(`<strong>Storage:</strong> pulito`);
+    }
+
+    // Specifici per update_trip
+    if (details.fields) items.push(`<strong>Campi modificati:</strong> ${Array.isArray(details.fields) ? details.fields.join(', ') : details.fields}`);
+
+    // Specifici per clear_pdf_logs
+    if (details.deletedCount != null) items.push(`<strong>Record eliminati:</strong> ${details.deletedCount}`);
+
+    // Fallback: mostra campi non gestiti
+    const knownKeys = ['username', 'email', 'title', 'tripsDeleted', 'collaboratorsNotified', 'storageCleanup', 'fields', 'deletedCount'];
+    const extraKeys = Object.keys(details).filter(k => !knownKeys.includes(k));
+    for (const k of extraKeys) {
+      const val = typeof details[k] === 'object' ? JSON.stringify(details[k]) : details[k];
+      items.push(`<strong>${this.esc(k)}:</strong> ${this.esc(String(val))}`);
+    }
+
+    return items.length > 0 ? items.join('<br>') : '<span style="color:var(--color-gray-400)">Nessun dettaglio</span>';
+  },
+
+  /**
+   * Etichetta leggibile per le azioni audit
+   */
+  auditActionLabel(action) {
+    const labels = {
+      'delete_user': 'Utente eliminato',
+      'delete_trip': 'Viaggio eliminato',
+      'update_trip': 'Viaggio modificato',
+      'delete_pending_booking': 'Prenotazione eliminata',
+      'revoke_share': 'Condivisione revocata',
+      'clear_pdf_logs': 'Log PDF cancellati',
+      'smartparse_delete_template': 'Template eliminato'
+    };
+    return labels[action] || action;
+  },
+
   async renderAudit(page = 1, pageSize = 10) {
     const data = await this.api('get-audit-log', { page, pageSize });
     const main = document.querySelector('.admin-content');
@@ -1879,17 +2123,18 @@ const adminPage = {
         <div class="admin-table-wrapper">
           <table class="admin-table">
             <thead>
-              <tr><th>Azione</th><th>Tipo</th><th>ID Entit\u00e0</th><th>Dettagli</th><th>Data</th></tr>
+              <tr><th>Azione</th><th>Tipo</th><th>ID Entità</th><th>Riepilogo</th><th>Data</th></tr>
             </thead>
             <tbody>
-              ${data.logs.length ? data.logs.map(l => `
-                <tr>
-                  <td><span class="admin-badge-status admin-badge-neutral">${this.esc(l.action)}</span></td>
+              ${data.logs.length ? data.logs.map((l, i) => `
+                <tr class="admin-row-clickable audit-row" data-audit-idx="${i}" title="Clicca per i dettagli">
+                  <td><span class="admin-badge-status admin-badge-neutral">${this.esc(this.auditActionLabel(l.action))}</span></td>
                   <td>${this.esc(l.entity_type)}</td>
                   <td style="font-family:var(--font-family-mono);font-size:11px">${this.esc((l.entity_id || '-').substring(0, 12))}</td>
-                  <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${l.details ? this.esc(JSON.stringify(l.details)) : '-'}</td>
+                  <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${l.details?.username ? this.esc(l.details.username) : l.details?.title ? this.esc(l.details.title) : '-'}</td>
                   <td style="white-space:nowrap">${this.fmtDate(l.created_at)}</td>
                 </tr>
+                <tr class="audit-detail-row" id="audit-detail-${i}" style="display:none"><td colspan="5"></td></tr>
               `).join('') : '<tr><td colspan="5" class="admin-table-empty">Nessuna azione registrata</td></tr>'}
             </tbody>
           </table>
@@ -1897,6 +2142,37 @@ const adminPage = {
         ${this.pagination(data.total, page, pageSize)}
       </div>
     `;
+
+    // Click per espandere dettagli
+    document.querySelectorAll('.audit-row').forEach(row => {
+      row.addEventListener('click', () => {
+        const idx = row.dataset.auditIdx;
+        const detailRow = document.getElementById(`audit-detail-${idx}`);
+        if (!detailRow) return;
+
+        if (detailRow.style.display !== 'none') {
+          detailRow.style.display = 'none';
+          return;
+        }
+
+        const log = data.logs[idx];
+        detailRow.querySelector('td').innerHTML = `
+          <div class="audit-detail-content">
+            <div class="audit-detail-grid">
+              <div><span class="audit-detail-label">Azione</span><span>${this.esc(log.action)}</span></div>
+              <div><span class="audit-detail-label">Tipo entità</span><span>${this.esc(log.entity_type)}</span></div>
+              <div><span class="audit-detail-label">ID entità</span><span style="font-family:var(--font-family-mono);font-size:11px">${this.esc(log.entity_id || '-')}</span></div>
+              <div><span class="audit-detail-label">Data e ora</span><span>${new Date(log.created_at).toLocaleString('it-IT')}</span></div>
+            </div>
+            <div class="audit-detail-details">
+              <span class="audit-detail-label">Dettagli operazione</span>
+              <div class="audit-detail-body">${this.formatAuditDetails(log.action, log.details)}</div>
+            </div>
+          </div>
+        `;
+        detailRow.style.display = '';
+      });
+    });
 
     this.bindPagination(() => (p, ps) => this.renderAudit(p, ps || pageSize));
   },

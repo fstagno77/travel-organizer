@@ -327,7 +327,7 @@ async function handleAcceptInvite(serviceClient, user, { token }, headers) {
     console.log(`[accept-invite] Email diversa: invito per ${invite.email}, accettato da ${user.email} (consentito tramite token)`);
   }
 
-  // Add to collaborators
+  // Add to collaborators (o aggiorna se già esiste con status 'pending')
   const { error: insertError } = await serviceClient
     .from('trip_collaborators')
     .insert({
@@ -337,8 +337,18 @@ async function handleAcceptInvite(serviceClient, user, { token }, headers) {
       invited_by: invite.invited_by
     });
 
-  if (insertError && insertError.code !== '23505') {
-    throw insertError;
+  if (insertError) {
+    if (insertError.code === '23505') {
+      // Record già esistente (creato da acceptPendingByEmail con status 'pending')
+      // Aggiorna a 'accepted'
+      await serviceClient
+        .from('trip_collaborators')
+        .update({ status: 'accepted' })
+        .eq('trip_id', invite.trip_id)
+        .eq('user_id', user.id);
+    } else {
+      throw insertError;
+    }
   }
 
   // Mark invitation as accepted

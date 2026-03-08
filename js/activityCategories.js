@@ -147,10 +147,7 @@
       'arena', 'colosseo', 'rovina', 'ruins', 'spiaggia', 'beach',
       'viewpoint', 'belvedere', 'panorama', 'market', 'mercato'
     ],
-    treno: [
-      'treno', 'train', 'shinkansen', 'ferrovia', 'railway', 'stazione',
-      'station', 'eurostar', 'italo', 'trenitalia', 'tgv', 'bullet train'
-    ]
+    // treno/bus esclusi: si aggiungono solo tramite "aggiungi prenotazione"
   };
 
   function detectCategory(name, description) {

@@ -39,7 +39,11 @@
     "tripsCompleted": "viaggi completati",
     "days": "giorni",
     "day": "giorno",
-    "viewFullItinerary": "Visualizza Itinerario Completo"
+    "viewFullItinerary": "Visualizza Itinerario Completo",
+    "dayProgress": "Giorno {current} di {total}",
+    "nextEvent": "Prossimo",
+    "tomorrow": "Domani",
+    "inDays": "Tra {n} giorni"
   },
   "trip": {
     "new": "Nuovo Viaggio",
@@ -580,7 +584,9 @@
     "leaveSuccess": "Hai lasciato il viaggio",
     "leaveError": "Errore durante l'uscita dal viaggio",
     "ownerLabel": "di",
-    "copyInviteLink": "Copia il link e condividilo con"
+    "copyInviteLink": "Copia il link e condividilo con",
+    "inviteLinkGenerated": "Link di invito generato — copialo e condividilo",
+    "notificationSent": "Notifica inviata"
   },
   "notifications": {
     "title": "Notifiche",

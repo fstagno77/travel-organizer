@@ -256,9 +256,16 @@ const shareModal = {
           const result = await response.json();
 
           if (result.success) {
-            const msg = result.status === 'added_directly'
-              ? (i18n.t('share.userAdded') || 'Utente aggiunto')
-              : (i18n.t('share.inviteSent') || 'Invito inviato');
+            let msg;
+            if (result.inviteUrl) {
+              // Utente non registrato: link di invito generato
+              msg = i18n.t('share.inviteLinkGenerated') || 'Link di invito generato — copialo e condividilo';
+              // Copia automatica in clipboard
+              try { await navigator.clipboard.writeText(result.inviteUrl); } catch {}
+            } else {
+              // Utente registrato: notifica in-app inviata
+              msg = i18n.t('share.notificationSent') || 'Notifica inviata';
+            }
             this._showInviteMessage(inviteMessage, msg, 'success');
             emailInput.value = '';
             // Refresh collaborators list, then show invite link under the new row

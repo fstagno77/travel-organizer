@@ -1471,7 +1471,7 @@
   min-height: 0;
 }
 
-/* Activity panel overlay for trip page */
+/* Activity panel overlay for trip page — z-index > sidebar (101) */
 .trip-page-content::after {
   content: '';
   position: fixed;
@@ -1479,7 +1479,7 @@
   background: rgba(0, 0, 0, 0);
   pointer-events: none;
   transition: background 300ms cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: 60;
+  z-index: 110;
 }
 
 .trip-page-content.at-activity::after,
@@ -1504,7 +1504,7 @@
   background: var(--color-white);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
   border-radius: 1rem;
-  z-index: 70;
+  z-index: 120;
 }
 
 .trip-page-content.at-activity .modal-page--activity,
@@ -2267,7 +2267,6 @@ input[type="time"].form-input {
   align-items: flex-start;
   justify-content: space-between;
   padding: 24px;
-  border-bottom: 1px solid #e2e8f0;
 }
 
 .current-trip-info {
@@ -2326,6 +2325,7 @@ input[type="time"].form-input {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   width: 40px;
   height: 40px;
   border-radius: 12px;
@@ -2335,14 +2335,43 @@ input[type="time"].form-input {
   margin-left: 16px;
 }
 
+.current-trip-arrow-label {
+  display: none;
+}
+
 .current-trip-card:hover .current-trip-arrow {
   background: #eff6ff;
   color: #2563eb;
 }
 
+/* Desktop/tablet: arrow diventa pill con testo, CTA nascosta */
+@media (min-width: 768px) {
+  .current-trip-arrow {
+    width: auto;
+    padding: 0 16px;
+    background: linear-gradient(to right, #2563eb, #4f46e5);
+    color: white;
+    border-radius: 20px;
+    box-shadow: 0 4px 12px -2px rgba(37, 99, 235, 0.3);
+  }
+
+  .current-trip-arrow-label {
+    display: inline;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .current-trip-card:hover .current-trip-arrow {
+    background: linear-gradient(to right, #1d4ed8, #4338ca);
+    color: white;
+  }
+}
+
 /* Today section */
 .current-trip-today {
   padding: 24px;
+  border-top: 1px solid #e2e8f0;
 }
 
 .current-trip-today-label {
@@ -2358,6 +2387,109 @@ input[type="time"].form-input {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+/* Trip Summary (quando non ci sono eventi oggi) */
+.current-trip-summary {
+  padding: 20px 24px;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.current-trip-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.current-trip-progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.current-trip-progress-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.current-trip-progress-pct {
+  font-size: 12px;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.current-trip-progress-bar {
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.current-trip-progress-fill {
+  height: 100%;
+  background: linear-gradient(to right, #3b82f6, #6366f1);
+  border-radius: 3px;
+  transition: width 600ms ease;
+}
+
+.current-trip-stats {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.current-trip-stat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.current-trip-stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.current-trip-stat-count {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1;
+}
+
+.current-trip-stat-label {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.current-trip-next {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.current-trip-next-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
 }
 
 /* Event card */
@@ -2481,6 +2613,12 @@ input[type="time"].form-input {
 
 .current-trip-card:hover .current-trip-cta {
   background: linear-gradient(to right, #1d4ed8, #4338ca);
+}
+
+@media (min-width: 768px) {
+  .current-trip-cta {
+    display: none;
+  }
 }
 
 /* ==========================================
@@ -7776,8 +7914,8 @@ body:has(> .modal-overlay.active) .trip-hero-tabs {
   .share-invite-form {
     flex-wrap: wrap;
   }
-  .share-invite-form .form-input {
-    width: 100%;
+  .share-invite-input-wrapper {
+    flex-basis: 100%;
   }
   .share-invite-form select {
     flex: 1;

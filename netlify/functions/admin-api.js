@@ -92,6 +92,9 @@ exports.handler = async (event, context) => {
       case 'get-user':
         result = await getUser(serviceClient, body);
         break;
+      case 'pre-delete-check':
+        result = await preDeleteCheck(serviceClient, body);
+        break;
       case 'delete-user':
         result = await deleteUser(serviceClient, body, user.id);
         break;
@@ -346,17 +349,246 @@ async function getUser(sc, { userId }) {
   };
 }
 
+/**
+ * Pre-delete check: raccoglie tutte le dipendenze dell'utente
+ * per mostrare all'admin cosa verrà cancellato/impattato
+ */
+async function preDeleteCheck(sc, { userId }) {
+  if (!userId) throw new Error('userId is required');
+
+  const { data: profile } = await sc.from('profiles').select('id, username, email, created_at').eq('id', userId).single();
+  if (!profile) throw new Error('Utente non trovato');
+
+  // Viaggi di proprietà
+  const { data: ownedTrips } = await sc.from('trips').select('id, data').eq('user_id', userId);
+  const trips = (ownedTrips || []).map(t => ({
+    id: t.id,
+    title: resolveI18n(t.data?.title) || resolveI18n(t.data?.destination) || 'Senza titolo',
+    flights: (t.data?.flights || []).length,
+    hotels: (t.data?.hotels || []).length,
+    activities: (t.data?.activities || []).length
+  }));
+
+  // Collaboratori sui suoi viaggi (persone che perderanno accesso)
+  const tripIds = trips.map(t => t.id);
+  let impactedCollaborators = [];
+  if (tripIds.length > 0) {
+    const { data: collabs } = await sc.from('trip_collaborators').select('id, trip_id, user_id, role, status').in('trip_id', tripIds);
+    if (collabs && collabs.length > 0) {
+      const collabUserIds = [...new Set(collabs.map(c => c.user_id))];
+      const { data: collabProfiles } = await sc.from('profiles').select('id, username, email').in('id', collabUserIds);
+      const profileMap = {};
+      if (collabProfiles) collabProfiles.forEach(p => profileMap[p.id] = p);
+
+      impactedCollaborators = collabs.map(c => ({
+        tripId: c.trip_id,
+        tripTitle: trips.find(t => t.id === c.trip_id)?.title || '-',
+        userId: c.user_id,
+        username: profileMap[c.user_id]?.username || '-',
+        email: profileMap[c.user_id]?.email || '-',
+        role: c.role,
+        status: c.status
+      }));
+    }
+
+    // Inviti pending sui suoi viaggi
+    const { data: tripInvites } = await sc.from('trip_invitations').select('id, trip_id, email, role, status').in('trip_id', tripIds).eq('status', 'pending');
+    if (tripInvites && tripInvites.length > 0) {
+      for (const inv of tripInvites) {
+        impactedCollaborators.push({
+          tripId: inv.trip_id,
+          tripTitle: trips.find(t => t.id === inv.trip_id)?.title || '-',
+          email: inv.email,
+          role: inv.role,
+          status: 'invited',
+          type: 'invitation'
+        });
+      }
+    }
+  }
+
+  // Viaggi dove l'utente è collaboratore (non owner)
+  const { data: collabTrips } = await sc.from('trip_collaborators').select('id, trip_id, role, status').eq('user_id', userId);
+  let collaboratingOn = [];
+  if (collabTrips && collabTrips.length > 0) {
+    const collabTripIds = collabTrips.map(c => c.trip_id);
+    const { data: otherTrips } = await sc.from('trips').select('id, data, user_id').in('id', collabTripIds);
+    const ownerIds = [...new Set((otherTrips || []).map(t => t.user_id))];
+    const { data: ownerProfiles } = ownerIds.length > 0
+      ? await sc.from('profiles').select('id, username').in('id', ownerIds)
+      : { data: [] };
+    const ownerMap = {};
+    if (ownerProfiles) ownerProfiles.forEach(p => ownerMap[p.id] = p.username);
+
+    collaboratingOn = (otherTrips || []).map(t => {
+      const collab = collabTrips.find(c => c.trip_id === t.id);
+      return {
+        tripId: t.id,
+        title: resolveI18n(t.data?.title) || resolveI18n(t.data?.destination) || 'Senza titolo',
+        ownerUsername: ownerMap[t.user_id] || '-',
+        role: collab?.role || '-',
+        status: collab?.status || '-'
+      };
+    });
+  }
+
+  // Inviti pending ricevuti dall'utente (per email)
+  const { data: pendingInvites } = await sc.from('trip_invitations').select('id, trip_id, role, status, email').eq('email', profile.email).eq('status', 'pending');
+  let receivedInvitations = [];
+  if (pendingInvites && pendingInvites.length > 0) {
+    const invTripIds = pendingInvites.map(i => i.trip_id);
+    const { data: invTrips } = await sc.from('trips').select('id, data').in('id', invTripIds);
+    const invTripMap = {};
+    if (invTrips) invTrips.forEach(t => invTripMap[t.id] = resolveI18n(t.data?.title) || resolveI18n(t.data?.destination) || 'Senza titolo');
+
+    receivedInvitations = pendingInvites.map(i => ({
+      id: i.id,
+      tripId: i.trip_id,
+      tripTitle: invTripMap[i.trip_id] || '-',
+      role: i.role
+    }));
+  }
+
+  // Pending bookings
+  const { count: pendingBookingsCount } = await sc.from('pending_bookings').select('id', { count: 'exact', head: true }).eq('user_id', userId);
+
+  // Travelers
+  const { count: travelersCount } = await sc.from('travelers').select('id', { count: 'exact', head: true }).eq('user_id', userId);
+
+  // Notifiche
+  const { count: notificationsCount } = await sc.from('notifications').select('id', { count: 'exact', head: true }).eq('user_id', userId);
+
+  // File storage: conta PDF nei viaggi dell'utente
+  let storageFilesCount = 0;
+  for (const t of trips) {
+    try {
+      const { data: files } = await sc.storage.from('trip-pdfs').list(t.id);
+      if (files) storageFilesCount += files.length;
+    } catch { /* bucket potrebbe non esistere */ }
+  }
+
+  return {
+    user: profile,
+    ownedTrips: trips,
+    impactedCollaborators,
+    collaboratingOn,
+    receivedInvitations,
+    counts: {
+      trips: trips.length,
+      impactedCollaborators: impactedCollaborators.length,
+      collaboratingOn: collaboratingOn.length,
+      receivedInvitations: receivedInvitations.length,
+      pendingBookings: pendingBookingsCount || 0,
+      travelers: travelersCount || 0,
+      notifications: notificationsCount || 0,
+      storageFiles: storageFilesCount
+    }
+  };
+}
+
+/**
+ * Cancellazione utente sicura con cleanup completo
+ */
 async function deleteUser(sc, { userId }, adminId) {
   if (!userId) throw new Error('userId is required');
 
-  // Get user info for audit log
+  // Raccogli info per audit prima della cancellazione
   const { data: profile } = await sc.from('profiles').select('username, email').eq('id', userId).single();
+  if (!profile) throw new Error('Utente non trovato');
 
-  // Delete via auth admin API (cascades to profiles, trips, travelers, pending_bookings)
+  // 1. Raccogli i trip di proprietà per cleanup storage e notifiche
+  const { data: ownedTrips } = await sc.from('trips').select('id, data').eq('user_id', userId);
+  const tripIds = (ownedTrips || []).map(t => t.id);
+
+  // 2. Notifica collaboratori dei suoi viaggi che il viaggio verrà rimosso
+  if (tripIds.length > 0) {
+    const { data: collabs } = await sc.from('trip_collaborators').select('user_id, trip_id').in('trip_id', tripIds);
+    if (collabs && collabs.length > 0) {
+      const uniqueCollabUserIds = [...new Set(collabs.map(c => c.user_id))];
+      const notifications = uniqueCollabUserIds.map(collabUserId => ({
+        user_id: collabUserId,
+        type: 'collaboration_revoked',
+        trip_id: collabs.find(c => c.user_id === collabUserId)?.trip_id,
+        actor_id: adminId,
+        message: {
+          it: `Il viaggio condiviso da ${profile.username} è stato rimosso (utente eliminato dall'admin)`,
+          en: `The trip shared by ${profile.username} has been removed (user deleted by admin)`
+        },
+        read: false
+      }));
+      // Inserisci notifiche in batch (non-fatal)
+      try {
+        await sc.from('notifications').insert(notifications);
+      } catch (e) { console.error('Errore invio notifiche pre-delete:', e); }
+    }
+  }
+
+  // 3. Revocare inviti pending ricevuti dall'utente (per email)
+  try {
+    await sc.from('trip_invitations').update({ status: 'revoked', updated_at: new Date().toISOString() })
+      .eq('email', profile.email).eq('status', 'pending');
+  } catch (e) { console.error('Errore revoca inviti ricevuti:', e); }
+
+  // 4. Rimuovere collaborazioni dell'utente su viaggi altrui (+ notifica owner)
+  const { data: userCollabs } = await sc.from('trip_collaborators').select('trip_id').eq('user_id', userId);
+  if (userCollabs && userCollabs.length > 0) {
+    const otherTripIds = userCollabs.map(c => c.trip_id).filter(id => !tripIds.includes(id));
+    if (otherTripIds.length > 0) {
+      // Notifica gli owner dei viaggi da cui l'utente viene rimosso
+      const { data: otherTrips } = await sc.from('trips').select('id, user_id').in('id', otherTripIds);
+      if (otherTrips) {
+        const ownerNotifs = otherTrips.map(t => ({
+          user_id: t.user_id,
+          type: 'collaboration_revoked',
+          trip_id: t.id,
+          actor_id: adminId,
+          message: {
+            it: `${profile.username} è stato rimosso dal viaggio (utente eliminato dall'admin)`,
+            en: `${profile.username} has been removed from the trip (user deleted by admin)`
+          },
+          read: false
+        }));
+        try {
+          await sc.from('notifications').insert(ownerNotifs);
+        } catch (e) { console.error('Errore notifica owner:', e); }
+      }
+    }
+  }
+
+  // 5. Cleanup file Storage per ogni viaggio di proprietà
+  for (const trip of (ownedTrips || [])) {
+    // PDF del viaggio
+    try {
+      const { data: files } = await sc.storage.from('trip-pdfs').list(trip.id);
+      if (files && files.length > 0) {
+        const paths = files.map(f => `${trip.id}/${f.name}`);
+        await sc.storage.from('trip-pdfs').remove(paths);
+      }
+    } catch (e) { console.error('Errore cleanup PDF:', e); }
+
+    // File attività
+    const activities = trip.data?.activities || [];
+    for (const act of activities) {
+      if (act.attachments) {
+        for (const att of act.attachments) {
+          try { await sc.storage.from('activity-files').remove([att.path]); } catch { /* ignore */ }
+        }
+      }
+    }
+  }
+
+  // 6. Cancella utente via auth admin API (cascade su tutte le tabelle)
   const { error } = await sc.auth.admin.deleteUser(userId);
   if (error) throw error;
 
-  await logAdminAction(sc, adminId, 'delete_user', 'user', userId, { username: profile?.username, email: profile?.email });
+  // 7. Audit log con dettagli completi
+  await logAdminAction(sc, adminId, 'delete_user', 'user', userId, {
+    username: profile.username,
+    email: profile.email,
+    tripsDeleted: tripIds.length,
+    collaboratorsNotified: (userCollabs || []).length,
+    storageCleanup: true
+  });
 
   return { deleted: true };
 }

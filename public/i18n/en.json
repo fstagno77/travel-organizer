@@ -39,7 +39,11 @@
     "tripsCompleted": "trips completed",
     "days": "days",
     "day": "day",
-    "viewFullItinerary": "View Full Itinerary"
+    "viewFullItinerary": "View Full Itinerary",
+    "dayProgress": "Day {current} of {total}",
+    "nextEvent": "Next",
+    "tomorrow": "Tomorrow",
+    "inDays": "In {n} days"
   },
   "trip": {
     "new": "New Trip",
@@ -580,7 +584,9 @@
     "leaveSuccess": "You left the trip",
     "leaveError": "Error leaving trip",
     "ownerLabel": "by",
-    "copyInviteLink": "Copy the link and share it with"
+    "copyInviteLink": "Copy the link and share it with",
+    "inviteLinkGenerated": "Invite link generated — copy and share it",
+    "notificationSent": "Notification sent"
   },
   "notifications": {
     "title": "Notifications",

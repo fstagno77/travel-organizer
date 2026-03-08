@@ -515,7 +515,7 @@
         <label>Categoria</label>
         <div class="activity-category-picker" id="activity-category-picker">
           ${window.activityCategories.CATEGORY_ORDER
-            .filter(k => k !== 'volo' && k !== 'hotel')
+            .filter(k => k !== 'volo' && k !== 'hotel' && k !== 'treno' && k !== 'bus')
             .map(key => {
               const cat = window.activityCategories.CATEGORIES[key];
               const label = window.activityCategories.getCategoryLabel(cat);
