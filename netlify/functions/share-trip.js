@@ -5,7 +5,8 @@
  */
 
 const crypto = require('crypto');
-const { authenticateRequest, unauthorizedResponse, getCorsHeaders, handleOptions } = require('./utils/auth');
+const { authenticateRequest, unauthorizedResponse, getCorsHeaders, handleOptions, getServiceClient } = require('./utils/auth');
+const { getUserRole } = require('./utils/permissions');
 
 exports.handler = async (event, context) => {
   const headers = getCorsHeaders();
@@ -24,7 +25,7 @@ exports.handler = async (event, context) => {
 
   const authResult = await authenticateRequest(event);
   if (!authResult) return unauthorizedResponse();
-  const { supabase } = authResult;
+  const { user } = authResult;
 
   try {
     const { tripId } = JSON.parse(event.body || '{}');
@@ -37,8 +38,20 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Fetch trip (RLS enforces ownership)
-    const { data: tripRecord, error: fetchError } = await supabase
+    // Verifica che l'utente abbia accesso al viaggio (proprietario o collaboratore)
+    const role = await getUserRole(user.id, tripId);
+    if (!role) {
+      return {
+        statusCode: 403,
+        headers,
+        body: JSON.stringify({ success: false, error: 'Access denied' })
+      };
+    }
+
+    const serviceClient = getServiceClient();
+
+    // Fetch trip con service client (bypassa RLS per collaboratori)
+    const { data: tripRecord, error: fetchError } = await serviceClient
       .from('trips')
       .select('data')
       .eq('id', tripId)
@@ -54,11 +67,11 @@ exports.handler = async (event, context) => {
 
     const tripData = { ...tripRecord.data };
 
-    // Reuse existing token if present (idempotent)
+    // Riusa il token esistente se presente (idempotente)
     if (!tripData.shareToken) {
       tripData.shareToken = crypto.randomBytes(32).toString('hex');
 
-      const { error: updateError } = await supabase
+      const { error: updateError } = await serviceClient
         .from('trips')
         .update({ data: tripData, updated_at: new Date().toISOString() })
         .eq('id', tripId);

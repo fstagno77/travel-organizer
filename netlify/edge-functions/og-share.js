@@ -118,7 +118,10 @@ export default async function handler(request, context) {
   const response = await context.next();
   const html = await response.text();
 
-  // Replace static OG meta tags with dynamic ones
+  // Assicurati che l'immagine abbia URL assoluto
+  const absoluteImageUrl = imageUrl.startsWith('http') ? imageUrl : `${url.origin}${imageUrl}`;
+
+  // Sostituisci i meta tag statici con quelli dinamici
   const modifiedHtml = html
     // Page title
     .replace(
@@ -136,7 +139,7 @@ export default async function handler(request, context) {
     )
     .replace(
       /<meta property="og:image" content="[^"]*">/,
-      `<meta property="og:image" content="${imageUrl}">`
+      `<meta property="og:image" content="${absoluteImageUrl}">`
     )
     // Twitter tags
     .replace(
@@ -149,7 +152,7 @@ export default async function handler(request, context) {
     )
     .replace(
       /<meta name="twitter:image" content="[^"]*">/,
-      `<meta name="twitter:image" content="${imageUrl}">`
+      `<meta name="twitter:image" content="${absoluteImageUrl}">`
     )
     // Add og:url
     .replace(

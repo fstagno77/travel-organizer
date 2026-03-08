@@ -62,10 +62,13 @@
   justify-content: center;
   width: 80px;
   height: 80px;
-  background: var(--color-primary);
-  border-radius: 20px;
-  color: var(--color-white);
   margin-bottom: var(--spacing-4);
+}
+
+.auth-modal-logo img {
+  width: 80px;
+  height: 80px;
+  border-radius: 20px;
   box-shadow: 0 8px 32px rgba(37, 99, 235, 0.3);
 }
 
