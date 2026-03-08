@@ -56,6 +56,8 @@ exports.handler = async (event, context) => {
         return await handleRevoke(serviceClient, user, body, headers);
       case 'resend-invite':
         return await handleResendInvite(serviceClient, user, body, headers);
+      case 'resend-notification':
+        return await handleResendNotification(serviceClient, user, body, headers);
       case 'remove-self':
         return await handleRemoveSelf(serviceClient, user, body, headers);
       case 'get-role':
@@ -653,6 +655,73 @@ async function handleResendInvite(serviceClient, user, { invitationId }, headers
     statusCode: 200,
     headers,
     body: JSON.stringify({ success: true, inviteUrl })
+  };
+}
+
+/**
+ * Reinvia notifica in-app a un collaboratore registrato in attesa
+ */
+async function handleResendNotification(serviceClient, user, { tripId, collaboratorId }, headers) {
+  if (!tripId || !collaboratorId) {
+    return {
+      statusCode: 400,
+      headers,
+      body: JSON.stringify({ success: false, error: 'tripId and collaboratorId are required' })
+    };
+  }
+
+  // Verifica che il collaboratore esista e sia pending
+  const { data: collab } = await serviceClient
+    .from('trip_collaborators')
+    .select('id, user_id, role, status')
+    .eq('id', collaboratorId)
+    .eq('trip_id', tripId)
+    .eq('status', 'pending')
+    .single();
+
+  if (!collab) {
+    return {
+      statusCode: 404,
+      headers,
+      body: JSON.stringify({ success: false, error: 'Pending collaborator not found' })
+    };
+  }
+
+  // Verifica permessi del chiamante
+  const callerRole = await getUserRole(user.id, tripId);
+  if (!callerRole || callerRole === 'ospite') {
+    return {
+      statusCode: 403,
+      headers,
+      body: JSON.stringify({ success: false, error: 'Not authorized' })
+    };
+  }
+
+  // Titolo viaggio per la notifica
+  const { data: trip } = await serviceClient
+    .from('trips')
+    .select('data')
+    .eq('id', tripId)
+    .single();
+
+  const tripTitle = trip?.data?.title?.it || trip?.data?.title || 'un viaggio';
+
+  // Inserisci nuova notifica di invito
+  await serviceClient.from('notifications').insert({
+    user_id: collab.user_id,
+    type: 'collaboration_invite',
+    trip_id: tripId,
+    actor_id: user.id,
+    message: {
+      it: `Ti ha invitato come ${collab.role === 'viaggiatore' ? 'viaggiatore' : 'ospite'} al viaggio "${tripTitle}"`,
+      en: `Invited you as ${collab.role === 'viaggiatore' ? 'traveler' : 'guest'} to trip "${tripTitle}"`
+    }
+  });
+
+  return {
+    statusCode: 200,
+    headers,
+    body: JSON.stringify({ success: true })
   };
 }
 

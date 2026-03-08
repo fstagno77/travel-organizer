@@ -483,6 +483,16 @@ const shareModal = {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
           `;
+        } else if (item.type === 'collaborator' && item.status === 'pending') {
+          // Collaboratore registrato in attesa: reinvia notifica + revoca
+          actionsHTML = `
+            <button class="share-action-btn share-action-btn--resend" data-action="resend-notification" data-collaborator-id="${item.id}" data-trip-id="${tripId}" title="${i18n.t('share.resendNotification') || 'Reinvia notifica'}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            </button>
+            <button class="share-action-btn share-action-btn--revoke" data-action="revoke-collaborator" data-collaborator-id="${item.id}" title="${i18n.t('share.revoke') || 'Revoca'}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          `;
         } else if (item.type === 'collaborator') {
           actionsHTML = `
             <button class="share-action-btn share-action-btn--revoke" data-action="revoke-collaborator" data-collaborator-id="${item.id}" title="${i18n.t('share.revoke') || 'Revoca'}">
@@ -535,6 +545,22 @@ const shareModal = {
             body: JSON.stringify({ action: 'revoke', tripId, invitationId })
           });
           btn.closest('.share-collaborator-row')?.remove();
+        } else if (action === 'resend-notification') {
+          // Reinvia notifica in-app a collaboratore registrato pending
+          const collaboratorId = btn.dataset.collaboratorId;
+          const colTripId = btn.dataset.tripId;
+          const originalHTML = btn.innerHTML;
+          btn.innerHTML = `<span class="spinner spinner-sm" style="border-color: rgba(255,255,255,0.4); border-top-color: white;"></span>`;
+          await utils.authFetch('/.netlify/functions/manage-collaboration', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'resend-notification', tripId: colTripId, collaboratorId })
+          });
+          // Feedback visivo: check temporaneo
+          btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`;
+          setTimeout(() => { btn.innerHTML = originalHTML; }, 2000);
+          btn.disabled = false;
+          return;
         } else if (action === 'resend') {
           const invitationId = btn.dataset.invitationId;
           const originalHTML = btn.innerHTML;

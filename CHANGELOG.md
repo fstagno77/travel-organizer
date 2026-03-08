@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.31.3 - 2026-03-08
+
+### Miglioramenti
+- Aggiunto pulsante "Reinvia notifica" per collaboratori registrati in attesa di accettare l'invito
+
 ## 0.31.2 - 2026-03-08
 
 ### Fix
