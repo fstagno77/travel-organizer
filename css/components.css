@@ -7653,6 +7653,7 @@ body:has(> .modal-overlay.active) .trip-hero-tabs {
 .share-invite-form .btn {
   flex-shrink: 0;
   height: 40px;
+  min-height: 40px;
   box-sizing: border-box;
 }
 
