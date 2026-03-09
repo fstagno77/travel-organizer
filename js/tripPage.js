@@ -1260,7 +1260,9 @@
         } else if (action === 'delete') {
           deleteTrip(tripId);
         } else if (action === 'share') {
-          shareModal.show(tripId, currentUserRole);
+          const lang = i18n.getLang();
+          const tripName = currentTripData?.title?.[lang] || currentTripData?.title?.en || currentTripData?.title?.it || '';
+          shareModal.show(tripId, currentUserRole, tripName);
         } else if (action === 'change-photo') {
           changePhoto(tripId);
         } else if (action === 'cities') {

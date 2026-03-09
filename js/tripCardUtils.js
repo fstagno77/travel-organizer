@@ -201,7 +201,7 @@ const tripCardUtils = (function() {
           callbacks.onChangePhoto(tripId, tripDestination);
         } else if (action === 'share' && callbacks?.onShare) {
           const tripRole = item.dataset.tripRole || 'proprietario';
-          callbacks.onShare(tripId, tripRole);
+          callbacks.onShare(tripId, tripRole, tripName);
         } else if (action === 'rename' && callbacks?.onRename) {
           callbacks.onRename(tripId, tripName);
         } else if (action === 'delete' && callbacks?.onDelete) {

@@ -586,7 +586,8 @@
     "ownerLabel": "by",
     "copyInviteLink": "Copy the link and share it with",
     "inviteLinkGenerated": "Invite link generated — copy and share it",
-    "notificationSent": "Notification sent"
+    "notificationSent": "Notification sent",
+    "resendNotification": "Resend notification"
   },
   "notifications": {
     "title": "Notifications",

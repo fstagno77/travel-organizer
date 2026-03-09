@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.31.4 - 2026-03-09
+
+### Miglioramenti
+- Copiando un link di condivisione o invito, ora viene incluso un messaggio precostruito pronto da incollare su WhatsApp, Telegram o email
+
 ## 0.31.3 - 2026-03-08
 
 ### Miglioramenti

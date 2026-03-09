@@ -1,6 +1,18 @@
 {
   "versions": [
     {
+      "version": "0.31.4",
+      "date": "2026-03-09",
+      "changes": {
+        "it": [
+          "Link di condivisione e invito ora includono un messaggio precostruito pronto da incollare"
+        ],
+        "en": [
+          "Share and invite links now include a pre-built message ready to paste"
+        ]
+      }
+    },
+    {
       "version": "0.31.3",
       "date": "2026-03-08",
       "changes": {

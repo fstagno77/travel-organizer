@@ -1031,7 +1031,7 @@ const homePage = (function() {
     const onSuccess = () => { invalidateCache(); init(); };
     tripCardUtils.initTripCardMenus({
       onChangePhoto: (tripId, dest) => tripCardUtils.changePhoto(tripId, dest),
-      onShare: (tripId, role) => shareModal.show(tripId, role),
+      onShare: (tripId, role, name) => shareModal.show(tripId, role, name),
       onRename: (tripId, name) => tripCardUtils.showRenameModal(tripId, name, onSuccess),
       onDelete: (tripId, name) => tripCardUtils.showDeleteModal(tripId, name, onSuccess)
     });

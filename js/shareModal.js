@@ -5,11 +5,50 @@
 
 const shareModal = {
   /**
+   * Costruisce il messaggio precostruito per la clipboard
+   * Se il nome contiene già "viaggio", usa: al "Nome Viaggio"
+   * Altrimenti: al viaggio "Nome"
+   */
+  _buildShareMessage(tripName, url, { type = 'link', role = '', ownerName = '' } = {}) {
+    const name = tripName || '';
+    const hasViaggio = /viaggio/i.test(name);
+    const alViaggio = hasViaggio ? `al "${name}"` : `al viaggio "${name}"`;
+
+    if (type === 'link') {
+      // Link pubblico (sola lettura)
+      const organizzato = ownerName ? ` organizzato da ${ownerName}` : '';
+      return name
+        ? `✈️ Dai un'occhiata ${alViaggio}${organizzato} su Travel Flow!\n${url}`
+        : url;
+    }
+
+    // Invito collaboratore
+    const roleLabel = role === 'viaggiatore' ? 'viaggiatore' : 'ospite';
+
+    if (type === 'invite-registered') {
+      return name
+        ? `✈️ Ti ho invitato come ${roleLabel} ${alViaggio} su Travel Flow!\nAccedi per visualizzarlo: ${url}`
+        : url;
+    }
+
+    if (type === 'invite-unregistered') {
+      return name
+        ? `✈️ Ti ho invitato come ${roleLabel} ${alViaggio} su Travel Flow!\nRegistrati e accedi con questo link: ${url}`
+        : url;
+    }
+
+    return url;
+  },
+
+  /**
    * Show the share modal for a trip
    * @param {string} tripId - The trip ID
    * @param {string} userRole - Current user's role: 'proprietario', 'viaggiatore', or 'ospite'
+   * @param {string} [tripName] - Nome del viaggio (per messaggi precostruiti)
    */
-  async show(tripId, userRole) {
+  async show(tripId, userRole, tripName) {
+    // Salva tripName per uso nei metodi interni
+    this._currentTripName = tripName || '';
     // Remove existing modal if any
     const existingModal = document.getElementById('share-modal');
     if (existingModal) existingModal.remove();
@@ -123,6 +162,7 @@ const shareModal = {
       const result = await response.json();
       if (result.success && result.shareToken) {
         shareUrl = `${window.location.origin}/share.html?token=${result.shareToken}`;
+        this._currentShareUrl = shareUrl;
         linkCode.textContent = shareUrl;
         copyBtn.disabled = false;
       } else {
@@ -133,11 +173,15 @@ const shareModal = {
       linkCode.textContent = i18n.t('common.error') || 'Errore';
     }
 
-    // Copy link
+    // Copy link con messaggio precostruito
     copyBtn.addEventListener('click', async () => {
       if (!shareUrl) return;
+      const ownerName = window.auth?.profile?.username || '';
+      const textToCopy = this._buildShareMessage(this._currentTripName, shareUrl, {
+        type: 'link', ownerName
+      });
       try {
-        await navigator.clipboard.writeText(shareUrl);
+        await navigator.clipboard.writeText(textToCopy);
         copyBtn.classList.add('copied');
         copiedMessage.classList.add('visible');
         setTimeout(() => {
@@ -260,8 +304,11 @@ const shareModal = {
             if (result.inviteUrl) {
               // Utente non registrato: link di invito generato
               msg = i18n.t('share.inviteLinkGenerated') || 'Link di invito generato — copialo e condividilo';
-              // Copia automatica in clipboard
-              try { await navigator.clipboard.writeText(result.inviteUrl); } catch {}
+              // Copia automatica con messaggio precostruito
+              const inviteText = this._buildShareMessage(this._currentTripName, result.inviteUrl, {
+                type: 'invite-unregistered', role
+              });
+              try { await navigator.clipboard.writeText(inviteText); } catch {}
             } else {
               // Utente registrato: notifica in-app inviata
               msg = i18n.t('share.notificationSent') || 'Notifica inviata';
@@ -271,7 +318,7 @@ const shareModal = {
             // Refresh collaborators list, then show invite link under the new row
             await this._loadCollaborators(tripId, userRole);
             if (result.inviteUrl) {
-              this._showInviteLinkUnderRow(email, result.inviteUrl);
+              this._showInviteLinkUnderRow(email, result.inviteUrl, role);
             }
           } else {
             const errorMessages = {
@@ -318,7 +365,7 @@ const shareModal = {
   /**
    * Show a copyable invite link box under the collaborator row matching the email
    */
-  _showInviteLinkUnderRow(email, inviteUrl) {
+  _showInviteLinkUnderRow(email, inviteUrl, role, messageType = 'invite-unregistered') {
     // Remove any existing invite link box
     document.querySelectorAll('.share-invite-link-box').forEach(el => el.remove());
 
@@ -347,8 +394,11 @@ const shareModal = {
 
     const copyBtn = box.querySelector('.share-invite-link-copy');
     copyBtn.addEventListener('click', async () => {
+      const inviteText = this._buildShareMessage(this._currentTripName, inviteUrl, {
+        type: messageType, role: role || 'ospite'
+      });
       try {
-        await navigator.clipboard.writeText(inviteUrl);
+        await navigator.clipboard.writeText(inviteText);
       } catch { /* fallback ignored */ }
       copyBtn.classList.add('copied');
       setTimeout(() => copyBtn.classList.remove('copied'), 2000);
@@ -414,7 +464,10 @@ const shareModal = {
 
       listEl.innerHTML = html;
 
-      // Bind action buttons
+      // Rimuovi vecchio listener prima di aggiungerne uno nuovo
+      if (this._collaboratorClickHandler) {
+        listEl.removeEventListener('click', this._collaboratorClickHandler);
+      }
       this._bindCollaboratorActions(listEl, tripId, userRole);
 
     } catch (err) {
@@ -504,7 +557,7 @@ const shareModal = {
     }
 
     return `
-      <div class="share-collaborator-row" data-item-id="${item.id || ''}" data-email="${email}">
+      <div class="share-collaborator-row" data-item-id="${item.id || ''}" data-email="${email}" data-role="${item.role || ''}">
         <div class="share-collaborator-avatar">${(displayName[0] || '?').toUpperCase()}</div>
         <div class="share-collaborator-info">
           <div class="share-collaborator-name">${displayName}</div>
@@ -521,7 +574,7 @@ const shareModal = {
    * Bind click handlers to collaborator action buttons
    */
   _bindCollaboratorActions(container, tripId, userRole) {
-    container.addEventListener('click', async (e) => {
+    const handler = async (e) => {
       const btn = e.target.closest('.share-action-btn');
       if (!btn) return;
 
@@ -546,19 +599,14 @@ const shareModal = {
           });
           btn.closest('.share-collaborator-row')?.remove();
         } else if (action === 'resend-notification') {
-          // Reinvia notifica in-app a collaboratore registrato pending
-          const collaboratorId = btn.dataset.collaboratorId;
-          const colTripId = btn.dataset.tripId;
-          const originalHTML = btn.innerHTML;
-          btn.innerHTML = `<span class="spinner spinner-sm" style="border-color: rgba(255,255,255,0.4); border-top-color: white;"></span>`;
-          await utils.authFetch('/.netlify/functions/manage-collaboration', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'resend-notification', tripId: colTripId, collaboratorId })
-          });
-          // Feedback visivo: check temporaneo
-          btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`;
-          setTimeout(() => { btn.innerHTML = originalHTML; }, 2000);
+          // Collaboratore registrato pending: mostra link copiabile con messaggio precostruito
+          const row = btn.closest('.share-collaborator-row');
+          const email = row?.dataset.email || '';
+          const rowRole = row?.dataset.role || 'ospite';
+          const linkUrl = shareModal._currentShareUrl || '';
+          if (linkUrl) {
+            shareModal._showInviteLinkUnderRow(email, linkUrl, rowRole, 'invite-registered');
+          }
           btn.disabled = false;
           return;
         } else if (action === 'resend') {
@@ -572,8 +620,10 @@ const shareModal = {
           });
           const resData = await res.json();
           if (resData.inviteUrl) {
-            const email = btn.closest('.share-collaborator-row')?.dataset.email || '';
-            shareModal._showInviteLinkUnderRow(email, resData.inviteUrl);
+            const row = btn.closest('.share-collaborator-row');
+            const email = row?.dataset.email || '';
+            const rowRole = row?.dataset.role || 'ospite';
+            shareModal._showInviteLinkUnderRow(email, resData.inviteUrl, rowRole);
           }
           btn.innerHTML = originalHTML;
           btn.disabled = false;
@@ -584,7 +634,9 @@ const shareModal = {
         utils.showToast(i18n.t('common.error') || 'Errore', 'error');
         btn.disabled = false;
       }
-    });
+    };
+    this._collaboratorClickHandler = handler;
+    container.addEventListener('click', handler);
   }
 };
 

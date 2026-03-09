@@ -586,7 +586,8 @@
     "ownerLabel": "di",
     "copyInviteLink": "Copia il link e condividilo con",
     "inviteLinkGenerated": "Link di invito generato — copialo e condividilo",
-    "notificationSent": "Notifica inviata"
+    "notificationSent": "Notifica inviata",
+    "resendNotification": "Reinvia notifica"
   },
   "notifications": {
     "title": "Notifiche",
