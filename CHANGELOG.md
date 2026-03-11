@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.32.0 - 2026-03-11
+
+### Novità
+- **Prenotazioni via email**: è ora possibile fare il forward di un'email di prenotazione (volo, hotel) a trips@travel-flow.com e riceverla direttamente nell'app
+- **Modale prenotazione**: cliccando su una prenotazione ricevuta via email si apre direttamente una modale per rivederla, scegliere a quale viaggio aggiungerla (o crearne uno nuovo) oppure rifiutarla — senza passare per una pagina separata
+
+### Fix
+- Risolto problema con email forward da Gmail: il contenuto della prenotazione originale ora viene estratto correttamente
+
 ## 0.31.5 - 2026-03-11
 
 ### Fix

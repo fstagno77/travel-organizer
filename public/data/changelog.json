@@ -1,6 +1,22 @@
 {
   "versions": [
     {
+      "version": "0.32.0",
+      "date": "2026-03-11",
+      "changes": {
+        "it": [
+          "Novità: invia una prenotazione via email facendo forward a trips@travel-flow.com — arriva direttamente nell'app",
+          "Nuova modale per gestire le prenotazioni ricevute via email: scegli il viaggio, crea uno nuovo o rifiuta",
+          "Fix: email forward da Gmail ora estrae correttamente il contenuto della prenotazione originale"
+        ],
+        "en": [
+          "New: forward a booking email to trips@travel-flow.com — it arrives directly in the app",
+          "New modal to manage email bookings: pick a trip, create a new one, or reject",
+          "Fix: Gmail forwarded emails now correctly extract the original booking content"
+        ]
+      }
+    },
+    {
       "version": "0.31.5",
       "date": "2026-03-11",
       "changes": {
