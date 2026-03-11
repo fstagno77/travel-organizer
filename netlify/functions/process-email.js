@@ -649,17 +649,6 @@ function extractBodyFromMime(mimeMessage, depth = 0, seenBoundaries = new Set())
 
       let content = part.substring(contentStartIndex);
 
-      // Remove any trailing boundary markers or whitespace at the end
-      // Be careful not to remove content that legitimately contains '--'
-      const lines = content.split(/\r?\n/);
-      const cleanLines = [];
-      for (const line of lines) {
-        // Stop if we hit a boundary marker (line that starts with --)
-        if (line.trim().startsWith('--')) break;
-        cleanLines.push(line);
-      }
-      content = cleanLines.join('\n');
-
       // Decode content based on transfer encoding
       const encoding = contentTransferEncoding ? contentTransferEncoding[1].toLowerCase() : '7bit';
 
