@@ -579,6 +579,7 @@ function extractBodyFromMime(mimeMessage, depth = 0, seenBoundaries = new Set())
 
     console.log(`Processing MIME boundary (depth ${depth}): ${boundary}`);
     const parts = mimeMessage.split('--' + boundary);
+    console.log(`[MIME depth ${depth}] Total parts after split: ${parts.length}`);
 
     for (const part of parts) {
       // Skip empty parts and closing boundary
@@ -587,9 +588,16 @@ function extractBodyFromMime(mimeMessage, depth = 0, seenBoundaries = new Set())
       const contentType = part.match(/Content-Type:\s*([^;\s\n]+)/i);
       const contentTransferEncoding = part.match(/Content-Transfer-Encoding:\s*(\S+)/i);
 
-      if (!contentType) continue;
+      if (!contentType) {
+        // Log parts without content type to understand structure
+        if (part.trim().length > 10) {
+          console.log(`[MIME depth ${depth}] Part without Content-Type, first 100 chars: ${part.trim().substring(0, 100)}`);
+        }
+        continue;
+      }
 
       const mimeType = contentType[1].toLowerCase();
+      console.log(`[MIME depth ${depth}] Found part: ${mimeType}`);
 
       // Skip attachments
       if (part.match(/Content-Disposition:\s*attachment/i)) continue;
@@ -602,6 +610,26 @@ function extractBodyFromMime(mimeMessage, depth = 0, seenBoundaries = new Set())
           const nestedResult = extractBodyFromMime(part, depth + 1, seenBoundaries);
           if (nestedResult.html && !result.html) result.html = nestedResult.html;
           if (nestedResult.text && !result.text) result.text = nestedResult.text;
+        }
+        continue;
+      }
+
+      // Handle forwarded/embedded message (message/rfc822) — Gmail uses this for Fwd:
+      if (mimeType === 'message/rfc822') {
+        let embeddedStartIndex = part.indexOf('\r\n\r\n');
+        if (embeddedStartIndex !== -1) {
+          embeddedStartIndex += 4;
+        } else {
+          embeddedStartIndex = part.indexOf('\n\n');
+          if (embeddedStartIndex !== -1) embeddedStartIndex += 2;
+        }
+        if (embeddedStartIndex !== -1) {
+          const embeddedMessage = part.substring(embeddedStartIndex);
+          console.log(`Found embedded message/rfc822 (depth ${depth}), parsing recursively...`);
+          const embeddedResult = extractBodyFromMime(embeddedMessage, depth + 1, seenBoundaries);
+          // Prefer embedded content over the outer forwarding wrapper
+          if (embeddedResult.html) result.html = embeddedResult.html;
+          if (embeddedResult.text) result.text = embeddedResult.text;
         }
         continue;
       }
