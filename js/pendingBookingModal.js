@@ -239,3 +239,5 @@ const pendingBookingModal = (() => {
 
   return { show };
 })();
+
+window.pendingBookingModal = pendingBookingModal;
