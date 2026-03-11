@@ -35,6 +35,8 @@ const pendingBookingModal = (() => {
       return;
     }
 
+    const lang = window.i18n?.getLang() || 'it';
+
     // Opzioni viaggio nel select (più recenti prima)
     const tripOptionsHTML = [...trips]
       .sort((a, b) => new Date(b.startDate || b.created_at || 0) - new Date(a.startDate || a.created_at || 0))
@@ -45,8 +47,6 @@ const pendingBookingModal = (() => {
         return `<option value="${t.id}">${utils.escapeHtml(title)}</option>`;
       })
       .join('');
-
-    const lang = window.i18n?.getLang() || 'it';
     const bookingLabel = booking.booking_type === 'flight'
       ? (lang === 'it' ? 'Volo' : 'Flight')
       : booking.booking_type === 'hotel'
