@@ -176,7 +176,6 @@ const navigation = {
     const isPast = activePath.includes('past-trips.html');
     const isProfile = activePath.includes('profile.html');
     const isNotifications = activePath.includes('notifications.html');
-    const isPending = activePath.includes('pending-bookings.html');
 
     // Icone SVG
     const toggleExpandSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>`;
@@ -384,7 +383,7 @@ const navigation = {
    */
   initSpaNavigation(closeSidebar) {
     // Pagine standard supportate dalla navigazione SPA
-    const spaPages = ['/', '/index.html', '/past-trips.html', '/notifications.html', '/profile.html', '/pending-bookings.html'];
+    const spaPages = ['/', '/index.html', '/past-trips.html', '/notifications.html', '/profile.html'];
 
     // Mappa pagina → funzione init
     const pageInitMap = {
@@ -393,7 +392,6 @@ const navigation = {
       '/past-trips.html': () => window.pastTripsPage?.init(),
       '/notifications.html': () => window.notificationsPage?.init(),
       '/profile.html': () => window.profilePage?.init(),
-      '/pending-bookings.html': () => window.pendingBookingsPage?.init(),
     };
 
     const isSpaPage = (url) => {
@@ -914,12 +912,9 @@ const navigation = {
           </div>
           ${dates}
           <div class="notif-item-actions">
-            <a class="notif-action-btn notif-action-btn--secondary" href="/pending-bookings.html?id=${b.id}">
-              ${lang === 'it' ? 'Dettagli' : 'Details'}
-            </a>
-            <a class="notif-action-btn notif-action-btn--accept" href="/pending-bookings.html?id=${b.id}&action=associate">
-              ${lang === 'it' ? 'Aggiungi' : 'Add to trip'}
-            </a>
+            <button class="notif-action-btn notif-action-btn--accept" data-notif-action="open-booking" data-booking-id="${b.id}">
+              ${lang === 'it' ? 'Aggiungi a viaggio' : 'Add to trip'}
+            </button>
           </div>
           <div class="notif-item-time">${time}</div>
         </div>
@@ -928,6 +923,19 @@ const navigation = {
 
   async _handleDropdownInvite(btn, panel, lang) {
     const action = btn.dataset.notifAction;
+
+    // Apre la modale pending booking dal mini-dropdown
+    if (action === 'open-booking') {
+      const bookingId = btn.dataset.bookingId;
+      panel.remove();
+      if (window.pendingBookingModal) {
+        pendingBookingModal.show(bookingId);
+      } else {
+        window.location.href = `/notifications.html`;
+      }
+      return;
+    }
+
     const tripId = btn.dataset.tripId;
     const notifId = btn.dataset.notifId;
 

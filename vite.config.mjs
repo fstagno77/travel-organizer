@@ -17,7 +17,6 @@ export default defineConfig({
         trip: resolve(__dirname, 'trip.html'),
         login: resolve(__dirname, 'login.html'),
         profile: resolve(__dirname, 'profile.html'),
-        'pending-bookings': resolve(__dirname, 'pending-bookings.html'),
         share: resolve(__dirname, 'share.html'),
         admin: resolve(__dirname, 'admin.html'),
         notifications: resolve(__dirname, 'notifications.html'),

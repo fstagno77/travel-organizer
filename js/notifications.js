@@ -5,6 +5,10 @@
 const notificationsPage = (() => {
   'use strict';
 
+  let _pollInterval = null;
+  let _lastUnreadCount = -1;
+  let _lastBookingCount = -1;
+
   async function init() {
     if (!window.auth?.isAuthenticated()) {
       window.auth?.showLoginModal();
@@ -16,6 +20,60 @@ const notificationsPage = (() => {
     const markAllBtn = document.getElementById('mark-all-read-btn');
     if (markAllBtn) {
       markAllBtn.addEventListener('click', markAllRead);
+    }
+
+    startPolling();
+  }
+
+  function startPolling() {
+    stopPolling();
+
+    _pollInterval = setInterval(async () => {
+      // Non fare polling se la tab è in background
+      if (document.hidden) return;
+      await checkForUpdates();
+    }, 30000);
+
+    // Riprendi immediatamente quando la tab torna visibile
+    document.addEventListener('visibilitychange', onVisibilityChange);
+  }
+
+  function stopPolling() {
+    if (_pollInterval) {
+      clearInterval(_pollInterval);
+      _pollInterval = null;
+    }
+    document.removeEventListener('visibilitychange', onVisibilityChange);
+  }
+
+  async function onVisibilityChange() {
+    if (!document.hidden) await checkForUpdates();
+  }
+
+  async function checkForUpdates() {
+    try {
+      const [notifRes, bookingsRes] = await Promise.all([
+        utils.authFetch('/.netlify/functions/notifications?count=true').catch(() => null),
+        utils.authFetch('/.netlify/functions/pending-bookings').catch(() => null)
+      ]);
+
+      const notifData = notifRes?.ok ? await notifRes.json() : null;
+      const bookingsData = bookingsRes?.ok ? await bookingsRes.json() : null;
+
+      const unreadCount = notifData?.unreadCount ?? 0;
+      const bookingCount = bookingsData?.success ? (bookingsData.bookings?.length ?? 0) : 0;
+
+      const hasChanged = (
+        (_lastUnreadCount !== -1 && unreadCount > _lastUnreadCount) ||
+        (_lastBookingCount !== -1 && bookingCount > _lastBookingCount)
+      );
+
+      _lastUnreadCount = unreadCount;
+      _lastBookingCount = bookingCount;
+
+      if (hasChanged) await loadAll();
+    } catch {
+      // polling silenzioso
     }
   }
 
@@ -40,6 +98,10 @@ const notificationsPage = (() => {
       const bookings = (bookingsData?.success && bookingsData.bookings?.length)
         ? bookingsData.bookings.map(b => ({ ...b, _kind: 'booking' }))
         : [];
+
+      // Aggiorna i contatori usati dal polling
+      _lastUnreadCount = notifData?.unreadCount ?? 0;
+      _lastBookingCount = bookings.length;
 
       // Abilita il pulsante solo se ci sono notifiche non lette
       const markAllBtn = document.getElementById('mark-all-read-btn');
@@ -140,12 +202,9 @@ const notificationsPage = (() => {
           </div>
           ${dates ? `<div class="notification-trip">${utils.escapeHtml(dates)}</div>` : ''}
           <div class="notification-actions">
-            <a class="notification-action-btn notification-action-btn--secondary" href="/pending-bookings.html?id=${b.id}">
-              ${lang === 'it' ? 'Dettagli' : 'Details'}
-            </a>
-            <a class="notification-action-btn notification-action-btn--accept" href="/pending-bookings.html?id=${b.id}&action=associate">
+            <button class="notification-action-btn notification-action-btn--accept" data-action="open-booking" data-booking-id="${b.id}">
               ${lang === 'it' ? 'Aggiungi a viaggio' : 'Add to trip'}
-            </a>
+            </button>
           </div>
           <div class="notification-time">${timeAgo}</div>
         </div>
@@ -235,6 +294,16 @@ const notificationsPage = (() => {
         const action = actionBtn.dataset.action;
         const tripId = actionBtn.dataset.tripId;
         const notificationId = actionBtn.dataset.notificationId;
+
+        // Apre la modale pending booking
+        if (action === 'open-booking') {
+          const bookingId = actionBtn.dataset.bookingId;
+          const sourceItem = actionBtn.closest('[data-booking-id]');
+          if (window.pendingBookingModal) {
+            pendingBookingModal.show(bookingId, sourceItem);
+          }
+          return;
+        }
 
         actionBtn.disabled = true;
         const siblingBtns = actionBtn.closest('.notification-actions')?.querySelectorAll('[data-action]');
@@ -344,6 +413,8 @@ const notificationsPage = (() => {
       console.error('Error marking all as read:', err);
     }
   }
+
+  window.addEventListener('pagehide', stopPolling);
 
   return { init };
 })();

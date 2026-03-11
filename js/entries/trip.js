@@ -23,6 +23,6 @@ import '../homePage.js';
 import '../pastTripsPage.js';
 import '../notifications.js';
 import '../profile.js';
-import '../pendingBookings.js';
+import '../pendingBookingModal.js';
 import '../main.js';
 import '../tripPage.js';
