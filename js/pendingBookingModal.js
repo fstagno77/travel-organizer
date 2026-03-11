@@ -38,7 +38,12 @@ const pendingBookingModal = (() => {
     // Opzioni viaggio nel select (più recenti prima)
     const tripOptionsHTML = [...trips]
       .sort((a, b) => new Date(b.startDate || b.created_at || 0) - new Date(a.startDate || a.created_at || 0))
-      .map(t => `<option value="${t.id}">${utils.escapeHtml(t.title || 'Viaggio')}</option>`)
+      .map(t => {
+        const title = (typeof t.title === 'object')
+          ? (t.title[lang] || t.title.it || t.title.en || 'Viaggio')
+          : (t.title || 'Viaggio');
+        return `<option value="${t.id}">${utils.escapeHtml(title)}</option>`;
+      })
       .join('');
 
     const lang = window.i18n?.getLang() || 'it';
