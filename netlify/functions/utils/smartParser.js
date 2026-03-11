@@ -533,7 +533,7 @@ ${schema}`;
   if (!jsonMatch) {
     if (docType === 'auto') {
       console.warn('[SmartParse] Auto prompt returned no JSON — retrying with explicit flight schema');
-      return parseWithClaude(pdfBase64, 'flight');
+      return parseWithClaude(pdfBase64, 'flight', extractedText, betaMode);
     }
     throw new Error(`No JSON in Claude response. Raw: ${raw.substring(0, 300)}`);
   }
@@ -544,7 +544,7 @@ ${schema}`;
   } catch (parseErr) {
     if (docType === 'auto') {
       console.warn('[SmartParse] Auto prompt JSON parse failed — retrying with explicit flight schema');
-      return parseWithClaude(pdfBase64, 'flight');
+      return parseWithClaude(pdfBase64, 'flight', extractedText, betaMode);
     }
     throw new Error(`JSON parse failed: ${parseErr.message}. Raw snippet: ${jsonMatch[0].substring(0, 300)}`);
   }
@@ -873,6 +873,148 @@ function sanitizeResult(result) {
   return result;
 }
 
+// ─── Email parsing ───────────────────────────────────────────────────────────
+
+/**
+ * Rimuove tag HTML ed estrae testo leggibile.
+ */
+function htmlToPlainText(html) {
+  if (!html) return '';
+  return html
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<(br|p|div|h[1-6]|tr|li|td|th)[^>]*>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+/**
+ * Parsing email (HTML o testo) con cascade SmartParse L1 → L4.
+ *
+ * L1 — fingerprint cache (stessa email già vista → 0 chiamate Claude)
+ * L4 — Claude API (riusa parseWithClaude in text mode con subject prepeso)
+ *
+ * @param {string} content     - Contenuto email (HTML o testo)
+ * @param {string} contentType - 'html' | 'text'
+ * @param {string} subject     - Oggetto email
+ * @returns {Promise<Object>}  - Stessa struttura di parseDocumentSmart
+ */
+async function parseEmailContent(content, contentType = 'text', subject = '') {
+  const t0 = Date.now();
+
+  // Converti HTML → testo se necessario
+  const text = (contentType === 'html' ? htmlToPlainText(content) : content)
+    .substring(0, 15000);
+
+  if (text.length < 50) {
+    return { result: {}, parseLevel: 4, claudeCalls: 0, error: 'Contenuto troppo breve', durationMs: 0, textLength: 0 };
+  }
+
+  // Fingerprint sui primi 5000 caratteri (identificatore stabile)
+  const fingerprint = fingerprintText(text.substring(0, 5000));
+  const meta = () => ({ durationMs: Date.now() - t0, textLength: text.length });
+
+  // ─ Level 1 — Fingerprint cache ──────────────────────────────────────────
+  const { entries, loadError } = await loadCacheEntries('auto', false);
+  if (!loadError) {
+    const cached = entries.find(e =>
+      e.id.startsWith('email-') &&
+      (e.last_sample_fingerprint === fingerprint ||
+       e.match_rules?._knownFingerprints?.includes(fingerprint))
+    );
+    if (cached) {
+      await incrementUsage(cached.id);
+      const cachedResult = cached.match_rules?._results?.[fingerprint] || cached.last_sample_result;
+      console.log(`[SmartParse Email] L1 cache hit: ${cached.id}`);
+      return {
+        result: cachedResult,
+        parseLevel: 1,
+        cacheId: cached.id,
+        claudeCalls: 0,
+        detectedDocType: cached.doc_type !== 'any' ? cached.doc_type : null,
+        ...meta()
+      };
+    }
+  }
+
+  // ─ Level 4 — Claude API ─────────────────────────────────────────────────
+  // Riusa parseWithClaude in text mode: subject prepeso al testo
+  const emailText = subject ? `Oggetto: ${subject}\n\n${text}` : text;
+
+  let result, detectedDocType;
+  try {
+    const claude = await parseWithClaude('', 'auto', emailText, false);
+    result = claude.result;
+    detectedDocType = claude.detectedDocType;
+  } catch (err) {
+    console.error('[SmartParse Email] Claude error:', err.message);
+    return { result: {}, parseLevel: 4, claudeCalls: 1, error: err.message, detectedDocType: null, ...meta() };
+  }
+
+  if (!result) {
+    return { result: {}, parseLevel: 4, claudeCalls: 1, error: 'Nessun risultato da Claude', ...meta() };
+  }
+
+  sanitizeResult(result);
+
+  // Salva in cache con id = email-{fingerprint16}
+  const cacheId = `email-${fingerprint.substring(0, 16)}`;
+  const sb = getServiceClient();
+
+  let knownFingerprints = [fingerprint];
+  let existingResults = {};
+  const { data: existing } = await sb.from(CACHE_TABLE).select('match_rules').eq('id', cacheId).single();
+  if (existing?.match_rules) {
+    const prev = existing.match_rules._knownFingerprints || [];
+    if (!prev.includes(fingerprint)) prev.push(fingerprint);
+    knownFingerprints = prev;
+    existingResults = existing.match_rules._results || {};
+  }
+
+  const cacheEntry = {
+    id: cacheId,
+    name: `Email: ${subject ? subject.substring(0, 50) : 'no subject'} (${new Date().toISOString().slice(0, 10)})`,
+    brand: null,
+    source: 'email-l4',
+    doc_type: detectedDocType || 'any',
+    match_rules: {
+      _knownFingerprints: knownFingerprints,
+      _results: { ...existingResults, [fingerprint]: result },
+      _subject: subject || null,
+    },
+    field_rules: [],
+    collections: [],
+    min_confidence: 1.0,
+    usage_count: knownFingerprints.length,
+    last_sample_fingerprint: fingerprint,
+    last_sample_result: result,
+  };
+
+  const { error: saveError } = await sb.from(CACHE_TABLE).upsert(cacheEntry, { onConflict: 'id' });
+  const cacheSaved = !saveError;
+  if (saveError) console.warn('[SmartParse Email] Cache save error:', saveError.message);
+  else console.log(`[SmartParse Email] Cache saved: ${cacheId}`);
+
+  return {
+    result,
+    parseLevel: 4,
+    claudeCalls: 1,
+    detectedDocType,
+    cacheSaved,
+    cacheId,
+    dbLoadError: loadError,
+    ...meta()
+  };
+}
+
 // ─── Public API ─────────────────────────────────────────────────────────────
 
 async function parseDocumentSmart(pdfBase64, docType, mode = 'auto', skipLearn = false) {
@@ -883,6 +1025,7 @@ async function parseDocumentSmart(pdfBase64, docType, mode = 'auto', skipLearn =
 
 module.exports = {
   parseDocumentSmart,
+  parseEmailContent,
   parseWithClaude,
   listTemplates,
   deleteTemplate,

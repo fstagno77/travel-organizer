@@ -8,12 +8,10 @@ const Busboy = require('busboy');
 const { getServiceClient } = require('./utils/auth');
 const { uploadPendingPdf } = require('./utils/storage');
 const {
-  extractFromEmailHtml,
-  extractFromEmailText,
-  extractFromPdf,
   determineBookingType,
   generateSummary
 } = require('./utils/emailExtractor');
+const { parseDocumentSmart, parseEmailContent } = require('./utils/smartParser');
 const crypto = require('crypto');
 
 // Configuration
@@ -150,40 +148,63 @@ exports.handler = async (event, context) => {
 
     console.log(`User found: ${profile.id}`);
 
-    // Extract booking data from email content
+    // Extract booking data via SmartParse (cascade L1 cache → L4 Claude)
     let extractedData = null;
     let pdfContent = null;
 
-    // Try PDF attachments first (more reliable)
+    // PDF allegato: priorità massima (più affidabile del body)
     const pdfAttachment = attachments.find(a =>
       a.contentType === 'application/pdf' ||
       a.filename?.toLowerCase().endsWith('.pdf')
     );
 
     if (pdfAttachment) {
-      console.log(`Processing PDF attachment: ${pdfAttachment.filename}`);
-      extractedData = await extractFromPdf(pdfAttachment.content, pdfAttachment.filename);
-      if (extractedData) {
-        pdfContent = pdfAttachment.content;
-        console.log('Successfully extracted data from PDF');
+      console.log(`[SmartParse] PDF allegato: ${pdfAttachment.filename}`);
+      try {
+        const sp = await parseDocumentSmart(pdfAttachment.content, 'auto', 'auto');
+        if (sp?.result && (sp.result.flights?.length || sp.result.hotels?.length)) {
+          extractedData = sp.result;
+          pdfContent = pdfAttachment.content;
+          console.log(`[SmartParse] PDF L${sp.parseLevel} — ${sp.durationMs}ms, claudeCalls=${sp.claudeCalls}`);
+        }
+      } catch (err) {
+        console.error('[SmartParse] PDF error:', err.message);
       }
     }
 
-    // If no PDF or extraction failed, try email HTML body
+    // HTML body
     if (!extractedData && htmlBody) {
-      console.log('Trying HTML body extraction...');
-      extractedData = await extractFromEmailHtml(htmlBody, subject);
-      if (extractedData) {
-        console.log('Successfully extracted data from HTML');
+      console.log('[SmartParse] Analisi HTML body...');
+      try {
+        const sp = await parseEmailContent(htmlBody, 'html', subject);
+        if (sp?.result && (sp.result.flights?.length || sp.result.hotels?.length)) {
+          extractedData = sp.result;
+          console.log(`[SmartParse] HTML L${sp.parseLevel} — ${sp.durationMs}ms, claudeCalls=${sp.claudeCalls}`);
+        }
+      } catch (err) {
+        console.error('[SmartParse] HTML error:', err.message);
       }
     }
 
-    // If still no data, try plain text
+    // Testo plain (fallback)
     if (!extractedData && textBody) {
-      console.log('Trying text body extraction...');
-      extractedData = await extractFromEmailText(textBody, subject);
-      if (extractedData) {
-        console.log('Successfully extracted data from text');
+      console.log('[SmartParse] Analisi testo plain...');
+      try {
+        const sp = await parseEmailContent(textBody, 'text', subject);
+        if (sp?.result && (sp.result.flights?.length || sp.result.hotels?.length)) {
+          extractedData = sp.result;
+          console.log(`[SmartParse] Text L${sp.parseLevel} — ${sp.durationMs}ms, claudeCalls=${sp.claudeCalls}`);
+        }
+      } catch (err) {
+        console.error('[SmartParse] Text error:', err.message);
+      }
+    }
+
+    // Normalizza passengers[] → flight.passenger per compatibilità con pending-bookings
+    if (extractedData?.passengers?.length && extractedData?.flights?.length) {
+      const passengerName = extractedData.passengers[0]?.name || null;
+      if (passengerName) {
+        extractedData.flights.forEach(f => { f.passenger = f.passenger || passengerName; });
       }
     }
 

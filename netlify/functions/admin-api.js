@@ -167,6 +167,12 @@ exports.handler = async (event, context) => {
       case 'analyze-pdf-smart':
         result = await analyzePdfSmart(body);
         break;
+      case 'test-email-smartparse':
+        result = await testEmailSmartParse(body);
+        break;
+      case 'test-eml-smartparse':
+        result = await testEmlSmartParse(body);
+        break;
       case 'smartparse-list-templates':
         result = await smartParseListTemplates();
         break;
@@ -1375,6 +1381,92 @@ async function analyzePdfSmart({ pdfBase64, docType, mode }) {
     error:           parseResult.error ?? null,
     mode:            validMode,
     isBeta:          validMode === 'beta'
+  };
+}
+
+async function testEmailSmartParse({ content, contentType = 'text', subject = '' }) {
+  if (!content) throw new Error('content is required');
+
+  const { parseEmailContent, parseDocumentSmart } = require('./utils/smartParser');
+
+  let parseResult;
+  if (contentType === 'pdf') {
+    // PDF base64: sempre in beta (nessuna versione live aggiornata)
+    parseResult = await parseDocumentSmart(content, 'auto', 'beta');
+  } else {
+    // HTML o testo: usa il nuovo parseEmailContent
+    parseResult = await parseEmailContent(content, contentType, subject);
+  }
+
+  return {
+    result:          parseResult.result,
+    detectedDocType: parseResult.detectedDocType ?? null,
+    durationMs:      parseResult.durationMs,
+    parseLevel:      parseResult.parseLevel,
+    claudeCalls:     parseResult.claudeCalls ?? 0,
+    cacheId:         parseResult.cacheId ?? null,
+    cacheSaved:      parseResult.cacheSaved ?? null,
+    dbLoadError:     parseResult.dbLoadError ?? null,
+    textLength:      parseResult.textLength ?? 0,
+    timedOut:        parseResult.timedOut ?? false,
+    error:           parseResult.error ?? null,
+    isBeta:          true,
+  };
+}
+
+/**
+ * Test EML: legge un file .eml, estrae subject/HTML/PDF e chiama SmartParse.
+ * Priorità: PDF allegato > HTML body > testo.
+ */
+async function testEmlSmartParse({ emlText }) {
+  if (!emlText) throw new Error('emlText is required');
+
+  const { parseEml }                         = require('./utils/mimeParser');
+  const { parseEmailContent, parseDocumentSmart } = require('./utils/smartParser');
+
+  const parsed = parseEml(emlText);
+
+  // Scegli il contenuto migliore: PDF > HTML > testo
+  let parseResult;
+  let sourceUsed;
+
+  if (parsed.pdfs.length > 0) {
+    // Usa il primo PDF trovato nell'allegato — sempre beta
+    const pdf = parsed.pdfs[0];
+    sourceUsed = `PDF allegato: ${pdf.filename}`;
+    parseResult = await parseDocumentSmart(pdf.content, 'auto', 'beta');
+  } else if (parsed.html) {
+    sourceUsed = `HTML body (${parsed.html.length} char)`;
+    parseResult = await parseEmailContent(parsed.html, 'html', parsed.subject);
+  } else if (parsed.text) {
+    sourceUsed = `Testo plain (${parsed.text.length} char)`;
+    parseResult = await parseEmailContent(parsed.text, 'text', parsed.subject);
+  } else {
+    throw new Error('Nessun contenuto estraibile dall\'EML');
+  }
+
+  return {
+    result:          parseResult.result,
+    detectedDocType: parseResult.detectedDocType ?? null,
+    durationMs:      parseResult.durationMs,
+    parseLevel:      parseResult.parseLevel,
+    claudeCalls:     parseResult.claudeCalls ?? 0,
+    cacheId:         parseResult.cacheId ?? null,
+    cacheSaved:      parseResult.cacheSaved ?? null,
+    dbLoadError:     parseResult.dbLoadError ?? null,
+    textLength:      parseResult.textLength ?? 0,
+    timedOut:        parseResult.timedOut ?? false,
+    error:           parseResult.error ?? null,
+    isBeta:          true,
+    // Metadati EML
+    emlMeta: {
+      subject:    parsed.subject,
+      from:       parsed.from,
+      pdfsFound:  parsed.pdfs.map(p => p.filename),
+      hasHtml:    !!parsed.html,
+      hasText:    !!parsed.text,
+      sourceUsed,
+    },
   };
 }
 

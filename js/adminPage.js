@@ -153,6 +153,7 @@ const adminPage = {
       'pdf-logs': () => this.renderPdfLogs(),
       smartparse: () => this.renderSmartTemplates(),
       analyzer: () => this.renderAnalyzer(),
+      'email-parse': () => this.renderEmailParse(),
       analytics: () => this.renderAnalytics(),
       sharing: () => this.renderSharing(),
       audit: () => this.renderAudit(),
@@ -1416,7 +1417,9 @@ const adminPage = {
     const hotels = result.hotels || (result.name && result.checkIn ? [result] : []);
     const trains = result.trains || [];
     const buses = result.buses || [];
-    const passenger = result.passenger;
+    // Supporta sia passenger (singolare) che passengers (array, formato email)
+    const passenger = result.passenger || null;
+    const passengers = result.passengers?.length ? result.passengers : (passenger ? [passenger] : []);
     const booking = result.booking;
 
     const LEVEL_LABELS = {
@@ -1493,27 +1496,35 @@ const adminPage = {
       ${smartBar}
     `;
 
-    if (passenger) {
-      // Normalize any nested objects in passenger fields
+    if (passengers.length > 0) {
       const resolvePassengerVal = (v) => {
         if (v == null) return null;
         if (typeof v === 'string') return v;
         if (typeof v === 'boolean') return v ? 'Sì' : 'No';
         if (Array.isArray(v)) return v.map(x => typeof x === 'object' ? (x.number || x.value || JSON.stringify(x)) : x).join(', ');
-        if (typeof v === 'object') return v.allowance || v.number || v.value || v.description || JSON.stringify(v);
+        if (typeof v === 'object') {
+          // Seat con outbound/return: "09C (A) / 06D (R)"
+          if (v.outbound || v.return) return [v.outbound && `${v.outbound} (A)`, v.return && `${v.return} (R)`].filter(Boolean).join(' / ');
+          return v.allowance || v.number || v.value || v.description || JSON.stringify(v);
+        }
         return String(v);
       };
-      html += `
-        <div class="pdf-section-title">Passeggero</div>
-        <div class="pdf-result-grid">
-          ${this._pdfField('Nome', resolvePassengerVal(passenger.name))}
-          ${this._pdfField('Tipo', resolvePassengerVal(passenger.type))}
-          ${this._pdfField('Numero biglietto', resolvePassengerVal(passenger.ticketNumber))}
-          ${this._pdfField('Posto', resolvePassengerVal(passenger.seat))}
-          ${this._pdfField('Bagaglio', resolvePassengerVal(passenger.baggage))}
-          ${this._pdfField('Frequent flyer', resolvePassengerVal(passenger.frequentFlyer))}
-        </div>
-      `;
+      html += `<div class="pdf-section-title">Passeggeri (${passengers.length})</div>`;
+      passengers.forEach((p, i) => {
+        html += `
+          <div class="pdf-flight-card" style="margin-bottom:8px">
+            ${passengers.length > 1 ? `<div class="pdf-flight-card-header">Passeggero ${i + 1}</div>` : ''}
+            <div class="pdf-result-grid">
+              ${this._pdfField('Nome', resolvePassengerVal(p.name))}
+              ${this._pdfField('Tipo', resolvePassengerVal(p.type))}
+              ${this._pdfField('Numero biglietto', resolvePassengerVal(p.ticketNumber))}
+              ${this._pdfField('Posto', resolvePassengerVal(p.seat))}
+              ${this._pdfField('Bagaglio', resolvePassengerVal(p.baggage))}
+              ${this._pdfField('Frequent flyer', resolvePassengerVal(p.frequentFlyer))}
+            </div>
+          </div>
+        `;
+      });
     }
 
     if (booking) {
@@ -1526,12 +1537,12 @@ const adminPage = {
       html += `
         <div class="pdf-section-title">Prenotazione</div>
         <div class="pdf-result-grid">
-          ${this._pdfField('Codice prenotazione', resolveBookingVal(booking.bookingReference || booking.pnr))}
+          ${this._pdfField('Codice prenotazione', resolveBookingVal(booking.reference || booking.bookingReference || booking.pnr))}
           ${this._pdfField('Biglietto', resolveBookingVal(booking.ticketNumber))}
           ${this._pdfField('Classe', resolveBookingVal(booking.class || booking.cabinClass))}
-          ${this._pdfField('Tariffa', resolveBookingVal(booking.fare || booking.price))}
+          ${this._pdfField('Totale', booking.totalAmount ? `${booking.totalAmount.value ?? ''} ${booking.totalAmount.currency ?? ''}`.trim() : resolveBookingVal(booking.fare || booking.price))}
+          ${this._pdfField('Data emissione', resolveBookingVal(booking.issueDate || booking.issuedDate))}
           ${this._pdfField('Emesso da', resolveBookingVal(booking.issuedBy))}
-          ${this._pdfField('Data emissione', resolveBookingVal(booking.issuedDate))}
         </div>
       `;
     }
@@ -1762,29 +1773,53 @@ const adminPage = {
       html += `<div class="pdf-analyze-empty">Nessun documento di viaggio riconoscibile.</div>`;
     }
 
+    const uid = Date.now().toString(36);
+    const copyBtn = (preId) => `<button data-copy-pre="${preId}" title="Copia" style="position:absolute;top:8px;right:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:4px;color:#8b949e;cursor:pointer;padding:5px 7px;display:flex;align-items:center;font-size:11px;line-height:1"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>`;
+
     html += `
       <div class="pdf-analyze-raw-toggle">
         <details>
           <summary>JSON estratto</summary>
-          <pre class="pdf-log-json">${this.esc(JSON.stringify(result, null, 2))}</pre>
+          <div style="position:relative">
+            ${copyBtn(`json-pre-${uid}`)}
+            <pre id="json-pre-${uid}" class="pdf-log-json">${this.esc(JSON.stringify(result, null, 2))}</pre>
+          </div>
         </details>
         ${smartMeta?.isBeta ? `
         <details style="margin-top:6px">
           <summary>Metadati SmartParse</summary>
-          <pre class="pdf-log-json">${this.esc(JSON.stringify({
-            parseLevel: smartMeta.parseLevel,
-            brand: smartMeta.brand,
-            l2Method: smartMeta.l2Method,
-            templateId: smartMeta.templateId || smartMeta.cacheId,
-            claudeCalls: smartMeta.claudeCalls,
-            textLength: smartMeta.textLength,
-            durationMs: smartMeta.durationMs
-          }, null, 2))}</pre>
+          <div style="position:relative">
+            ${copyBtn(`meta-pre-${uid}`)}
+            <pre id="meta-pre-${uid}" class="pdf-log-json">${this.esc(JSON.stringify({
+              parseLevel: smartMeta.parseLevel,
+              brand: smartMeta.brand,
+              l2Method: smartMeta.l2Method,
+              templateId: smartMeta.templateId || smartMeta.cacheId,
+              claudeCalls: smartMeta.claudeCalls,
+              textLength: smartMeta.textLength,
+              durationMs: smartMeta.durationMs
+            }, null, 2))}</pre>
+          </div>
         </details>` : ''}
       </div>
     `;
 
     return html;
+  },
+
+  _attachCopyBtns(container) {
+    container.querySelectorAll('[data-copy-pre]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const pre = document.getElementById(btn.dataset.copyPre);
+        if (!pre) return;
+        navigator.clipboard.writeText(pre.textContent).then(() => {
+          const orig = btn.innerHTML;
+          btn.textContent = '✓';
+          btn.style.color = '#56d364';
+          setTimeout(() => { btn.innerHTML = orig; btn.style.color = ''; }, 1200);
+        });
+      });
+    });
   },
 
   _pdfField(label, value) {
@@ -1795,6 +1830,344 @@ const adminPage = {
         <div class="pdf-result-field-value">${this.esc(String(value))}</div>
       </div>
     `;
+  },
+
+  // ============================================
+  // Email Parse
+  // ============================================
+
+  renderEmailParse() {
+    const main = document.querySelector('.admin-content');
+
+    main.innerHTML = `
+      <div class="admin-view-header">
+        <h1>Email Tester</h1>
+        <p>Testa SmartParse su email reali. Fornisci il corpo email (EML, HTML o testo) e, se disponibile, il PDF allegato. Nessun dato viene salvato nel database.</p>
+      </div>
+
+      <div class="analyzer-layout">
+
+        <!-- Colonna form -->
+        <div class="analyzer-form-col">
+          <div class="admin-card" style="padding:20px">
+
+            <!-- Tipo sorgente -->
+            <div style="margin-bottom:16px">
+              <label style="font-size:12px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Tipo sorgente</label>
+              <div class="pdf-parser-options">
+                <label class="pdf-parser-option">
+                  <input type="radio" name="ep-content-type" value="eml" checked>
+                  <span class="pdf-parser-option-label">File EML</span>
+                </label>
+                <label class="pdf-parser-option">
+                  <input type="radio" name="ep-content-type" value="html">
+                  <span class="pdf-parser-option-label">HTML</span>
+                </label>
+                <label class="pdf-parser-option">
+                  <input type="radio" name="ep-content-type" value="text">
+                  <span class="pdf-parser-option-label">Testo</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- EML file -->
+            <div style="margin-bottom:12px" id="ep-eml-wrap">
+              <label style="font-size:12px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">File EML</label>
+              <div class="pdf-upload-area" id="ep-upload-area">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--color-gray-400);margin-bottom:8px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <p style="margin:0;color:var(--color-gray-500);font-size:14px">Trascina EML qui oppure</p>
+                <p style="margin:2px 0 0;color:var(--color-gray-400);font-size:12px">Gmail → Scarica messaggio &nbsp;·&nbsp; Apple Mail → File → Salva come</p>
+                <label for="ep-eml-input" class="admin-btn admin-btn-secondary admin-btn-sm" style="margin-top:8px;cursor:pointer">Scegli file</label>
+                <input type="file" id="ep-eml-input" accept=".eml,.msg" style="display:none">
+                <div id="ep-file-list" style="margin:8px 0 0;font-size:12px;color:var(--color-gray-500)"></div>
+              </div>
+            </div>
+
+            <!-- Oggetto email -->
+            <div style="margin-bottom:12px;display:none" id="ep-subject-wrap">
+              <label style="font-size:12px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Oggetto email</label>
+              <input type="text" id="ep-subject-input"
+                placeholder="Es. Conferma prenotazione volo AZ123"
+                style="width:100%;box-sizing:border-box;padding:8px 12px;background:var(--bg-primary);border:1px solid var(--border-color);border-radius:6px;color:var(--text-primary);font-size:13px;outline:none">
+            </div>
+
+            <!-- Contenuto textarea -->
+            <div style="margin-bottom:12px;display:none" id="ep-content-wrap">
+              <label style="font-size:12px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Contenuto email</label>
+              <textarea id="ep-content-input" rows="12"
+                placeholder="Incolla qui il contenuto HTML o testo dell'email..."
+                style="width:100%;box-sizing:border-box;padding:10px 12px;background:var(--bg-primary);border:1px solid var(--border-color);border-radius:6px;color:var(--text-primary);font-size:12px;font-family:monospace;resize:vertical;outline:none"></textarea>
+            </div>
+
+            <!-- PDF allegato opzionale -->
+            <div style="margin-bottom:12px" id="ep-pdf-wrap">
+              <label style="font-size:12px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">PDF allegato <span style="font-weight:400;text-transform:none;letter-spacing:0">(opzionale)</span></label>
+              <div class="pdf-upload-area" id="ep-pdf-upload-area">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--color-gray-400);margin-bottom:8px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <p style="margin:0;color:var(--color-gray-500);font-size:14px">Trascina PDF qui oppure</p>
+                <p style="margin:2px 0 0;color:var(--color-gray-400);font-size:12px">Se presente, ha priorità sul corpo email</p>
+                <label for="ep-pdf-input" class="admin-btn admin-btn-secondary admin-btn-sm" style="margin-top:8px;cursor:pointer">Scegli file</label>
+                <input type="file" id="ep-pdf-input" accept=".pdf" style="display:none">
+                <div id="ep-pdf-file-list" style="margin:8px 0 0;font-size:12px;color:var(--color-gray-500)"></div>
+              </div>
+            </div>
+
+            <button class="admin-btn admin-btn-primary" id="ep-analyze-btn" disabled style="width:100%;padding:14px;text-align:center;justify-content:center;font-size:15px">
+              Analizza
+            </button>
+          </div>
+
+          <!-- Activity log -->
+          <div id="ep-log-wrap" style="display:none;margin-top:8px">
+            <div style="display:flex;align-items:center;justify-content:space-between;
+                        padding:8px 16px;background:#161b22;border-radius:8px 8px 0 0;
+                        border:1px solid #30363d;border-bottom:none">
+              <span style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6e7681">ACTIVITY LOG</span>
+              <div style="display:flex;gap:6px">
+                <button id="ep-log-copy" style="font-size:11px;padding:3px 10px;background:transparent;border:1px solid #30363d;border-radius:4px;color:#8b949e;cursor:pointer">Copia</button>
+                <button id="ep-log-clear" style="font-size:11px;padding:3px 10px;background:transparent;border:1px solid #30363d;border-radius:4px;color:#8b949e;cursor:pointer">Clear</button>
+              </div>
+            </div>
+            <div id="ep-activity-log"
+              style="background:#0d1117;color:#e6edf3;font-family:'JetBrains Mono',Menlo,'Courier New',monospace;
+                     font-size:12px;line-height:1.8;border-radius:0 0 8px 8px;padding:14px 18px;
+                     min-height:80px;max-height:220px;overflow-y:auto;white-space:pre-wrap;
+                     word-break:break-word;border:1px solid #30363d"></div>
+          </div>
+        </div>
+
+        <!-- Colonna risultati -->
+        <div class="analyzer-results-col">
+          <div id="ep-result"></div>
+        </div>
+
+      </div>
+    `;
+
+    // Refs
+    const radios      = document.querySelectorAll('[name="ep-content-type"]');
+    const emlWrap     = document.getElementById('ep-eml-wrap');
+    const subjectWrap = document.getElementById('ep-subject-wrap');
+    const contentWrap = document.getElementById('ep-content-wrap');
+    const pdfWrap     = document.getElementById('ep-pdf-wrap');
+    const logWrap     = document.getElementById('ep-log-wrap');
+    const logEl       = document.getElementById('ep-activity-log');
+    const uploadArea  = document.getElementById('ep-upload-area');
+    const fileListEl  = document.getElementById('ep-file-list');
+    const analyzeBtn  = document.getElementById('ep-analyze-btn');
+    const logLines    = [];
+    let emlText = null;
+    let emlFile = null;
+
+    // Aggiorna visibilità input in base al tipo selezionato
+    const updateUI = () => {
+      const type = document.querySelector('[name="ep-content-type"]:checked')?.value;
+      emlWrap.style.display     = type === 'eml'  ? '' : 'none';
+      subjectWrap.style.display = type === 'eml'  ? 'none' : '';
+      contentWrap.style.display = (type === 'html' || type === 'text') ? '' : 'none';
+      analyzeBtn.disabled       = type === 'eml' && !emlText;
+    };
+    radios.forEach(r => r.addEventListener('change', updateUI));
+    updateUI();
+
+    // EML file handling
+    const handleEmlFile = (file) => {
+      if (!file) return;
+      fileListEl.innerHTML = '<span style="color:var(--color-gray-400)">Lettura in corso...</span>';
+      analyzeBtn.disabled = true;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        emlText = e.target.result;
+        emlFile = file;
+        fileListEl.innerHTML = `<div style="display:flex;align-items:center;gap:4px;margin-top:2px">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          ${this.esc(file.name)}
+        </div>`;
+        analyzeBtn.disabled = false;
+      };
+      reader.onerror = () => this.toast('Errore lettura file', 'error');
+      reader.readAsText(file);
+    };
+
+    document.getElementById('ep-eml-input')?.addEventListener('change', (e) => handleEmlFile(e.target.files[0]));
+    uploadArea?.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('drag-over'); });
+    uploadArea?.addEventListener('dragleave', () => uploadArea.classList.remove('drag-over'));
+    uploadArea?.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('drag-over');
+      handleEmlFile(e.dataTransfer.files[0]);
+    });
+
+    // PDF allegato — drag & drop
+    const pdfUploadArea  = document.getElementById('ep-pdf-upload-area');
+    const pdfFileListEl  = document.getElementById('ep-pdf-file-list');
+    const pdfInput       = document.getElementById('ep-pdf-input');
+
+    const clearPdfFile = () => {
+      pdfInput.value = '';
+      pdfFileListEl.innerHTML = '';
+    };
+
+    const handlePdfFile = (file) => {
+      if (!file) return;
+      pdfFileListEl.innerHTML = `<div style="display:flex;align-items:center;gap:6px;margin-top:2px">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${this.esc(file.name)}</span>
+        <button id="ep-pdf-remove" style="flex-shrink:0;background:none;border:none;cursor:pointer;color:var(--color-gray-400);padding:0;display:flex;align-items:center" title="Rimuovi allegato">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>`;
+      document.getElementById('ep-pdf-remove')?.addEventListener('click', clearPdfFile);
+    };
+
+    pdfInput?.addEventListener('change', (e) => handlePdfFile(e.target.files[0]));
+    pdfUploadArea?.addEventListener('dragover', (e) => { e.preventDefault(); pdfUploadArea.classList.add('drag-over'); });
+    pdfUploadArea?.addEventListener('dragleave', () => pdfUploadArea.classList.remove('drag-over'));
+    pdfUploadArea?.addEventListener('drop', (e) => {
+      e.preventDefault();
+      pdfUploadArea.classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      if (file) {
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        pdfInput.files = dt.files;
+        handlePdfFile(file);
+      }
+    });
+
+    // Log helper
+    const log = (msg, level = 'info') => {
+      const colors = { error: '#f85149', warn: '#e3b341', ok: '#56d364', step: '#79c0ff' };
+      const now = new Date();
+      const ts = `[${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}]`;
+      logLines.push(`${ts} ${msg}`);
+      const row = document.createElement('span');
+      row.style.cssText = `display:block;color:${colors[level] || '#e6edf3'}`;
+      row.textContent = `${ts} ${msg}`;
+      logEl.appendChild(row);
+      logEl.scrollTop = logEl.scrollHeight;
+      logWrap.style.display = 'block';
+    };
+
+    document.getElementById('ep-log-copy')?.addEventListener('click', () => {
+      navigator.clipboard.writeText(logLines.join('\n'))
+        .then(() => this.toast('Log copiato', 'success'))
+        .catch(() => this.toast('Copia non riuscita', 'error'));
+    });
+    document.getElementById('ep-log-clear')?.addEventListener('click', () => {
+      logLines.length = 0;
+      logEl.innerHTML = '';
+    });
+
+    // Analizza
+    document.getElementById('ep-analyze-btn').addEventListener('click', async () => {
+      const btn         = document.getElementById('ep-analyze-btn');
+      const resultEl    = document.getElementById('ep-result');
+      const contentType = document.querySelector('[name="ep-content-type"]:checked')?.value || 'eml';
+
+      let apiAction, apiPayload;
+
+      // Controlla se è stato caricato un PDF allegato opzionale
+      const pdfFile = document.getElementById('ep-pdf-input').files[0];
+
+      if (pdfFile) {
+        // PDF allegato presente: ha priorità sul corpo email, come nel parser reale
+        log(`▶ PDF allegato: ${pdfFile.name} — analisi prioritaria`, 'step');
+        const base64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload  = e => resolve(e.target.result.split(',')[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(pdfFile);
+        });
+        apiAction  = 'test-email-smartparse';
+        apiPayload = {
+          content:     base64,
+          contentType: 'pdf',
+          subject:     document.getElementById('ep-subject-input').value.trim(),
+        };
+
+      } else if (contentType === 'eml') {
+        if (!emlText) { this.toast('Seleziona un file EML', 'error'); return; }
+        log(`▶ Caricamento EML: ${emlFile?.name || 'file'} (${Math.round(emlText.length / 1024)} KB)`, 'step');
+        apiAction  = 'test-eml-smartparse';
+        apiPayload = { emlText };
+
+      } else {
+        const content = document.getElementById('ep-content-input').value.trim();
+        if (!content) { this.toast('Inserisci del contenuto email', 'error'); return; }
+        log(`▶ Analisi ${contentType.toUpperCase()} (${content.length} car.)`, 'step');
+        apiAction  = 'test-email-smartparse';
+        apiPayload = {
+          content,
+          contentType,
+          subject: document.getElementById('ep-subject-input').value.trim(),
+        };
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner spinner-sm" style="margin-right:8px"></span>Analisi in corso...';
+      resultEl.innerHTML = '<div style="padding:32px;text-align:center"><span class="spinner"></span></div>';
+
+      try {
+        const res = await this.api(apiAction, apiPayload);
+
+        const lvlLabels = { 1: '⚡ L1 Cache esatta', 2: '🧩 L2 Template', 4: '🤖 L4 Claude API' };
+        const lvlColors = { 1: '#56d364', 2: '#79c0ff', 4: '#d2a8ff' };
+        const lvl = res.parseLevel || 4;
+
+        log(`  Livello: ${lvlLabels[lvl] || lvl} | Claude: ${res.claudeCalls ?? 0} | ${res.durationMs}ms`, lvl === 1 ? 'ok' : lvl === 4 ? 'warn' : 'info');
+        if (res.emlMeta) {
+          log(`  Oggetto: ${res.emlMeta.subject || '—'}`, 'info');
+          log(`  Sorgente usata: ${res.emlMeta.sourceUsed}`, 'info');
+          if (res.emlMeta.pdfsFound?.length) log(`  PDF trovati: ${res.emlMeta.pdfsFound.join(', ')}`, 'ok');
+        }
+        if (res.cacheSaved) log(`  💾 Cache salvata — prossima analisi: 0 chiamate`, 'ok');
+        if (res.error) log(`  ⚠ ${res.error}`, 'warn');
+
+        // Metadati EML se presenti
+        const emlMetaHtml = res.emlMeta ? `
+          <div style="padding:10px 14px;background:var(--bg-secondary);border-radius:6px;border:1px solid var(--border-color);margin-bottom:10px;font-size:12px;color:var(--text-secondary)">
+            <div style="margin-bottom:3px"><strong style="color:var(--text-primary)">Oggetto:</strong> ${this.esc(res.emlMeta.subject || '—')}</div>
+            <div style="margin-bottom:3px"><strong style="color:var(--text-primary)">Da:</strong> ${this.esc(res.emlMeta.from || '—')}</div>
+            <div style="margin-bottom:3px"><strong style="color:var(--text-primary)">Sorgente usata:</strong> ${this.esc(res.emlMeta.sourceUsed)}</div>
+            ${res.emlMeta.pdfsFound?.length ? `<div><strong style="color:var(--text-primary)">PDF allegati:</strong> ${res.emlMeta.pdfsFound.map(f => this.esc(f)).join(', ')}</div>` : ''}
+          </div>` : '';
+
+        // Badge livello
+        const levelBadge = `
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+            <span style="padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;background:${lvlColors[lvl]}22;color:${lvlColors[lvl]};border:1px solid ${lvlColors[lvl]}44">
+              ${lvlLabels[lvl] || `Livello ${lvl}`}
+            </span>
+            <span style="padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;background:var(--bg-secondary);color:var(--text-secondary);border:1px solid var(--border-color)">
+              ${res.claudeCalls === 0 ? '✅ 0 chiamate Claude' : `🤖 ${res.claudeCalls} chiamata Claude`}
+            </span>
+            <span style="padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;background:var(--bg-secondary);color:var(--text-secondary);border:1px solid var(--border-color)">
+              ⏱ ${res.durationMs}ms
+            </span>
+            ${res.textLength ? `<span style="padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;background:var(--bg-secondary);color:var(--text-secondary);border:1px solid var(--border-color)">📝 ${res.textLength} car.</span>` : ''}
+            ${res.cacheSaved ? '<span style="padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;background:#56d36422;color:#56d364;border:1px solid #56d36444">💾 Cache salvata</span>' : ''}
+            ${res.error ? `<span style="padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;background:#f8514922;color:#f85149;border:1px solid #f8514944">⚠ ${this.esc(res.error)}</span>` : ''}
+          </div>`;
+
+        const resultHtml = this._renderPdfAnalysisResult(
+          res.result,
+          res.detectedDocType || 'auto',
+          res.durationMs,
+          { ...res, isBeta: true }
+        );
+
+        resultEl.innerHTML = levelBadge + emlMetaHtml + resultHtml;
+        this._attachCopyBtns(resultEl);
+
+      } catch (err) {
+        log(`  ✗ Errore: ${err.message}`, 'error');
+        resultEl.innerHTML = `<div class="pdf-analyze-error"><strong>Errore:</strong> ${this.esc(err.message)}</div>`;
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Analizza con SmartParse';
+      }
+    });
   },
 
   // ============================================
@@ -2187,19 +2560,37 @@ const adminPage = {
 
     const typeIcon = { flight: '✈', hotel: '🏨', train: '🚆', bus: '🚌', any: '📄' };
 
-    const liveTemplates = templates.filter(t => !t.id.startsWith('beta:'));
-    const betaTemplates = templates.filter(t => t.id.startsWith('beta:'));
+    // email- appartiene al tester (beta), non alla cache live
+    const liveTemplates = templates.filter(t => !t.id.startsWith('beta:') && !t.id.startsWith('email-'));
+    const betaTemplates = templates.filter(t => t.id.startsWith('beta:') || t.id.startsWith('email-'));
+
+    const fmtDateTime = (iso) => {
+      if (!iso) return '—';
+      const d = new Date(iso);
+      const date = d.toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: '2-digit' });
+      const time = d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+      return `${date} - ${time}`;
+    };
 
     const buildRows = (list) => list.map(t => {
       const icon = typeIcon[t.doc_type] || '?';
-      const date = new Date(t.created_at).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: '2-digit' });
       const fpShort = t.last_sample_fingerprint ? t.last_sample_fingerprint.substring(0, 12) + '...' : '—';
+      const isEmail = t.id.startsWith('email-');
+      const sourceBadge = isEmail
+        ? `<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:#dbeafe;color:#1d4ed8;font-weight:700;margin-left:4px">Email</span>`
+        : '';
+      const nameDisplay = t.name ? `<span style="font-size:11px;color:var(--text-secondary);display:block;margin-top:2px">${this.esc(t.name.substring(0, 50))}</span>` : '';
+      const wasUpdated = t.updated_at && t.created_at && t.updated_at !== t.created_at;
       return `
         <tr class="sp-tpl-row" data-tpl-id="${this.esc(t.id)}">
-          <td><code style="font-size:11px;color:var(--text-secondary)">${fpShort}</code></td>
+          <td>
+            <code style="font-size:11px;color:var(--text-secondary)">${fpShort}</code>${sourceBadge}
+            ${nameDisplay}
+          </td>
           <td><span class="sp-tpl-type">${icon} ${t.doc_type}</span></td>
           <td class="sp-tpl-uses">${t.usage_count || 0}</td>
-          <td style="color:var(--text-secondary);font-size:12px">${date}</td>
+          <td style="color:var(--text-secondary);font-size:12px;white-space:nowrap">${fmtDateTime(t.created_at)}</td>
+          <td style="color:${wasUpdated ? 'var(--text-primary)' : 'var(--text-secondary)'};font-size:12px;white-space:nowrap">${wasUpdated ? fmtDateTime(t.updated_at) : '—'}</td>
           <td class="sp-tpl-actions">
             <button class="admin-btn admin-btn-sm admin-btn-danger sp-tpl-delete-btn" data-tpl-id="${this.esc(t.id)}" data-tpl-name="${this.esc(t.name)}">Elimina</button>
           </td>
@@ -2216,7 +2607,7 @@ const adminPage = {
       return `<div class="admin-table-wrapper">
         <table class="admin-table sp-tpl-table">
           <thead>
-            <tr><th>Fingerprint</th><th>Tipo</th><th>Utilizzi</th><th>Creato</th><th></th></tr>
+            <tr><th>Fingerprint</th><th>Tipo</th><th>Utilizzi</th><th>Creato</th><th>Aggiornato</th><th></th></tr>
           </thead>
           <tbody>${buildRows(list)}</tbody>
         </table>
@@ -2623,7 +3014,7 @@ const adminPage = {
 
     main.innerHTML = `
       <div class="admin-view-header">
-        <h1>Analizzatore</h1>
+        <h1>PDF Tester</h1>
         <p>Carica uno o più PDF per vedere come vengono estratti e interpretati dal sistema. Nessun dato viene salvato nel database.</p>
       </div>
 
@@ -2759,6 +3150,7 @@ const adminPage = {
         </div>
 
       </div>
+
     `;
 
     // ── Activity Log ──────────────────────────────────────────────────────────
@@ -3049,6 +3441,7 @@ const adminPage = {
                </div>
                <div style="padding:12px">${html}</div>`
             : html;
+          this._attachCopyBtns(placeholder);
         } catch (err) {
           const isOverload = /529|overload/i.test(err.message);
           spLog(`  ✗ ERRORE [${name}]: ${err.message}`, 'error');
@@ -3069,6 +3462,7 @@ const adminPage = {
       runBtn.innerHTML = 'Analizza';
       spLog(`─── Analisi completata ───`, 'step');
     });
+
   },
 };
 
