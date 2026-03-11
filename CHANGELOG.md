@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.31.5 - 2026-03-11
+
+### Fix
+- Risolto crash "Errore durante l'aggiunta" che si verificava caricando PDF Booking.com (e potenzialmente altri) quando il modulo di rilevamento aggiornamenti non era disponibile; ora il sistema torna automaticamente al flusso standard
+- Messaggi di errore più dettagliati: distingue ora tra errore di rete, errore del server ed errore interno
+
 ## 0.31.4 - 2026-03-09
 
 ### Miglioramenti

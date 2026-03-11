@@ -1,6 +1,20 @@
 {
   "versions": [
     {
+      "version": "0.31.5",
+      "date": "2026-03-11",
+      "changes": {
+        "it": [
+          "Fix caricamento PDF Booking.com: errore \"Errore durante l'aggiunta\" risolto, con fallback automatico al flusso standard",
+          "Messaggi di errore più descrittivi in caso di problemi durante l'aggiunta di una prenotazione"
+        ],
+        "en": [
+          "Fix Booking.com PDF upload: resolved \"Error adding booking\" crash with automatic fallback to standard flow",
+          "More descriptive error messages when adding a booking fails"
+        ]
+      }
+    },
+    {
       "version": "0.31.4",
       "date": "2026-03-09",
       "changes": {

@@ -1417,9 +1417,14 @@
         const modalHeader = modal.querySelector('.modal-header h2');
 
         // Rileva aggiornamenti confrontando con i booking esistenti nel viaggio
-        const updateCheck = window.updatePreview.detectUpdates(_parsedResults, currentTripData);
+        // Usa optional chaining: se updatePreview non è disponibile (es. cache vecchia),
+        // tratta tutto come nuovo booking e usa il flusso parsePreview standard
+        if (!window.updatePreview) {
+          console.warn('[tripPage] window.updatePreview non disponibile — fallback a parsePreview');
+        }
+        const updateCheck = window.updatePreview?.detectUpdates(_parsedResults, currentTripData);
 
-        if (updateCheck.hasUpdates) {
+        if (updateCheck?.hasUpdates) {
           // ── Mostra subito il confronto aggiornamenti ──
           if (modalHeader) modalHeader.textContent = i18n.t('trip.updateDetected') || 'Aggiornamenti rilevati';
 
@@ -1642,14 +1647,24 @@
     /** Show error state in modal */
     const showBookingError = (error, modalBody, modalFooter, originalBodyContent) => {
       let errorMessage;
+      let errorDetail = '';
       if (error.message === 'rate_limit') {
-        errorMessage = i18n.t('common.rateLimitError') || 'Rate limit reached. Please wait a minute.';
+        errorMessage = i18n.t('common.rateLimitError') || 'Troppe richieste. Attendi un minuto e riprova.';
       } else if (error.message === 'duplicate') {
-        errorMessage = `${i18n.t('trip.duplicateError') || 'This booking is already in'} "${error.tripName}"`;
+        errorMessage = `${i18n.t('trip.duplicateError') || 'Questa prenotazione è già presente in'} "${error.tripName}"`;
+      } else if (error.message === 'server_error') {
+        errorMessage = i18n.t('trip.serverError') || 'Errore del server. Riprova tra qualche istante.';
+        errorDetail = error.errorCode || '';
+      } else if (error instanceof TypeError || error.name === 'TypeError') {
+        // Errore JS interno (es. modulo non caricato, proprietà undefined)
+        errorMessage = i18n.t('trip.internalError') || 'Errore interno. Ricarica la pagina e riprova.';
+        errorDetail = 'ERR_INTERNAL';
+        console.error('[showBookingError] Errore interno:', error.message, error.stack);
       } else {
-        errorMessage = i18n.t('trip.addError') || 'Error adding booking';
+        errorMessage = i18n.t('trip.addError') || 'Errore durante l\'aggiunta della prenotazione.';
+        errorDetail = error.errorCode || '';
       }
-      const errorCode = error.errorCode || '';
+      const errorCode = errorDetail || error.errorCode || '';
 
       modalBody.innerHTML = `
         <div class="error-state">
@@ -3744,9 +3759,13 @@
       tripCreator.showFooter(false);
 
       // Rileva aggiornamenti confrontando con i booking esistenti
-      const updateCheck = window.updatePreview.detectUpdates(parsedResults, currentTripData);
+      // Usa optional chaining: fallback a parsePreview se updatePreview non disponibile
+      if (!window.updatePreview) {
+        console.warn('[tripPage] window.updatePreview non disponibile — fallback a parsePreview');
+      }
+      const updateCheck = window.updatePreview?.detectUpdates(parsedResults, currentTripData);
 
-      if (updateCheck.hasUpdates) {
+      if (updateCheck?.hasUpdates) {
         // ── Mostra subito il confronto aggiornamenti ──
         if (modalHeader) modalHeader.textContent = i18n.t('trip.updateDetected') || 'Aggiornamenti rilevati';
 
