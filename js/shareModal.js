@@ -311,9 +311,9 @@ const shareModal = {
             if (result.inviteUrl) {
               // Utente non registrato: mostra link invito specifico
               this._showInviteLinkUnderRow(email, result.inviteUrl, role, 'invite-unregistered');
-            } else if (this._currentShareUrl) {
-              // Utente registrato: mostra il link del viaggio da condividere manualmente
-              this._showInviteLinkUnderRow(email, this._currentShareUrl, role, 'invite-registered');
+            } else if (result.tripUrl) {
+              // Utente registrato: già aggiunto, mostra link diretto al viaggio
+              this._showInviteLinkUnderRow(email, result.tripUrl, role, 'invite-registered');
             }
           } else {
             const errorMessages = {
@@ -594,14 +594,12 @@ const shareModal = {
           });
           btn.closest('.share-collaborator-row')?.remove();
         } else if (action === 'resend-notification') {
-          // Collaboratore registrato pending: mostra link copiabile con messaggio precostruito
+          // Collaboratore registrato: mostra link diretto al viaggio
           const row = btn.closest('.share-collaborator-row');
           const email = row?.dataset.email || '';
           const rowRole = row?.dataset.role || 'ospite';
-          const linkUrl = shareModal._currentShareUrl || '';
-          if (linkUrl) {
-            shareModal._showInviteLinkUnderRow(email, linkUrl, rowRole, 'invite-registered');
-          }
+          const tripUrl = `${window.location.origin}/trip.html?id=${tripId}`;
+          shareModal._showInviteLinkUnderRow(email, tripUrl, rowRole, 'invite-registered');
           btn.disabled = false;
           return;
         } else if (action === 'resend') {

@@ -164,7 +164,7 @@ async function handleInvite(serviceClient, user, { tripId, email, role }, header
   const registeredUser = await findUserByEmail(serviceClient, email);
 
   if (registeredUser) {
-    // Add to trip_collaborators with pending status (requires acceptance)
+    // Utente registrato: aggiunto direttamente come accepted (nessun step di accettazione)
     const { error: insertError } = await serviceClient
       .from('trip_collaborators')
       .insert({
@@ -172,7 +172,7 @@ async function handleInvite(serviceClient, user, { tripId, email, role }, header
         user_id: registeredUser.id,
         role,
         invited_by: user.id,
-        status: 'pending'
+        status: 'accepted'
       });
 
     if (insertError) {
@@ -195,17 +195,21 @@ async function handleInvite(serviceClient, user, { tripId, email, role }, header
 
     const tripTitle = trip?.data?.title?.it || trip?.data?.title || 'un viaggio';
 
-    // Create invite notification (actionable: user must accept/decline)
+    // Notifica informativa (non richiede azione)
     await serviceClient.from('notifications').insert({
       user_id: registeredUser.id,
-      type: 'collaboration_invite',
+      type: 'collaboration_added',
       trip_id: tripId,
       actor_id: user.id,
       message: {
-        it: `Ti ha invitato come ${role === 'viaggiatore' ? 'viaggiatore' : 'ospite'} al viaggio "${tripTitle}"`,
-        en: `Invited you as ${role === 'viaggiatore' ? 'traveler' : 'guest'} to trip "${tripTitle}"`
+        it: `Ti ha aggiunto come ${role === 'viaggiatore' ? 'viaggiatore' : 'ospite'} al viaggio "${tripTitle}"`,
+        en: `Added you as ${role === 'viaggiatore' ? 'traveler' : 'guest'} to trip "${tripTitle}"`
       }
     });
+
+    // Build trip URL
+    const siteUrl = process.env.URL || 'https://travel-flow.com';
+    const tripUrl = `${siteUrl}/trip.html?id=${tripId}`;
 
     // Get profile info for the response
     const { data: profile } = await serviceClient
@@ -220,12 +224,13 @@ async function handleInvite(serviceClient, user, { tripId, email, role }, header
       body: JSON.stringify({
         success: true,
         status: 'invite_sent',
+        tripUrl,
         collaborator: {
           id: registeredUser.id,
           email: profile?.email || email,
           username: profile?.username,
           role,
-          status: 'pending',
+          status: 'accepted',
           type: 'collaborator'
         }
       })
