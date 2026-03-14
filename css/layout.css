@@ -72,6 +72,14 @@ body:has(> .modal-overlay.active) .header {
   z-index: 0;
 }
 
+/* Quando un pannello laterale o modale è attivo, abbassa la sidebar
+   sotto lo stacking context del page-wrapper (isolation:isolate) */
+body:has(#modal-page-slider.at-activity) .app-sidebar,
+body:has(.slide-panel-overlay.active) .app-sidebar,
+body:has(.modal-overlay.active) .app-sidebar {
+  z-index: 0;
+}
+
 
 /* Home page header variant - gradient background */
 .header--home {

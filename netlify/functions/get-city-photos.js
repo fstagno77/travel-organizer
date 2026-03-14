@@ -8,6 +8,28 @@ const { authenticateRequest, unauthorizedResponse, getCorsHeaders, handleOptions
 const { normalizeCityName, getCachedCityPhotoForUser } = require('./utils/cityPhotos');
 const { searchDestinationPhotos } = require('./utils/unsplash');
 
+// Traduzione nomi città italiani → inglese per ricerca Unsplash
+const IT_TO_EN_CITIES = {
+  'parigi': 'Paris', 'londra': 'London', 'roma': 'Rome', 'napoli': 'Naples',
+  'venezia': 'Venice', 'firenze': 'Florence', 'berlino': 'Berlin',
+  'monaco': 'Munich', 'mosca': 'Moscow', 'atene': 'Athens', 'lisbona': 'Lisbon',
+  'praga': 'Prague', 'varsavia': 'Warsaw', 'budapest': 'Budapest',
+  'bruxelles': 'Brussels', 'ginevra': 'Geneva', 'zurigo': 'Zurich',
+  'copenaghen': 'Copenhagen', 'stoccolma': 'Stockholm', 'oslo': 'Oslo',
+  'helsinki': 'Helsinki', 'amsterdam': 'Amsterdam', 'vienna': 'Vienna',
+  'dublino': 'Dublin', 'edimburgo': 'Edinburgh', 'barcellona': 'Barcelona',
+  'siviglia': 'Seville', 'lione': 'Lyon', 'marsiglia': 'Marseille',
+  'nizza': 'Nice', 'francoforte': 'Frankfurt', 'amburgo': 'Hamburg',
+  'colonia': 'Cologne', 'bucarest': 'Bucharest', 'sofia': 'Sofia',
+  'belgrado': 'Belgrade', 'zagabria': 'Zagreb', 'lubiana': 'Ljubljana',
+  'giappone': 'Japan', 'cina': 'China', 'india': 'India',
+};
+
+function translateCityForSearch(city) {
+  const key = city.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  return IT_TO_EN_CITIES[key] || city;
+}
+
 /**
  * Find last used photo for a destination for a specific user
  * First checks city_photos table (permanent storage), then falls back to user's trips
@@ -115,8 +137,11 @@ exports.handler = async (event, context) => {
     // Calculate how many Unsplash photos to fetch (6 total, minus 1 if last used exists)
     const unsplashCount = (lastUsedPhoto && page === 1) ? 5 : 6;
 
+    // Traduce il nome città in inglese per Unsplash (es. Parigi → Paris)
+    const searchCity = translateCityForSearch(city);
+
     // Always search Unsplash for options
-    const unsplashPhotos = await searchDestinationPhotos(city, unsplashCount, page);
+    const unsplashPhotos = await searchDestinationPhotos(searchCity, unsplashCount, page);
 
     // Build options array
     const options = [];

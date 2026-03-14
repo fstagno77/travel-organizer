@@ -474,6 +474,27 @@
       }
     }
 
+    const rentals = tripData.rentals || [];
+    for (const rental of rentals) {
+      const pickupDate = rental.date;
+      const dropoffDate = rental.endDate;
+      if (pickupDate) {
+        events.push({ date: pickupDate, time: rental.pickupLocation?.time || null, type: 'rental-pickup', data: rental });
+      }
+      if (pickupDate && dropoffDate) {
+        const start = new Date(pickupDate + 'T00:00:00');
+        const end = new Date(dropoffDate + 'T00:00:00');
+        let current = new Date(start.getTime() + oneDay);
+        while (current < end) {
+          events.push({ date: toLocalDateStr(current), time: null, type: 'rental-active', data: rental });
+          current = new Date(current.getTime() + oneDay);
+        }
+      }
+      if (dropoffDate) {
+        events.push({ date: dropoffDate, time: rental.dropoffLocation?.time || null, type: 'rental-dropoff', data: rental });
+      }
+    }
+
     for (const activity of customActivities) {
       events.push({ date: activity.date, time: activity.startTime || null, type: 'activity', data: activity });
     }
@@ -498,7 +519,7 @@
     }
     allDates.sort();
 
-    const typePriority = { 'hotel-checkout': 0, 'flight': 1, 'hotel-checkin': 2, 'hotel-stay': 3, 'activity': 4 };
+    const typePriority = { 'hotel-checkout': 0, 'rental-dropoff': 0.5, 'flight': 1, 'rental-pickup': 1.8, 'hotel-checkin': 2, 'hotel-stay': 3, 'rental-active': 3.5, 'activity': 4 };
     for (const date of allDates) {
       if (grouped[date]) {
         grouped[date].sort((a, b) => {
@@ -532,6 +553,10 @@
     const s = v => typeof v === 'string' && v.toLowerCase().includes(q);
     if (event.type.startsWith('hotel')) {
       return s(d.name) || s(d.address);
+    }
+    if (event.type.startsWith('rental-')) {
+      const parts = [d.provider, d.pickupLocation?.city, d.dropoffLocation?.city, d.bookingReference];
+      return parts.some(p => p && p.toLowerCase().includes(q));
     }
     return s(d.name) || s(d.description) || s(d.address);
   }
@@ -648,6 +673,14 @@
           text = `<strong>${esc(event.data.name || 'Hotel')}</strong> - ${i18n.t('hotel.stay') || 'Soggiorno'}`;
         } else if (event.type === 'hotel-checkout') {
           text = `<strong>${esc(event.data.name || 'Hotel')}</strong> - Check-out`;
+        } else if (event.type === 'rental-pickup') {
+          const city = event.data.pickupLocation?.city || '';
+          text = `<strong>${esc(event.data.provider || 'Noleggio')}</strong> - Ritiro${city ? ` a ${esc(city)}` : ''}`;
+        } else if (event.type === 'rental-active') {
+          text = `<strong>${esc(event.data.provider || 'Noleggio')}</strong> - Auto in uso`;
+        } else if (event.type === 'rental-dropoff') {
+          const city = event.data.dropoffLocation?.city || '';
+          text = `<strong>${esc(event.data.provider || 'Noleggio')}</strong> - Riconsegna${city ? ` a ${esc(city)}` : ''}`;
         } else if (event.type === 'activity') {
           const desc = event.data.description ? ' - ' + esc(event.data.description) : '';
           text = `<strong>${esc(event.data.name)}</strong>${desc}`;

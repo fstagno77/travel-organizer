@@ -8,7 +8,7 @@
 const { authenticateRequest, unauthorizedResponse, getCorsHeaders, handleOptions, getServiceClient } = require('./utils/auth');
 const { uploadPdf, downloadPdfAsBase64, moveTmpPdfToTrip, cleanupTmpPdfs } = require('./utils/storage');
 const { processPdfsWithClaude, extractPassengerFromFilename } = require('./utils/pdfProcessor');
-const { deduplicateFlights, deduplicateHotels, deduplicateTrains, deduplicateBuses } = require('./utils/deduplication');
+const { deduplicateFlights, deduplicateHotels, deduplicateTrains, deduplicateBuses, deduplicateRentals } = require('./utils/deduplication');
 // Note: pdfProcessor is kept as fallback; primary flow now uses parsedData from parse-pdf endpoint
 
 // Count non-empty fields in extracted data for quality assessment
@@ -115,6 +115,7 @@ exports.handler = async (event, context) => {
     const allHotels = [];
     const allTrains = [];
     const allBuses = [];
+    const allRentals = [];
     let metadata = {};
     let smartParseMeta = null; // SmartParse metadata for logging
 
@@ -175,13 +176,18 @@ exports.handler = async (event, context) => {
       if (result.flights) {
         result.flights.forEach(flight => {
           flight._pdfIndex = pdfIndex;
-          if (!flight.passenger && result.passenger) {
-            flight.passenger = { ...result.passenger };
-          }
-          if (!flight.passenger) {
-            const extractedName = extractPassengerFromFilename(filename);
-            if (extractedName) {
-              flight.passenger = { name: extractedName, type: 'ADT' };
+          // Usa array top-level se ha più passeggeri (caso Ryanair multi-pax)
+          if (result.passengers?.length > 1) {
+            flight.passengers = result.passengers.map(p => ({ ...p, _pdfIndex: pdfIndex }));
+          } else {
+            if (!flight.passenger && result.passenger) {
+              flight.passenger = { ...result.passenger };
+            }
+            if (!flight.passenger && !flight.passengers) {
+              const extractedName = extractPassengerFromFilename(filename);
+              if (extractedName) {
+                flight.passenger = { name: extractedName, type: 'ADT' };
+              }
             }
           }
           allFlights.push(flight);
@@ -211,6 +217,15 @@ exports.handler = async (event, context) => {
           allBuses.push(bus);
         });
       }
+      if (result.rentals) {
+        result.rentals.forEach(rental => {
+          rental._pdfIndex = pdfIndex;
+          if (!rental.driverName && result.passenger?.name) {
+            rental.driverName = result.passenger.name;
+          }
+          allRentals.push(rental);
+        });
+      }
       if (result.passenger) {
         metadata.passenger = result.passenger;
       }
@@ -219,7 +234,7 @@ exports.handler = async (event, context) => {
       }
     }
 
-    if (!allFlights.length && !allHotels.length && !allTrains.length && !allBuses.length) {
+    if (!allFlights.length && !allHotels.length && !allTrains.length && !allBuses.length && !allRentals.length) {
       const errorCode = apiError ? 'E201' : 'E103';
       return {
         statusCode: 400,
@@ -239,6 +254,7 @@ exports.handler = async (event, context) => {
     const { deduplicatedFlights } = deduplicateFlights(allFlights);
     const { deduplicatedTrains } = deduplicateTrains(allTrains);
     const { deduplicatedBuses } = deduplicateBuses(allBuses);
+    const { deduplicatedRentals } = deduplicateRentals(allRentals);
 
     // Generate trip data
     const tripData = createTripFromExtractedData({
@@ -246,6 +262,7 @@ exports.handler = async (event, context) => {
       hotels: deduplicatedHotels,
       trains: deduplicatedTrains,
       buses: deduplicatedBuses,
+      rentals: deduplicatedRentals,
       metadata
     });
 
@@ -376,6 +393,33 @@ exports.handler = async (event, context) => {
         }
       }
 
+      // Rentals remain linked at rental level
+      const rentalsFromPdf = (tripData.rentals || []).filter(r => r._pdfIndex === pdfIndex);
+      for (const rental of rentalsFromPdf) {
+        const itemId = rental.id;
+        if (isFromStorage && firstMoveForThisPdf) {
+          firstMoveForThisPdf = false;
+          movedTmpPaths.add(pdf.storagePath);
+          uploadPromises.push(
+            moveTmpPdfToTrip(pdf.storagePath, tripData.id, itemId)
+              .then(pdfPath => {
+                rental.pdfPath = pdfPath;
+                console.log(`Moved PDF for ${rental.id}: ${pdfPath}`);
+              })
+              .catch(err => console.error(`Error moving PDF for ${rental.id}:`, err))
+          );
+        } else {
+          uploadPromises.push(
+            uploadPdf(pdf.content, tripData.id, itemId)
+              .then(pdfPath => {
+                rental.pdfPath = pdfPath;
+                console.log(`Uploaded PDF for ${rental.id}: ${pdfPath}`);
+              })
+              .catch(err => console.error(`Error uploading PDF for ${rental.id}:`, err))
+          );
+        }
+      }
+
       // Hotels remain linked at hotel level
       const hotelsFromPdf = tripData.hotels.filter(h => h._pdfIndex === pdfIndex);
       for (const hotel of hotelsFromPdf) {
@@ -425,6 +469,7 @@ exports.handler = async (event, context) => {
     tripData.hotels.forEach(h => delete h._pdfIndex);
     tripData.trains.forEach(t => delete t._pdfIndex);
     tripData.buses.forEach(b => delete b._pdfIndex);
+    (tripData.rentals || []).forEach(r => delete r._pdfIndex);
 
     // Always show photo selection when there's a destination
     // User can choose from cached, Unsplash, or upload custom photo
@@ -539,7 +584,7 @@ exports.handler = async (event, context) => {
  * Create trip data structure from extracted data
  */
 function createTripFromExtractedData(data) {
-  const { flights, hotels, trains = [], buses = [], metadata } = data;
+  const { flights, hotels, trains = [], buses = [], rentals = [], metadata } = data;
 
   let startDate = null;
   let endDate = null;
@@ -626,6 +671,7 @@ function createTripFromExtractedData(data) {
     hotels: hotels.map((h, i) => ({ ...h, id: `hotel-${i + 1}` })),
     trains: trains.map((t, i) => ({ ...t, id: `train-${i + 1}` })),
     buses: buses.map((b, i) => ({ ...b, id: `bus-${i + 1}` })),
+    rentals: rentals.map((r, i) => ({ ...r, id: `rental-${i + 1}` })),
     booking: metadata.booking || null
   };
 }

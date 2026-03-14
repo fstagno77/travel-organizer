@@ -44,11 +44,11 @@ exports.handler = async (event, context) => {
       };
     }
 
-    if (!type || !['flight', 'hotel', 'train', 'bus'].includes(type)) {
+    if (!type || !['flight', 'hotel', 'train', 'bus', 'rental'].includes(type)) {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ success: false, error: 'Type must be "flight", "hotel", "train" or "bus"' })
+        body: JSON.stringify({ success: false, error: 'Type must be "flight", "hotel", "train", "bus" or "rental"' })
       };
     }
 
@@ -141,6 +141,16 @@ exports.handler = async (event, context) => {
         await deletePdf(busToDelete.pdfPath);
       }
       tripData.buses = tripData.buses.filter(b => b.id !== itemId);
+    } else if (type === 'rental') {
+      const rentalToDelete = (tripData.rentals || []).find(r => r.id === itemId);
+      if (!rentalToDelete) {
+        return {
+          statusCode: 404,
+          headers,
+          body: JSON.stringify({ success: false, error: 'Rental not found' })
+        };
+      }
+      tripData.rentals = tripData.rentals.filter(r => r.id !== itemId);
     }
 
     // Update trip dates based on remaining bookings

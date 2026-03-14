@@ -182,8 +182,12 @@
     "noTrainsText": "Add a booking to see your trains here",
     "noBuses": "No buses",
     "noBusesText": "Add a booking to see your buses here",
+    "rentals": "Rentals",
+    "noRentals": "No rentals",
+    "noRentalsText": "Add a booking to see your car rentals here",
     "trainTo": "Train to",
-    "busTo": "Bus to"
+    "busTo": "Bus to",
+    "rentalAt": "Rental at"
   },
   "modal": {
     "cancel": "Cancel",

@@ -28,6 +28,8 @@ const parsePreview = {
     const allHotels = [];
     const allTrains = [];
     const allBuses = [];
+    const allRentals = [];
+    const allPassengers = []; // array passeggeri a livello prenotazione (multi-pax)
     let passenger = null;
     let booking = null;
 
@@ -37,6 +39,8 @@ const parsePreview = {
       if (pr.result.hotels) allHotels.push(...pr.result.hotels);
       if (pr.result.trains) allTrains.push(...pr.result.trains);
       if (pr.result.buses) allBuses.push(...pr.result.buses);
+      if (pr.result.rentals) allRentals.push(...pr.result.rentals);
+      if (pr.result.passengers?.length) allPassengers.push(...pr.result.passengers);
       if (pr.result.passenger && !passenger) passenger = pr.result.passenger;
       if (pr.result.booking && !booking) booking = pr.result.booking;
     }
@@ -64,6 +68,11 @@ const parsePreview = {
       const arr = b.arrival?.station || b.arrival?.city || '?';
       const short = s => s.length > 10 ? s.substring(0, 8) + '…' : s;
       this._segments.push({ type: 'bus', index: i, label: `${short(dep)}→${short(arr)}`, icon: 'directions_bus' });
+    });
+    allRentals.forEach((r, i) => {
+      const provider = r.provider || 'Auto';
+      const short = provider.length > 12 ? provider.substring(0, 10) + '…' : provider;
+      this._segments.push({ type: 'rental', index: i, label: short, icon: 'directions_car' });
     });
 
     const totalItems = this._segments.length;
@@ -134,18 +143,47 @@ const parsePreview = {
         </div>
       </div>`;
 
+      // f.passenger può essere stringa (email) o oggetto {name, ticketNumber} (PDF)
+      const passengerName = typeof f.passenger === 'object' ? f.passenger?.name : (f.passenger || null);
+      const passengerTicket = typeof f.passenger === 'object' ? f.passenger?.ticketNumber : null;
+      // Posto: usa f.seat, altrimenti il posto del passeggero corrispondente nell'array
+      const matchPax = allPassengers.find(p => p.name && passengerName && p.name.toUpperCase() === passengerName.toUpperCase());
+      const seatDisplay = f.seat || matchPax?.seat || null;
+
       html += `<div class="parse-detail-grid">`;
       html += this._field('Volo', f.flightNumber, 'flightNumber');
       html += this._field('Compagnia', f.airline, 'airline');
       html += this._field('Data', this._fmtDate(f.date), 'date', 'date', f.date);
       html += this._field('Classe', f.class, 'class');
-      html += this._field('Passeggero', f.passenger?.name, 'passenger.name');
+      html += this._field('Passeggero', passengerName, 'passenger.name');
       html += this._field('PNR', f.bookingReference, 'bookingReference');
-      html += this._field('Biglietto', f.ticketNumber || f.passenger?.ticketNumber, 'ticketNumber');
-      html += this._field('Posto', f.seat, 'seat');
+      html += this._field('Biglietto', f.ticketNumber || passengerTicket, 'ticketNumber');
+      html += this._field('Posto', seatDisplay, 'seat');
       html += this._field('Bagaglio', this._resolveBaggage(f.baggage), 'baggage');
       html += this._field('Stato', f.status, 'status');
       html += `</div>`;
+
+      // Tabella multi-passeggero (solo se >1 passeggero nell'array booking)
+      if (allPassengers.length > 1) {
+        html += `<div class="parse-section-header" style="margin-top:14px"><span>Passeggeri (${allPassengers.length})</span></div>`;
+        html += `<table style="width:100%;border-collapse:collapse;margin-top:4px">`;
+        html += `<thead><tr>
+          <th style="text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);padding:3px 0;border-bottom:1px solid var(--border-color)">Nome</th>
+          <th style="text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);padding:3px 0;border-bottom:1px solid var(--border-color)">Tipo</th>
+          <th style="text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);padding:3px 0;border-bottom:1px solid var(--border-color)">Posto</th>
+          <th style="text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);padding:3px 0;border-bottom:1px solid var(--border-color)">Biglietto</th>
+        </tr></thead><tbody>`;
+        for (const p of allPassengers) {
+          html += `<tr>
+            <td style="padding:5px 0;font-size:13px">${this._esc(p.name || '—')}</td>
+            <td style="padding:5px 0;font-size:12px;color:var(--text-secondary)">${this._esc(p.type || '—')}</td>
+            <td style="padding:5px 0;font-size:13px">${this._esc(p.seat || '—')}</td>
+            <td style="padding:5px 0;font-size:12px;color:var(--text-secondary)">${this._esc(p.ticketNumber || '—')}</td>
+          </tr>`;
+        }
+        html += `</tbody></table>`;
+      }
+
       html += `</div>`;
       html += `</div>`;
     });
@@ -212,7 +250,7 @@ const parsePreview = {
       html += this._field('Operatore', t.operator, 'operator');
       html += this._field('Data', this._fmtDate(t.date), 'date', 'date', t.date);
       html += this._field('Classe', t.class, 'class');
-      html += this._field('Passeggero', t.passenger?.name, 'passenger.name');
+      html += this._field('Passeggero', typeof t.passenger === 'object' ? t.passenger?.name : (t.passenger || null), 'passenger.name');
       html += this._field('PNR', t.bookingReference, 'bookingReference');
       html += this._field('Biglietto', t.ticketNumber, 'ticketNumber');
       html += this._field('Posto', t.seat, 'seat');
@@ -250,10 +288,55 @@ const parsePreview = {
       html += this._field('Operatore', b.operator, 'operator');
       html += this._field('Linea', b.routeNumber, 'routeNumber');
       html += this._field('Data', this._fmtDate(b.date), 'date', 'date', b.date);
-      html += this._field('Passeggero', b.passenger?.name, 'passenger.name');
+      html += this._field('Passeggero', typeof b.passenger === 'object' ? b.passenger?.name : (b.passenger || null), 'passenger.name');
       html += this._field('PNR', b.bookingReference, 'bookingReference');
       html += this._field('Posto', b.seat, 'seat');
       html += this._field('Prezzo', this._resolvePrice(b.price), 'price');
+      html += `</div>`;
+      html += `</div>`;
+      html += `</div>`;
+    });
+
+    allRentals.forEach((r, i) => {
+      const segIdx = allFlights.length + allHotels.length + allTrains.length + allBuses.length + i;
+      const pickupCityRaw = r.pickupLocation?.city || '?';
+      const pickupAirport = r.pickupLocation?.airportCode;
+      const pickupCity = pickupAirport ? `${pickupCityRaw} (${pickupAirport})` : pickupCityRaw;
+      const dropoffCityRaw = r.dropoffLocation?.city || '?';
+      const dropoffAirport = r.dropoffLocation?.airportCode;
+      const dropoffCity = dropoffAirport ? `${dropoffCityRaw} (${dropoffAirport})` : dropoffCityRaw;
+      const pickupTime = r.pickupLocation?.time || '';
+      const dropoffTime = r.dropoffLocation?.time || '';
+      const vehicle = [r.vehicle?.make, r.vehicle?.model].filter(Boolean).join(' ') || r.vehicle?.category || null;
+      const price = r.price?.value != null ? `${r.price.value} ${r.price.currency || ''}`.trim() : null;
+
+      html += `<div class="parse-panel${segIdx === 0 ? ' active' : ''}" data-panel="${segIdx}">`;
+      html += `<div class="parse-rental-card" data-type="rental" data-index="${i}">`;
+      html += `<div class="parse-rental-provider">${this._esc(r.provider || 'Noleggio Auto')}</div>`;
+
+      html += `<div class="parse-transport-route">
+        <div class="parse-transport-endpoint">
+          <span class="parse-transport-station">${this._esc(pickupCity)}</span>
+          ${pickupTime ? `<span class="parse-transport-time">${this._esc(pickupTime)}</span>` : ''}
+        </div>
+        <div class="parse-transport-arrow">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </div>
+        <div class="parse-transport-endpoint">
+          <span class="parse-transport-station">${this._esc(dropoffCity)}</span>
+          ${dropoffTime ? `<span class="parse-transport-time">${this._esc(dropoffTime)}</span>` : ''}
+        </div>
+      </div>`;
+
+      html += `<div class="parse-detail-grid">`;
+      html += this._field('Ritiro', this._fmtDate(r.date), 'date', 'date', r.date);
+      html += this._field('Riconsegna', this._fmtDate(r.endDate), 'endDate', 'date', r.endDate);
+      html += this._field('Giorni', r.rentalDays, 'rentalDays', 'number');
+      html += this._field('Veicolo', vehicle, 'vehicle.model');
+      html += this._field('Categoria', r.vehicle?.category, 'vehicle.category');
+      html += this._field('Conducente', r.driverName, 'driverName');
+      html += this._field('Riferimento', r.bookingReference || r.confirmationNumber, 'bookingReference');
+      html += this._field('Prezzo', price, 'price');
       html += `</div>`;
       html += `</div>`;
       html += `</div>`;
@@ -435,6 +518,7 @@ const parsePreview = {
     let hotelIdx = 0;
     let trainIdx = 0;
     let busIdx = 0;
+    let rentalIdx = 0;
 
     for (const pr of this._parsedResults) {
       if (!pr.result) continue;
@@ -483,6 +567,14 @@ const parsePreview = {
           const card = container.querySelector(`.parse-bus-card[data-index="${busIdx}"]`);
           if (card) this._applyCardEdits(card, bus, `bus[${busIdx}]`);
           busIdx++;
+        }
+      }
+
+      if (pr.result.rentals) {
+        for (const rental of pr.result.rentals) {
+          const card = container.querySelector(`.parse-rental-card[data-index="${rentalIdx}"]`);
+          if (card) this._applyCardEdits(card, rental, `rental[${rentalIdx}]`);
+          rentalIdx++;
         }
       }
     }

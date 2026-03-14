@@ -272,6 +272,7 @@ const FLIGHT_SCHEMA = `{
     "departureTime":"HH:MM","arrivalTime":"HH:MM","arrivalNextDay":false,"duration":null,
     "class":"Economy","bookingReference":"XXXXXX","ticketNumber":null,"seat":null,"baggage":null,"status":"OK"}],
   "passenger":{"name":"FULL NAME","type":"ADT","ticketNumber":null},
+  "passengers":[{"name":"FULL NAME","type":"ADT","ticketNumber":null}],
   "booking":{"reference":"XXXXXX","ticketNumber":null,"issueDate":null,"totalAmount":null}
 }`;
 
@@ -303,6 +304,19 @@ const BUS_SCHEMA = `{
     "arrival":{"station":"Napoli","city":"Napoli","time":"HH:MM"},
     "seat":null,"bookingReference":"XXXXXX",
     "price":{"value":0,"currency":"EUR"}}],
+  "passenger":{"name":"FULL NAME"}
+}`;
+
+const CAR_RENTAL_SCHEMA = `{
+  "rentals": [{"provider":"Hertz","date":"YYYY-MM-DD","endDate":"YYYY-MM-DD","rentalDays":1,
+    "pickupLocation":{"address":null,"city":"City","airportCode":null,"time":"HH:MM","phone":null},
+    "dropoffLocation":{"address":null,"city":"City","airportCode":null,"time":"HH:MM"},
+    "vehicle":{"category":"Economy","make":null,"model":null,"licensePlate":null},
+    "bookingReference":"XXXXXX","confirmationNumber":null,
+    "driverName":"FULL NAME",
+    "price":{"value":0,"currency":"EUR"},
+    "totalAmount":{"value":null,"currency":"EUR"},
+    "insurance":{"value":null,"currency":"EUR"}}],
   "passenger":{"name":"FULL NAME"}
 }`;
 
@@ -367,6 +381,12 @@ Extract ALL flight segments as separate entries in the flights array.
 Each segment gets its own entry with its own flightNumber, times, airports, etc.
 The passenger and booking information is shared across all segments.
 
+## MULTIPLE PASSENGERS
+When the booking includes multiple passengers, populate BOTH:
+- "passenger": the first/primary passenger (for backward compatibility)
+- "passengers": array with ALL passengers (including the first one)
+If there is only one passenger, still populate both fields with that same passenger.
+
 ## OUTPUT
 Return ONLY the structured JSON with extracted data. Do NOT include "_rawText" or raw document text in the output.
 Keep the response concise — only the fields specified in the schema below.
@@ -386,12 +406,12 @@ ${HOTEL_SCHEMA}`;
 // ─── Beta system prompt — extends live with train/bus types ─────────────────
 
 const BETA_SYSTEM_PROMPT = SYSTEM_PROMPT
-  // Extend document type detection to include train/bus
+  // Extend document type detection to include train/bus/car_rental
   .replace(
     'determine if it\'s a flight or hotel booking.\nSet "_docType" to "flight" or "hotel" accordingly.',
-    'determine the document type.\nSet "_docType" to "flight", "hotel", "train", or "bus" accordingly.'
+    'determine the document type.\nSet "_docType" to "flight", "hotel", "train", "bus", or "car_rental" accordingly.'
   )
-  // Add mandatory fields for trains and buses
+  // Add mandatory fields for trains, buses and car rentals
   .replace(
     '## IMPORTANT OPTIONAL FIELDS',
     `### For TRAINS:
@@ -417,28 +437,50 @@ const BETA_SYSTEM_PROMPT = SYSTEM_PROMPT
 - arrival.time: arrival time in HH:MM
 - bookingReference: booking reference code
 
+### For CAR RENTALS:
+- provider: rental company name (Hertz, Avis, Budget, Europcar, Sixt, Maggiore, etc.)
+- date: pickup date in YYYY-MM-DD
+- endDate: return date in YYYY-MM-DD
+- rentalDays: number of rental days (integer)
+- pickupLocation.city: city where car is picked up
+- pickupLocation.time: pickup time in HH:MM
+- pickupLocation.address: full pickup address (optional)
+- pickupLocation.airportCode: IATA airport code if at airport (optional)
+- dropoffLocation.city: city where car is returned
+- dropoffLocation.time: return time in HH:MM
+- dropoffLocation.address: full return address (optional)
+- vehicle.category: vehicle category (Economy, Compact, SUV, etc.)
+- vehicle.make: car brand (optional)
+- vehicle.model: car model (optional)
+- driverName: primary driver full name
+- bookingReference: booking/reservation reference code (or confirmationNumber)
+
 ## IMPORTANT OPTIONAL FIELDS`
   )
-  // Add train/bus schemas after hotel schema
+  // Add train/bus/car_rental schemas after hotel schema
   + `
 
 ### Train document:
 ${TRAIN_SCHEMA}
 
 ### Bus document:
-${BUS_SCHEMA}`;
+${BUS_SCHEMA}
+
+### Car rental document:
+${CAR_RENTAL_SCHEMA}`;
 
 // ─── Claude API call with prompt caching ────────────────────────────────────
 
-const BETA_DOC_TYPES = ['flight', 'hotel', 'train', 'bus'];
-const LIVE_DOC_TYPES = ['flight', 'hotel', 'train', 'bus'];
+const BETA_DOC_TYPES = ['flight', 'hotel', 'train', 'bus', 'car_rental'];
+const LIVE_DOC_TYPES = ['flight', 'hotel', 'train', 'bus', 'car_rental'];
 
 function getSchemaForDocType(docType) {
   switch (docType) {
-    case 'hotel': return HOTEL_SCHEMA;
-    case 'train': return TRAIN_SCHEMA;
-    case 'bus':   return BUS_SCHEMA;
-    default:      return FLIGHT_SCHEMA;
+    case 'hotel':      return HOTEL_SCHEMA;
+    case 'train':      return TRAIN_SCHEMA;
+    case 'bus':        return BUS_SCHEMA;
+    case 'car_rental': return CAR_RENTAL_SCHEMA;
+    default:           return FLIGHT_SCHEMA;
   }
 }
 
@@ -556,7 +598,8 @@ ${schema}`;
   const detectedDocType = typeof _docType === 'string' && allowedDocTypes.includes(_docType) ? _docType : null;
   const trains = result.trains?.length || 0;
   const buses = result.buses?.length || 0;
-  console.log(`[SmartParse] Claude done, docType: ${detectedDocType}, flights: ${result.flights?.length || 0}, hotels: ${result.hotels?.length || 0}${trains ? `, trains: ${trains}` : ''}${buses ? `, buses: ${buses}` : ''}`);
+  const rentals = result.rentals?.length || 0;
+  console.log(`[SmartParse] Claude done, docType: ${detectedDocType}, flights: ${result.flights?.length || 0}, hotels: ${result.hotels?.length || 0}${trains ? `, trains: ${trains}` : ''}${buses ? `, buses: ${buses}` : ''}${rentals ? `, rentals: ${rentals}` : ''}`);
 
   return { result, detectedDocType };
 }
@@ -624,7 +667,9 @@ async function _parseDocumentSmartInternal(pdfBase64, docType, mode = 'auto', sk
 
       // Brand con estrattori autonomi: non necessitano di un template preesistente in DB
       const SELF_SUFFICIENT_BRANDS = ['trenitalia', 'booking.com', 'sais-autolinee'];
-      const templateOrDummy = template || (SELF_SUFFICIENT_BRANDS.includes(brand)
+      // Brand che usano L4 direttamente (L2 generico non supporta multi-passeggero o variabili critiche)
+      const L2_SKIP_BRANDS = ['ryanair', 'easyjet', 'vueling', 'wizz-air'];
+      const templateOrDummy = (!L2_SKIP_BRANDS.includes(brand) && template) || (SELF_SUFFICIENT_BRANDS.includes(brand)
         ? { brand, doc_type: 'any', extraction_map: [], last_sample_text: '', last_sample_result: null }
         : null);
 
@@ -850,6 +895,11 @@ function sanitizeResult(result) {
 
   (result.buses || []).forEach(b => {
     if (b.date != null) b.date = sanitizeDateValue(b.date);
+  });
+
+  (result.rentals || []).forEach(r => {
+    if (r.date != null) r.date = sanitizeDateValue(r.date);
+    if (r.endDate != null) r.endDate = sanitizeDateValue(r.endDate);
   });
 
   (result.flights || []).forEach(fl => {

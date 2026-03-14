@@ -182,8 +182,12 @@
     "noTrainsText": "Aggiungi una prenotazione per visualizzare i tuoi treni",
     "noBuses": "Nessun bus",
     "noBusesText": "Aggiungi una prenotazione per visualizzare i tuoi bus",
+    "rentals": "Auto",
+    "noRentals": "Nessun noleggio",
+    "noRentalsText": "Aggiungi una prenotazione per visualizzare i tuoi noleggi",
     "trainTo": "Treno per",
-    "busTo": "Bus per"
+    "busTo": "Bus per",
+    "rentalAt": "Noleggio a"
   },
   "modal": {
     "cancel": "Annulla",

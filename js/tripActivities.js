@@ -82,6 +82,27 @@
       events.push({ date: bus.date, time: bus.departure?.time || null, type: 'bus', data: bus });
     }
 
+    const rentals = tripData.rentals || [];
+    for (const rental of rentals) {
+      const pickupDate = rental.date;
+      const dropoffDate = rental.endDate;
+      if (pickupDate) {
+        events.push({ date: pickupDate, time: rental.pickupLocation?.time || null, type: 'rental-pickup', data: rental });
+      }
+      if (pickupDate && dropoffDate) {
+        const start = new Date(pickupDate + 'T00:00:00');
+        const end = new Date(dropoffDate + 'T00:00:00');
+        let current = new Date(start.getTime() + oneDay);
+        while (current < end) {
+          events.push({ date: toLocalDateStr(current), time: null, type: 'rental-active', data: rental });
+          current = new Date(current.getTime() + oneDay);
+        }
+      }
+      if (dropoffDate) {
+        events.push({ date: dropoffDate, time: rental.dropoffLocation?.time || null, type: 'rental-dropoff', data: rental });
+      }
+    }
+
     for (const activity of customActivities) {
       events.push({ date: activity.date, time: activity.startTime || null, type: 'activity', data: activity });
     }
@@ -106,7 +127,7 @@
     }
     allDates.sort();
 
-    const typePriority = { 'hotel-checkout': 0, 'flight': 1, 'train': 1.5, 'bus': 1.5, 'hotel-checkin': 2, 'hotel-stay': 3, 'activity': 4 };
+    const typePriority = { 'hotel-checkout': 0, 'rental-dropoff': 0.5, 'flight': 1, 'train': 1.5, 'bus': 1.5, 'rental-pickup': 1.8, 'hotel-checkin': 2, 'hotel-stay': 3, 'rental-active': 3.5, 'activity': 4 };
     for (const date of allDates) {
       if (grouped[date]) {
         grouped[date].sort((a, b) => {
@@ -146,6 +167,10 @@
         d.departure?.station, d.departure?.city, d.arrival?.station, d.arrival?.city,
         d.trainNumber, d.routeNumber, d.operator
       ];
+      return parts.some(p => p && p.toLowerCase().includes(q));
+    }
+    if (event.type.startsWith('rental-')) {
+      const parts = [d.provider, d.pickupLocation?.city, d.dropoffLocation?.city, d.bookingReference, d.driverName];
       return parts.some(p => p && p.toLowerCase().includes(q));
     }
     // custom activity
@@ -308,6 +333,20 @@
           const op = event.data.operator ? ` (${esc(event.data.operator)})` : '';
           text = `Bus da <strong>${esc(dep)}</strong> → <strong>${esc(dest)}</strong>${op}`;
           tab = 'buses';
+          itemId = event.data.id;
+        } else if (event.type === 'rental-pickup') {
+          const city = event.data.pickupLocation?.city || '';
+          text = `<strong>${esc(event.data.provider || 'Noleggio')}</strong> - Ritiro${city ? ` a ${esc(city)}` : ''}`;
+          tab = 'rentals';
+          itemId = event.data.id;
+        } else if (event.type === 'rental-active') {
+          text = `<strong>${esc(event.data.provider || 'Noleggio')}</strong> - Auto in uso`;
+          tab = 'rentals';
+          itemId = event.data.id;
+        } else if (event.type === 'rental-dropoff') {
+          const city = event.data.dropoffLocation?.city || '';
+          text = `<strong>${esc(event.data.provider || 'Noleggio')}</strong> - Riconsegna${city ? ` a ${esc(city)}` : ''}`;
+          tab = 'rentals';
           itemId = event.data.id;
         } else if (event.type === 'activity') {
           const desc = event.data.description ? ' - ' + esc(event.data.description) : '';
@@ -492,8 +531,43 @@
     if (event.type.startsWith('hotel-')) return renderHotelCard(event);
     if (event.type === 'train') return renderTransportCard(event, 'train', 'trains');
     if (event.type === 'bus') return renderTransportCard(event, 'bus', 'buses');
+    if (event.type.startsWith('rental-')) return renderRentalCard(event);
     if (event.type === 'activity') return renderCustomActivityCard(event);
     return '';
+  }
+
+  function renderRentalCard(event) {
+    const rental = event.data;
+    const category = cats().CATEGORIES.noleggio;
+    const provider = rental.provider || 'Noleggio Auto';
+    const pickupCity = rental.pickupLocation?.city || '';
+    const dropoffCity = rental.dropoffLocation?.city || '';
+    const pickupTime = rental.pickupLocation?.time || '';
+
+    let statusText = '';
+    if (event.type === 'rental-pickup') statusText = `Ritiro${pickupCity ? ' · ' + pickupCity : ''}`;
+    else if (event.type === 'rental-dropoff') statusText = `Riconsegna${dropoffCity ? ' · ' + dropoffCity : ''}`;
+    else statusText = 'In uso';
+
+    const timeBadge = pickupTime && event.type === 'rental-pickup'
+      ? `<span class="activity-card-time-badge" style="background: ${category.gradient}">${clockIcon}${esc(pickupTime)}</span>`
+      : '';
+
+    return `
+      <a class="activity-card activity-item-link"
+         href="#" data-tab="rentals" data-item-id="${rental.id}" data-category="noleggio">
+        <div class="activity-card-header">
+          <div class="activity-card-icon-container" style="background: ${category.gradient}">
+            ${category.svg}
+          </div>
+          ${timeBadge}
+        </div>
+        <div class="activity-card-body">
+          <span class="activity-card-title">${esc(provider)}</span>
+          <span class="activity-card-subtitle">${esc(statusText)}</span>
+        </div>
+      </a>
+    `;
   }
 
   function renderTransportCard(event, type, tab) {
@@ -589,6 +663,7 @@
     attrazione: 'activity-indicator-attraction',
     treno: 'activity-indicator-train',
     bus: 'activity-indicator-bus',
+    noleggio: 'activity-indicator-rental',
     luogo: 'activity-indicator-place'
   };
 
@@ -611,6 +686,12 @@
     } else if (event.type === 'bus') {
       const arr = event.data.arrival?.station || event.data.arrival?.city || '';
       label = `Bus per ${arr}`;
+    } else if (event.type === 'rental-pickup') {
+      label = `${event.data.provider || 'Noleggio'} - Ritiro`;
+    } else if (event.type === 'rental-dropoff') {
+      label = `${event.data.provider || 'Noleggio'} - Riconsegna`;
+    } else if (event.type === 'rental-active') {
+      label = `${event.data.provider || 'Noleggio'} - In uso`;
     } else if (event.type === 'activity') {
       label = event.data.name || '';
     }
@@ -627,7 +708,7 @@
     const linkClass = isCustom ? 'activity-item-link--custom' : 'activity-item-link';
     const dataAttrs = isCustom
       ? `data-activity-id="${event.data.id}"`
-      : `data-tab="${{flight:'flights',hotel:'hotels',train:'trains',bus:'buses'}[event.type] || 'flights'}" data-item-id="${event.data.id}"`;
+      : `data-tab="${{'flight':'flights','hotel':'hotels','train':'trains','bus':'buses','rental-pickup':'rentals','rental-active':'rentals','rental-dropoff':'rentals'}[event.type] || 'flights'}" data-item-id="${event.data.id}"`;
 
     return `
       <a class="calendar-activity-item ${linkClass}" href="#" ${dataAttrs}>
@@ -963,9 +1044,10 @@
     const hotels = tripData.hotels || [];
     const trains = tripData.trains || [];
     const buses = tripData.buses || [];
+    const rentals = tripData.rentals || [];
     const customActivities = tripData.activities || [];
 
-    if (flights.length === 0 && hotels.length === 0 && trains.length === 0 && buses.length === 0 && customActivities.length === 0) {
+    if (flights.length === 0 && hotels.length === 0 && trains.length === 0 && buses.length === 0 && rentals.length === 0 && customActivities.length === 0) {
       container.innerHTML = `
         <div class="empty-state">
           <h3 class="empty-state-title" data-i18n="trip.noActivities">No activities</h3>

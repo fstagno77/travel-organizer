@@ -1,17 +1,15 @@
 /**
  * Netlify Function: Delete Trip
- * Deletes a trip from Supabase by ID for the authenticated user
- * Also deletes all associated PDFs from storage
+ * Soft-delete di un viaggio: imposta deleted_at invece di cancellare il record.
+ * I PDF e i file rimangono in storage per permettere il ripristino da admin.
  */
 
-const { authenticateRequest, unauthorizedResponse, getCorsHeaders, handleOptions } = require('./utils/auth');
-const { deleteAllTripPdfs } = require('./utils/storage');
+const { authenticateRequest, unauthorizedResponse, getCorsHeaders, handleOptions, getServiceClient } = require('./utils/auth');
 const { canDeleteTrip } = require('./utils/permissions');
 
 exports.handler = async (event, context) => {
   const headers = getCorsHeaders();
 
-  // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
     return handleOptions();
   }
@@ -24,7 +22,6 @@ exports.handler = async (event, context) => {
     };
   }
 
-  // Authenticate request
   const authResult = await authenticateRequest(event);
   if (!authResult) {
     return unauthorizedResponse();
@@ -43,7 +40,7 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Only trip owner can delete (collaborators cannot)
+    // Solo il proprietario può cancellare
     const isOwner = await canDeleteTrip(user.id, tripId);
     if (!isOwner) {
       return {
@@ -53,14 +50,12 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Delete all PDFs for this trip from storage
-    console.log(`Deleting all PDFs for trip: ${tripId}`);
-    await deleteAllTripPdfs(tripId);
-
-    // Delete trip from database (RLS ensures user can only delete own trips)
-    const { error } = await supabase
+    // Soft delete: imposta deleted_at via service client (bypassa RLS che richiederebbe deleted_at IS NULL)
+    // Il controllo permessi è già stato fatto da canDeleteTrip
+    const serviceClient = getServiceClient();
+    const { error } = await serviceClient
       .from('trips')
-      .delete()
+      .update({ deleted_at: new Date().toISOString() })
       .eq('id', tripId);
 
     if (error) {

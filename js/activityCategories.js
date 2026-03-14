@@ -110,6 +110,18 @@
       cardBg: 'linear-gradient(135deg, #f5eef8, #e8d5f0)',
       cardBorder: '#d0aae0'
     },
+    noleggio: {
+      key: 'noleggio',
+      labelIt: 'Noleggio Auto',
+      labelEn: 'Car Rental',
+      svg: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.8L18 11l-2-4H8L6 11l-2.5.2C2.7 11.3 2 12.1 2 13v3c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>`,
+      gradient: 'linear-gradient(135deg, #0ea5e9, #0891b2)',
+      gradientHover: 'linear-gradient(135deg, #0284c7, #0e7490)',
+      color: '#0891b2',
+      hoverBg: '#f0f9ff',
+      cardBg: 'linear-gradient(135deg, #f0f9ff, #ecfeff)',
+      cardBorder: '#bae6fd'
+    },
     luogo: {
       key: 'luogo',
       labelIt: 'Luogo',
@@ -124,7 +136,7 @@
     }
   };
 
-  const CATEGORY_ORDER = ['ristorante', 'volo', 'hotel', 'museo', 'attrazione', 'treno', 'bus', 'luogo'];
+  const CATEGORY_ORDER = ['ristorante', 'volo', 'hotel', 'museo', 'attrazione', 'treno', 'bus', 'noleggio', 'luogo'];
 
   const CATEGORY_KEYWORDS = {
     ristorante: [
@@ -165,6 +177,7 @@
     if (event.type.startsWith('hotel-')) return CATEGORIES.hotel;
     if (event.type === 'train') return CATEGORIES.treno;
     if (event.type === 'bus') return CATEGORIES.bus;
+    if (event.type.startsWith('rental-')) return CATEGORIES.noleggio;
     if (event.type === 'activity') {
       const cat = event.data.category || detectCategory(event.data.name, event.data.description);
       return CATEGORIES[cat] || CATEGORIES.luogo;
@@ -177,6 +190,7 @@
     if (event.type.startsWith('hotel-')) return 'hotel';
     if (event.type === 'train') return 'treno';
     if (event.type === 'bus') return 'bus';
+    if (event.type.startsWith('rental-')) return 'noleggio';
     if (event.type === 'activity') {
       return event.data.category || detectCategory(event.data.name, event.data.description);
     }

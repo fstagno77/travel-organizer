@@ -58,6 +58,17 @@
   --color-bus-700: #763891;
   --color-bus-800: #5e2d74;
 
+  /* Colors - Rental teal theme (base: #0891b2) */
+  --color-rental-50: #ecfeff;
+  --color-rental-100: #cffafe;
+  --color-rental-200: #a5f3fc;
+  --color-rental-300: #67e8f9;
+  --color-rental-400: #22d3ee;
+  --color-rental-500: #06b6d4;
+  --color-rental-600: #0891b2;
+  --color-rental-700: #0e7490;
+  --color-rental-800: #155e75;
+
   /* Colors - Semantic */
   --color-success: #10b981;
   --color-warning: #f59e0b;

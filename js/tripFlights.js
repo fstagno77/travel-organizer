@@ -337,6 +337,18 @@
               <span class="flight-detail-label" data-i18n="flight.bookingDetails">Dettagli Prenotazione</span>
             </div>
             <div class="flight-details-grid">
+              ${(() => {
+                // Legge i dati dal passeggero singolo (passengers[0] o passenger singolare) con fallback a livello volo
+                const pax = flight.passengers?.[0] || (typeof flight.passenger === 'object' ? flight.passenger : null);
+                const passengerName = pax?.name || (typeof flight.passenger === 'string' ? flight.passenger : null);
+                const ticketNumber = pax?.ticketNumber || flight.ticketNumber;
+                const seat = pax?.seat || flight.seat;
+                return `
+              ${passengerName ? `
+              <div class="flight-detail-item">
+                <span class="flight-detail-label" data-i18n="flight.passengerName">Passeggero</span>
+                <span class="flight-detail-value">${esc(passengerName)}</span>
+              </div>` : ''}
               <div class="flight-detail-item">
                 <span class="flight-detail-label" data-i18n="flight.bookingRef">Booking Reference</span>
                 <span class="flight-detail-value-wrapper">
@@ -352,8 +364,8 @@
               <div class="flight-detail-item">
                 <span class="flight-detail-label" data-i18n="flight.ticketNumber">Ticket Number</span>
                 <span class="flight-detail-value-wrapper">
-                  <span class="flight-detail-value">${esc(flight.ticketNumber || '-')}</span>
-                  ${flight.ticketNumber ? `<button class="btn-copy-value" data-copy="${esc(flight.ticketNumber)}" title="Copy">
+                  <span class="flight-detail-value">${esc(ticketNumber || '-')}</span>
+                  ${ticketNumber ? `<button class="btn-copy-value" data-copy="${esc(ticketNumber)}" title="Copy">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                       <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
@@ -363,12 +375,13 @@
               </div>
               <div class="flight-detail-item">
                 <span class="flight-detail-label" data-i18n="flight.seat">Seat</span>
-                <span class="flight-detail-value">${esc(flight.seat || '-')}</span>
+                <span class="flight-detail-value">${esc(seat || '-')}</span>
               </div>
               <div class="flight-detail-item">
                 <span class="flight-detail-label" data-i18n="flight.class">Class</span>
                 <span class="flight-detail-value">${esc(flight.class || '-')}</span>
-              </div>
+              </div>`;
+              })()}
             </div>
             ${flight.pdfPath ? `
             <button class="btn-download-pdf" data-pdf-path="${flight.pdfPath}">

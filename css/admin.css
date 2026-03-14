@@ -2644,3 +2644,39 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ============================================
+   SmartParse — Pannello dettaglio fingerprint
+   ============================================ */
+
+.sp-tpl-row:hover td {
+  background: var(--bg-secondary);
+}
+
+.sp-detail-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.sp-detail-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.sp-detail-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+@media (max-width: 640px) {
+  #sp-detail-panel > div:last-child {
+    width: 100vw !important;
+  }
+}

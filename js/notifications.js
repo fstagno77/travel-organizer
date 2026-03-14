@@ -202,7 +202,7 @@ const notificationsPage = (() => {
           </div>
           ${dates ? `<div class="notification-trip">${utils.escapeHtml(dates)}</div>` : ''}
           <div class="notification-actions">
-            <button class="notification-action-btn notification-action-btn--accept" data-action="open-booking" data-booking-id="${b.id}">
+            <button class="notification-action-btn notification-action-btn--primary" data-action="open-booking" data-booking-id="${b.id}">
               ${lang === 'it' ? 'Aggiungi a viaggio' : 'Add to trip'}
             </button>
           </div>
@@ -298,7 +298,7 @@ const notificationsPage = (() => {
         // Apre la modale pending booking
         if (action === 'open-booking') {
           const bookingId = actionBtn.dataset.bookingId;
-          const sourceItem = actionBtn.closest('[data-booking-id]');
+          const sourceItem = actionBtn.closest('.notification-item[data-booking-id]');
           if (window.pendingBookingModal) {
             pendingBookingModal.show(bookingId, sourceItem);
           }

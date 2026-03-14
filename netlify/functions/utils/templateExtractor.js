@@ -51,6 +51,23 @@ const BRAND_RULES = [
   { brand: 'marinobus', test: t => t.includes('marinobus') || t.includes('marino bus') },
   { brand: 'itabus', test: t => t.includes('itabus') &&
       (t.includes('biglietto') || t.includes('partenza')) },
+  // Noleggi auto — prima di booking.com per evitare falsi positivi
+  { brand: 'hertz', test: t => t.includes('hertz') &&
+      (t.includes('noleggio') || t.includes('rental') || t.includes('hertz.com') ||
+       t.includes('pick-up') || t.includes('ritiro') || t.includes('confirmation')) },
+  { brand: 'avis', test: t => (t.includes('avis.com') || t.includes('avis budget')) ||
+      (t.includes('avis') && (t.includes('noleggio') || t.includes('rental') ||
+       t.includes('pick-up') || t.includes('ritiro'))) },
+  { brand: 'budget', test: t => t.includes('budget') &&
+      (t.includes('car rental') || t.includes('noleggio auto') ||
+       (t.includes('rental') && !t.includes('booking'))) },
+  { brand: 'europcar', test: t => t.includes('europcar') },
+  { brand: 'sixt', test: t => t.includes('sixt') &&
+      (t.includes('rental') || t.includes('noleggio') || t.includes('reservation') ||
+       t.includes('pick-up') || t.includes('ritiro')) },
+  { brand: 'maggiore', test: t => (t.includes('maggiore') || t.includes('maggiore.it')) &&
+      (t.includes('noleggio') || t.includes('auto') || t.includes('rental')) },
+  { brand: 'locauto', test: t => t.includes('locauto') },
   { brand: 'booking.com', test: t => t.includes('booking.com') &&
       (t.includes('numero di conferma') || t.includes('conferma della prenotazione') ||
        t.includes('confirmation number') || t.includes('booking confirmation')) },
@@ -87,6 +104,12 @@ const MANDATORY = {
   bus: [
     'date', 'departure.station', 'departure.city',
     'departure.time', 'arrival.station', 'arrival.city', 'arrival.time',
+    'bookingReference'
+  ],
+  car_rental: [
+    'provider', 'date', 'endDate',
+    'pickupLocation.city', 'pickupLocation.time',
+    'dropoffLocation.city', 'dropoffLocation.time',
     'bookingReference'
   ]
 };
@@ -141,6 +164,14 @@ function flattenResult(result, docType) {
     const buses = result.buses || [];
     for (let bi = 0; bi < buses.length; bi++) {
       flattenObject(buses[bi], `buses.${bi}`, pairs);
+    }
+    if (result.passenger) flattenObject(result.passenger, 'passenger', pairs);
+  }
+
+  if (docType === 'car_rental' || result.rentals?.length) {
+    const rentals = result.rentals || [];
+    for (let ri = 0; ri < rentals.length; ri++) {
+      flattenObject(rentals[ri], `rentals.${ri}`, pairs);
     }
     if (result.passenger) flattenObject(result.passenger, 'passenger', pairs);
   }
@@ -902,10 +933,19 @@ function extractSaisAutolineeBus(text) {
  * Try to extract data from a document using a matching template.
  * Returns { result, method } or null if extraction fails.
  */
+// Brand di noleggio auto — mappati automaticamente a car_rental
+const CAR_RENTAL_BRANDS = ['hertz', 'avis', 'budget', 'europcar', 'sixt', 'maggiore', 'locauto'];
+
 function tryL2Extraction(template, newText, docType) {
   const brand = template.brand || detectBrand(newText);
   let effectiveDocType = (template.doc_type && template.doc_type !== 'any')
     ? template.doc_type : docType;
+
+  // Se il brand è un noleggio auto, forziamo car_rental come docType
+  if (brand && CAR_RENTAL_BRANDS.includes(brand) &&
+      (!effectiveDocType || effectiveDocType === 'any' || effectiveDocType === 'auto')) {
+    effectiveDocType = 'car_rental';
+  }
 
   let result = null;
   let method = 'generic';
@@ -1054,6 +1094,22 @@ function validateMandatory(result, docType) {
     }
   }
 
+  if (docType === 'car_rental') {
+    const rentals = result.rentals || [];
+    if (rentals.length === 0) return ['rentals (empty)'];
+
+    for (const field of MANDATORY.car_rental) {
+      if (field === 'bookingReference') {
+        // Accettiamo bookingReference o confirmationNumber
+        const ref = rentals[0]?.bookingReference || rentals[0]?.confirmationNumber;
+        if (!ref) missing.push(field);
+      } else {
+        const val = getNestedField(rentals[0], field);
+        if (val == null || val === '') missing.push(field);
+      }
+    }
+  }
+
   return missing;
 }
 
@@ -1071,5 +1127,6 @@ module.exports = {
   extractITAPassengerFields,
   extractTrenitaliaTrain,
   extractSaisAutolineeBus,
-  MANDATORY
+  MANDATORY,
+  CAR_RENTAL_BRANDS
 };

@@ -57,6 +57,10 @@ exports.handler = async (event, context) => {
         return await handleDismiss(supabase, body, headers);
       }
 
+      if (path === '/feedback') {
+        return await handleFeedback(body, headers);
+      }
+
       return {
         statusCode: 404,
         headers,
@@ -250,11 +254,46 @@ async function handleAssociate(supabase, user, body, headers) {
 
   if (pending.booking_type === 'flight' && extractedData.flights?.length > 0) {
     itemType = 'flight';
-    const flightCount = tripData.flights?.length || 0;
+    const incomingFlight = extractedData.flights[0];
+
+    // Controlla duplicati: stesso volo (numero + data) già presente nel viaggio
+    const existingFlights = tripData.flights || [];
+    const isDuplicate = existingFlights.some(f => {
+      const sameNumber = f.flightNumber && incomingFlight.flightNumber &&
+        f.flightNumber === incomingFlight.flightNumber;
+      const sameDate = f.date && incomingFlight.date && f.date === incomingFlight.date;
+      const sameRef = f.bookingReference && incomingFlight.bookingReference &&
+        f.bookingReference === incomingFlight.bookingReference;
+      return (sameNumber && sameDate) || sameRef;
+    });
+
+    if (isDuplicate) {
+      return {
+        statusCode: 409,
+        headers,
+        body: JSON.stringify({ success: false, error: 'Questa prenotazione è già presente nel viaggio selezionato.' })
+      };
+    }
+
+    const flightCount = existingFlights.length;
     newItemId = `flight-${flightCount + 1}`;
 
-    const newFlight = { ...extractedData.flights[0], id: newItemId };
-    tripData.flights = [...(tripData.flights || []), newFlight];
+    const newFlight = { ...incomingFlight, id: newItemId };
+
+    // Normalizza passenger (singolare) → passengers[] (array)
+    if (!newFlight.passengers || newFlight.passengers.length === 0) {
+      if (newFlight.passenger) {
+        const p = typeof newFlight.passenger === 'string'
+          ? { name: newFlight.passenger }
+          : { ...newFlight.passenger };
+        p.ticketNumber = p.ticketNumber || newFlight.ticketNumber || null;
+        newFlight.passengers = [p];
+      } else {
+        newFlight.passengers = [];
+      }
+    }
+
+    tripData.flights = [...existingFlights, newFlight];
 
     // Update route
     if (tripData.flights.length > 0) {
@@ -268,11 +307,32 @@ async function handleAssociate(supabase, user, body, headers) {
     }
   } else if (pending.booking_type === 'hotel' && extractedData.hotels?.length > 0) {
     itemType = 'hotel';
-    const hotelCount = tripData.hotels?.length || 0;
+    const incomingHotel = extractedData.hotels[0];
+
+    // Controlla duplicati: stessa conferma hotel già presente nel viaggio
+    const existingHotels = tripData.hotels || [];
+    const isDuplicate = existingHotels.some(h => {
+      const sameConfirmation = h.confirmationNumber && incomingHotel.confirmationNumber &&
+        h.confirmationNumber === incomingHotel.confirmationNumber;
+      const sameName = h.name && incomingHotel.name && h.name === incomingHotel.name;
+      const sameCheckIn = h.checkIn?.date && incomingHotel.checkIn?.date &&
+        h.checkIn.date === incomingHotel.checkIn.date;
+      return sameConfirmation || (sameName && sameCheckIn);
+    });
+
+    if (isDuplicate) {
+      return {
+        statusCode: 409,
+        headers,
+        body: JSON.stringify({ success: false, error: 'Questa prenotazione è già presente nel viaggio selezionato.' })
+      };
+    }
+
+    const hotelCount = existingHotels.length;
     newItemId = `hotel-${hotelCount + 1}`;
 
-    const newHotel = { ...extractedData.hotels[0], id: newItemId };
-    tripData.hotels = [...(tripData.hotels || []), newHotel];
+    const newHotel = { ...incomingHotel, id: newItemId };
+    tripData.hotels = [...existingHotels, newHotel];
   } else {
     return {
       statusCode: 400,
@@ -334,6 +394,8 @@ async function handleAssociate(supabase, user, body, headers) {
     body: JSON.stringify({
       success: true,
       tripId,
+      newItemId,
+      itemType,
       message: `${itemType === 'flight' ? 'Volo' : 'Hotel'} aggiunto al viaggio`
     })
   };
@@ -413,7 +475,22 @@ async function handleCreateTrip(supabase, user, body, headers) {
   let newItemId;
   if (pending.booking_type === 'flight' && extractedData.flights?.[0]) {
     newItemId = 'flight-1';
-    tripData.flights = [{ ...extractedData.flights[0], id: newItemId }];
+    const newFlightFromPending = { ...extractedData.flights[0], id: newItemId };
+
+    // Normalizza passenger (singolare) → passengers[] (array)
+    if (!newFlightFromPending.passengers || newFlightFromPending.passengers.length === 0) {
+      if (newFlightFromPending.passenger) {
+        const p = typeof newFlightFromPending.passenger === 'string'
+          ? { name: newFlightFromPending.passenger }
+          : { ...newFlightFromPending.passenger };
+        p.ticketNumber = p.ticketNumber || newFlightFromPending.ticketNumber || null;
+        newFlightFromPending.passengers = [p];
+      } else {
+        newFlightFromPending.passengers = [];
+      }
+    }
+
+    tripData.flights = [newFlightFromPending];
     tripData.route = `${extractedData.flights[0].departure?.code || ''} → ${extractedData.flights[0].arrival?.code || ''}`;
   } else if (pending.booking_type === 'hotel' && extractedData.hotels?.[0]) {
     newItemId = 'hotel-1';
@@ -573,6 +650,37 @@ async function handleDelete(supabase, id, headers) {
     headers,
     body: JSON.stringify({ success: true })
   };
+}
+
+async function handleFeedback({ pendingBookingId, feedback }, headers) {
+  if (!pendingBookingId || !['up', 'down'].includes(feedback)) {
+    return {
+      statusCode: 400,
+      headers,
+      body: JSON.stringify({ success: false, error: 'Parametri non validi' })
+    };
+  }
+
+  try {
+    const { getServiceClient } = require('./utils/auth');
+    const sc = getServiceClient();
+
+    const { data: log } = await sc
+      .from('email_processing_log')
+      .select('id, parse_meta')
+      .eq('pending_booking_id', pendingBookingId)
+      .maybeSingle();
+
+    if (log) {
+      const newMeta = { ...(log.parse_meta || {}), feedback };
+      await sc.from('email_processing_log').update({ parse_meta: newMeta }).eq('id', log.id);
+    }
+
+    return { statusCode: 200, headers, body: JSON.stringify({ success: true }) };
+  } catch (err) {
+    console.error('Feedback save error:', err);
+    return { statusCode: 200, headers, body: JSON.stringify({ success: true }) }; // non-fatal
+  }
 }
 
 /**

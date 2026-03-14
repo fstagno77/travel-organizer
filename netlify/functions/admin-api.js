@@ -110,6 +110,9 @@ exports.handler = async (event, context) => {
       case 'delete-trip':
         result = await deleteTrip(serviceClient, body, user.id);
         break;
+      case 'restore-trip':
+        result = await restoreTrip(serviceClient, body, user.id);
+        break;
       case 'list-pending-bookings':
         result = await listPendingBookings(serviceClient, body);
         break;
@@ -153,13 +156,16 @@ exports.handler = async (event, context) => {
         result = await listPdfLogs(serviceClient, body);
         break;
       case 'pdf-log-stats':
-        result = await getPdfLogStats(serviceClient);
+        result = await getPdfLogStats(serviceClient, body.source);
         break;
       case 'clear-pdf-logs':
-        result = await clearPdfLogs(serviceClient, user.id);
+        result = await clearPdfLogs(serviceClient, user.id, body.source);
         break;
       case 'get-trip-files':
         result = await getTripFiles(serviceClient, body);
+        break;
+      case 'get-pending-booking-detail':
+        result = await getPendingBookingDetail(serviceClient, body);
         break;
       case 'analyze-pdf-admin':
         result = await analyzePdfAdmin(body);
@@ -604,10 +610,17 @@ async function deleteUser(sc, { userId }, adminId) {
 // ============================================
 
 async function listTrips(sc, { search, userId: filterUserId, status, page = 1, pageSize = 20 }) {
-  let query = sc.from('trips').select('id, data, created_at, updated_at, user_id', { count: 'exact' });
+  let query = sc.from('trips').select('id, data, created_at, updated_at, user_id, deleted_at', { count: 'exact' });
 
   if (filterUserId) {
     query = query.eq('user_id', filterUserId);
+  }
+
+  // Filtro soft delete: mostra solo i cancellati se richiesto, altrimenti solo gli attivi
+  if (status === 'deleted') {
+    query = query.not('deleted_at', 'is', null);
+  } else {
+    query = query.is('deleted_at', null);
   }
 
   query = query.order('created_at', { ascending: false });
@@ -639,11 +652,12 @@ async function listTrips(sc, { search, userId: filterUserId, status, page = 1, p
       activityCount: (d.activities || []).length,
       username: profileMap[t.user_id] || '-',
       userId: t.user_id,
-      created_at: t.created_at
+      created_at: t.created_at,
+      deleted_at: t.deleted_at || null
     };
   });
 
-  // Filter by status (past/current/future) in memory
+  // Filter by status (past/current/future) in memory — 'deleted' è già filtrato in DB
   if (status === 'past') {
     result = result.filter(t => t.endDate && t.endDate < now);
   } else if (status === 'current') {
@@ -739,6 +753,21 @@ async function deleteTrip(sc, { tripId }, adminId) {
   });
 
   return { deleted: true };
+}
+
+async function restoreTrip(sc, { tripId }, adminId) {
+  if (!tripId) throw new Error('tripId is required');
+
+  const { data: trip } = await sc.from('trips').select('data').eq('id', tripId).single();
+
+  const { error } = await sc.from('trips').update({ deleted_at: null }).eq('id', tripId);
+  if (error) throw error;
+
+  await logAdminAction(sc, adminId, 'restore_trip', 'trip', tripId, {
+    title: resolveI18n(trip?.data?.title) || resolveI18n(trip?.data?.destination)
+  });
+
+  return { restored: true };
 }
 
 // ============================================
@@ -1215,10 +1244,11 @@ async function getTripCollaborators(sc, { tripId }) {
 // PDF Logs (Admin view)
 // ============================================
 
-async function listPdfLogs(sc, { page = 1, pageSize = 20, status }) {
+async function listPdfLogs(sc, { page = 1, pageSize = 20, status, source }) {
   let query = sc.from('email_processing_log').select('*', { count: 'exact' });
 
   if (status) query = query.eq('status', status);
+  if (source) query = query.eq('source', source);
 
   query = query.order('created_at', { ascending: false });
   const from = (page - 1) * pageSize;
@@ -1244,12 +1274,14 @@ async function listPdfLogs(sc, { page = 1, pageSize = 20, status }) {
   return { logs, total: count || 0, page, pageSize };
 }
 
-async function getPdfLogStats(sc) {
-  const { data: logs } = await sc
+async function getPdfLogStats(sc, source) {
+  let query = sc
     .from('email_processing_log')
     .select('status, parse_level, parse_meta, created_at')
     .order('created_at', { ascending: false })
     .limit(500);
+  if (source) query = query.eq('source', source);
+  const { data: logs } = await query;
 
   const stats = {
     total: (logs || []).length,
@@ -1305,26 +1337,41 @@ async function getPdfLogStats(sc) {
   return { stats };
 }
 
-async function clearPdfLogs(sc, adminUserId) {
-  const { count } = await sc
-    .from('email_processing_log')
-    .select('*', { count: 'exact', head: true });
+async function clearPdfLogs(sc, adminUserId, source) {
+  let countQuery = sc.from('email_processing_log').select('*', { count: 'exact', head: true });
+  if (source) countQuery = countQuery.eq('source', source);
+  const { count } = await countQuery;
 
-  const { error } = await sc
-    .from('email_processing_log')
-    .delete()
-    .gte('created_at', '1970-01-01'); // match all rows
+  let deleteQuery = sc.from('email_processing_log').delete();
+  if (source) deleteQuery = deleteQuery.eq('source', source);
+  else deleteQuery = deleteQuery.gte('created_at', '1970-01-01'); // match all rows
+  const { error } = await deleteQuery;
 
   if (error) throw error;
 
   // Audit log
   await sc.from('admin_audit_log').insert({
     admin_user_id: adminUserId,
-    action: 'clear_pdf_logs',
-    details: { deletedCount: count || 0 },
+    action: source ? `clear_${source}_logs` : 'clear_pdf_logs',
+    details: { deletedCount: count || 0, source: source || 'all' },
   });
 
   return { deleted: count || 0 };
+}
+
+// ============================================
+// Pending Booking Detail (per log email)
+// ============================================
+
+async function getPendingBookingDetail(sc, { id }) {
+  if (!id) throw new Error('id obbligatorio');
+  const { data, error } = await sc
+    .from('pending_bookings')
+    .select('id, email_subject, email_from, booking_type, extracted_data, status, created_at, associated_trip_id')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw error;
+  return { booking: data || null };
 }
 
 // ============================================

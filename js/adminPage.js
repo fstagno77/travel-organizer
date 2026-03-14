@@ -149,8 +149,8 @@ const adminPage = {
       users: () => this.renderUsers(),
       trips: () => this.renderTrips(),
       pending: () => this.renderPending(),
-      'email-logs': () => this.renderEmailLogs(),
-      'pdf-logs': () => this.renderPdfLogs(),
+      'email-logs': () => this.renderPdfLogs(1, '', 10, 'email'),
+      'pdf-logs': () => this.renderPdfLogs(1, '', 10, 'upload'),
       smartparse: () => this.renderSmartTemplates(),
       analyzer: () => this.renderAnalyzer(),
       'email-parse': () => this.renderEmailParse(),
@@ -615,6 +615,7 @@ const adminPage = {
             <option value="future" ${statusFilter === 'future' ? 'selected' : ''}>Futuri</option>
             <option value="current" ${statusFilter === 'current' ? 'selected' : ''}>In corso</option>
             <option value="past" ${statusFilter === 'past' ? 'selected' : ''}>Passati</option>
+            <option value="deleted" ${statusFilter === 'deleted' ? 'selected' : ''}>Eliminati</option>
           </select>
           ${this.pageSizeSelector(pageSize)}
         </div>
@@ -625,13 +626,17 @@ const adminPage = {
             </thead>
             <tbody>
               ${data.trips.length ? data.trips.map(t => `
-                <tr class="admin-row-clickable trip-row" data-trip-id="${t.id}" style="cursor:pointer" title="Clicca per dettagli">
-                  <td><strong>${this.esc(t.title)}</strong></td>
+                <tr class="admin-row-clickable trip-row${t.deleted_at ? ' trip-row-deleted' : ''}" data-trip-id="${t.id}" style="cursor:pointer${t.deleted_at ? ';opacity:0.6' : ''}" title="Clicca per dettagli">
+                  <td><strong style="${t.deleted_at ? 'text-decoration:line-through' : ''}">${this.esc(t.title)}</strong>${t.deleted_at ? ` <span style="font-size:11px;color:var(--color-danger);font-weight:500">eliminato ${this.fmtDate(t.deleted_at)}</span>` : ''}</td>
                   <td>${this.esc(t.username)}</td>
                   <td>${this.esc(t.destination)}</td>
                   <td style="white-space:nowrap;font-size:12px">${this.fmtDate(t.created_at)}</td>
                   <td class="admin-actions" onclick="event.stopPropagation()">
-                    <button class="admin-btn admin-btn-danger admin-btn-sm" data-delete-trip="${t.id}" data-title="${this.esc(t.title)}">Elimina</button>
+                    ${t.deleted_at
+                      ? `<button class="admin-btn admin-btn-success admin-btn-sm" data-restore-trip="${t.id}" data-title="${this.esc(t.title)}">Ripristina</button>
+                         <button class="admin-btn admin-btn-danger admin-btn-sm" data-delete-trip="${t.id}" data-title="${this.esc(t.title)}">Elimina definitivamente</button>`
+                      : `<button class="admin-btn admin-btn-danger admin-btn-sm" data-delete-trip="${t.id}" data-title="${this.esc(t.title)}">Elimina</button>`
+                    }
                   </td>
                 </tr>
                 <tr class="trip-detail-row" id="trip-detail-${t.id}" style="display:none">
@@ -671,6 +676,11 @@ const adminPage = {
     // Delete trip
     document.querySelectorAll('[data-delete-trip]').forEach(btn => {
       btn.addEventListener('click', () => this.confirmDeleteTrip(btn.dataset.deleteTrip, btn.dataset.title));
+    });
+
+    // Restore trip
+    document.querySelectorAll('[data-restore-trip]').forEach(btn => {
+      btn.addEventListener('click', () => this.confirmRestoreTrip(btn.dataset.restoreTrip, btn.dataset.title));
     });
 
     this.bindPagination(() => (p, ps) => this.renderTrips(p, document.getElementById('trips-search')?.value || '', document.getElementById('trips-status-filter')?.value || '', ps || pageSize));
@@ -863,14 +873,30 @@ const adminPage = {
 
   async confirmDeleteTrip(tripId, title) {
     const confirmed = await this.confirm(
-      `Eliminare il viaggio <strong>${this.esc(title)}</strong>?<br>Verranno eliminati anche i PDF e i file associati.`,
-      'Elimina viaggio'
+      `Eliminare definitivamente il viaggio <strong>${this.esc(title)}</strong>?<br>Verranno eliminati anche i PDF e i file associati. L'operazione è irreversibile.`,
+      'Elimina definitivamente'
     );
     if (!confirmed) return;
 
     try {
       await this.api('delete-trip', { tripId });
-      this.toast('Viaggio eliminato', 'success');
+      this.toast('Viaggio eliminato definitivamente', 'success');
+      this.renderTrips();
+    } catch (err) {
+      this.toast('Errore: ' + err.message, 'error');
+    }
+  },
+
+  async confirmRestoreTrip(tripId, title) {
+    const confirmed = await this.confirm(
+      `Ripristinare il viaggio <strong>${this.esc(title)}</strong>?<br>Il viaggio tornerà visibile all'utente.`,
+      'Ripristina viaggio'
+    );
+    if (!confirmed) return;
+
+    try {
+      await this.api('restore-trip', { tripId });
+      this.toast('Viaggio ripristinato', 'success');
       this.renderTrips();
     } catch (err) {
       this.toast('Errore: ' + err.message, 'error');
@@ -1076,13 +1102,20 @@ const adminPage = {
   // PDF Logs
   // ============================================
 
-  async renderPdfLogs(page = 1, statusFilter = '', pageSize = 10) {
+  async renderPdfLogs(page = 1, statusFilter = '', pageSize = 10, source = 'upload') {
     const [data, statsData] = await Promise.all([
-      this.api('list-pdf-logs', { page, pageSize, status: statusFilter || undefined }),
-      page === 1 && !statusFilter ? this.api('pdf-log-stats') : Promise.resolve(null)
+      this.api('list-pdf-logs', { page, pageSize, status: statusFilter || undefined, source }),
+      page === 1 && !statusFilter ? this.api('pdf-log-stats', { source }) : Promise.resolve(null)
     ]);
     const main = document.querySelector('.admin-content');
     const st = statsData?.stats;
+
+    const isEmail = source === 'email';
+    const viewTitle = isEmail ? 'Parse Email' : 'Parse PDF';
+    const emptyMsg = isEmail ? 'Nessun log email' : 'Nessun log PDF';
+    const clearConfirmMsg = isEmail
+      ? 'Svuotare tutti i log delle elaborazioni email? Questa azione è irreversibile.'
+      : 'Svuotare tutti i log delle elaborazioni PDF? Questa azione è irreversibile.';
 
     const statusOpts = [
       { value: 'success', label: 'OK' },
@@ -1094,16 +1127,16 @@ const adminPage = {
     main.innerHTML = `
       <div class="admin-view-header">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:4px">
-          <h1 style="margin:0">Elaborazioni PDF</h1>
+          <h1 style="margin:0">${viewTitle}</h1>
           <div style="display:flex;gap:8px">
-            <button class="admin-btn admin-btn-danger admin-btn-sm" id="clear-pdf-logs-btn">
+            <button class="admin-btn admin-btn-danger admin-btn-sm" id="clear-pdf-logs-btn" data-confirm="${this.esc(clearConfirmMsg)}">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
               Svuota log
             </button>
-            <a href="#analyzer" class="admin-btn admin-btn-secondary admin-btn-sm" data-view="analyzer">
+            ${!isEmail ? `<a href="#analyzer" class="admin-btn admin-btn-secondary admin-btn-sm" data-view="analyzer">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
               Analizzatore
-            </a>
+            </a>` : ''}
           </div>
         </div>
         <p>${data.total} elaborazioni totali</p>
@@ -1190,7 +1223,7 @@ const adminPage = {
                   </td>
                   <td style="text-align:center">${feedbackIcon}</td>
                   <td style="font-size:12px;white-space:nowrap">${durationStr}</td>
-                  <td style="white-space:nowrap">${this.fmtDate(l.created_at)}</td>
+                  <td style="white-space:nowrap;font-size:12px">${this.fmtDatetime(l.created_at)}</td>
                 </tr>
                 <tr class="pdf-log-detail-row" id="pdf-log-detail-${this.esc(l.id)}" style="display:none">
                   <td colspan="9">
@@ -1199,7 +1232,7 @@ const adminPage = {
                     </div>
                   </td>
                 </tr>
-              `}).join('') : '<tr><td colspan="9" class="admin-table-empty">Nessun log PDF</td></tr>'}
+              `}).join('') : `<tr><td colspan="9" class="admin-table-empty">${emptyMsg}</td></tr>`}
             </tbody>
           </table>
         </div>
@@ -1209,7 +1242,7 @@ const adminPage = {
 
     // Filter
     document.getElementById('pdf-log-filter')?.addEventListener('change', () => {
-      this.renderPdfLogs(1, document.getElementById('pdf-log-filter').value, pageSize);
+      this.renderPdfLogs(1, document.getElementById('pdf-log-filter').value, pageSize, source);
     });
 
     // Clear logs button
@@ -1217,7 +1250,7 @@ const adminPage = {
     if (clearBtn) {
       clearBtn.addEventListener('click', async () => {
         const confirmed = await window.utils.showConfirm(
-          'Svuotare tutti i log delle elaborazioni PDF? Questa azione è irreversibile.', {
+          clearConfirmMsg, {
             title: 'Svuota log',
             confirmText: 'Svuota tutto',
             variant: 'danger'
@@ -1227,10 +1260,10 @@ const adminPage = {
         clearBtn.disabled = true;
         clearBtn.textContent = 'Svuotamento...';
         try {
-          await this.api('clear-pdf-logs');
-          this.renderPdfLogs();
+          await this.api('clear-pdf-logs', { source });
+          this.renderPdfLogs(1, '', pageSize, source);
         } catch (err) {
-          console.error('Clear PDF logs error:', err);
+          console.error('Clear logs error:', err);
           clearBtn.disabled = false;
           clearBtn.textContent = 'Svuota log';
           window.utils.showToast('Errore: ' + err.message, 'error');
@@ -1245,6 +1278,44 @@ const adminPage = {
         const detail = document.getElementById(`pdf-log-detail-${id}`);
         if (detail) {
           detail.style.display = detail.style.display === 'none' ? 'table-row' : 'none';
+        }
+      });
+    });
+
+    // Link "Vedi prenotazione" → naviga alla view pending
+    document.querySelectorAll('.admin-nav-link[data-view]').forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.navigate(link.dataset.view);
+      });
+    });
+
+    // Carica JSON prenotazione pendente (log email senza extracted_summary)
+    document.querySelectorAll('[data-load-pending-json]').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const pendingId = btn.dataset.loadPendingJson;
+        const targetId = btn.dataset.jsonTarget;
+        btn.disabled = true;
+        btn.textContent = '...';
+        try {
+          const res = await this.api('get-pending-booking-detail', { id: pendingId });
+          const target = document.getElementById(targetId);
+          if (target) {
+            target.textContent = JSON.stringify(res.booking?.extracted_data || res.booking || null, null, 2);
+            target.style.display = 'block';
+          }
+          btn.textContent = 'Nascondi JSON';
+          btn.onclick = () => {
+            const el = document.getElementById(targetId);
+            if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+            btn.textContent = el?.style.display === 'none' ? 'Carica JSON' : 'Nascondi JSON';
+          };
+          btn.disabled = false;
+        } catch (err) {
+          btn.textContent = 'Errore';
+          btn.disabled = false;
+          console.error('Load pending JSON error:', err);
         }
       });
     });
@@ -1281,7 +1352,7 @@ const adminPage = {
       });
     });
 
-    this.bindPagination(() => (p, ps) => this.renderPdfLogs(p, document.getElementById('pdf-log-filter')?.value || '', ps || pageSize));
+    this.bindPagination(() => (p, ps) => this.renderPdfLogs(p, document.getElementById('pdf-log-filter')?.value || '', ps || pageSize, source));
   },
 
   _pdfLevelBadge(level) {
@@ -1367,30 +1438,48 @@ const adminPage = {
       dataHtml += `<div style="font-size:11px;color:#c2410c;margin-top:4px">Campi modificati: ${labels.join(', ')}</div>`;
     }
 
-    // ── Trip link (row 1, right-aligned) ──
-    let tripLink = '';
+    // ── Trip link / Pending booking link (row 1, right-aligned) ──
+    let actionLink = '';
     if (log.trip_id) {
-      tripLink = `<a href="/trip.html?id=${encodeURIComponent(log.trip_id)}" target="_blank" style="font-size:11px;color:var(--color-primary);text-decoration:none;margin-left:auto">Apri viaggio ↗</a>`;
+      actionLink = `<a href="/trip.html?id=${encodeURIComponent(log.trip_id)}" target="_blank" style="font-size:11px;color:var(--color-primary);text-decoration:none;margin-left:auto">Apri viaggio ↗</a>`;
+    } else if (log.source === 'email' && log.pending_booking_id) {
+      actionLink = `<a href="#pending" class="admin-nav-link" data-view="pending" style="font-size:11px;color:var(--color-primary);text-decoration:none;margin-left:auto;cursor:pointer">Vedi prenotazione ↗</a>`;
     }
 
-    // ── JSON toggle (inline after data text) ──
+    // ── JSON toggle ──
+    // Per email: "Carica JSON" fetcha i dati completi da pending_bookings (superset del summary)
+    // Per upload: "Mostra JSON" mostra extracted_summary inline
     const jsonId = `pdf-json-${log.id}`;
+    const isEmailWithPending = log.source === 'email' && log.pending_booking_id;
     const hasJson = log.extracted_summary && Object.keys(log.extracted_summary).length > 0;
-    const jsonToggle = hasJson
-      ? ` <button class="admin-btn admin-btn-sm admin-btn-secondary" style="font-size:10px;padding:1px 6px;margin-left:6px" onclick="(function(b){var el=document.getElementById('${jsonId}');if(el.style.display==='none'){el.style.display='block';b.textContent='Nascondi JSON'}else{el.style.display='none';b.textContent='Mostra JSON'}})(this)">Mostra JSON</button>`
-      : '';
-    const jsonBlock = hasJson
-      ? `<pre id="${jsonId}" style="display:none;margin-top:6px;padding:8px;background:var(--color-gray-50);border:1px solid var(--color-gray-200);border-radius:6px;font-size:11px;max-height:300px;overflow:auto;white-space:pre-wrap;word-break:break-all">${this.esc(JSON.stringify(log.extracted_summary, null, 2))}</pre>`
-      : '';
+    let jsonToggle = '';
+    if (isEmailWithPending) {
+      jsonToggle = ` <button class="admin-btn admin-btn-sm admin-btn-secondary" style="font-size:10px;padding:1px 6px;margin-left:6px" data-load-pending-json="${this.esc(log.pending_booking_id)}" data-json-target="${jsonId}">Dati estratti</button>`;
+    } else if (hasJson) {
+      jsonToggle = ` <button class="admin-btn admin-btn-sm admin-btn-secondary" style="font-size:10px;padding:1px 6px;margin-left:6px" onclick="(function(b){var el=document.getElementById('${jsonId}');if(el.style.display==='none'){el.style.display='block';b.textContent='Nascondi JSON'}else{el.style.display='none';b.textContent='Mostra JSON'}})(this)">Mostra JSON</button>`;
+    }
+    const jsonBlock = `<div id="${jsonId}" style="display:none;margin-top:6px;padding:8px;background:var(--color-gray-50);border:1px solid var(--color-gray-200);border-radius:6px;font-size:11px;max-height:300px;overflow:auto;white-space:pre-wrap;word-break:break-all">${!isEmailWithPending && hasJson ? this.esc(JSON.stringify(log.extracted_summary, null, 2)) : ''}</div>`;
+
+    // ── Anteprima email body (solo per source=email) ──
+    let emailPreview = '';
+    if (log.source === 'email' && log.email_body_preview) {
+      const prevId = `email-prev-${log.id}`;
+      emailPreview = `
+        <div style="margin-top:6px">
+          <button class="admin-btn admin-btn-sm admin-btn-secondary" style="font-size:10px;padding:1px 6px" onclick="(function(b){var el=document.getElementById('${prevId}');if(el.style.display==='none'){el.style.display='block';b.textContent='Nascondi anteprima'}else{el.style.display='none';b.textContent='Anteprima email'}})(this)">Anteprima email</button>
+          <pre id="${prevId}" style="display:none;margin-top:6px;padding:8px;background:var(--color-gray-50);border:1px solid var(--color-gray-200);border-radius:6px;font-size:11px;max-height:200px;overflow:auto;white-space:pre-wrap;word-break:break-all">${this.esc(log.email_body_preview)}</pre>
+        </div>`;
+    }
 
     return `
-      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px">${tags.join('')}${tripLink}</div>
+      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px">${tags.join('')}${actionLink}</div>
       <div style="font-size:11px;color:var(--color-gray-500);margin-top:6px;display:flex;align-items:center;gap:4px;flex-wrap:wrap">
         <span>${fileUser.join(' ')}</span>
         ${log.trip_id ? `<button class="admin-btn admin-btn-sm admin-btn-secondary" style="font-size:10px;padding:1px 6px;margin-left:4px" data-download-trip-files="${log.trip_id}">Scarica PDF</button>` : ''}
       </div>
       <div style="margin-top:6px">${dataHtml}${jsonToggle}</div>
       ${jsonBlock}
+      ${emailPreview}
       ${log.error_message ? `<div style="font-size:12px;color:var(--color-error);margin-top:4px">${this.esc(log.error_message)}</div>` : ''}
     `;
   },
@@ -1417,6 +1506,7 @@ const adminPage = {
     const hotels = result.hotels || (result.name && result.checkIn ? [result] : []);
     const trains = result.trains || [];
     const buses = result.buses || [];
+    const rentals = result.rentals || [];
     // Supporta sia passenger (singolare) che passengers (array, formato email)
     const passenger = result.passenger || null;
     const passengers = result.passengers?.length ? result.passengers : (passenger ? [passenger] : []);
@@ -1460,7 +1550,7 @@ const adminPage = {
       const detectedDocType = smartMeta.detectedDocType;
       let detectedTypeHtml = '';
       if (detectedDocType && detectedDocType !== 'auto') {
-        const dtLabels = { flight: '✈ Volo rilevato', hotel: '🏨 Hotel rilevato', train: '🚆 Treno rilevato', bus: '🚌 Autobus rilevato' };
+        const dtLabels = { flight: '✈ Volo rilevato', hotel: '🏨 Hotel rilevato', train: '🚆 Treno rilevato', bus: '🚌 Autobus rilevato', car_rental: '🚗 Noleggio auto rilevato' };
         const dtLabel = dtLabels[detectedDocType] || `📄 ${detectedDocType} rilevato`;
         detectedTypeHtml = `<span class="sp-detected-type">${dtLabel}</span>`;
       }
@@ -1485,7 +1575,7 @@ const adminPage = {
       `;
     }
 
-    const typeLabels = { flight: 'Volo', hotel: 'Hotel', train: 'Treno', bus: 'Autobus' };
+    const typeLabels = { flight: 'Volo', hotel: 'Hotel', train: 'Treno', bus: 'Autobus', car_rental: 'Noleggio Auto' };
     const typeLabel = typeLabels[docType] || 'Auto';
     let html = `
       <div class="pdf-analyze-result-header">
@@ -1769,7 +1859,48 @@ const adminPage = {
       });
     }
 
-    if (flights.length === 0 && hotels.length === 0 && trains.length === 0 && buses.length === 0) {
+    if (rentals.length > 0) {
+      const resolveStr = (v) => {
+        if (v == null) return null;
+        if (typeof v === 'string') return v;
+        if (typeof v === 'object') return v.value || v.code || JSON.stringify(v);
+        return String(v);
+      };
+      const resolvePrice = (v) => {
+        if (!v) return null;
+        if (typeof v === 'string') return v;
+        if (typeof v === 'object') {
+          const node = v.total || v;
+          if (node.value != null) return `${node.value} ${node.currency || ''}`.trim();
+        }
+        return null;
+      };
+      rentals.forEach((r, i) => {
+        const pickupCity = r.pickupLocation?.city || '?';
+        const dropoffCity = r.dropoffLocation?.city || '?';
+        const vehicle = [r.vehicle?.make, r.vehicle?.model].filter(Boolean).join(' ') || r.vehicle?.category || '—';
+        html += `
+          <div class="pdf-flight-card">
+            <div class="pdf-flight-card-header" style="border-left:3px solid var(--color-rental-600)">🚗 Noleggio ${i + 1}: ${this.esc(pickupCity)} → ${this.esc(dropoffCity)}</div>
+            <div class="pdf-result-grid">
+              ${this._pdfField('Provider', resolveStr(r.provider))}
+              ${this._pdfField('Ritiro', resolveStr(r.date))}
+              ${this._pdfField('Riconsegna', resolveStr(r.endDate))}
+              ${this._pdfField('Giorni', r.rentalDays)}
+              ${this._pdfField('Ora ritiro', r.pickupLocation?.time)}
+              ${this._pdfField('Ora riconsegna', r.dropoffLocation?.time)}
+              ${this._pdfField('Veicolo', vehicle)}
+              ${this._pdfField('Categoria', r.vehicle?.category)}
+              ${this._pdfField('Conducente', resolveStr(r.driverName))}
+              ${this._pdfField('Riferimento', resolveStr(r.bookingReference || r.confirmationNumber))}
+              ${this._pdfField('Prezzo', resolvePrice(r.price || r.totalAmount))}
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    if (flights.length === 0 && hotels.length === 0 && trains.length === 0 && buses.length === 0 && rentals.length === 0) {
       html += `<div class="pdf-analyze-empty">Nessun documento di viaggio riconoscibile.</div>`;
     }
 
@@ -2581,8 +2712,9 @@ const adminPage = {
         : '';
       const nameDisplay = t.name ? `<span style="font-size:11px;color:var(--text-secondary);display:block;margin-top:2px">${this.esc(t.name.substring(0, 50))}</span>` : '';
       const wasUpdated = t.updated_at && t.created_at && t.updated_at !== t.created_at;
+      const rowId = CSS.escape(t.id);
       return `
-        <tr class="sp-tpl-row" data-tpl-id="${this.esc(t.id)}">
+        <tr class="sp-tpl-row admin-row-clickable" data-tpl-id="${this.esc(t.id)}" title="Clicca per dettagli">
           <td>
             <code style="font-size:11px;color:var(--text-secondary)">${fpShort}</code>${sourceBadge}
             ${nameDisplay}
@@ -2593,6 +2725,13 @@ const adminPage = {
           <td style="color:${wasUpdated ? 'var(--text-primary)' : 'var(--text-secondary)'};font-size:12px;white-space:nowrap">${wasUpdated ? fmtDateTime(t.updated_at) : '—'}</td>
           <td class="sp-tpl-actions">
             <button class="admin-btn admin-btn-sm admin-btn-danger sp-tpl-delete-btn" data-tpl-id="${this.esc(t.id)}" data-tpl-name="${this.esc(t.name)}">Elimina</button>
+          </td>
+        </tr>
+        <tr class="sp-tpl-detail-row" id="sp-tpl-detail-${rowId}" style="display:none">
+          <td colspan="6">
+            <div class="pdf-log-detail-panel" style="text-align:center;padding:16px">
+              <span class="spinner"></span>
+            </div>
           </td>
         </tr>`;
     }).join('');
@@ -2689,6 +2828,16 @@ const adminPage = {
       this.renderSmartTemplates();
     });
 
+    // Click su riga → espandi dettaglio inline
+    const tplMap = new Map(templates.map(t => [t.id, t]));
+    main.querySelectorAll('.sp-tpl-row').forEach(row => {
+      row.addEventListener('click', (e) => {
+        if (e.target.closest('.sp-tpl-delete-btn')) return;
+        const t = tplMap.get(row.dataset.tplId);
+        if (t) this._toggleSpTplDetail(t);
+      });
+    });
+
     // Delete single entry
     main.querySelectorAll('.sp-tpl-delete-btn').forEach(btn => {
       btn.addEventListener('click', async (e) => {
@@ -2707,6 +2856,103 @@ const adminPage = {
         }
       });
     });
+  },
+
+  _toggleSpTplDetail(t) {
+    const detailRow = document.getElementById(`sp-tpl-detail-${CSS.escape(t.id)}`);
+    if (!detailRow) return;
+
+    // Toggle
+    if (detailRow.style.display === 'table-row') {
+      detailRow.style.display = 'none';
+      return;
+    }
+    detailRow.style.display = 'table-row';
+
+    // Già caricato
+    if (detailRow.dataset.loaded) return;
+    detailRow.dataset.loaded = '1';
+
+    const matchRules = t.match_rules || {};
+    const knownFps = matchRules._knownFingerprints || (t.last_sample_fingerprint ? [t.last_sample_fingerprint] : []);
+    const sampleText = matchRules._sampleText || '';
+    const fieldRules = t.field_rules || [];
+    const lastResult = t.last_sample_result;
+    const resultsCount = matchRules._results ? Object.keys(matchRules._results).length : (lastResult ? 1 : 0);
+
+    const sourceLabel = {
+      'fingerprint-cache': 'L4 Fingerprint Cache',
+      'template-l2': 'L2 Template',
+      'email-l4': 'Email L4',
+    }[t.source] || t.source || '—';
+
+    const fmtDateTime = (iso) => {
+      if (!iso) return '—';
+      const d = new Date(iso);
+      return d.toLocaleString('it-IT', { day: '2-digit', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+    };
+
+    const fpRows = knownFps.map((fp, i) => `
+      <tr>
+        <td style="font-size:11px;padding:4px 8px;color:var(--text-secondary)">#${i + 1}</td>
+        <td><code style="font-size:11px;word-break:break-all">${this.esc(fp)}</code></td>
+      </tr>`).join('');
+
+    const fieldRulesHtml = fieldRules.length
+      ? `<div style="margin-top:16px">
+          <div class="admin-detail-label">Extraction Map (${fieldRules.length} campi)</div>
+          <div style="max-height:160px;overflow-y:auto;border:1px solid var(--border-color);border-radius:6px;padding:8px;background:var(--bg-secondary)">
+            <pre style="margin:0;font-size:11px;line-height:1.6;white-space:pre-wrap">${this.esc(JSON.stringify(fieldRules, null, 2))}</pre>
+          </div>
+        </div>`
+      : '';
+
+    const sampleTextHtml = sampleText
+      ? `<div style="margin-top:16px">
+          <div class="admin-detail-label">Testo campione (L2)</div>
+          <div style="max-height:120px;overflow-y:auto;border:1px solid var(--border-color);border-radius:6px;padding:8px;background:var(--bg-secondary)">
+            <pre style="margin:0;font-size:11px;line-height:1.5;white-space:pre-wrap;color:var(--text-secondary)">${this.esc(sampleText.substring(0, 800))}${sampleText.length > 800 ? '\n…' : ''}</pre>
+          </div>
+        </div>`
+      : '';
+
+    const lastResultHtml = lastResult
+      ? `<div style="margin-top:16px">
+          <div class="admin-detail-label">Ultimo risultato parsato</div>
+          <div style="max-height:200px;overflow-y:auto;border:1px solid var(--border-color);border-radius:6px;padding:8px;background:var(--bg-secondary)">
+            <pre style="margin:0;font-size:11px;line-height:1.5;white-space:pre-wrap">${this.esc(JSON.stringify(lastResult, null, 2))}</pre>
+          </div>
+        </div>`
+      : '';
+
+    detailRow.querySelector('td').innerHTML = `
+      <div class="pdf-log-detail-panel">
+        <div class="pdf-log-detail-grid">
+          <div><div class="admin-detail-label">Brand</div><div class="admin-detail-value">${this.esc(t.brand || '—')}</div></div>
+          <div><div class="admin-detail-label">Tipo documento</div><div class="admin-detail-value">${this.esc(t.doc_type || '—')}</div></div>
+          <div><div class="admin-detail-label">Sorgente</div><div class="admin-detail-value">${this.esc(sourceLabel)}</div></div>
+          <div><div class="admin-detail-label">Utilizzi totali</div><div class="admin-detail-value">${t.usage_count || 0}</div></div>
+          <div><div class="admin-detail-label">Creato</div><div class="admin-detail-value">${fmtDateTime(t.created_at)}</div></div>
+          <div><div class="admin-detail-label">Aggiornato</div><div class="admin-detail-value">${fmtDateTime(t.updated_at)}</div></div>
+        </div>
+
+        <div style="margin-top:16px">
+          <div class="admin-detail-label">Fingerprint noti (${knownFps.length}) — L1 cache hit</div>
+          ${knownFps.length > 0
+            ? `<div style="max-height:180px;overflow-y:auto;border:1px solid var(--border-color);border-radius:6px;overflow:hidden;margin-top:6px">
+                <table style="width:100%;border-collapse:collapse">
+                  <tbody>${fpRows}</tbody>
+                </table>
+              </div>`
+            : `<div style="color:var(--text-secondary);font-size:12px;padding:8px 0">Nessun fingerprint registrato.</div>`
+          }
+          ${resultsCount > 0 ? `<div style="font-size:11px;color:var(--text-secondary);margin-top:4px">${resultsCount} risultato/i cached in memoria</div>` : ''}
+        </div>
+
+        ${fieldRulesHtml}
+        ${sampleTextHtml}
+        ${lastResultHtml}
+      </div>`;
   },
 
   // ============================================
@@ -2855,6 +3101,16 @@ const adminPage = {
     if (!dateStr) return '-';
     try {
       return new Date(dateStr).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' });
+    } catch { return dateStr; }
+  },
+
+  fmtDatetime(dateStr) {
+    if (!dateStr) return '-';
+    try {
+      const d = new Date(dateStr);
+      const date = d.toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' });
+      const time = d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+      return `${date} - ${time}`;
     } catch { return dateStr; }
   },
 
@@ -3397,12 +3653,14 @@ const adminPage = {
             const flightsFound = res.result?.flights?.length ?? 0;
             const trainsFound = res.result?.trains?.length ?? 0;
             const busesFound = res.result?.buses?.length ?? 0;
-            const totalFound = hotelsFound + flightsFound + trainsFound + busesFound;
+            const rentalsFound = res.result?.rentals?.length ?? 0;
+            const totalFound = hotelsFound + flightsFound + trainsFound + busesFound + rentalsFound;
             let extractedParts = [];
             if (flightsFound) extractedParts.push(`${flightsFound} voli`);
             if (hotelsFound) extractedParts.push(`${hotelsFound} hotel`);
             if (trainsFound) extractedParts.push(`${trainsFound} treni`);
             if (busesFound) extractedParts.push(`${busesFound} autobus`);
+            if (rentalsFound) extractedParts.push(`${rentalsFound} noleggi`);
             spLog(`  Estratti: ${extractedParts.length ? extractedParts.join(', ') : '0 risultati'}`, totalFound > 0 ? 'ok' : 'warn');
             if (res.error) spLog(`  ⚠ ${res.error}`, 'warn');
 

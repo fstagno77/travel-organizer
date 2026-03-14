@@ -941,6 +941,7 @@ const tripCreator = {
       } else if (page === 1) {
         // No photos found on first page
         this.renderNoPhotosState();
+        this.bindPhotoActions();
       }
 
       this.isLoadingMore = false;

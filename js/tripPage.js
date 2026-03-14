@@ -17,7 +17,7 @@
   let currentTripData = null;
   let currentUserRole = 'proprietario'; // 'proprietario', 'viaggiatore', 'ospite'
   let currentTripOwner = null; // { username, email } if not owner
-  let tabRendered = { activities: false, flights: false, hotels: false, trains: false, buses: false };
+  let tabRendered = { activities: false, flights: false, hotels: false, trains: false, buses: false, rentals: false };
   let visibleTabs = []; // tab attualmente visibili (calcolati dinamicamente)
 
   // ===========================
@@ -42,7 +42,7 @@
      */
     async spaInit() {
       // Reset stato viaggio
-      tabRendered = { activities: false, flights: false, hotels: false, trains: false, buses: false };
+      tabRendered = { activities: false, flights: false, hotels: false, trains: false, buses: false, rentals: false };
       visibleTabs = [];
       currentTripData = null;
       currentUserRole = 'proprietario';
@@ -217,6 +217,16 @@
       currentTripOwner = result.owner || null;
       renderTrip(result.tripData);
       if (typeof window.__perfMarkTripLoaded === 'function') window.__perfMarkTripLoaded();
+
+      // Apri pannello edit se reindirizzati da pendingBookingModal (click "Modifica")
+      const pendingEditRaw = sessionStorage.getItem('pendingBookingEdit');
+      if (pendingEditRaw) {
+        sessionStorage.removeItem('pendingBookingEdit');
+        try {
+          const { type, id } = JSON.parse(pendingEditRaw);
+          setTimeout(() => openEditPanelForItem(type, id), 300);
+        } catch (e) {}
+      }
     } catch (error) {
       console.error('Error loading trip:', error);
       console.error('Error stack:', error.stack);
@@ -278,11 +288,12 @@
 
   // Configurazione icone e label per ciascun tab
   const TAB_CONFIG = {
-    activities: { icon: 'calendar_today', i18nKey: 'trip.activities', fallback: 'Attività' },
-    flights:    { icon: 'travel',         i18nKey: 'trip.flights',    fallback: 'Voli' },
-    hotels:     { icon: 'bed',            i18nKey: 'trip.hotels',     fallback: 'Hotel' },
-    trains:     { icon: 'train',          i18nKey: 'trip.trains',     fallback: 'Treni', beta: true },
-    buses:      { icon: 'directions_bus', i18nKey: 'trip.buses',      fallback: 'Bus', beta: true },
+    activities: { icon: 'calendar_today',  i18nKey: 'trip.activities', fallback: 'Attività' },
+    flights:    { icon: 'travel',          i18nKey: 'trip.flights',    fallback: 'Voli' },
+    hotels:     { icon: 'bed',             i18nKey: 'trip.hotels',     fallback: 'Hotel' },
+    trains:     { icon: 'train',           i18nKey: 'trip.trains',     fallback: 'Treni', beta: true },
+    buses:      { icon: 'directions_bus',  i18nKey: 'trip.buses',      fallback: 'Bus', beta: true },
+    rentals:    { iconSvg: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.8L18 11l-2-4H8L6 11l-2.5.2C2.7 11.3 2 12.1 2 13v3c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>`, i18nKey: 'trip.rentals', fallback: 'Auto' },
   };
 
   /**
@@ -294,12 +305,14 @@
                        (tripData.hotels?.length > 0) ||
                        (tripData.trains?.length > 0) ||
                        (tripData.buses?.length > 0) ||
+                       (tripData.rentals?.length > 0) ||
                        (tripData.activities?.length > 0);
     if (hasAnyData) tabs.push('activities');
     if (tripData.flights?.length > 0) tabs.push('flights');
     if (tripData.hotels?.length > 0) tabs.push('hotels');
     if (tripData.trains?.length > 0) tabs.push('trains');
     if (tripData.buses?.length > 0) tabs.push('buses');
+    if (tripData.rentals?.length > 0) tabs.push('rentals');
     return tabs;
   }
 
@@ -319,8 +332,8 @@
         const cfg = TAB_CONFIG[tabName];
         return `
           <button class="segmented-control-btn" data-tab="${tabName}">
-            <span class="material-symbols-outlined" style="font-size: 20px;">${cfg.icon}</span>
-            <span${tabName === 'trains' || tabName === 'buses' ? ' class="segmented-label"' : ''} data-i18n="${cfg.i18nKey}">${cfg.fallback}</span>
+            ${cfg.iconSvg ? cfg.iconSvg : `<span class="material-symbols-outlined" style="font-size: 20px;">${cfg.icon}</span>`}
+            <span${tabName === 'trains' || tabName === 'buses' || tabName === 'rentals' ? ' class="segmented-label"' : ''} data-i18n="${cfg.i18nKey}">${cfg.fallback}</span>
             ${cfg.beta ? '<span class="beta-badge-tab">Beta</span>' : ''}
           </button>
         `;
@@ -796,7 +809,7 @@
    * Handle toggle details (flights or hotels) with lazy rendering
    */
   function handleToggleDetails(btn, type) {
-    const indexAttrMap = { flight: 'flightIndex', hotel: 'hotelIndex', train: 'trainIndex', bus: 'busIndex' };
+    const indexAttrMap = { flight: 'flightIndex', hotel: 'hotelIndex', train: 'trainIndex', bus: 'busIndex', rental: 'rentalIndex' };
     const indexAttr = indexAttrMap[type] || 'flightIndex';
     const index = btn.dataset[indexAttr];
     const detailsId = `${type}-details-${index}`;
@@ -809,13 +822,15 @@
         flight: window.tripFlights._flights,
         hotel: window.tripHotels._hotels,
         train: window.tripTrains._trains,
-        bus: window.tripBuses._buses
+        bus: window.tripBuses._buses,
+        rental: window.tripRentals._rentals
       };
       const renderFnMap = {
         flight: window.tripFlights.renderDetails,
         hotel: window.tripHotels.renderDetails,
         train: window.tripTrains.renderDetails,
-        bus: window.tripBuses.renderDetails
+        bus: window.tripBuses.renderDetails,
+        rental: window.tripRentals.renderDetails
       };
       const items = itemsMap[type];
       const renderFn = renderFnMap[type];
@@ -985,6 +1000,24 @@
       });
     }
 
+    // --- Rentals container delegation ---
+    const rentalsContainer = document.getElementById('rentals-container');
+    if (rentalsContainer) {
+      rentalsContainer.addEventListener('click', (e) => {
+        const target = e.target;
+        const toggleBtn = target.closest('.rental-toggle-details');
+        if (toggleBtn) { handleToggleDetails(toggleBtn, 'rental'); return; }
+        const editBtn = target.closest('.btn-edit-item[data-type="rental"]');
+        if (editBtn) { e.stopPropagation(); openEditPanelForItem('rental', editBtn.dataset.id); return; }
+        const deleteBtn = target.closest('.btn-delete-item[data-type="rental"]');
+        if (deleteBtn) { e.stopPropagation(); showDeleteItemModal('rental', deleteBtn.dataset.id); return; }
+        const pdfBtn = target.closest('.btn-download-pdf');
+        if (pdfBtn) { e.stopPropagation(); handlePdfDownload(pdfBtn.dataset.pdfPath, pdfBtn); return; }
+        const copyBtn = target.closest('.btn-copy-value');
+        if (copyBtn) { handleCopyValue(copyBtn); return; }
+      });
+    }
+
     // --- Activities container delegation ---
     if (activitiesContainer) {
       activitiesContainer.addEventListener('click', async (e) => {
@@ -1109,6 +1142,8 @@
       window.tripTrains.render(document.getElementById('trains-container'), currentTripData.trains);
     } else if (tabName === 'buses') {
       window.tripBuses.render(document.getElementById('buses-container'), currentTripData.buses);
+    } else if (tabName === 'rentals') {
+      window.tripRentals.render(document.getElementById('rentals-container'), currentTripData.rentals);
     }
     tabRendered[tabName] = true;
     if (typeof window.__perfMarkTabRender === 'function') {
@@ -1842,13 +1877,14 @@
     if (existingModal) existingModal.remove();
 
     const currentTab = document.querySelector('.segmented-control-btn.active')?.dataset.tab || 'flights';
-    const typeMap = { flights: 'flight', hotels: 'hotel', trains: 'train', buses: 'bus' };
+    const typeMap = { flights: 'flight', hotels: 'hotel', trains: 'train', buses: 'bus', rentals: 'rental' };
     const type = typeMap[currentTab] || 'flight';
     const itemsMap = {
       flight: currentTripData?.flights || [],
       hotel: currentTripData?.hotels || [],
       train: currentTripData?.trains || [],
-      bus: currentTripData?.buses || []
+      bus: currentTripData?.buses || [],
+      rental: currentTripData?.rentals || []
     };
     const items = itemsMap[type] || [];
 
@@ -2110,6 +2146,8 @@
               currentTripData.trains = (currentTripData.trains || []).filter(t => !deleteIds.has(t.id));
             } else if (deleteType === 'bus') {
               currentTripData.buses = (currentTripData.buses || []).filter(b => !deleteIds.has(b.id));
+            } else if (deleteType === 'rental') {
+              currentTripData.rentals = (currentTripData.rentals || []).filter(r => !deleteIds.has(r.id));
             }
           }
         }
@@ -2670,13 +2708,14 @@
     if (!alreadyOpen) slider._savedScrollTop = savedScrollTop;
 
     const currentTab = document.querySelector('.segmented-control-btn.active')?.dataset.tab || 'flights';
-    const typeMap = { flights: 'flight', hotels: 'hotel', trains: 'train', buses: 'bus' };
+    const typeMap = { flights: 'flight', hotels: 'hotel', trains: 'train', buses: 'bus', rentals: 'rental' };
     const type = typeMap[currentTab] || 'flight';
     const itemsMap = {
       flight: currentTripData?.flights || [],
       hotel: currentTripData?.hotels || [],
       train: currentTripData?.trains || [],
-      bus: currentTripData?.buses || []
+      bus: currentTripData?.buses || [],
+      rental: currentTripData?.rentals || []
     };
     const items = itemsMap[type] || [];
 
@@ -2765,6 +2804,27 @@
               <span class="manage-booking-item-label">
                 <span><strong>${esc(ref)}</strong>${names ? ` &middot; ${esc(names)}` : ''}</span>
                 <div class="manage-booking-flights">${hotelLines}</div>
+              </span>
+            </div>`;
+        } else if (type === 'rental') {
+          const rentalLines = groupItems.map(r => {
+            const pickup = r.pickupLocation?.city || '';
+            const dropoff = r.dropoffLocation?.city || '';
+            const date = r.date || '';
+            const endDate = r.endDate || '';
+            return `<div class="manage-booking-flight-row">
+              <span>${esc(r.provider || 'Noleggio')}</span>
+              ${pickup || dropoff ? `<span>${esc(pickup)} → ${esc(dropoff)}</span>` : ''}
+              ${date ? `<span class="manage-booking-flight-date">${date}${endDate ? ' → ' + endDate : ''}</span>` : ''}
+            </div>`;
+          }).join('');
+
+          const driverName = groupItems[0]?.driverName || groupItems[0]?.passenger?.name || '';
+          listHTML += `
+            <div class="manage-booking-item" data-value="${itemIds}" data-type="${type}" data-mode="booking" data-ref="${esc(ref)}">
+              <span class="manage-booking-item-label">
+                <span><strong>${esc(ref)}</strong>${driverName ? ` &middot; ${esc(driverName)}` : ''}</span>
+                <div class="manage-booking-flights">${rentalLines}</div>
               </span>
             </div>`;
         } else {
@@ -3112,6 +3172,8 @@
               currentTripData.trains = (currentTripData.trains || []).filter(t => !deleteIds.has(t.id));
             } else if (dtype === 'bus') {
               currentTripData.buses = (currentTripData.buses || []).filter(b => !deleteIds.has(b.id));
+            } else if (dtype === 'rental') {
+              currentTripData.rentals = (currentTripData.rentals || []).filter(r => !deleteIds.has(r.id));
             }
           }
 
@@ -3142,7 +3204,8 @@
       flight: currentTripData?.flights || [],
       hotel: currentTripData?.hotels || [],
       train: currentTripData?.trains || [],
-      bus: currentTripData?.buses || []
+      bus: currentTripData?.buses || [],
+      rental: currentTripData?.rentals || []
     };
     const items = itemsMap[type] || [];
 
@@ -3172,7 +3235,8 @@
       flight: window.tripFlights.buildEditForm,
       hotel: window.tripHotels.buildEditForm,
       train: window.tripTrains.buildEditForm,
-      bus: window.tripBuses.buildEditForm
+      bus: window.tripBuses.buildEditForm,
+      rental: window.tripRentals.buildEditForm
     };
     const formHTML = (formBuilders[type] || formBuilders.flight)(item);
 
@@ -3259,7 +3323,8 @@
           flight: window.tripFlights.collectUpdates,
           hotel: window.tripHotels.collectUpdates,
           train: window.tripTrains.collectUpdates,
-          bus: window.tripBuses.collectUpdates
+          bus: window.tripBuses.collectUpdates,
+          rental: window.tripRentals.collectUpdates
         };
         const updates = (updateCollectors[type] || updateCollectors.flight)(panelBody);
 
@@ -3326,11 +3391,17 @@
         const date = utils.formatFlightDate(bus.date, lang);
         itemDescription = `${esc(bus.operator || '')} - ${esc(bus.departure?.city || '')} → ${esc(bus.arrival?.city || '')} (${date})`;
       }
+    } else if (type === 'rental') {
+      const rental = currentTripData?.rentals?.find(r => r.id === itemId);
+      if (rental) {
+        const date = utils.formatFlightDate(rental.date, lang);
+        itemDescription = `${esc(rental.provider || 'Noleggio')} - ${esc(rental.pickupLocation?.city || '')} → ${esc(rental.dropoffLocation?.city || '')} (${date})`;
+      }
     }
 
-    const titleKeyMap = { flight: 'flight.deleteTitle', hotel: 'hotel.deleteTitle', train: 'train.deleteTitle', bus: 'bus.deleteTitle' };
-    const confirmKeyMap = { flight: 'flight.deleteConfirm', hotel: 'hotel.deleteConfirm', train: 'train.deleteConfirm', bus: 'bus.deleteConfirm' };
-    const deleteKeyMap = { flight: 'flight.delete', hotel: 'hotel.delete', train: 'train.delete', bus: 'bus.delete' };
+    const titleKeyMap = { flight: 'flight.deleteTitle', hotel: 'hotel.deleteTitle', train: 'train.deleteTitle', bus: 'bus.deleteTitle', rental: 'flight.deleteTitle' };
+    const confirmKeyMap = { flight: 'flight.deleteConfirm', hotel: 'hotel.deleteConfirm', train: 'train.deleteConfirm', bus: 'bus.deleteConfirm', rental: 'flight.deleteConfirm' };
+    const deleteKeyMap = { flight: 'flight.delete', hotel: 'hotel.delete', train: 'train.delete', bus: 'bus.delete', rental: 'flight.delete' };
     const titleKey = titleKeyMap[type] || 'flight.deleteTitle';
     const confirmKey = confirmKeyMap[type] || 'flight.deleteConfirm';
     const deleteKey = deleteKeyMap[type] || 'flight.delete';
@@ -3411,13 +3482,16 @@
           currentTripData.trains = (currentTripData.trains || []).filter(t => t.id !== itemId);
         } else if (type === 'bus') {
           currentTripData.buses = (currentTripData.buses || []).filter(b => b.id !== itemId);
+        } else if (type === 'rental') {
+          currentTripData.rentals = (currentTripData.rentals || []).filter(r => r.id !== itemId);
         }
 
         // Check if this was the last booking
         const allEmpty = (currentTripData.flights || []).length === 0 &&
           (currentTripData.hotels || []).length === 0 &&
           (currentTripData.trains || []).length === 0 &&
-          (currentTripData.buses || []).length === 0;
+          (currentTripData.buses || []).length === 0 &&
+          (currentTripData.rentals || []).length === 0;
         if (allEmpty) {
           try {
             await utils.authFetch(`/.netlify/functions/delete-trip?id=${encodeURIComponent(currentTripData.id)}`, {
@@ -3503,6 +3577,12 @@
       if (pr.result.buses) {
         for (const b of pr.result.buses) {
           if (b.date) dates.push(b.date);
+        }
+      }
+      if (pr.result.rentals) {
+        for (const r of pr.result.rentals) {
+          if (r.date) dates.push(r.date);
+          if (r.endDate) dates.push(r.endDate);
         }
       }
     }
@@ -3599,6 +3679,7 @@
     let hotels = [...(currentTripData.hotels || [])];
     let trains = [...(currentTripData.trains || [])];
     let buses = [...(currentTripData.buses || [])];
+    let rentals = [...(currentTripData.rentals || [])];
 
     for (const del of deletions) {
       if (del.passenger) {
@@ -3618,6 +3699,7 @@
         else if (del.type === 'hotel') hotels = hotels.filter(h => !idsSet.has(h.id));
         else if (del.type === 'train') trains = trains.filter(t => !idsSet.has(t.id));
         else if (del.type === 'bus') buses = buses.filter(b => !idsSet.has(b.id));
+        else if (del.type === 'rental') rentals = rentals.filter(r => !idsSet.has(r.id));
       }
     }
 
@@ -3632,6 +3714,7 @@
     });
     trains.forEach(t => { if (t.date) dates.push(t.date); });
     buses.forEach(b => { if (b.date) dates.push(b.date); });
+    rentals.forEach(r => { if (r.date) dates.push(r.date); if (r.endDate) dates.push(r.endDate); });
 
     if (dates.length === 0) return null; // Trip resterebbe vuoto, niente da confrontare
 

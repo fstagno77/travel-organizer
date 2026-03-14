@@ -14,6 +14,23 @@ const {
 const { parseDocumentSmart, parseEmailContent } = require('./utils/smartParser');
 const crypto = require('crypto');
 
+// Conta campi non vuoti nei dati estratti (per la quality card nel log admin)
+function countFields(flights, hotels) {
+  const FLIGHT_KEYS = ['flightNumber', 'airline', 'date', 'departureTime', 'arrivalTime', 'class', 'seat', 'bookingReference', 'ticketNumber', 'status'];
+  const HOTEL_KEYS = ['name', 'checkIn', 'checkOut', 'nights', 'address', 'guestName', 'confirmationNumber', 'price'];
+  let filled = 0, total = 0;
+  for (const f of (flights || [])) {
+    for (const k of FLIGHT_KEYS) { total++; if (f[k] != null && f[k] !== '') filled++; }
+    if (f.departure?.code) filled++; total++;
+    if (f.arrival?.code) filled++; total++;
+    if (f.passenger?.name) filled++; total++;
+  }
+  for (const h of (hotels || [])) {
+    for (const k of HOTEL_KEYS) { total++; if (h[k] != null && h[k] !== '') filled++; }
+  }
+  return { filled, total };
+}
+
 // Configuration
 const EMAIL_ADDRESS = 'trips@travel-flow.com';
 
@@ -151,6 +168,7 @@ exports.handler = async (event, context) => {
     // Extract booking data via SmartParse (cascade L1 cache → L4 Claude)
     let extractedData = null;
     let pdfContent = null;
+    let smartParseResult = null; // cattura il risultato SmartParse per il log
 
     // PDF allegato: priorità massima (più affidabile del body)
     const pdfAttachment = attachments.find(a =>
@@ -164,6 +182,7 @@ exports.handler = async (event, context) => {
         const sp = await parseDocumentSmart(pdfAttachment.content, 'auto', 'auto');
         if (sp?.result && (sp.result.flights?.length || sp.result.hotels?.length)) {
           extractedData = sp.result;
+          smartParseResult = sp;
           pdfContent = pdfAttachment.content;
           console.log(`[SmartParse] PDF L${sp.parseLevel} — ${sp.durationMs}ms, claudeCalls=${sp.claudeCalls}`);
         }
@@ -179,6 +198,7 @@ exports.handler = async (event, context) => {
         const sp = await parseEmailContent(htmlBody, 'html', subject);
         if (sp?.result && (sp.result.flights?.length || sp.result.hotels?.length)) {
           extractedData = sp.result;
+          smartParseResult = sp;
           console.log(`[SmartParse] HTML L${sp.parseLevel} — ${sp.durationMs}ms, claudeCalls=${sp.claudeCalls}`);
         }
       } catch (err) {
@@ -193,6 +213,7 @@ exports.handler = async (event, context) => {
         const sp = await parseEmailContent(textBody, 'text', subject);
         if (sp?.result && (sp.result.flights?.length || sp.result.hotels?.length)) {
           extractedData = sp.result;
+          smartParseResult = sp;
           console.log(`[SmartParse] Text L${sp.parseLevel} — ${sp.durationMs}ms, claudeCalls=${sp.claudeCalls}`);
         }
       } catch (err) {
@@ -200,12 +221,16 @@ exports.handler = async (event, context) => {
       }
     }
 
-    // Normalizza passengers[] → flight.passenger per compatibilità con pending-bookings
+    // Propaga passengers[] top-level → flight.passengers[] per ogni volo
     if (extractedData?.passengers?.length && extractedData?.flights?.length) {
-      const passengerName = extractedData.passengers[0]?.name || null;
-      if (passengerName) {
-        extractedData.flights.forEach(f => { f.passenger = f.passenger || passengerName; });
-      }
+      extractedData.flights.forEach(f => {
+        if (!f.passengers || f.passengers.length === 0) {
+          f.passengers = extractedData.passengers.map(p => ({
+            ...p,
+            ticketNumber: p.ticketNumber || f.ticketNumber || null
+          }));
+        }
+      });
     }
 
     // If extraction completely failed
@@ -265,6 +290,30 @@ exports.handler = async (event, context) => {
       throw insertError;
     }
 
+    // Costruisce extracted_summary e parse_meta per il log
+    const flights = extractedData?.flights || [];
+    const hotels = extractedData?.hotels || [];
+    const { filled: fieldsFilled, total: fieldsTotal } = countFields(flights, hotels);
+    const extractedSummary = {
+      flights: flights.length,
+      hotels: hotels.length,
+      fieldsFilled,
+      fieldsTotal,
+      passenger: flights[0]?.passenger?.name || flights[0]?.passengers?.[0]?.name || hotels[0]?.guestName || null,
+      routes: flights.map(f => {
+        const dep = f.departure?.code || '';
+        const arr = f.arrival?.code || '';
+        return dep && arr ? `${dep}→${arr}` : null;
+      }).filter(Boolean).slice(0, 6),
+      hotelNames: hotels.map(h => h.name).filter(Boolean).slice(0, 3),
+    };
+    const parseMeta = smartParseResult ? {
+      brand: smartParseResult.brand || null,
+      claudeCalls: smartParseResult.claudeCalls || 0,
+      durationMs: smartParseResult.durationMs || null,
+      levels: [smartParseResult.parseLevel],
+    } : null;
+
     // Log success
     await logEmailProcessing(supabase, {
       email_from: senderEmail,
@@ -272,7 +321,11 @@ exports.handler = async (event, context) => {
       email_message_id: messageId,
       status: 'success',
       user_id: profile.id,
-      pending_booking_id: pendingBookingId
+      pending_booking_id: pendingBookingId,
+      attachment_count: attachments.length,
+      extracted_summary: extractedSummary,
+      parse_level: smartParseResult?.parseLevel || null,
+      parse_meta: parseMeta,
     });
 
     console.log(`Successfully created pending booking: ${pendingBookingId}`);
@@ -701,18 +754,29 @@ function decodeQuotedPrintable(input) {
  */
 async function logEmailProcessing(supabase, data) {
   try {
-    await supabase
-      .from('email_processing_log')
-      .insert({
-        email_from: data.email_from,
-        email_subject: data.email_subject || null,
-        email_message_id: data.email_message_id || null,
-        status: data.status,
-        user_id: data.user_id || null,
-        pending_booking_id: data.pending_booking_id || null,
-        error_message: data.error_message || null,
-        email_body_preview: data.email_body_preview || null
-      });
+    const row = {
+      email_from: data.email_from,
+      email_subject: data.email_subject || null,
+      email_message_id: data.email_message_id || null,
+      status: data.status,
+      user_id: data.user_id || null,
+      pending_booking_id: data.pending_booking_id || null,
+      error_message: data.error_message || null,
+      email_body_preview: data.email_body_preview || null,
+      attachment_count: data.attachment_count ?? null,
+      extracted_summary: data.extracted_summary || null,
+      parse_level: data.parse_level ?? null,
+      parse_meta: data.parse_meta || null,
+    };
+    const { error } = await supabase.from('email_processing_log').insert(row);
+    // Fallback se le colonne SmartParse non esistono ancora
+    if (error && (error.code === '42703' || error.message?.includes('parse_level') || error.message?.includes('parse_meta'))) {
+      delete row.parse_level;
+      delete row.parse_meta;
+      delete row.extracted_summary;
+      delete row.attachment_count;
+      await supabase.from('email_processing_log').insert(row);
+    }
   } catch (error) {
     console.error('Failed to log email processing:', error);
   }

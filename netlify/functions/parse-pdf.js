@@ -51,12 +51,17 @@ exports.handler = async (event, context) => {
         // Enrich: passenger from filename fallback
         if (sp.result?.flights) {
           for (const flight of sp.result.flights) {
-            if (!flight.passenger && sp.result.passenger) {
-              flight.passenger = { ...sp.result.passenger };
-            }
-            if (!flight.passenger) {
-              const name = extractPassengerFromFilename(pdf.filename);
-              if (name) flight.passenger = { name, type: 'ADT' };
+            // Usa array top-level se ha più passeggeri (caso Ryanair multi-pax)
+            if (sp.result.passengers?.length > 1) {
+              flight.passengers = sp.result.passengers.map(p => ({ ...p }));
+            } else {
+              if (!flight.passenger && sp.result.passenger) {
+                flight.passenger = { ...sp.result.passenger };
+              }
+              if (!flight.passenger && !flight.passengers) {
+                const name = extractPassengerFromFilename(pdf.filename);
+                if (name) flight.passenger = { name, type: 'ADT' };
+              }
             }
           }
         }

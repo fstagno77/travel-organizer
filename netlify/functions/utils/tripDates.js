@@ -37,6 +37,13 @@ function updateTripDates(tripData) {
     });
   }
 
+  if (tripData.rentals) {
+    tripData.rentals.forEach(r => {
+      if (r.date) dates.push(new Date(r.date));
+      if (r.endDate) dates.push(new Date(r.endDate));
+    });
+  }
+
   if (dates.length > 0) {
     dates.sort((a, b) => a - b);
     tripData.startDate = dates[0].toISOString().split('T')[0];

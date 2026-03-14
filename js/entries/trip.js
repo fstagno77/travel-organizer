@@ -10,6 +10,7 @@ import '../tripFlights.js';
 import '../tripHotels.js';
 import '../tripTrains.js';
 import '../tripBuses.js';
+import '../tripRentals.js';
 import '../airportAutocomplete.js';
 import '../activityCategories.js';
 import '../tripActivities.js';

@@ -496,4 +496,79 @@ function deduplicateBuses(newBuses, existingBuses = []) {
   return { deduplicatedBuses, skippedBuses, updatedBuses };
 }
 
-module.exports = { deduplicateFlights, deduplicateHotels, deduplicateTrains, deduplicateBuses };
+const RENTAL_COMPARE_FIELDS = [
+  { path: 'date', label: 'Data ritiro' },
+  { path: 'endDate', label: 'Data riconsegna' },
+  { path: 'pickupLocation.city', label: 'Città ritiro' },
+  { path: 'pickupLocation.time', label: 'Ora ritiro' },
+  { path: 'dropoffLocation.city', label: 'Città riconsegna' },
+  { path: 'vehicle.category', label: 'Categoria veicolo' },
+];
+
+/**
+ * Deduplica noleggi auto contro esistenti e all'interno del batch.
+ * Match su bookingReference o confirmationNumber + provider + date.
+ */
+function deduplicateRentals(newRentals, existingRentals = []) {
+  const deduplicatedRentals = [];
+  let skippedRentals = 0;
+  const updatedRentals = [];
+
+  for (const newRental of newRentals) {
+    const bookingRef = (newRental.bookingReference || newRental.confirmationNumber)?.toLowerCase()?.trim();
+    const provider = newRental.provider?.toLowerCase()?.trim();
+    const rentalDate = newRental.date;
+
+    let isDuplicate = false;
+    let isUpdate = false;
+    const allRentals = [...existingRentals, ...deduplicatedRentals];
+
+    // Match esatto: bookingRef/confirmationNumber
+    if (bookingRef) {
+      const exactMatch = allRentals.find(r => {
+        const rRef = (r.bookingReference || r.confirmationNumber)?.toLowerCase()?.trim();
+        return rRef === bookingRef && r.date === rentalDate;
+      });
+      if (exactMatch) isDuplicate = true;
+    } else if (provider && rentalDate) {
+      isDuplicate = !!allRentals.find(r =>
+        r.provider?.toLowerCase()?.trim() === provider && r.date === rentalDate
+      );
+    }
+
+    // SOFT MATCH: stesso bookingRef ma date diverse → potenziale update
+    if (!isDuplicate && !isUpdate && bookingRef && existingRentals.length > 0) {
+      const softMatch = existingRentals.find(r => {
+        const rRef = (r.bookingReference || r.confirmationNumber)?.toLowerCase()?.trim();
+        return rRef === bookingRef && r.date !== rentalDate;
+      });
+      if (softMatch) {
+        const changes = diffFields(softMatch, newRental, RENTAL_COMPARE_FIELDS);
+        if (changes.length > 0) {
+          updatedRentals.push({
+            type: 'rental',
+            existingId: softMatch.id,
+            existing: softMatch,
+            incoming: newRental,
+            changes,
+            pdfIndex: newRental._pdfIndex
+          });
+          isUpdate = true;
+        }
+      }
+    }
+
+    if (isUpdate) {
+      console.log(`Detected update for rental: ${bookingRef || provider}`);
+    } else if (isDuplicate) {
+      console.log(`Skipping duplicate rental: ${bookingRef || provider}`);
+      skippedRentals++;
+    } else {
+      deduplicatedRentals.push(newRental);
+    }
+  }
+
+  return { deduplicatedRentals, skippedRentals, updatedRentals };
+}
+
+module.exports = { deduplicateFlights, deduplicateHotels, deduplicateTrains, deduplicateBuses, deduplicateRentals };

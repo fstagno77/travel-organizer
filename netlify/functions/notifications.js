@@ -47,18 +47,32 @@ exports.handler = async (event, context) => {
 async function handleGet(supabase, user, params, headers) {
   // Count-only mode for badge polling
   if (params.count === 'true') {
-    const { count, error } = await supabase
+    const { data: unreadNotifs, error } = await supabase
       .from('notifications')
-      .select('*', { count: 'exact', head: true })
+      .select('id, trip_id')
       .eq('user_id', user.id)
       .eq('read', false);
 
     if (error) throw error;
 
+    // Escludi notifiche di viaggi soft-deleted
+    const unreadTripIds = [...new Set((unreadNotifs || []).filter(n => n.trip_id).map(n => n.trip_id))];
+    let deletedTripIds = new Set();
+    if (unreadTripIds.length > 0) {
+      const { data: deleted } = await getServiceClient()
+        .from('trips')
+        .select('id')
+        .in('id', unreadTripIds)
+        .not('deleted_at', 'is', null);
+      if (deleted) deleted.forEach(t => deletedTripIds.add(t.id));
+    }
+
+    const validCount = (unreadNotifs || []).filter(n => !deletedTripIds.has(n.trip_id)).length;
+
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ success: true, unreadCount: count || 0 })
+      body: JSON.stringify({ success: true, unreadCount: validCount })
     };
   }
 
@@ -97,10 +111,12 @@ async function handleGet(supabase, user, params, headers) {
 
   let tripMap = {};
   if (tripIds.length > 0) {
+    // Escludi viaggi soft-deleted: non devono apparire nella lista notifiche
     const { data: trips } = await serviceClient
       .from('trips')
       .select('id, data')
-      .in('id', tripIds);
+      .in('id', tripIds)
+      .is('deleted_at', null);
 
     if (trips) {
       for (const t of trips) {
@@ -134,7 +150,11 @@ async function handleGet(supabase, user, params, headers) {
   // Track which trips have already had their most-recent invite marked actionable
   const actionableInviteTripsSeen = new Set();
 
-  const enriched = (notifications || []).map(n => {
+  // Viaggi soft-deleted: trip_id non compare nel tripMap → escludi le notifiche relative
+  const deletedTripSet = new Set(tripIds.filter(id => !tripMap[id]));
+  const visibleNotifications = (notifications || []).filter(n => !n.trip_id || !deletedTripSet.has(n.trip_id));
+
+  const enriched = visibleNotifications.map(n => {
     const item = {
       id: n.id,
       type: n.type,
@@ -162,12 +182,8 @@ async function handleGet(supabase, user, params, headers) {
     return item;
   });
 
-  // Also get unread count
-  const { count: unreadCount } = await supabase
-    .from('notifications')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', user.id)
-    .eq('read', false);
+  // Conta unread solo sulle notifiche visibili (escluse quelle di viaggi soft-deleted)
+  const unreadCount = visibleNotifications.filter(n => !n.read).length;
 
   return {
     statusCode: 200,

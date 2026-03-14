@@ -40,11 +40,11 @@ exports.handler = async (event, context) => {
       };
     }
 
-    if (!['flight', 'hotel', 'train', 'bus'].includes(type)) {
+    if (!['flight', 'hotel', 'train', 'bus', 'rental'].includes(type)) {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ success: false, error: 'type must be flight, hotel, train or bus' })
+        body: JSON.stringify({ success: false, error: 'type must be flight, hotel, train, bus or rental' })
       };
     }
 
@@ -68,7 +68,8 @@ exports.handler = async (event, context) => {
       flight: tripData.flights,
       hotel: tripData.hotels,
       train: tripData.trains,
-      bus: tripData.buses
+      bus: tripData.buses,
+      rental: tripData.rentals
     };
     const items = itemsMap[type];
 
@@ -173,6 +174,13 @@ const ALLOWED_BUS_FIELDS = [
   'price', 'passenger'
 ];
 
+const ALLOWED_RENTAL_FIELDS = [
+  'date', 'endDate', 'provider', 'bookingReference', 'confirmationNumber',
+  'driverName', 'rentalDays',
+  'pickupLocation', 'dropoffLocation',
+  'vehicle', 'price', 'totalAmount', 'insurance'
+];
+
 function filterUpdates(updates, allowedFields) {
   const filtered = {};
   const blocked = [];
@@ -197,7 +205,8 @@ function applyUpdates(item, updates, type) {
     flight: ALLOWED_FLIGHT_FIELDS,
     hotel: ALLOWED_HOTEL_FIELDS,
     train: ALLOWED_TRAIN_FIELDS,
-    bus: ALLOWED_BUS_FIELDS
+    bus: ALLOWED_BUS_FIELDS,
+    rental: ALLOWED_RENTAL_FIELDS
   };
   const allowedFields = allowedMap[type];
   updates = filterUpdates(updates, allowedFields);
@@ -352,6 +361,31 @@ function applyUpdates(item, updates, type) {
     if (updates.passenger) {
       if (!item.passenger) item.passenger = {};
       Object.assign(item.passenger, updates.passenger);
+    }
+  } else if (type === 'rental') {
+    const simpleFields = ['date', 'endDate', 'provider', 'bookingReference', 'confirmationNumber', 'driverName', 'rentalDays'];
+    for (const field of simpleFields) {
+      if (updates[field] !== undefined) item[field] = updates[field];
+    }
+    if (updates.pickupLocation) {
+      if (!item.pickupLocation) item.pickupLocation = {};
+      Object.assign(item.pickupLocation, updates.pickupLocation);
+    }
+    if (updates.dropoffLocation) {
+      if (!item.dropoffLocation) item.dropoffLocation = {};
+      Object.assign(item.dropoffLocation, updates.dropoffLocation);
+    }
+    if (updates.vehicle) {
+      if (!item.vehicle) item.vehicle = {};
+      Object.assign(item.vehicle, updates.vehicle);
+    }
+    if (updates.price) {
+      if (!item.price) item.price = {};
+      Object.assign(item.price, updates.price);
+    }
+    if (updates.totalAmount) {
+      if (!item.totalAmount) item.totalAmount = {};
+      Object.assign(item.totalAmount, updates.totalAmount);
     }
   }
 }
