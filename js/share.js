@@ -155,10 +155,32 @@
       const tripData = result.tripData;
       const tripId = result.tripId;
 
-      // Update page title
+      // Update page title e meta OG dinamicamente (fallback per iMessage/crawler JS)
       const lang = i18n.getLang();
       const title = tripData.title?.[lang] || tripData.title?.en || tripData.title?.it || '';
-      document.title = `${title} - Travel Flow`;
+      document.title = `${title} | Travel Flow`;
+
+      // Aggiorna OG title e description via JS (iMessage le legge dopo rendering)
+      const ogTitle = document.querySelector('meta[property="og:title"]');
+      const ogDesc = document.querySelector('meta[property="og:description"]');
+      const ogImage = document.querySelector('meta[property="og:image"]');
+      const twTitle = document.querySelector('meta[name="twitter:title"]');
+      const twImage = document.querySelector('meta[name="twitter:image"]');
+      if (ogTitle) ogTitle.setAttribute('content', `${title} | Travel Flow`);
+      if (ogDesc) {
+        const parts = [];
+        if (tripData.startDate && tripData.endDate) {
+          const fmt = d => { const months = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic']; const dt = new Date(d+'T00:00:00'); return `${dt.getDate()} ${months[dt.getMonth()]} ${dt.getFullYear()}`; };
+          parts.push(`${fmt(tripData.startDate)} – ${fmt(tripData.endDate)}`);
+        }
+        if ((tripData.flights||[]).length) parts.push(`${tripData.flights.length} vol${tripData.flights.length===1?'o':'i'}`);
+        if ((tripData.hotels||[]).length) parts.push(`${tripData.hotels.length} hotel`);
+        ogDesc.setAttribute('content', parts.join(' · ') || 'Visualizza i dettagli su Travel Flow');
+      }
+      const coverUrl = tripData.coverPhoto?.url;
+      if (coverUrl && ogImage) ogImage.setAttribute('content', coverUrl);
+      if (coverUrl && twTitle) twTitle.setAttribute('content', `${title} | Travel Flow`);
+      if (coverUrl && twImage) twImage.setAttribute('content', coverUrl);
 
       // Update hero
       updateTripHero(tripData);

@@ -116,6 +116,7 @@ export default async function handler(request, context) {
 
   // Get the original response
   const response = await context.next();
+  // Leggi l'HTML (decompresso automaticamente da Deno)
   const html = await response.text();
 
   // Assicurati che l'immagine abbia URL assoluto
@@ -160,9 +161,16 @@ export default async function handler(request, context) {
       `<meta property="og:site_name" content="Travel Flow">\n  <meta property="og:url" content="${pageUrl}">`
     );
 
+  // Rimuovi Content-Encoding perché il body è già decompresso da response.text()
+  // e Content-Length perché la lunghezza è cambiata dopo le modifiche
+  const newHeaders = new Headers(response.headers);
+  newHeaders.delete('content-encoding');
+  newHeaders.delete('content-length');
+  newHeaders.set('content-type', 'text/html; charset=utf-8');
+
   return new Response(modifiedHtml, {
     status: response.status,
-    headers: response.headers,
+    headers: newHeaders,
   });
 }
 
