@@ -239,11 +239,11 @@ const shareModal = {
 
         if (matches.length === 0) { hideSuggestions(); return; }
 
-        suggestionsEl.innerHTML = matches.map(s => {
+        suggestionsEl.innerHTML = matches.map((s, i) => {
           const label = s.username
             ? `<span class="share-suggest-name">${s.username}</span><span class="share-suggest-email">${s.email}</span>`
             : `<span class="share-suggest-email">${s.email}</span>`;
-          return `<div class="share-suggest-item" data-email="${s.email}">${label}</div>`;
+          return `<div class="share-suggest-item${i === 0 ? ' focused' : ''}" data-email="${s.email}">${label}</div>`;
         }).join('');
         suggestionsEl.classList.add('active');
       });
@@ -267,11 +267,14 @@ const shareModal = {
           const prev = active ? (active.previousElementSibling || items[items.length - 1]) : items[items.length - 1];
           active?.classList.remove('focused');
           prev?.classList.add('focused');
-        } else if (e.key === 'Enter' && active) {
-          e.preventDefault();
-          e.stopImmediatePropagation();
-          selectSuggestion(active.dataset.email);
-          return;
+        } else if (e.key === 'Enter') {
+          const focused = active || items[0];
+          if (focused) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            selectSuggestion(focused.dataset.email);
+            return;
+          }
         } else if (e.key === 'Escape') {
           hideSuggestions();
         }
@@ -300,25 +303,17 @@ const shareModal = {
           const result = await response.json();
 
           if (result.success) {
-            let msg;
-            if (result.inviteUrl) {
-              // Utente non registrato: link di invito generato
-              msg = i18n.t('share.inviteLinkGenerated') || 'Link di invito generato — copialo e condividilo';
-              // Copia automatica con messaggio precostruito
-              const inviteText = this._buildShareMessage(this._currentTripName, result.inviteUrl, {
-                type: 'invite-unregistered', role
-              });
-              try { await navigator.clipboard.writeText(inviteText); } catch {}
-            } else {
-              // Utente registrato: notifica in-app inviata
-              msg = i18n.t('share.notificationSent') || 'Notifica inviata';
-            }
+            const msg = i18n.t('share.inviteLinkGenerated') || 'Link generato — copialo e condividilo';
             this._showInviteMessage(inviteMessage, msg, 'success');
             emailInput.value = '';
             // Refresh collaborators list, then show invite link under the new row
             await this._loadCollaborators(tripId, userRole);
             if (result.inviteUrl) {
-              this._showInviteLinkUnderRow(email, result.inviteUrl, role);
+              // Utente non registrato: mostra link invito specifico
+              this._showInviteLinkUnderRow(email, result.inviteUrl, role, 'invite-unregistered');
+            } else if (this._currentShareUrl) {
+              // Utente registrato: mostra il link del viaggio da condividere manualmente
+              this._showInviteLinkUnderRow(email, this._currentShareUrl, role, 'invite-registered');
             }
           } else {
             const errorMessages = {

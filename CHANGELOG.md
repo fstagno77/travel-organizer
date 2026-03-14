@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.33.1 - 2026-03-14
+
+### Miglioramenti
+- Invito collaboratori: dopo aver invitato un utente appare subito il box con il link da copiare e condividere, sia per utenti registrati che non
+- Ricerca email nell'invito: il primo risultato è già evidenziato e si può selezionare con Invio senza dover usare le frecce
+
+## 0.33.0 - 2026-03-14
+
+### Novità
+- **Noleggi Auto**: nuova categoria per le prenotazioni di noleggio auto (Hertz, Avis, Budget, Europcar, Sixt, Maggiore, Locauto)
+- I PDF di conferma noleggio vengono riconosciuti automaticamente da SmartParse e aggiunti al viaggio
+- Nuova tab "Auto" nel segmented control del viaggio, con schede dedicate per ogni noleggio (ritiro, riconsegna, veicolo, conducente, riferimento prenotazione)
+- Gli eventi di noleggio (ritiro, giorno attivo, riconsegna) compaiono nella timeline "Le mie attività" con categoria colore teal
+
+## 0.32.3 - 2026-03-14
+
+### Fix
+- Prenotazioni Ryanair (e altri vettori) con più passeggeri: tutti i passeggeri ora vengono salvati correttamente nel viaggio invece di comparire solo il primo
+
+## 0.32.2 - 2026-03-11
+
+### Miglioramenti
+- Nella dashboard admin, la sezione "Email" si chiama ora "Parse Email" e "Elaborazioni PDF" si chiama "Parse PDF"
+- "Parse Email" mostra ora i risultati SmartParse (livello cache/template/AI, brand, campi estratti, durata) esattamente come "Parse PDF", con statistiche e dettaglio espandibile
+- Le email con PDF allegato compaiono in "Parse Email" anziché in "Parse PDF"
+- Il log delle email ora registra livello SmartParse, brand, durata, chiamate AI e dati estratti: le card statistiche si popolano correttamente anche per le email
+- Nel dettaglio di ogni email: anteprima del corpo ricevuto, link alla prenotazione pendente, pulsante "Carica JSON" per i dati estratti completi
+- Modale prenotazione email: il passeggero ora viene sempre mostrato; per prenotazioni multi-passeggero appare la tabella con nome, tipo, posto e biglietto di ciascuno; i posti vengono recuperati dall'array passeggeri anche quando il campo sul volo è vuoto
+- Aggiunto feedback 👍/👎 nella modale prenotazione email: salvato sul log admin alla conferma, al rifiuto o alla modifica
+
+## 0.32.1 - 2026-03-11
+
+### Miglioramenti
+- I viaggi eliminati ora vengono conservati temporaneamente invece di essere cancellati subito: l'admin può ripristinarli dalla dashboard in qualsiasi momento
+
 ## 0.32.0 - 2026-03-11
 
 ### Novità

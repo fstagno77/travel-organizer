@@ -1,6 +1,72 @@
 {
   "versions": [
     {
+      "version": "0.33.1",
+      "date": "2026-03-14",
+      "changes": {
+        "it": [
+          "Invito collaboratori: dopo l'invito appare subito il link da copiare e condividere, per utenti registrati e non",
+          "Ricerca email nell'invito: primo suggerimento già selezionato, Invio per confermare senza usare le frecce"
+        ],
+        "en": [
+          "Invite collaborators: after sending an invite, the share link box appears immediately for both registered and unregistered users",
+          "Email search in invite: first suggestion is pre-selected, press Enter to confirm without using arrow keys"
+        ]
+      }
+    },
+    {
+      "version": "0.33.0",
+      "date": "2026-03-14",
+      "changes": {
+        "it": [
+          "Nuova categoria Noleggi Auto: PDF di conferma noleggio (Hertz, Avis, Europcar e altri) vengono riconosciuti automaticamente e aggiunti al viaggio",
+          "Nuova tab 'Auto' nel viaggio con schede dettagliate per ogni noleggio: ritiro, riconsegna, veicolo, conducente e riferimento",
+          "I noleggi compaiono nella timeline 'Le mie attività' con eventi di ritiro, soggiorno e riconsegna"
+        ],
+        "en": [
+          "New Car Rentals category: rental confirmation PDFs (Hertz, Avis, Europcar and others) are automatically recognized and added to the trip",
+          "New 'Rentals' tab in the trip with detailed cards for each rental: pickup, dropoff, vehicle, driver and reference",
+          "Rentals appear in the 'My Activities' timeline with pickup, active day, and dropoff events"
+        ]
+      }
+    },
+    {
+      "version": "0.32.3",
+      "date": "2026-03-14",
+      "changes": {
+        "it": [
+          "Fix: prenotazioni con più passeggeri (es. Ryanair) ora mostrano correttamente tutti i passeggeri nel viaggio"
+        ],
+        "en": [
+          "Fix: multi-passenger bookings (e.g. Ryanair) now correctly show all passengers in the trip"
+        ]
+      }
+    },
+    {
+      "version": "0.32.2",
+      "date": "2026-03-11",
+      "changes": {
+        "it": [
+          "Admin: le sezioni Log si chiamano ora Parse Email e Parse PDF, con visualizzazione SmartParse unificata"
+        ],
+        "en": [
+          "Admin: log sections renamed to Parse Email and Parse PDF, with unified SmartParse display"
+        ]
+      }
+    },
+    {
+      "version": "0.32.1",
+      "date": "2026-03-11",
+      "changes": {
+        "it": [
+          "I viaggi eliminati ora vengono conservati temporaneamente: l'admin può ripristinarli dalla dashboard"
+        ],
+        "en": [
+          "Deleted trips are now soft-deleted: admins can restore them from the dashboard"
+        ]
+      }
+    },
+    {
       "version": "0.32.0",
       "date": "2026-03-11",
       "changes": {
