@@ -311,9 +311,10 @@ const shareModal = {
             if (result.inviteUrl) {
               // Utente non registrato: mostra link invito specifico
               this._showInviteLinkUnderRow(email, result.inviteUrl, role, 'invite-unregistered');
-            } else if (result.tripUrl) {
-              // Utente registrato: già aggiunto, mostra link diretto al viaggio
-              this._showInviteLinkUnderRow(email, result.tripUrl, role, 'invite-registered');
+            } else if (this._currentShareUrl) {
+              // Utente registrato: usa share.html (genera preview WhatsApp con foto/titolo)
+              // Share.html mostrerà un banner "Vai al tuo viaggio" agli utenti loggati
+              this._showInviteLinkUnderRow(email, this._currentShareUrl, role, 'invite-registered');
             }
           } else {
             const errorMessages = {

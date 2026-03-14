@@ -153,6 +153,7 @@
       }
 
       const tripData = result.tripData;
+      const tripId = result.tripId;
 
       // Update page title
       const lang = i18n.getLang();
@@ -167,6 +168,19 @@
 
       // Render content
       renderSharedTripContent(contentContainer, tripData);
+
+      // Banner "Vai al tuo viaggio" per utenti loggati
+      if (tripId && window.auth?.user) {
+        const banner = document.createElement('a');
+        banner.href = `/trip.html?id=${tripId}`;
+        banner.className = 'share-logged-in-banner';
+        banner.innerHTML = `
+          <span>${i18n.t('share.openFullTrip') || 'Sei registrato su Travel Flow — accedi al viaggio completo'}</span>
+          <span class="share-logged-in-cta">${i18n.t('share.goToTrip') || 'Vai al tuo viaggio →'}</span>
+        `;
+        const hero = document.querySelector('.trip-hero');
+        if (hero) hero.after(banner);
+      }
 
     } catch (error) {
       console.error('Error loading trip data:', error);

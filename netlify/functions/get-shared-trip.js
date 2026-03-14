@@ -38,7 +38,7 @@ exports.handler = async (event, context) => {
 
     const { data, error } = await supabase
       .from('trips')
-      .select('data')
+      .select('id, data')
       .eq('data->>shareToken', token)
       .single();
 
@@ -88,7 +88,8 @@ exports.handler = async (event, context) => {
       headers,
       body: JSON.stringify({
         success: true,
-        tripData
+        tripData,
+        tripId: data.id
       })
     };
 

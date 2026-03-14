@@ -9563,3 +9563,35 @@ body:has(#modal-page-slider.at-activity) .trip-fab {
 .btn--danger:hover {
   background-color: rgba(var(--color-error-rgb, 220, 38, 38), 0.06);
 }
+
+/* Banner "Vai al tuo viaggio" su share.html per utenti loggati */
+.share-logged-in-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3) var(--spacing-5);
+  background: var(--color-primary-50, #eff6ff);
+  border-bottom: 1px solid var(--color-primary-100, #dbeafe);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  transition: background 0.15s;
+}
+
+.share-logged-in-banner:hover {
+  background: var(--color-primary-100, #dbeafe);
+}
+
+.share-logged-in-cta {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-primary);
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .share-logged-in-banner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

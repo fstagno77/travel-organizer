@@ -551,6 +551,8 @@
     "discardExit": "Esci e scarta"
   },
   "share": {
+    "openFullTrip": "Sei registrato su Travel Flow — accedi al viaggio completo",
+    "goToTrip": "Vai al tuo viaggio →",
     "linkTitle": "Link di condivisione",
     "inviteTitle": "Invita per email",
     "collaboratorsTitle": "Collaboratori",
