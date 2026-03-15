@@ -667,6 +667,18 @@ const navigation = {
       // Sostituisci contenuto
       currentAppContent.innerHTML = newPageWrapper.innerHTML;
 
+      // Inject istantaneo dalla cache (evita flash mentre helpPage si inizializza)
+      // Stessa tecnica del sidebar-cache: contenuto prerenderizzato da sessione precedente
+      if (!isDetail) {
+        const lang = localStorage.getItem('lang') || 'it';
+        const cachedGrid = sessionStorage.getItem(`help-categories-${lang}`);
+        const cachedFaq = sessionStorage.getItem(`help-faq-${lang}`);
+        const grid = currentAppContent.querySelector('#help-categories-grid');
+        const faqList = currentAppContent.querySelector('#help-faq-list');
+        if (grid && cachedGrid) grid.innerHTML = cachedGrid;
+        if (faqList && cachedFaq) faqList.innerHTML = cachedFaq;
+      }
+
       // Aggiorna titolo e URL
       document.title = doc.title;
       if (pushState) history.pushState({ spaNav: true }, '', url);
@@ -765,6 +777,24 @@ const navigation = {
       // Verifica che sia un link interno
       const linkUrl = new URL(link.href, location.origin);
       if (linkUrl.origin !== location.origin) return;
+
+      e.preventDefault();
+      navigate(link.href);
+    });
+
+    // Event delegation: intercetta click su link help (breadcrumb, category card, altre categorie)
+    // Assicura navigazione SPA coerente anche da pagine caricate via full page load
+    document.addEventListener('click', (e) => {
+      if (e.metaKey || e.ctrlKey || e.shiftKey) return;
+
+      const link = e.target.closest('a[href]');
+      if (!link) return;
+
+      const linkUrl = new URL(link.href, location.origin);
+      if (linkUrl.origin !== location.origin) return;
+      if (!isHelpUrl(link.href)) return;
+      // I link sidebar hanno già il loro handler — evita doppia chiamata
+      if (link.classList.contains('sidebar-link')) return;
 
       e.preventDefault();
       navigate(link.href);

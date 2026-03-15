@@ -1,6 +1,22 @@
 {
   "versions": [
     {
+      "version": "0.34.5",
+      "date": "2026-03-15",
+      "changes": {
+        "it": ["Fix: cliccando su Aiuto nel breadcrumb della pagina dettaglio, il contenuto della pagina Aiuto ora si carica correttamente"],
+        "en": ["Fix: clicking Aiuto in the breadcrumb of a detail page now correctly loads the Help page content"]
+      }
+    },
+    {
+      "version": "0.34.4",
+      "date": "2026-03-15",
+      "changes": {
+        "it": ["Copia link invito: viene copiato anche un messaggio precostruito pronto da incollare in chat", "Il link di invito mostra ora un'anteprima ricca (immagine + titolo) su WhatsApp, iMessage e Telegram"],
+        "en": ["Copy invite link: a pre-built message ready to paste in chat is now copied too", "The invite link now shows a rich preview (image + title) on WhatsApp, iMessage and Telegram"]
+      }
+    },
+    {
       "version": "0.34.3",
       "date": "2026-03-15",
       "changes": {

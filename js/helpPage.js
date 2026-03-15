@@ -220,8 +220,20 @@ const helpPage = {
     this.currentLang = localStorage.getItem('lang') || 'it';
     this.renderCategories();
     this.renderFaqs();
+    this._saveCache();
     this.initSearch();
-    if (window.i18n) window.i18n.applyTranslations();
+    if (window.i18n) window.i18n.apply();
+  },
+
+  /** Salva il contenuto renderizzato in sessionStorage per instant-render alla navigazione SPA successiva */
+  _saveCache() {
+    const lang = this.currentLang;
+    const grid = document.getElementById('help-categories-grid');
+    const faqList = document.getElementById('help-faq-list');
+    try {
+      if (grid) sessionStorage.setItem(`help-categories-${lang}`, grid.innerHTML);
+      if (faqList) sessionStorage.setItem(`help-faq-${lang}`, faqList.innerHTML);
+    } catch (e) { /* sessionStorage pieno, ignora */ }
   },
 
   // ─── Helpers ──────────────────────────────────────────────────────────────

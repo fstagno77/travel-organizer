@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.34.5 - 2026-03-15
+
+### Fix
+- Cliccando su "Aiuto" nel breadcrumb della pagina dettaglio, il contenuto della pagina Aiuto (categorie e FAQ) ora si carica correttamente
+
+## 0.34.4 - 2026-03-15
+
+### Miglioramenti
+- Copiando il link di invito piattaforma viene ora copiato anche un messaggio precostruito pronto da incollare in chat
+- Il link di invito genera un'anteprima ricca (immagine + titolo) quando condiviso su WhatsApp, iMessage, Telegram e altri sistemi di messaggistica
+
 ## 0.34.3 - 2026-03-15
 
 ### Fix

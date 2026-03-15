@@ -1764,7 +1764,7 @@ const helpDetailPage = {
     const sectionId = params.get('section') || 'inizia-qui';
     this.renderSection(sectionId);
     this.initTocToggle();
-    if (window.i18n) window.i18n.applyTranslations();
+    if (window.i18n) window.i18n.apply();
   },
 
   // ─── Render sezione ───────────────────────────────────────────────────────
