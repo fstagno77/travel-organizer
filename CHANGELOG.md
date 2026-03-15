@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.34.3 - 2026-03-15
+
+### Fix
+- Icona campanella notifiche riallineata al bordo destro del contenuto su monitor larghi (era posizionata fuori dall'area visibile)
+- Dropdown notifiche ora appare esattamente sotto la campanella su qualsiasi larghezza schermo
+- Nella sezione Aiuto, l'hero non si sovrappone più all'icona campanella
+
+## 0.34.2 - 2026-03-15
+
+### Fix
+- Navigando dalla pagina Aiuto verso Prossimi Viaggi o Viaggi Passati, i viaggi non venivano caricati
+
 ## 0.34.1 - 2026-03-15
 
 ### Novità

@@ -13,6 +13,15 @@
   overflow: hidden;
 }
 
+/* Su desktop con sidebar l'header è fixed (64px) e non occupa spazio nel flusso;
+   aggiungi margine per evitare che l'hero si sovrapponga all'icona campanella */
+@media (min-width: 768px) {
+  body.has-sidebar .help-hero,
+  body.has-sidebar .help-detail-hero {
+    margin-top: var(--spacing-10); /* 40px = header 64px - main padding-top 24px */
+  }
+}
+
 .help-hero::before {
   content: '';
   position: absolute;

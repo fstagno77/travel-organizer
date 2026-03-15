@@ -1,6 +1,22 @@
 {
   "versions": [
     {
+      "version": "0.34.3",
+      "date": "2026-03-15",
+      "changes": {
+        "it": ["Fix: icona campanella e dropdown notifiche riallineati correttamente su monitor larghi", "Fix: l'hero della sezione Aiuto non si sovrappone più alla campanella"],
+        "en": ["Fix: notification bell and dropdown correctly aligned on wide monitors", "Fix: Help section hero no longer overlaps the notification bell"]
+      }
+    },
+    {
+      "version": "0.34.2",
+      "date": "2026-03-15",
+      "changes": {
+        "it": ["Fix: dalla pagina Aiuto i viaggi ora si caricano correttamente"],
+        "en": ["Fix: trips now load correctly when navigating from the Help page"]
+      }
+    },
+    {
       "version": "0.34.1",
       "date": "2026-03-15",
       "changes": {

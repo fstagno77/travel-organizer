@@ -1275,13 +1275,19 @@ body.has-sidebar .header-glass-badge {
   body.has-sidebar .header--home {
     position: fixed;
     top: 0;
-    right: 0;
+    /* Allinea il bell al bordo destro del container, qualunque sia la larghezza del viewport:
+       right = metà dello spazio extra tra viewport e (sidebar + container-max-width) */
+    right: max(0px, calc((100vw - var(--sidebar-width) - var(--container-max-width)) / 2));
     left: auto;
     width: auto;
     background: transparent;
     border-bottom: none;
     z-index: 50;
     padding: 0;
+  }
+
+  body.has-sidebar.sidebar-collapsed .header--home {
+    right: max(0px, calc((100vw - var(--sidebar-collapsed-width) - var(--container-max-width)) / 2));
   }
 
   body.has-sidebar .header--home .container {
@@ -1291,7 +1297,8 @@ body.has-sidebar .header-glass-badge {
   body.has-sidebar .header--home .header-inner--three {
     display: flex;
     justify-content: flex-end;
-    padding-right: var(--spacing-4);
+    padding-right: var(--container-padding);
+    height: 64px;
   }
 
   body.has-sidebar .header--home .header-logo--img,
@@ -1308,6 +1315,15 @@ body.has-sidebar .header-glass-badge {
   body.has-sidebar .header-glass-btn--active {
     background-color: var(--color-gray-200);
     color: var(--color-gray-900);
+  }
+
+  /* Il dropdown notifiche segue la stessa formula del bell per allinearsi */
+  body.has-sidebar .notif-dropdown {
+    right: max(var(--container-padding), calc((100vw - var(--sidebar-width) - var(--container-max-width)) / 2 + var(--container-padding)));
+  }
+
+  body.has-sidebar.sidebar-collapsed .notif-dropdown {
+    right: max(var(--container-padding), calc((100vw - var(--sidebar-collapsed-width) - var(--container-max-width)) / 2 + var(--container-padding)));
   }
 
 }

@@ -398,14 +398,20 @@ const navigation = {
     // Mappa pagina → funzione init (async: dynamic import se il modulo non è caricato)
     const pageInitMap = {
       '/': async () => {
+        if (!window.tripCardUtils) await import('./tripCardUtils.js');
+        if (!window.shareModal) await import('./shareModal.js');
         if (!window.homePage) await import('./homePage.js');
         window.homePage?.init();
       },
       '/index.html': async () => {
+        if (!window.tripCardUtils) await import('./tripCardUtils.js');
+        if (!window.shareModal) await import('./shareModal.js');
         if (!window.homePage) await import('./homePage.js');
         window.homePage?.init();
       },
       '/past-trips.html': async () => {
+        if (!window.tripCardUtils) await import('./tripCardUtils.js');
+        if (!window.shareModal) await import('./shareModal.js');
         if (!window.pastTripsPage) await import('./pastTripsPage.js');
         window.pastTripsPage?.init();
       },

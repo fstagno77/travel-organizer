@@ -8,7 +8,10 @@
     "preview": "vite preview",
     "test": "jest",
     "docs:dev": "cd docs && npx vitepress dev",
-    "docs:build": "cd docs && npx vitepress build"
+    "docs:build": "cd docs && npx vitepress build",
+    "screenshots:login": "node scripts/take-screenshots.js --login",
+    "screenshots:session": "node scripts/save-session.js",
+    "screenshots": "node scripts/take-screenshots.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
@@ -17,6 +20,7 @@
     "dotenv": "^16.4.7"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "jest": "^30.2.0",
     "pdf-parse": "^1.1.1",
     "vite": "^6.4.1"
