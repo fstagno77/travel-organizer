@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.34.9 - 2026-03-15
+
+### Fix mobile
+- Badge "Beta" ora visibile accanto al logo nella barra di navigazione su smartphone
+- Pagina Aiuto: campo di ricerca e bottone "Cerca" ora affiancati su mobile (non più impilati in colonna)
+
 ## 0.34.8 - 2026-03-15
 
 ### Miglioramenti

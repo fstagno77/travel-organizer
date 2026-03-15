@@ -225,15 +225,15 @@ const helpPage = {
     if (window.i18n) window.i18n.apply();
   },
 
-  /** Salva tutte le card complete (non skeleton) in sessionStorage per instant-render alla navigazione successiva */
+  /** Salva HTML completo (senza skeleton) in sessionStorage per instant-render alla navigazione successiva */
   _saveCache() {
     const lang = this.currentLang;
-    const faqList = document.getElementById('help-faq-list');
-    // Genera HTML completo di tutte le card (non lo stato corrente del grid, che potrebbe avere skeleton)
+    const faqs = this.FAQS[lang] || this.FAQS.it;
     const fullGridHtml = this.CATEGORIES.map(cat => this.renderCategoryCard(cat)).join('');
+    const fullFaqHtml = faqs.map((faq, i) => this.renderFaqItem(faq, i)).join('');
     try {
       sessionStorage.setItem(`help-categories-${lang}`, fullGridHtml);
-      if (faqList) sessionStorage.setItem(`help-faq-${lang}`, faqList.innerHTML);
+      sessionStorage.setItem(`help-faq-${lang}`, fullFaqHtml);
     } catch (e) { /* sessionStorage pieno, ignora */ }
   },
 
@@ -317,13 +317,9 @@ const helpPage = {
     skeletons.forEach(s => observer.observe(s));
   },
 
-  // ─── Render FAQ ───────────────────────────────────────────────────────────
-  renderFaqs() {
-    const list = document.getElementById('help-faq-list');
-    if (!list) return;
-
-    const faqs = this.FAQS[this.currentLang] || this.FAQS.it;
-    list.innerHTML = faqs.map((faq, idx) => `
+  // ─── Helper singola FAQ ───────────────────────────────────────────────────
+  renderFaqItem(faq, idx) {
+    return `
       <div class="help-faq-item" data-idx="${idx}">
         <button class="help-faq-trigger" aria-expanded="false">
           <span class="help-faq-question">${faq.q}</span>
@@ -335,22 +331,78 @@ const helpPage = {
         </button>
         <div class="help-faq-answer"><p>${faq.a}</p></div>
       </div>
-    `).join('');
+    `;
+  },
 
-    list.querySelectorAll('.help-faq-trigger').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const item = btn.closest('.help-faq-item');
-        const isOpen = item.classList.contains('open');
-        list.querySelectorAll('.help-faq-item.open').forEach(el => {
-          el.classList.remove('open');
-          el.querySelector('.help-faq-trigger').setAttribute('aria-expanded', 'false');
-        });
-        if (!isOpen) {
-          item.classList.add('open');
-          btn.setAttribute('aria-expanded', 'true');
-        }
+  // ─── Render FAQ con skeleton lazy per gli item sotto la fold ──────────────
+  renderFaqs() {
+    const list = document.getElementById('help-faq-list');
+    if (!list) return;
+
+    const faqs = this.FAQS[this.currentLang] || this.FAQS.it;
+    const EAGER_COUNT = 4;
+
+    // Event delegation: un solo listener per tutti gli item (eager, lazy e da cache)
+    list.addEventListener('click', e => {
+      const trigger = e.target.closest('.help-faq-trigger');
+      if (!trigger) return;
+      const item = trigger.closest('.help-faq-item');
+      if (!item) return;
+      const isOpen = item.classList.contains('open');
+      list.querySelectorAll('.help-faq-item.open').forEach(el => {
+        el.classList.remove('open');
+        el.querySelector('.help-faq-trigger').setAttribute('aria-expanded', 'false');
       });
+      if (!isOpen) {
+        item.classList.add('open');
+        trigger.setAttribute('aria-expanded', 'true');
+      }
     });
+
+    // Se il DOM è già completo (restore da sessionStorage), salta il render
+    if (list.querySelectorAll('.help-faq-item').length === faqs.length) return;
+
+    // Render eagerly i primi N item
+    let html = faqs.slice(0, EAGER_COUNT).map((faq, i) => this.renderFaqItem(faq, i)).join('');
+
+    // Skeleton placeholder per gli item rimanenti
+    faqs.slice(EAGER_COUNT).forEach((faq, i) => {
+      const idx = EAGER_COUNT + i;
+      const q2Width = [55, 40, 65, 45, 70, 50][i % 6];
+      html += `
+        <div class="help-faq-skel help-skeleton-faq" data-idx="${idx}" aria-hidden="true">
+          <div class="help-skeleton-bar help-skeleton-q"></div>
+          <div class="help-skeleton-bar help-skeleton-q2" style="width:${q2Width}%"></div>
+        </div>
+      `;
+    });
+
+    list.innerHTML = html;
+
+    const skeletons = list.querySelectorAll('.help-faq-skel');
+    if (!skeletons.length) return;
+
+    // Observer per-item: sostituisce skeleton con FAQ reale al passaggio in viewport
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return;
+        observer.unobserve(entry.target);
+
+        const idx = parseInt(entry.target.dataset.idx);
+        const tmp = document.createElement('div');
+        tmp.innerHTML = this.renderFaqItem(faqs[idx], idx);
+        const item = tmp.firstElementChild;
+        item.classList.add('help-faq-lazy');
+
+        entry.target.replaceWith(item);
+
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => item.classList.add('help-faq-visible'));
+        });
+      });
+    }, { rootMargin: '80px 0px' });
+
+    skeletons.forEach(s => observer.observe(s));
   },
 
   // ─── Ricerca con autocomplete ─────────────────────────────────────────────

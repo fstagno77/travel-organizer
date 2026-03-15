@@ -941,17 +941,15 @@ mark.help-ac-highlight {
   .help-hero h1 {
     font-size: var(--font-size-2xl);
   }
-  .help-search-wrapper {
-    flex-direction: column;
-  }
-  .help-search-btn {
-    width: 100%;
-    min-height: 44px;
-  }
   .help-detail-hero {
     flex-direction: column;
     text-align: center;
     padding: var(--spacing-6) var(--spacing-4);
+  }
+  /* Skeleton hero: evita overflow su schermi stretti */
+  .help-detail-hero.is-loading .help-detail-hero-title,
+  .help-detail-hero.is-loading .help-detail-hero-desc {
+    max-width: 100%;
   }
   .help-article-title { font-size: var(--font-size-lg); }
 }

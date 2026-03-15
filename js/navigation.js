@@ -115,6 +115,7 @@ const navigation = {
             </div>
             <a href="/index.html" class="header-logo header-logo--img">
               <img src="/assets/icons/travel-flow-logo-bk.png" alt="Travel Flow" class="header-logo-img" width="161" height="40">
+              <span class="sidebar-beta-badge">Beta</span>
             </a>
             <div class="header-actions">
               ${rightActions}
