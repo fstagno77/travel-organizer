@@ -72,7 +72,13 @@
         <section id="help-categories-section" class="help-categories">
           <h2 class="help-categories-title" data-i18n="help.categoriesTitle">Esplora per argomento</h2>
           <div class="help-categories-grid" id="help-categories-grid">
-            <!-- Popolato da JS -->
+            <!-- Skeleton visibile fino al render JS (o al restore da sessionStorage) -->
+            <div class="help-skeleton-card" aria-hidden="true"><div class="help-skeleton-bar help-skeleton-icon"></div><div class="help-skeleton-bar help-skeleton-title"></div><div class="help-skeleton-bar help-skeleton-desc"></div><div class="help-skeleton-bar help-skeleton-link"></div></div>
+            <div class="help-skeleton-card" aria-hidden="true"><div class="help-skeleton-bar help-skeleton-icon"></div><div class="help-skeleton-bar help-skeleton-title"></div><div class="help-skeleton-bar help-skeleton-desc"></div><div class="help-skeleton-bar help-skeleton-link"></div></div>
+            <div class="help-skeleton-card" aria-hidden="true"><div class="help-skeleton-bar help-skeleton-icon"></div><div class="help-skeleton-bar help-skeleton-title"></div><div class="help-skeleton-bar help-skeleton-desc"></div><div class="help-skeleton-bar help-skeleton-link"></div></div>
+            <div class="help-skeleton-card" aria-hidden="true"><div class="help-skeleton-bar help-skeleton-icon"></div><div class="help-skeleton-bar help-skeleton-title"></div><div class="help-skeleton-bar help-skeleton-desc"></div><div class="help-skeleton-bar help-skeleton-link"></div></div>
+            <div class="help-skeleton-card" aria-hidden="true"><div class="help-skeleton-bar help-skeleton-icon"></div><div class="help-skeleton-bar help-skeleton-title"></div><div class="help-skeleton-bar help-skeleton-desc"></div><div class="help-skeleton-bar help-skeleton-link"></div></div>
+            <div class="help-skeleton-card" aria-hidden="true"><div class="help-skeleton-bar help-skeleton-icon"></div><div class="help-skeleton-bar help-skeleton-title"></div><div class="help-skeleton-bar help-skeleton-desc"></div><div class="help-skeleton-bar help-skeleton-link"></div></div>
           </div>
         </section>
 
@@ -90,13 +96,18 @@
 
             </div>
             <div id="help-faq-list" class="help-faq-list">
-              <!-- Popolato da JS -->
+              <!-- Skeleton FAQ -->
+              <div class="help-skeleton-faq" aria-hidden="true"><div class="help-skeleton-bar help-skeleton-q"></div><div class="help-skeleton-bar help-skeleton-q2"></div></div>
+              <div class="help-skeleton-faq" aria-hidden="true"><div class="help-skeleton-bar help-skeleton-q"></div></div>
+              <div class="help-skeleton-faq" aria-hidden="true"><div class="help-skeleton-bar help-skeleton-q" style="width:65%"></div><div class="help-skeleton-bar help-skeleton-q2" style="width:40%"></div></div>
+              <div class="help-skeleton-faq" aria-hidden="true"><div class="help-skeleton-bar help-skeleton-q" style="width:72%"></div></div>
             </div>
           </div>
         </section>
 
       </div>
     </main>
+    <script>try{var _l=localStorage.getItem('lang')||'it';var _cg=sessionStorage.getItem('help-categories-'+_l);var _cf=sessionStorage.getItem('help-faq-'+_l);if(_cg)document.getElementById('help-categories-grid').innerHTML=_cg;if(_cf)document.getElementById('help-faq-list').innerHTML=_cf;}catch(e){}</script>
 
     <div id="footer-placeholder"></div>
   </div>

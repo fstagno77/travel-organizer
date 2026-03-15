@@ -43,11 +43,11 @@
         </nav>
 
         <!-- Hero categoria (piena larghezza) -->
-        <div class="help-detail-hero" id="help-detail-hero">
+        <div class="help-detail-hero is-loading" id="help-detail-hero">
           <div class="help-detail-hero-icon" id="help-detail-hero-icon"></div>
           <div class="help-detail-hero-text">
-            <h1 class="help-detail-hero-title" id="help-detail-hero-title">…</h1>
-            <p class="help-detail-hero-desc" id="help-detail-hero-desc">…</p>
+            <h1 class="help-detail-hero-title" id="help-detail-hero-title"></h1>
+            <p class="help-detail-hero-desc" id="help-detail-hero-desc"></p>
           </div>
         </div>
 
@@ -63,14 +63,32 @@
               </svg>
             </button>
             <div id="help-toc" class="help-toc-content">
-              <!-- Popolato da renderTOC() -->
+              <!-- Skeleton TOC -->
+              <div class="help-toc-skeleton" aria-hidden="true">
+                <div class="help-skeleton-bar" style="width:90%;height:.8rem"></div>
+                <div class="help-skeleton-bar" style="width:75%;height:.8rem"></div>
+                <div class="help-skeleton-bar" style="width:85%;height:.8rem"></div>
+                <div class="help-skeleton-bar" style="width:60%;height:.8rem"></div>
+              </div>
             </div>
           </aside>
 
           <!-- Main content -->
           <div class="help-detail-main">
             <div id="help-articles-container" class="help-articles">
-              <!-- Popolato da renderArticles() -->
+              <!-- Skeleton articoli -->
+              <div class="help-articles-skeleton" aria-hidden="true">
+                <div class="help-skeleton-bar help-skeleton-bar--title"></div>
+                <div class="help-skeleton-bar help-skeleton-bar--full"></div>
+                <div class="help-skeleton-bar help-skeleton-bar--med"></div>
+                <div class="help-skeleton-bar help-skeleton-bar--full"></div>
+                <div class="help-skeleton-bar help-skeleton-bar--short"></div>
+                <div class="help-skeleton-bar help-skeleton-bar--full" style="margin-top:var(--spacing-4)"></div>
+                <div class="help-skeleton-bar help-skeleton-bar--med"></div>
+                <div class="help-skeleton-bar help-skeleton-bar--title" style="margin-top:var(--spacing-6)"></div>
+                <div class="help-skeleton-bar help-skeleton-bar--full"></div>
+                <div class="help-skeleton-bar help-skeleton-bar--med"></div>
+              </div>
             </div>
           </div>
 

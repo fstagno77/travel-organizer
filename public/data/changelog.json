@@ -1,6 +1,22 @@
 {
   "versions": [
     {
+      "version": "0.34.7",
+      "date": "2026-03-15",
+      "changes": {
+        "it": ["Pagina Aiuto: skeleton shimmer su card categorie e FAQ durante il caricamento", "Pagina dettaglio Aiuto: hero con skeleton e articoli sotto la fold caricati in lazy con fade-in"],
+        "en": ["Help page: shimmer skeleton on category cards and FAQ while loading", "Help detail page: hero skeleton and below-fold articles lazy-loaded with fade-in"]
+      }
+    },
+    {
+      "version": "0.34.6",
+      "date": "2026-03-15",
+      "changes": {
+        "it": ["Gestione Utenti admin: visualizza tutti gli inviti pendenti (piattaforma e viaggio) con invitante, ruolo e data — con possibilità di revoca diretta"],
+        "en": ["Admin User Management: shows all pending invitations (platform and trip) with inviter, role and date — with direct revoke action"]
+      }
+    },
+    {
       "version": "0.34.5",
       "date": "2026-03-15",
       "changes": {

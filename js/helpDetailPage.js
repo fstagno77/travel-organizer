@@ -1794,6 +1794,8 @@ const helpDetailPage = {
     if (heroIcon && cat) heroIcon.innerHTML = cat.icon || '';
     if (heroTitle) heroTitle.textContent = lang.title;
     if (heroDesc) heroDesc.textContent = lang.desc;
+    // Rimuovi skeleton dell'hero dopo aver scritto i dati
+    heroEl?.classList.remove('is-loading');
 
     // TOC + articoli
     this.renderTOC(lang.articles);
@@ -1867,14 +1869,35 @@ const helpDetailPage = {
     });
   },
 
-  // ─── Articoli ─────────────────────────────────────────────────────────────
+  // ─── Articoli con lazy fade-in per-articolo ───────────────────────────────
   renderArticles(articles) {
     const container = document.getElementById('help-articles-container');
     if (!container || !articles?.length) return;
 
+    const EAGER_COUNT = 2;
+
+    // Render tutti gli articoli subito: necessario per TOC e anchor link sempre funzionanti
     container.innerHTML = articles.map((article, idx) =>
       this.renderArticleBlock(article, idx, articles.length)
     ).join('');
+
+    const blocks = Array.from(container.querySelectorAll('.help-article-block'));
+    const lazyBlocks = blocks.slice(EAGER_COUNT);
+    if (!lazyBlocks.length) return;
+
+    // Applica classe lazy (opacity 0 + translateY) agli articoli sotto la fold
+    lazyBlocks.forEach(block => block.classList.add('help-article-lazy'));
+
+    // Observer per-articolo: ogni blocco fa il fade-in individualmente al passaggio in viewport
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return;
+        observer.unobserve(entry.target);
+        entry.target.classList.add('help-article-visible');
+      });
+    }, { rootMargin: '0px 0px -40px 0px', threshold: 0.05 });
+
+    lazyBlocks.forEach(block => observer.observe(block));
   },
 
   renderArticleBlock(article, idx, total) {

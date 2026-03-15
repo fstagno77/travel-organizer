@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.34.7 - 2026-03-15
+
+### Miglioramenti
+- Pagina Aiuto: le card categorie e le FAQ mostrano ora un'animazione shimmer mentre il contenuto si carica, eliminando il flash di pagina vuota
+- Pagina dettaglio Aiuto: l'hero mostra uno skeleton mentre la sezione si inizializza; gli articoli sotto la prima schermata vengono caricati in modo lazy con un'animazione di entrata
+
+## 0.34.6 - 2026-03-15
+
+### Novità
+- Dashboard admin: la pagina Gestione Utenti mostra ora tutti gli inviti in attesa, sia quelli alla piattaforma che quelli a singoli viaggi, con indicazione di chi ha invitato, il ruolo assegnato (Viaggiatore, Ospite, Invitato piattaforma) e la data dell'invito
+- Admin può revocare qualsiasi invito pendente direttamente dalla tabella
+
 ## 0.34.5 - 2026-03-15
 
 ### Fix

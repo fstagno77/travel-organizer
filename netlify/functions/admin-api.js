@@ -185,6 +185,12 @@ exports.handler = async (event, context) => {
       case 'smartparse-delete-template':
         result = await smartParseDeleteTemplate(body);
         break;
+      case 'list-pending-invitations':
+        result = await listPendingInvitations(serviceClient, body);
+        break;
+      case 'revoke-pending-invitation':
+        result = await revokePendingInvitation(serviceClient, body, user.id);
+        break;
       default:
         return { statusCode: 400, headers, body: JSON.stringify({ success: false, error: `Unknown action: ${action}` }) };
     }
@@ -603,6 +609,105 @@ async function deleteUser(sc, { userId }, adminId) {
   });
 
   return { deleted: true };
+}
+
+// ============================================
+// Pending Invitations (piattaforma + viaggio)
+// ============================================
+
+async function listPendingInvitations(sc, { type } = {}) {
+  const results = {};
+
+  // Inviti piattaforma (registrazione)
+  if (!type || type === 'platform') {
+    const { data: platInvites, error: platErr } = await sc
+      .from('platform_invitations')
+      .select('id, email, invited_by, status, created_at, updated_at')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+    if (platErr) throw platErr;
+
+    // Risolve profili degli invitanti
+    const inviterIds = [...new Set((platInvites || []).map(i => i.invited_by).filter(Boolean))];
+    const inviterMap = {};
+    if (inviterIds.length > 0) {
+      const { data: profiles } = await sc.from('profiles').select('id, username, email').in('id', inviterIds);
+      if (profiles) profiles.forEach(p => { inviterMap[p.id] = p; });
+    }
+
+    results.platformInvitations = (platInvites || []).map(i => ({
+      id: i.id,
+      email: i.email,
+      invitedBy: inviterMap[i.invited_by]?.username || '-',
+      invitedByEmail: inviterMap[i.invited_by]?.email || '-',
+      invitedById: i.invited_by,
+      role: 'Invitato piattaforma',
+      type: 'platform',
+      status: i.status,
+      created_at: i.created_at
+    }));
+  }
+
+  // Inviti collaborazione su viaggio
+  if (!type || type === 'trip') {
+    const { data: tripInvites, error: tripErr } = await sc
+      .from('trip_invitations')
+      .select('id, trip_id, email, role, invited_by, status, created_at')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+    if (tripErr) throw tripErr;
+
+    // Risolve titoli viaggi
+    const tripIds = [...new Set((tripInvites || []).map(i => i.trip_id).filter(Boolean))];
+    const tripMap = {};
+    if (tripIds.length > 0) {
+      const { data: trips } = await sc.from('trips').select('id, data').in('id', tripIds);
+      if (trips) trips.forEach(t => {
+        tripMap[t.id] = resolveI18n(t.data?.title) || resolveI18n(t.data?.destination) || 'Senza titolo';
+      });
+    }
+
+    // Risolve profili degli invitanti
+    const tripInviterIds = [...new Set((tripInvites || []).map(i => i.invited_by).filter(Boolean))];
+    const tripInviterMap = {};
+    if (tripInviterIds.length > 0) {
+      const { data: profiles } = await sc.from('profiles').select('id, username, email').in('id', tripInviterIds);
+      if (profiles) profiles.forEach(p => { tripInviterMap[p.id] = p; });
+    }
+
+    results.tripInvitations = (tripInvites || []).map(i => ({
+      id: i.id,
+      email: i.email,
+      invitedBy: tripInviterMap[i.invited_by]?.username || '-',
+      invitedByEmail: tripInviterMap[i.invited_by]?.email || '-',
+      invitedById: i.invited_by,
+      role: i.role,
+      type: 'trip',
+      tripId: i.trip_id,
+      tripTitle: tripMap[i.trip_id] || '-',
+      status: i.status,
+      created_at: i.created_at
+    }));
+  }
+
+  const total = (results.platformInvitations?.length || 0) + (results.tripInvitations?.length || 0);
+  return { ...results, total };
+}
+
+async function revokePendingInvitation(sc, { invitationId, type }, adminId) {
+  if (!invitationId || !type) throw new Error('invitationId e type sono obbligatori');
+
+  const table = type === 'platform' ? 'platform_invitations' : 'trip_invitations';
+  const { error } = await sc
+    .from(table)
+    .update({ status: 'revoked', updated_at: new Date().toISOString() })
+    .eq('id', invitationId)
+    .eq('status', 'pending');
+  if (error) throw error;
+
+  await logAdminAction(sc, adminId, 'revoke_invitation', type === 'platform' ? 'platform_invitation' : 'trip_invitation', invitationId, { type });
+
+  return { revoked: true };
 }
 
 // ============================================

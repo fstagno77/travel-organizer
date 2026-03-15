@@ -466,6 +466,9 @@
 .admin-badge-neutral { background: var(--color-gray-100); color: var(--color-gray-600); }
 .admin-badge-flight { background: var(--color-primary-light); color: var(--color-primary-dark); }
 .admin-badge-hotel { background: var(--color-hotel-100); color: var(--color-hotel-800); }
+.admin-badge-blue { background: #dbeafe; color: #1e40af; }
+.admin-badge-gray { background: var(--color-gray-100); color: var(--color-gray-600); }
+.admin-badge-purple { background: #ede9fe; color: #5b21b6; }
 
 /* Buttons in tables */
 .admin-btn {

@@ -283,13 +283,46 @@ const adminPage = {
   // ============================================
 
   async renderUsers(page = 1, search = '', pageSize = 10) {
-    const data = await this.api('list-users', { page, pageSize, search: search || undefined });
+    const [data, invData] = await Promise.all([
+      this.api('list-users', { page, pageSize, search: search || undefined }),
+      this.api('list-pending-invitations', {})
+    ]);
     const main = document.querySelector('.admin-content');
+
+    const platInvites = invData.platformInvitations || [];
+    const tripInvites = invData.tripInvitations || [];
+    const totalPending = platInvites.length + tripInvites.length;
+
+    const roleLabel = (role) => {
+      if (role === 'viaggiatore') return '<span class="admin-badge admin-badge-blue">Viaggiatore</span>';
+      if (role === 'ospite') return '<span class="admin-badge admin-badge-gray">Ospite</span>';
+      return `<span class="admin-badge admin-badge-purple">Invitato piattaforma</span>`;
+    };
+
+    const inviteRows = (list, cols) => list.length
+      ? list.map(i => `
+          <tr>
+            <td>${this.esc(i.email)}</td>
+            ${cols.includes('trip') ? `<td>${this.esc(i.tripTitle || '-')}</td>` : ''}
+            <td>
+              <span title="${this.esc(i.invitedByEmail)}">${this.esc(i.invitedBy)}</span>
+            </td>
+            <td>${roleLabel(i.role)}</td>
+            <td>${this.fmtDate(i.created_at)}</td>
+            <td class="admin-actions">
+              <button class="admin-btn admin-btn-danger admin-btn-sm"
+                data-revoke-invite="${i.id}"
+                data-invite-type="${i.type}"
+                data-invite-email="${this.esc(i.email)}">Revoca</button>
+            </td>
+          </tr>
+        `).join('')
+      : `<tr><td colspan="${cols.includes('trip') ? 6 : 5}" class="admin-table-empty">Nessun invito pendente</td></tr>`;
 
     main.innerHTML = `
       <div class="admin-view-header">
         <h1>Gestione Utenti</h1>
-        <p>${data.total} utenti registrati</p>
+        <p>${data.total} utenti registrati &mdash; ${totalPending} inviti in attesa</p>
       </div>
 
       <div class="admin-card">
@@ -320,6 +353,42 @@ const adminPage = {
         </div>
         ${this.pagination(data.total, page, pageSize)}
       </div>
+
+      <!-- Inviti piattaforma pendenti -->
+      <div class="admin-card" style="margin-top:24px">
+        <div class="admin-card-header" style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--color-gray-200)">
+          <div>
+            <h3 style="margin:0;font-size:15px">Inviti piattaforma in attesa</h3>
+            <p style="margin:4px 0 0;font-size:13px;color:var(--color-gray-500)">${platInvites.length} inviti &mdash; utenti invitati a registrarsi ma non ancora attivi</p>
+          </div>
+        </div>
+        <div class="admin-table-wrapper">
+          <table class="admin-table">
+            <thead>
+              <tr><th>Email invitata</th><th>Invitato da</th><th>Ruolo</th><th>Data invito</th><th></th></tr>
+            </thead>
+            <tbody>${inviteRows(platInvites, [])}</tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Inviti collaborazione viaggio pendenti -->
+      <div class="admin-card" style="margin-top:24px">
+        <div class="admin-card-header" style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--color-gray-200)">
+          <div>
+            <h3 style="margin:0;font-size:15px">Inviti collaborazione viaggio in attesa</h3>
+            <p style="margin:4px 0 0;font-size:13px;color:var(--color-gray-500)">${tripInvites.length} inviti &mdash; utenti invitati a collaborare su un viaggio ma non ancora accettato</p>
+          </div>
+        </div>
+        <div class="admin-table-wrapper">
+          <table class="admin-table">
+            <thead>
+              <tr><th>Email invitata</th><th>Viaggio</th><th>Invitato da</th><th>Ruolo</th><th>Data invito</th><th></th></tr>
+            </thead>
+            <tbody>${inviteRows(tripInvites, ['trip'])}</tbody>
+          </table>
+        </div>
+      </div>
     `;
 
     // Search
@@ -339,8 +408,24 @@ const adminPage = {
       btn.addEventListener('click', () => this.confirmDeleteUser(btn.dataset.deleteUser, btn.dataset.username));
     });
 
+    // Revoca inviti
+    document.querySelectorAll('[data-revoke-invite]').forEach(btn => {
+      btn.addEventListener('click', () => this.revokeInvitation(btn.dataset.revokeInvite, btn.dataset.inviteType, btn.dataset.inviteEmail));
+    });
+
     // Pagination
     this.bindPagination(() => (p, ps) => this.renderUsers(p, document.getElementById('users-search')?.value || '', ps || pageSize));
+  },
+
+  async revokeInvitation(invitationId, type, email) {
+    if (!confirm(`Revocare l'invito per ${email}?`)) return;
+    try {
+      await this.api('revoke-pending-invitation', { invitationId, type });
+      this.toast('Invito revocato', 'success');
+      this.renderUsers();
+    } catch (err) {
+      this.toast('Errore revoca: ' + err.message, 'error');
+    }
   },
 
   async toggleUserDetail(userId) {
