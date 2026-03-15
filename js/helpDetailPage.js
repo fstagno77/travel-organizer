@@ -250,7 +250,7 @@ const helpDetailPage = {
             steps: [
               { text: 'Nella card principale trovi: numero volo, compagnia, data, orario di partenza/arrivo, codici aeroporto (IATA) e rotta.', image: 'voli/01-card-volo.png' },
               { text: 'Il nome del passeggero principale e il codice di prenotazione (PNR) sono visibili sotto i dettagli del volo.' },
-              { text: 'Clicca su "Espandi" o sulla freccia per vedere tutti i dettagli: gate, classe, numero poltrona, bagaglio incluso.' },
+              { text: 'Clicca su "Mostra dettagli" per vedere tutti i dettagli: gate, classe, numero poltrona, bagaglio incluso.' },
             ],
             result: 'Hai una visione completa del tuo volo senza dover aprire il PDF originale.',
           },
@@ -259,7 +259,7 @@ const helpDetailPage = {
             title: 'Espandere i dettagli del volo',
             intro: 'Il pannello espanso mostra informazioni aggiuntive su gate, classe e bagaglio.',
             steps: [
-              { text: 'Clicca sulla card volo o sull\'icona freccia in basso a destra per espandere il pannello dettagli.' },
+              { text: 'Clicca sul pulsante "Mostra dettagli" in fondo alla card per espandere il pannello.' },
               { text: 'Visualizza: numero poltrona, classe di viaggio (Economy/Business), bagaglio incluso, gate di imbarco (se disponibile).' },
               { text: 'Per i voli multi-passeggero, scorrendo vedi tutti i passeggeri con i rispettivi posti e numeri di biglietto.' },
             ],
@@ -324,7 +324,7 @@ const helpDetailPage = {
             steps: [
               { text: 'The main card shows: flight number, airline, date, departure/arrival times, airport codes (IATA), and route.', image: 'voli/01-card-volo.png' },
               { text: 'The main passenger\'s name and booking reference (PNR) are visible below the flight details.' },
-              { text: 'Click "Expand" or the arrow to see all details: gate, class, seat number, included baggage.' },
+              { text: 'Click "Show details" to see all details: gate, class, seat number, included baggage.' },
             ],
             result: 'You get a complete view of your flight without needing to open the original PDF.',
           },
@@ -333,7 +333,7 @@ const helpDetailPage = {
             title: 'Expanding flight details',
             intro: 'The expanded panel shows additional information about gate, class, and baggage.',
             steps: [
-              { text: 'Click the flight card or the arrow icon at the bottom right to expand the details panel.' },
+              { text: 'Click the "Show details" button at the bottom of the card to expand the panel.' },
               { text: 'View: seat number, travel class (Economy/Business), included baggage, boarding gate (if available).' },
               { text: 'For multi-passenger flights, scroll to see all passengers with their seats and ticket numbers.' },
             ],
@@ -401,7 +401,7 @@ const helpDetailPage = {
             intro: 'La card hotel mostra in sintesi struttura, date e numero di conferma della prenotazione.',
             steps: [
               { text: 'Nella card principale trovi: nome dell\'hotel, città, date di check-in e check-out, numero notti.', image: 'hotel/01-card-hotel.png' },
-              { text: 'Il numero di conferma e l\'indirizzo completo sono visibili espandendo la card.' },
+              { text: 'Il numero di conferma e l\'indirizzo completo sono visibili cliccando su "Mostra dettagli".' },
               { text: 'L\'icona calendario mostra le date in formato compatto (gg/mm).' },
             ],
             result: 'Hai un riepilogo immediato di ogni soggiorno senza aprire il PDF.',
@@ -411,7 +411,7 @@ const helpDetailPage = {
             title: 'Espandere i dettagli dell\'hotel',
             intro: 'Il pannello espanso mostra indirizzo, tipo di camera e condizioni di cancellazione.',
             steps: [
-              { text: 'Clicca sulla card hotel o sull\'icona di espansione.' },
+              { text: 'Clicca sul pulsante "Mostra dettagli" nella card hotel.' },
               { text: 'Visualizza: indirizzo completo, tipo di camera, regime (colazione inclusa, solo pernottamento), condizioni di cancellazione se estratte.' },
               { text: 'Per hotel con più camere o ospiti, ogni soggiorno è mostrato separatamente.' },
             ],
@@ -472,7 +472,7 @@ const helpDetailPage = {
             intro: 'The hotel card summarizes the property, dates, and booking confirmation number.',
             steps: [
               { text: 'The main card shows: hotel name, city, check-in and check-out dates, number of nights.', image: 'hotel/01-card-hotel.png' },
-              { text: 'The confirmation number and full address are visible by expanding the card.' },
+              { text: 'The confirmation number and full address are visible by clicking "Show details".' },
               { text: 'The calendar icon shows dates in compact format (dd/mm).' },
             ],
             result: 'You get an immediate summary of each stay without opening the PDF.',
@@ -482,7 +482,7 @@ const helpDetailPage = {
             title: 'Expanding hotel details',
             intro: 'The expanded panel shows address, room type, and cancellation conditions.',
             steps: [
-              { text: 'Click the hotel card or the expand icon.' },
+              { text: 'Click the "Show details" button in the hotel card.' },
               { text: 'View: full address, room type, board basis (breakfast included, room only), cancellation conditions if extracted.' },
               { text: 'For hotels with multiple rooms or guests, each stay is shown separately.' },
             ],
@@ -562,7 +562,7 @@ const helpDetailPage = {
             intro: 'La card treno mostra partenza, arrivo, orari e numero prenotazione in formato compatto.',
             steps: [
               { text: 'Nella card treno trovi: numero treno, stazioni di partenza e arrivo, orari, data.' },
-              { text: 'Espandi la card per vedere il numero di prenotazione, la classe e il posto assegnato (se disponibili).' },
+              { text: 'Clicca su "Mostra dettagli" per vedere il numero di prenotazione, la classe e il posto assegnato (se disponibili).' },
             ],
             result: 'Tutte le informazioni del viaggio in treno sono consultabili senza aprire il PDF.',
           },
@@ -628,7 +628,7 @@ const helpDetailPage = {
             intro: 'The train card shows departure, arrival, times, and booking number in compact format.',
             steps: [
               { text: 'The train card shows: train number, departure and arrival stations, times, date.' },
-              { text: 'Expand the card to see the booking number, class and assigned seat (if available).' },
+              { text: 'Click "Show details" to see the booking number, class and assigned seat (if available).' },
             ],
             result: 'All train journey information is accessible without opening the PDF.',
           },
@@ -697,7 +697,7 @@ const helpDetailPage = {
             intro: 'La card bus mostra fermata di partenza, arrivo, orario e operatore.',
             steps: [
               { text: 'Nella card bus trovi: operatore, punto di partenza e arrivo, data e orario.' },
-              { text: 'Espandi per vedere il numero di prenotazione, posto (se assegnato) e eventuali note.' },
+              { text: 'Clicca su "Mostra dettagli" per vedere il numero di prenotazione, posto (se assegnato) e eventuali note.' },
             ],
             result: 'Tutti i dettagli del trasporto in bus sono accessibili senza aprire il PDF originale.',
           },
@@ -758,7 +758,7 @@ const helpDetailPage = {
             intro: 'The bus card shows departure stop, arrival, time, and operator.',
             steps: [
               { text: 'The bus card shows: operator, departure and arrival point, date and time.' },
-              { text: 'Expand to see the booking number, seat (if assigned) and any notes.' },
+              { text: 'Click "Show details" to see the booking number, seat (if assigned) and any notes.' },
             ],
             result: 'All bus transport details are accessible without opening the original PDF.',
           },
@@ -821,7 +821,7 @@ const helpDetailPage = {
             intro: 'La card noleggio mostra veicolo, agenzia, date e luogo di ritiro/restituzione.',
             steps: [
               { text: 'Nella card trovi: agenzia, tipo di veicolo, date di ritiro e restituzione, luogo.', image: 'noleggio/01-card-noleggio.png' },
-              { text: 'Espandi per vedere il numero di prenotazione, categoria veicolo, conducente aggiuntivo (se presente) e eventuale polizza assicurativa.' },
+              { text: 'Clicca su "Mostra dettagli" per vedere il numero di prenotazione, categoria veicolo, conducente aggiuntivo (se presente) e eventuale polizza assicurativa.' },
             ],
             result: 'Tutte le informazioni del noleggio sono accessibili senza aprire il PDF.',
           },
@@ -885,7 +885,7 @@ const helpDetailPage = {
             intro: 'The rental card shows vehicle, agency, dates and pickup/drop-off location.',
             steps: [
               { text: 'The card shows: agency, vehicle type, pickup and drop-off dates, location.', image: 'noleggio/01-card-noleggio.png' },
-              { text: 'Expand to see the booking number, vehicle category, additional driver (if present) and insurance policy.' },
+              { text: 'Click "Show details" to see the booking number, vehicle category, additional driver (if present) and insurance policy.' },
             ],
             result: 'All rental information is accessible without opening the PDF.',
           },
@@ -957,7 +957,7 @@ const helpDetailPage = {
               { text: 'Nel tab Attività, clicca sul pulsante "+ Aggiungi attività" o sull\'icona + accanto al giorno desiderato.', image: 'attivita/02-aggiungi-attivita.png' },
               { text: 'Compila il form: nome (obbligatorio), data (obbligatoria), orario di inizio/fine, descrizione, link utili.' },
               { text: 'Aggiungi eventualmente degli allegati (PDF, immagini, voucher) — massimo 5 file da 10 MB ciascuno.' },
-              { text: 'Clicca "Salva attività".' },
+              { text: 'Clicca "Crea" per salvare l\'attività.' },
             ],
             tips: [
               { type: 'tip', text: 'Usa il campo link per aggiungere il sito web del posto, un link Google Maps o la conferma online.' },
@@ -982,7 +982,7 @@ const helpDetailPage = {
             intro: 'Ogni attività può avere fino a 5 allegati: voucher, conferme, foto, PDF di prenotazione.',
             steps: [
               { text: 'Apri il form di creazione o modifica di un\'attività.' },
-              { text: 'Clicca su "Aggiungi allegato" e seleziona il file dal dispositivo (PDF, JPEG, PNG, GIF, WebP — max 10 MB).' },
+              { text: 'Clicca su "Aggiungi file" e seleziona il file dal dispositivo (PDF, JPEG, PNG, GIF, WebP — max 10 MB).' },
               { text: 'Il file viene caricato su Supabase Storage. Puoi aggiungere fino a 5 file per attività.' },
               { text: 'Salva l\'attività. Gli allegati sono accessibili cliccando sull\'icona graffetta nell\'attività.' },
             ],
@@ -1030,7 +1030,7 @@ const helpDetailPage = {
               { text: 'In the Activities tab, click the "+ Add activity" button or the + icon next to the desired day.', image: 'attivita/02-aggiungi-attivita.png' },
               { text: 'Fill in the form: name (required), date (required), start/end time, description, useful links.' },
               { text: 'Optionally add attachments (PDFs, images, vouchers) — max 5 files of 10 MB each.' },
-              { text: 'Click "Save activity".' },
+              { text: 'Click "Create" to save the activity.' },
             ],
             tips: [
               { type: 'tip', text: 'Use the link field to add the venue website, a Google Maps link, or the online confirmation.' },
@@ -1055,7 +1055,7 @@ const helpDetailPage = {
             intro: 'Each activity can have up to 5 attachments: vouchers, confirmations, photos, booking PDFs.',
             steps: [
               { text: 'Open the create or edit form for an activity.' },
-              { text: 'Click "Add attachment" and select the file from your device (PDF, JPEG, PNG, GIF, WebP — max 10 MB).' },
+              { text: 'Click "Add files" and select the file from your device (PDF, JPEG, PNG, GIF, WebP — max 10 MB).' },
               { text: 'The file is uploaded to Supabase Storage. You can add up to 5 files per activity.' },
               { text: 'Save the activity. Attachments are accessible by clicking the paperclip icon on the activity.' },
             ],
@@ -1290,7 +1290,7 @@ const helpDetailPage = {
               { text: 'Clicca sull\'icona campanella nell\'header per aprire la pagina Notifiche.', image: 'notifiche/01-campanella.png' },
               { text: 'Le notifiche non lette appaiono in evidenza con un punto colorato.' },
               { text: 'Clicca su una notifica per segnarla come letta e, se pertinente, navigare al viaggio o prenotazione collegata.' },
-              { text: 'Per segnare tutte come lette in una volta, clicca "Segna tutte come lette".' },
+              { text: 'Per segnare tutte come lette in una volta, clicca "Segna tutto letto".' },
             ],
             result: 'Le notifiche lette non mostrano più il badge. La lista viene conservata per 30 giorni.',
           },
@@ -1358,7 +1358,7 @@ const helpDetailPage = {
               { text: 'Click the bell icon in the header to open the Notifications page.', image: 'notifiche/01-campanella.png' },
               { text: 'Unread notifications appear highlighted with a colored dot.' },
               { text: 'Click a notification to mark it as read and, if relevant, navigate to the linked trip or booking.' },
-              { text: 'To mark all as read at once, click "Mark all as read".' },
+              { text: 'To mark all as read at once, click "Mark all read".' },
             ],
             result: 'Read notifications no longer show the badge. The list is kept for 30 days.',
           },

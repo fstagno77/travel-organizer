@@ -42,3 +42,4 @@ deno.lock
 filebooking/
 docs/.vitepress/cache/
 supabase/.temp/
+scripts/.auth-state.json

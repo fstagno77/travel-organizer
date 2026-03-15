@@ -11,7 +11,8 @@
     "docs:build": "cd docs && npx vitepress build",
     "screenshots:login": "node scripts/take-screenshots.js --login",
     "screenshots:session": "node scripts/save-session.js",
-    "screenshots": "node scripts/take-screenshots.js"
+    "screenshots": "node scripts/take-screenshots.js",
+    "screenshots:help": "node scripts/take-screenshots.js --help"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
