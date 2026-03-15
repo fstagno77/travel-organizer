@@ -1076,6 +1076,48 @@ mark.help-ac-highlight {
 .help-articles-skeleton .help-skeleton-bar--med { width: 70%; }
 .help-articles-skeleton .help-skeleton-bar--full { width: 95%; }
 
+/* Animazione fade-in FAQ item lazy */
+.help-faq-lazy {
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.help-faq-lazy.help-faq-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Skeleton "altre categorie" (help-detail page) */
+.help-other-skel {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3) var(--spacing-4);
+  background: var(--color-gray-50);
+  border: 1px solid var(--color-gray-100);
+  border-radius: var(--radius-lg);
+}
+.help-other-skel-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  flex-shrink: 0;
+  background: linear-gradient(90deg, #dde2e8 25%, #eceff3 50%, #dde2e8 75%);
+  background-size: 400px 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+/* Animazione fade-in card "altre categorie" lazy */
+.help-other-card-lazy {
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.help-other-card-lazy.help-other-card-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 /* Animazione fade-in card lazy nella griglia categorie */
 .help-card-lazy {
   opacity: 0;

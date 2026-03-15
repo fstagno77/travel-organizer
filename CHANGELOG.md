@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.34.10 - 2026-03-15
+
+### Miglioramenti
+- Pagina Aiuto: le FAQ mostrano ora skeleton placeholder per gli item sotto la prima schermata, sostituiti con l'item reale al passaggio in viewport
+- Pagina dettaglio Aiuto: la sezione "Altri argomenti" in fondo alla pagina mostra skeleton card (icona + testo grigi animati) mentre il contenuto si carica
+
 ## 0.34.9 - 2026-03-15
 
 ### Fix mobile

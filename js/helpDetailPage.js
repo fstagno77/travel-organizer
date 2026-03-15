@@ -2064,25 +2064,68 @@ const helpDetailPage = {
     return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>';
   },
 
-  // ─── Altre categorie ──────────────────────────────────────────────────────
+  // ─── Helper singola card "altre categorie" ───────────────────────────────
+  renderOtherCard(cat) {
+    const title = this.currentLang === 'en' ? cat.titleEn : cat.titleIt;
+    const desc = this.currentLang === 'en' ? cat.descEn : cat.descIt;
+    return `
+      <a href="/help-detail.html?section=${cat.id}" class="help-other-card">
+        <div class="help-other-icon" style="background:${cat.gradient}; color:#fff;">${cat.icon}</div>
+        <div class="help-other-text">
+          <span class="help-other-title">${title}</span>
+          <span class="help-other-desc">${desc}</span>
+        </div>
+      </a>
+    `;
+  },
+
+  // ─── Altre categorie con skeleton lazy per le card sotto la fold ──────────
   renderOtherCategories(currentSectionId) {
     const grid = document.getElementById('help-other-grid');
     if (!grid || !window.helpPage?.CATEGORIES) return;
 
     const others = window.helpPage.CATEGORIES.filter(c => c.id !== currentSectionId);
-    grid.innerHTML = others.map(cat => {
-      const title = this.currentLang === 'en' ? cat.titleEn : cat.titleIt;
-      const desc = this.currentLang === 'en' ? cat.descEn : cat.descIt;
-      return `
-        <a href="/help-detail.html?section=${cat.id}" class="help-other-card">
-          <div class="help-other-icon" style="background:${cat.gradient}; color:#fff;">${cat.icon}</div>
-          <div class="help-other-text">
-            <span class="help-other-title">${title}</span>
-            <span class="help-other-desc">${desc}</span>
+    const EAGER_COUNT = 5; // prima riga su desktop (5 colonne)
+
+    let html = others.slice(0, EAGER_COUNT).map(cat => this.renderOtherCard(cat)).join('');
+
+    others.slice(EAGER_COUNT).forEach((cat, i) => {
+      html += `
+        <div class="help-other-skel" data-idx="${EAGER_COUNT + i}" aria-hidden="true">
+          <div class="help-other-skel-icon"></div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:4px">
+            <div class="help-skeleton-bar" style="width:80%;height:.7rem"></div>
+            <div class="help-skeleton-bar" style="width:60%;height:.6rem"></div>
           </div>
-        </a>
+        </div>
       `;
-    }).join('');
+    });
+
+    grid.innerHTML = html;
+
+    const skeletons = grid.querySelectorAll('.help-other-skel');
+    if (!skeletons.length) return;
+
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return;
+        observer.unobserve(entry.target);
+
+        const cat = others[parseInt(entry.target.dataset.idx)];
+        const tmp = document.createElement('div');
+        tmp.innerHTML = this.renderOtherCard(cat);
+        const card = tmp.firstElementChild;
+        card.classList.add('help-other-card-lazy');
+
+        entry.target.replaceWith(card);
+
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => card.classList.add('help-other-card-visible'));
+        });
+      });
+    }, { rootMargin: '80px 0px' });
+
+    skeletons.forEach(s => observer.observe(s));
   },
 
   renderNotFound(sectionId) {
