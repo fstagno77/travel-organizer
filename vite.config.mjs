@@ -40,8 +40,10 @@ export default defineConfig({
   },
 
   server: {
+    port: 5107,
+    strictPort: true,
     proxy: {
-      '/.netlify/functions': 'http://localhost:8888',
+      '/.netlify/functions': 'http://localhost:8100',
     },
   },
 });

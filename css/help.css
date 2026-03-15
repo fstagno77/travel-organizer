@@ -1078,6 +1078,62 @@ mark.help-ac-highlight {
 .help-articles-skeleton .help-skeleton-bar--med { width: 70%; }
 .help-articles-skeleton .help-skeleton-bar--full { width: 95%; }
 
+/* Animazione fade-in card lazy nella griglia categorie */
+.help-card-lazy {
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.28s ease, transform 0.28s ease;
+}
+.help-card-lazy.help-card-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Skeleton placeholder articoli lazy — struttura fedele a .help-article-block ── */
+.help-article-skel {
+  padding-bottom: var(--spacing-10);
+  margin-bottom: var(--spacing-10);
+  scroll-margin-top: 90px;
+}
+
+.help-article-skel-intro {
+  background: var(--color-gray-50);
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+  border-left: 3px solid var(--color-gray-200);
+  padding: var(--spacing-4) var(--spacing-5);
+  margin-bottom: var(--spacing-6);
+}
+
+.help-article-skel-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-6);
+  margin-bottom: var(--spacing-6);
+}
+
+.help-article-skel-step {
+  display: flex;
+  gap: var(--spacing-4);
+  align-items: flex-start;
+}
+
+.help-article-skel-num {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: linear-gradient(90deg, #dde2e8 25%, #eceff3 50%, #dde2e8 75%);
+  background-size: 400px 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+.help-article-skel-result {
+  background: var(--color-gray-50);
+  border: 1px solid var(--color-gray-100);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-4) var(--spacing-5);
+}
+
 /* Animazione fade-in articoli lazy */
 .help-article-lazy {
   opacity: 0;

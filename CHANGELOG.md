@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.34.8 - 2026-03-15
+
+### Miglioramenti
+- Pagina Aiuto: le card categorie sotto la prima schermata mostrano ora un blocco skeleton (icona, titolo, descrizione grigi animati) mentre si carica il contenuto; vengono sostituite dalla card reale con un'animazione di entrata quando entrano nel campo visivo
+- Pagina dettaglio Aiuto: gli articoli lazy mostrano ora un placeholder skeleton fedele alla struttura reale (titolo, box intro, cerchi di step, box risultato) invece di rimanere invisibili; i link del TOC funzionano anche prima che l'articolo venga caricato
+
 ## 0.34.7 - 2026-03-15
 
 ### Miglioramenti

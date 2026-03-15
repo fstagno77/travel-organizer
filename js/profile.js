@@ -1892,12 +1892,12 @@
       });
     }
 
-    // Copia link
+    // Copia link (con testo precostruito)
     container.querySelectorAll('.invite-copy-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const url = btn.dataset.url;
         if (!url) return;
-        copyToClipboard(url);
+        copyToClipboard(buildPlatformInviteMessage(url));
         showCopyFeedback(btn);
       });
     });
@@ -1953,8 +1953,15 @@
     setTimeout(() => { btn.innerHTML = orig; }, 1500);
   }
 
+  /**
+   * Costruisce il messaggio precostruito per condividere un invito piattaforma
+   */
+  function buildPlatformInviteMessage(url) {
+    return `✈️ Ti invito su Travel Flow, l'app per organizzare i tuoi viaggi!\nRegistrati con questo link: ${url}`;
+  }
+
   function showInviteCopiedFeedback(url) {
-    copyToClipboard(url);
+    copyToClipboard(buildPlatformInviteMessage(url));
     // Mostra un toast temporaneo
     const toast = document.createElement('div');
     toast.className = 'invite-toast';

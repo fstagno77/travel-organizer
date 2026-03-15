@@ -769,9 +769,11 @@ const auth = {
         },
         body: JSON.stringify({ action: 'accept-pending-by-email' })
       });
-      const data = await response.json();
-      if (data.success && data.accepted > 0) {
-        console.log(`[auth] Accettati ${data.accepted} inviti pendenti per email`);
+      const text = await response.text();
+      if (!text) return;
+      const data = JSON.parse(text);
+      if (data.success && data.converted > 0) {
+        console.log(`[auth] Accettati ${data.converted} inviti pendenti per email`);
       }
     } catch (err) {
       console.error('[auth] Error accepting pending invites by email:', err);

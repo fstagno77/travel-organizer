@@ -225,13 +225,14 @@ const helpPage = {
     if (window.i18n) window.i18n.apply();
   },
 
-  /** Salva il contenuto renderizzato in sessionStorage per instant-render alla navigazione SPA successiva */
+  /** Salva tutte le card complete (non skeleton) in sessionStorage per instant-render alla navigazione successiva */
   _saveCache() {
     const lang = this.currentLang;
-    const grid = document.getElementById('help-categories-grid');
     const faqList = document.getElementById('help-faq-list');
+    // Genera HTML completo di tutte le card (non lo stato corrente del grid, che potrebbe avere skeleton)
+    const fullGridHtml = this.CATEGORIES.map(cat => this.renderCategoryCard(cat)).join('');
     try {
-      if (grid) sessionStorage.setItem(`help-categories-${lang}`, grid.innerHTML);
+      sessionStorage.setItem(`help-categories-${lang}`, fullGridHtml);
       if (faqList) sessionStorage.setItem(`help-faq-${lang}`, faqList.innerHTML);
     } catch (e) { /* sessionStorage pieno, ignora */ }
   },
@@ -245,12 +246,9 @@ const helpPage = {
     return this.currentLang === 'en' ? 'Learn more →' : 'Scopri →';
   },
 
-  // ─── Render categorie ─────────────────────────────────────────────────────
-  renderCategories() {
-    const grid = document.getElementById('help-categories-grid');
-    if (!grid) return;
-
-    grid.innerHTML = this.CATEGORIES.map(cat => `
+  // ─── Helper singola card ──────────────────────────────────────────────────
+  renderCategoryCard(cat) {
+    return `
       <a href="/help-detail.html?section=${cat.id}" class="help-category-card">
         <div class="help-category-icon-wrap" style="background:${cat.gradient}; color:#ffffff;">
           ${cat.icon}
@@ -259,7 +257,64 @@ const helpPage = {
         <p class="help-category-desc">${this.t(cat, 'desc')}</p>
         <span class="help-category-link" style="color:${cat.color};">${this.learnMoreText()}</span>
       </a>
-    `).join('');
+    `;
+  },
+
+  // ─── Render categorie con skeleton lazy per le card sotto la fold ─────────
+  renderCategories() {
+    const grid = document.getElementById('help-categories-grid');
+    if (!grid) return;
+
+    // Se la cache ha già ripristinato tutte le card reali, salta il render (evita flash skeleton)
+    if (grid.querySelectorAll('.help-category-card').length === this.CATEGORIES.length) return;
+
+    const EAGER_COUNT = 6; // prime 2 righe visibili su desktop
+
+    // Render immediato delle prime card
+    let html = this.CATEGORIES.slice(0, EAGER_COUNT).map(cat =>
+      this.renderCategoryCard(cat)
+    ).join('');
+
+    // Skeleton placeholder per le card lazy
+    this.CATEGORIES.slice(EAGER_COUNT).forEach((cat, i) => {
+      const idx = EAGER_COUNT + i;
+      html += `
+        <div class="help-category-skel help-skeleton-card" data-idx="${idx}" aria-hidden="true">
+          <div class="help-skeleton-bar help-skeleton-icon"></div>
+          <div class="help-skeleton-bar help-skeleton-title"></div>
+          <div class="help-skeleton-bar help-skeleton-desc"></div>
+          <div class="help-skeleton-bar help-skeleton-desc-2"></div>
+          <div class="help-skeleton-bar help-skeleton-link"></div>
+        </div>
+      `;
+    });
+
+    grid.innerHTML = html;
+
+    const skeletons = grid.querySelectorAll('.help-category-skel');
+    if (!skeletons.length) return;
+
+    // Observer per-card: quando entra in viewport, swappa skeleton con card reale
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return;
+        observer.unobserve(entry.target);
+
+        const cat = this.CATEGORIES[parseInt(entry.target.dataset.idx)];
+        const tmp = document.createElement('div');
+        tmp.innerHTML = this.renderCategoryCard(cat);
+        const card = tmp.firstElementChild;
+        card.classList.add('help-card-lazy');
+
+        entry.target.replaceWith(card);
+
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => card.classList.add('help-card-visible'));
+        });
+      });
+    }, { rootMargin: '80px 0px' });
+
+    skeletons.forEach(s => observer.observe(s));
   },
 
   // ─── Render FAQ ───────────────────────────────────────────────────────────

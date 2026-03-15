@@ -1,6 +1,14 @@
 {
   "versions": [
     {
+      "version": "0.34.8",
+      "date": "2026-03-15",
+      "changes": {
+        "it": ["Pagina Aiuto: le card sotto la prima schermata mostrano uno skeleton animato prima di apparire, con sostituzione al passaggio in vista", "Pagina dettaglio Aiuto: gli articoli lazy mostrano un placeholder skeleton fedele alla struttura reale (titolo, step, risultato); i link del TOC funzionano sempre"],
+        "en": ["Help page: cards below the fold show an animated skeleton before appearing, swapped in on scroll", "Help detail page: lazy articles show a structure-faithful skeleton placeholder (title, steps, result); TOC links always work"]
+      }
+    },
+    {
       "version": "0.34.7",
       "date": "2026-03-15",
       "changes": {

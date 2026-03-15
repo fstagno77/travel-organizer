@@ -1845,6 +1845,12 @@ const helpDetailPage = {
     const links = document.querySelectorAll('.help-toc-link');
     if (!links.length) return;
 
+    // Disconnetti observer precedente per evitare observer multipli
+    if (this._tocObserver) {
+      this._tocObserver.disconnect();
+      this._tocObserver = null;
+    }
+
     const observer = new IntersectionObserver(entries => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
@@ -1855,7 +1861,10 @@ const helpDetailPage = {
       });
     }, { rootMargin: '-10% 0px -80% 0px', threshold: 0 });
 
-    document.querySelectorAll('.help-article-block[id]').forEach(el => observer.observe(el));
+    // Osserva sia articoli reali che skeleton placeholder (condividono lo stesso id)
+    document.querySelectorAll('.help-article-block[id], .help-article-skel[id]').forEach(el => observer.observe(el));
+
+    this._tocObserver = observer;
   },
 
   initTocToggle() {
@@ -1869,38 +1878,93 @@ const helpDetailPage = {
     });
   },
 
-  // ─── Articoli con lazy fade-in per-articolo ───────────────────────────────
+  // ─── Articoli: eager per i primi, skeleton placeholder per i lazy ─────────
   renderArticles(articles) {
     const container = document.getElementById('help-articles-container');
     if (!container || !articles?.length) return;
 
     const EAGER_COUNT = 2;
+    const lazyArticles = articles.slice(EAGER_COUNT);
 
-    // Render tutti gli articoli subito: necessario per TOC e anchor link sempre funzionanti
-    container.innerHTML = articles.map((article, idx) =>
-      this.renderArticleBlock(article, idx, articles.length)
+    // Render immediato dei primi articoli (con divider incluso)
+    let html = articles.slice(0, EAGER_COUNT).map((a, i) =>
+      this.renderArticleBlock(a, i, articles.length)
     ).join('');
 
-    const blocks = Array.from(container.querySelectorAll('.help-article-block'));
-    const lazyBlocks = blocks.slice(EAGER_COUNT);
-    if (!lazyBlocks.length) return;
+    // Skeleton placeholder per ogni articolo lazy: visibili subito, sostituiti al passaggio in viewport
+    lazyArticles.forEach((a, i) => {
+      const idx = EAGER_COUNT + i;
+      const isLast = idx === articles.length - 1;
+      html += `
+        <div class="help-article-skel" id="${a.id}" data-idx="${idx}" aria-hidden="true">
+          <div class="help-skeleton-bar" style="width:50%;height:1.3rem;margin-bottom:var(--spacing-5)"></div>
+          <div class="help-article-skel-intro">
+            <div class="help-skeleton-bar" style="width:90%;margin-bottom:var(--spacing-3)"></div>
+            <div class="help-skeleton-bar" style="width:73%"></div>
+          </div>
+          <div class="help-article-skel-steps">
+            <div class="help-article-skel-step">
+              <div class="help-article-skel-num"></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:var(--spacing-2)">
+                <div class="help-skeleton-bar" style="width:86%"></div>
+                <div class="help-skeleton-bar" style="width:64%"></div>
+              </div>
+            </div>
+            <div class="help-article-skel-step">
+              <div class="help-article-skel-num"></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:var(--spacing-2)">
+                <div class="help-skeleton-bar" style="width:78%"></div>
+                <div class="help-skeleton-bar" style="width:52%"></div>
+              </div>
+            </div>
+            <div class="help-article-skel-step">
+              <div class="help-article-skel-num"></div>
+              <div style="flex:1"><div class="help-skeleton-bar" style="width:92%"></div></div>
+            </div>
+          </div>
+          <div class="help-article-skel-result">
+            <div class="help-skeleton-bar" style="width:68%"></div>
+          </div>
+        </div>
+        ${!isLast ? '<hr class="help-article-divider" aria-hidden="true">' : ''}
+      `;
+    });
 
-    // Applica classe lazy (opacity 0 + translateY) agli articoli sotto la fold
-    lazyBlocks.forEach(block => block.classList.add('help-article-lazy'));
+    container.innerHTML = html;
+    if (!lazyArticles.length) return;
 
-    // Observer per-articolo: ogni blocco fa il fade-in individualmente al passaggio in viewport
+    // Observer per-placeholder: quando entra in viewport, sostituisce skeleton con articolo reale
     const observer = new IntersectionObserver(entries => {
       entries.forEach(entry => {
         if (!entry.isIntersecting) return;
         observer.unobserve(entry.target);
-        entry.target.classList.add('help-article-visible');
-      });
-    }, { rootMargin: '0px 0px -40px 0px', threshold: 0.05 });
 
-    lazyBlocks.forEach(block => observer.observe(block));
+        const idx = parseInt(entry.target.dataset.idx);
+        const article = articles[idx];
+
+        // Crea il blocco reale senza divider (l'HR è già nel DOM dal loop skeleton)
+        const tmp = document.createElement('div');
+        tmp.innerHTML = this.renderArticleBlock(article, idx, articles.length, false);
+        const block = tmp.firstElementChild;
+        block.classList.add('help-article-lazy');
+
+        // Swappa skeleton → articolo reale
+        entry.target.replaceWith(block);
+
+        // Fade-in nel prossimo frame (garantisce che il browser applichi opacity:0 prima della transizione)
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => block.classList.add('help-article-visible'));
+        });
+
+        // Aggiorna TOC observer per includere il nuovo blocco
+        this.initTocObserver();
+      });
+    }, { rootMargin: '80px 0px' });
+
+    container.querySelectorAll('.help-article-skel').forEach(p => observer.observe(p));
   },
 
-  renderArticleBlock(article, idx, total) {
+  renderArticleBlock(article, idx, total, showDivider = true) {
     const stepsHtml = article.steps?.length ? `
       <ol class="help-steps-list" role="list">
         ${article.steps.map((step, i) => `
@@ -1933,7 +1997,7 @@ const helpDetailPage = {
 
     const relatedHtml = article.related?.length ? this.renderRelated(article.related) : '';
 
-    const divider = idx < total - 1 ? '<hr class="help-article-divider" aria-hidden="true">' : '';
+    const divider = showDivider && idx < total - 1 ? '<hr class="help-article-divider" aria-hidden="true">' : '';
 
     return `
       <section id="${article.id}" class="help-article-block">

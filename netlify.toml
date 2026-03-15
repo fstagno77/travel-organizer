@@ -5,8 +5,8 @@
 
 [dev]
   command = "npm run dev"
-  targetPort = 5173
-  port = 8888
+  targetPort = 5107
+  port = 8100
   publish = "dist"
   autoLaunch = false
 
@@ -31,6 +31,10 @@
 [[edge_functions]]
   function = "og-share"
   path = "/share.html"
+
+[[edge_functions]]
+  function = "og-invite"
+  path = "/login.html"
 
 [[redirects]]
   from = "/api/*"
