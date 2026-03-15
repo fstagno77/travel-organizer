@@ -35,6 +35,20 @@ const auth = {
       window.history.replaceState(null, '', cleanUrl);
     }
 
+    // Salva token invito piattaforma se presente in URL
+    if (urlParams.has('platform_invite')) {
+      const platformToken = urlParams.get('platform_invite');
+      console.log('[auth] Platform invite token found in URL, saving to sessionStorage');
+      sessionStorage.setItem('pending_platform_invite_token', platformToken);
+      // Riusa anche come invite token per sbloccare la registrazione
+      sessionStorage.setItem('pending_invite_token', platformToken);
+      urlParams.delete('platform_invite');
+      const cleanUrl = urlParams.toString()
+        ? `${window.location.pathname}?${urlParams.toString()}`
+        : window.location.pathname;
+      window.history.replaceState(null, '', cleanUrl);
+    }
+
     // Check for OAuth callback parameters before creating client
     const hasCode = urlParams.has('code');
     const hasError = urlParams.has('error');
@@ -156,6 +170,9 @@ const auth = {
 
     // If authenticated, handle pending invites
     if (this.session && this.profile) {
+      // Accetta eventuale invito piattaforma (token da URL)
+      await this.acceptPlatformInvite();
+
       // Converti eventuali inviti da trip_invitations in collaborazioni pending + notifiche
       this.acceptPendingInvitesByEmail();
 
@@ -707,6 +724,37 @@ const auth = {
   },
 
   /**
+   * Accetta un invito piattaforma se il token è presente in sessionStorage.
+   * Chiamato dopo il login/signup.
+   */
+  async acceptPlatformInvite() {
+    const token = sessionStorage.getItem('pending_platform_invite_token');
+    if (!token) return;
+
+    console.log('[auth] Accettando invito piattaforma...');
+    try {
+      const response = await fetch('/.netlify/functions/platform-invite', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.session.access_token}`
+        },
+        body: JSON.stringify({ action: 'accept', token })
+      });
+      const data = await response.json();
+      if (data.success) {
+        console.log('[auth] Invito piattaforma accettato');
+      } else {
+        console.warn('[auth] Invito piattaforma non accettato:', data.error);
+      }
+    } catch (err) {
+      console.error('[auth] Errore accettazione invito piattaforma:', err);
+    } finally {
+      sessionStorage.removeItem('pending_platform_invite_token');
+    }
+  },
+
+  /**
    * Accetta automaticamente tutti gli inviti pendenti per l'email dell'utente.
    * Chiamato dopo la creazione del profilo per nuovi utenti.
    */
@@ -987,6 +1035,8 @@ const auth = {
 
       try {
         await this.createProfile(username);
+        // Accetta invito piattaforma se presente
+        await this.acceptPlatformInvite();
         // Converti inviti da trip_invitations in collaborazioni pending + notifiche
         await this.acceptPendingInvitesByEmail();
         document.body.classList.remove('modal-open');

@@ -488,6 +488,10 @@
   padding: var(--spacing-5);
 }
 
+.settings-card + .settings-card {
+  margin-top: var(--spacing-4);
+}
+
 /* Profile Header in Settings */
 .profile-header {
   display: flex;

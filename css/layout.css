@@ -1146,6 +1146,21 @@ body:has(.modal-overlay.active) .app-sidebar {
   display: block;
 }
 
+.sidebar-beta-badge {
+  display: inline-block;
+  align-self: flex-start;
+  margin-left: 6px;
+  padding: 1px 5px;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #fff;
+  background: #2563eb;
+  border-radius: 20px;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
 /* ─── Sidebar: stato compresso (solo desktop) ────────────────────────── */
 
 @media (min-width: 768px) {

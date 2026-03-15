@@ -8,7 +8,8 @@
     "pastTrips": "Past trips",
     "profile": "Profile",
     "settings": "Settings",
-    "admin": "Admin"
+    "admin": "Admin",
+    "help": "Help"
   },
   "footer": {
     "changelog": "Changelog"
@@ -420,7 +421,27 @@
     "profile": "Profile",
     "travelers": "Travelers",
     "preferences": "Preferences",
+    "invitations": "Invitations",
     "languageDesc": "Select the interface language"
+  },
+  "invitations": {
+    "title": "Invite friends",
+    "description": "You can invite new users to Travel Flow. Share the link with whoever you want: they will be able to register and start using the platform.",
+    "quotaUsed": "invitations used this month",
+    "resetOn": "Resets on",
+    "limitReached": "You have reached the invitation limit for this month.",
+    "sendInvite": "Send invite",
+    "gmailHint": "We recommend Gmail addresses for Google sign-in. Other emails will use an OTP code.",
+    "listTitle": "Your invitations",
+    "noInvites": "No invitations sent yet.",
+    "statusPending": "Pending",
+    "statusAccepted": "Accepted",
+    "statusRevoked": "Revoked",
+    "copyLink": "Copy link",
+    "revoke": "Revoke",
+    "revokeConfirm": "Are you sure you want to revoke this invitation?",
+    "linkCopied": "Link copied! Share it with your friend.",
+    "invalidEmail": "Please enter a valid email address"
   },
   "travelers": {
     "title": "Travelers",
@@ -647,5 +668,18 @@
     "address": "Address",
     "confirmationNumber": "Confirmation",
     "guestName": "Guest Name"
+  },
+  "help": {
+    "heroTitle": "Need assistance?",
+    "heroSubtitle": "Find answers to all your questions about Travel Flow",
+    "searchPlaceholder": "Search a guide...",
+    "searchBtn": "Search",
+    "categoriesTitle": "Browse by topic",
+    "faqTitle": "Frequently asked questions",
+    "faqDesc": "Can't find what you're looking for? Browse the most common user questions.",
+    "faqContact": "Contact us at <a href=\"mailto:support@travelflow.app\">support@travelflow.app</a>",
+    "backToHelp": "Back to Help",
+    "otherTopics": "Other topics",
+    "tocToggle": "Article index"
   }
 }

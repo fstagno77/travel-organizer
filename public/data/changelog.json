@@ -1,6 +1,38 @@
 {
   "versions": [
     {
+      "version": "0.34.1",
+      "date": "2026-03-15",
+      "changes": {
+        "it": [
+          "Nuova pagina Aiuto con guide complete su tutte le funzionalità di Travel Flow",
+          "Ricerca intelligente tra gli articoli di aiuto",
+          "Sezione FAQ con le domande più frequenti, disponibile in italiano e inglese"
+        ],
+        "en": [
+          "New Help page with comprehensive guides for all Travel Flow features",
+          "Smart search across help articles",
+          "FAQ section with the most common questions, available in Italian and English"
+        ]
+      }
+    },
+    {
+      "version": "0.34.0",
+      "date": "2026-03-15",
+      "changes": {
+        "it": [
+          "Nuovo sistema inviti: invita fino a 5 amici al mese dalla sezione Impostazioni → Inviti",
+          "Link di invito univoco da copiare e condividere; l'amico può registrarsi con Google o codice OTP",
+          "Visualizza lo stato di ogni invito (in attesa, accettato, revocato) e il contatore mensile"
+        ],
+        "en": [
+          "New invitation system: invite up to 5 friends per month from Settings → Invitations",
+          "Unique invite link to copy and share; the friend can sign up with Google or OTP code",
+          "Track each invitation status (pending, accepted, revoked) and monthly quota"
+        ]
+      }
+    },
+    {
       "version": "0.33.1",
       "date": "2026-03-14",
       "changes": {

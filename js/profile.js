@@ -6,7 +6,7 @@
   'use strict';
 
   // Current active section (from URL hash or default)
-  const validSections = ['profile', 'travelers', 'preferences'];
+  const validSections = ['profile', 'travelers', 'preferences', 'invitations'];
   const hashSection = window.location.hash.replace('#', '');
   let activeSection = validSections.includes(hashSection) ? hashSection : 'profile';
 
@@ -106,6 +106,15 @@
                 <span data-i18n="settings.preferences">Preferenze</span>
               </button>
             </li>
+            <li>
+              <button class="settings-nav-item ${activeSection === 'invitations' ? 'active' : ''}" data-section="invitations">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21.5 2l-19 9 7 3z"/>
+                  <path d="M9.5 14l5 7 5-19"/>
+                </svg>
+                <span data-i18n="settings.invitations">Inviti</span>
+              </button>
+            </li>
           </ul>
         </nav>
 
@@ -184,6 +193,9 @@
         break;
       case 'preferences':
         renderPreferencesSection(content);
+        break;
+      case 'invitations':
+        renderInvitationsSection(content);
         break;
       default:
         renderProfileSection(content);
@@ -1641,6 +1653,337 @@
         });
       });
     }
+  }
+
+  // =========================================================================
+  // INVITATIONS SECTION
+  // =========================================================================
+
+  /**
+   * Render sezione inviti piattaforma
+   */
+  async function renderInvitationsSection(container) {
+    container.innerHTML = `
+      <div class="settings-section-header">
+        <h2 class="settings-section-title" data-i18n="invitations.title">Invita amici</h2>
+      </div>
+      <div class="invitations-loading" style="padding: 40px; text-align: center; color: var(--color-gray-400);">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation: spin 1s linear infinite;">
+          <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+        </svg>
+      </div>
+    `;
+    i18n.apply(container);
+
+    try {
+      const token = auth.getAccessToken();
+      const response = await fetch('/.netlify/functions/platform-invite', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ action: 'list' })
+      });
+      const data = await response.json();
+
+      if (!data.success) throw new Error(data.error);
+
+      renderInvitationsContent(container, data);
+    } catch (err) {
+      console.error('[profile] Errore caricamento inviti:', err);
+      container.innerHTML = `
+        <div class="settings-section-header">
+          <h2 class="settings-section-title" data-i18n="invitations.title">Invita amici</h2>
+        </div>
+        <div class="settings-card">
+          <p style="color: var(--color-gray-500);" data-i18n="common.genericError">Si è verificato un errore. Riprova.</p>
+        </div>
+      `;
+      i18n.apply(container);
+    }
+  }
+
+  /**
+   * Render contenuto inviti dopo il caricamento dati
+   */
+  function renderInvitationsContent(container, data) {
+    const { invites, usedThisMonth, remainingThisMonth, monthlyLimit } = data;
+    const limitReached = remainingThisMonth <= 0;
+    const progressPct = Math.round((usedThisMonth / monthlyLimit) * 100);
+
+    // Calcola data reset (primo del mese prossimo)
+    const now = new Date();
+    const resetDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const resetStr = resetDate.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' });
+
+    container.innerHTML = `
+      <div class="settings-section-header">
+        <h2 class="settings-section-title" data-i18n="invitations.title">Invita amici</h2>
+      </div>
+
+      <div class="settings-card">
+        <p class="settings-card-description" data-i18n="invitations.description">
+          Puoi invitare nuovi utenti su Travel Flow. Condividi il link con chi vuoi: potranno registrarsi e iniziare a usare la piattaforma.
+        </p>
+
+        <div class="invite-quota">
+          <div class="invite-quota-bar-wrap">
+            <div class="invite-quota-bar" style="width: ${progressPct}%;"></div>
+          </div>
+          <div class="invite-quota-label">
+            <span><strong>${usedThisMonth}</strong> / ${monthlyLimit} <span data-i18n="invitations.quotaUsed">inviti usati questo mese</span></span>
+            <span class="invite-quota-reset" data-i18n-key="invitations.resetOn" data-reset="${resetStr}">Reset il ${resetStr}</span>
+          </div>
+        </div>
+
+        ${limitReached ? `
+          <div class="invite-limit-notice" data-i18n="invitations.limitReached">
+            Hai raggiunto il limite di inviti per questo mese. Potrai inviarne altri dal ${resetStr}.
+          </div>
+        ` : `
+          <div class="invite-form" id="invite-form">
+            <div class="invite-form-row">
+              <input
+                type="email"
+                id="invite-email-input"
+                class="form-input"
+                placeholder="email@esempio.com"
+                autocomplete="off"
+                ${limitReached ? 'disabled' : ''}
+              >
+              <button class="btn btn-primary" id="invite-send-btn" ${limitReached ? 'disabled' : ''}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="22" y1="2" x2="11" y2="13"/>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                </svg>
+                <span data-i18n="invitations.sendInvite">Invia invito</span>
+              </button>
+            </div>
+            <div class="form-error" id="invite-error" style="display:none;"></div>
+            <div class="invite-hint" data-i18n="invitations.gmailHint">
+              Consigliamo email Gmail per l'accesso con Google. Per altre email verrà usato un codice OTP.
+            </div>
+          </div>
+        `}
+      </div>
+
+      <div class="settings-card" id="invitations-list-card">
+        <h3 class="settings-card-title" data-i18n="invitations.listTitle">I tuoi inviti</h3>
+        ${renderInvitesList(invites)}
+      </div>
+    `;
+
+    i18n.apply(container);
+    bindInvitationsEvents(container, data);
+  }
+
+  /**
+   * Render la lista degli inviti
+   */
+  function renderInvitesList(invites) {
+    if (!invites || invites.length === 0) {
+      return `<p class="invite-empty" data-i18n="invitations.noInvites">Nessun invito inviato ancora.</p>`;
+    }
+
+    return `
+      <ul class="invite-list">
+        ${invites.map(inv => {
+          const date = new Date(inv.created_at).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' });
+          const statusLabel = {
+            pending: `<span class="invite-status invite-status--pending" data-i18n="invitations.statusPending">In attesa</span>`,
+            accepted: `<span class="invite-status invite-status--accepted" data-i18n="invitations.statusAccepted">Accettato</span>`,
+            revoked: `<span class="invite-status invite-status--revoked" data-i18n="invitations.statusRevoked">Revocato</span>`
+          }[inv.status] || '';
+
+          const actions = inv.status === 'pending' ? `
+            <div class="invite-actions">
+              <button class="btn-icon-sm invite-copy-btn" data-url="${escapeHtml(inv.inviteUrl)}" title="Copia link" data-i18n-title="invitations.copyLink">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                </svg>
+              </button>
+              <button class="btn-icon-sm invite-revoke-btn" data-id="${escapeHtml(inv.id)}" title="Revoca" data-i18n-title="invitations.revoke">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="18" y1="6" x2="6" y2="18"/>
+                  <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+          ` : '';
+
+          return `
+            <li class="invite-item">
+              <div class="invite-item-main">
+                <span class="invite-item-email">${escapeHtml(inv.email)}</span>
+                <span class="invite-item-date">${date}</span>
+              </div>
+              <div class="invite-item-meta">
+                ${statusLabel}
+                ${actions}
+              </div>
+            </li>
+          `;
+        }).join('')}
+      </ul>
+    `;
+  }
+
+  /**
+   * Bind eventi sezione inviti
+   */
+  function bindInvitationsEvents(container, initialData) {
+    let currentData = { ...initialData };
+
+    const sendBtn = container.querySelector('#invite-send-btn');
+    const emailInput = container.querySelector('#invite-email-input');
+    const errorDiv = container.querySelector('#invite-error');
+
+    // Invia invito
+    if (sendBtn && emailInput) {
+      const doSend = async () => {
+        const email = emailInput.value.trim();
+        if (!email || !email.includes('@')) {
+          showInviteError(errorDiv, i18n.t('invitations.invalidEmail') || 'Inserisci un\'email valida');
+          return;
+        }
+
+        sendBtn.disabled = true;
+        sendBtn.style.opacity = '0.6';
+        clearInviteError(errorDiv);
+
+        try {
+          const token = auth.getAccessToken();
+          const response = await fetch('/.netlify/functions/platform-invite', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ action: 'send', email })
+          });
+          const data = await response.json();
+
+          if (!data.success) {
+            showInviteError(errorDiv, data.error);
+            sendBtn.disabled = false;
+            sendBtn.style.opacity = '';
+            return;
+          }
+
+          emailInput.value = '';
+          // Aggiorna il link copiato automaticamente
+          showInviteCopiedFeedback(data.invite.inviteUrl);
+          // Ricarica la sezione per aggiornare lista e quota
+          renderInvitationsSection(container.closest('#settings-content') || container);
+
+        } catch (err) {
+          console.error('[profile] Errore invio invito:', err);
+          showInviteError(errorDiv, i18n.t('common.genericError') || 'Errore interno. Riprova.');
+          sendBtn.disabled = false;
+          sendBtn.style.opacity = '';
+        }
+      };
+
+      sendBtn.addEventListener('click', doSend);
+      emailInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') doSend();
+      });
+    }
+
+    // Copia link
+    container.querySelectorAll('.invite-copy-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const url = btn.dataset.url;
+        if (!url) return;
+        copyToClipboard(url);
+        showCopyFeedback(btn);
+      });
+    });
+
+    // Revoca invito
+    container.querySelectorAll('.invite-revoke-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const inviteId = btn.dataset.id;
+        if (!inviteId) return;
+        if (!confirm(i18n.t('invitations.revokeConfirm') || 'Revocare questo invito?')) return;
+
+        btn.disabled = true;
+        try {
+          const token = auth.getAccessToken();
+          const response = await fetch('/.netlify/functions/platform-invite', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ action: 'revoke', inviteId })
+          });
+          const data = await response.json();
+          if (data.success) {
+            renderInvitationsSection(container.closest('#settings-content') || container);
+          } else {
+            console.error('[profile] Revoca fallita:', data.error);
+            btn.disabled = false;
+          }
+        } catch (err) {
+          console.error('[profile] Errore revoca:', err);
+          btn.disabled = false;
+        }
+      });
+    });
+  }
+
+  function showInviteError(el, msg) {
+    if (!el) return;
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+
+  function clearInviteError(el) {
+    if (!el) return;
+    el.textContent = '';
+    el.style.display = 'none';
+  }
+
+  function showCopyFeedback(btn) {
+    const orig = btn.innerHTML;
+    btn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>`;
+    setTimeout(() => { btn.innerHTML = orig; }, 1500);
+  }
+
+  function showInviteCopiedFeedback(url) {
+    copyToClipboard(url);
+    // Mostra un toast temporaneo
+    const toast = document.createElement('div');
+    toast.className = 'invite-toast';
+    toast.textContent = i18n.t('invitations.linkCopied') || 'Link copiato! Condividilo con il tuo amico.';
+    document.body.appendChild(toast);
+    requestAnimationFrame(() => { toast.classList.add('invite-toast--visible'); });
+    setTimeout(() => {
+      toast.classList.remove('invite-toast--visible');
+      setTimeout(() => toast.remove(), 300);
+    }, 3000);
+  }
+
+  function copyToClipboard(text) {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
+    } else {
+      fallbackCopy(text);
+    }
+  }
+
+  function fallbackCopy(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    ta.remove();
   }
 
   // Esponi su window per navigazione SPA

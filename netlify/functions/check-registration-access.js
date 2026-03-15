@@ -61,8 +61,26 @@ exports.handler = async (event, context) => {
     body = {};
   }
 
-  // Se c'è un invite token, verifica direttamente per token (indipendente dall'email)
+  // Se c'è un invite token, verifica prima per token piattaforma, poi per token viaggio
   if (body.invite_token) {
+    // Controlla platform_invitations (invito generico alla piattaforma)
+    const { data: platformInvite } = await serviceClient
+      .from('platform_invitations')
+      .select('id, email')
+      .eq('token', body.invite_token)
+      .eq('status', 'pending')
+      .maybeSingle();
+
+    if (platformInvite) {
+      console.log(`[check-registration-access] Accesso consentito tramite platform invite token per: ${email}`);
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ allowed: true, reason: 'platform_invite_token' })
+      };
+    }
+
+    // Controlla trip_invitations (invito a un viaggio specifico)
     const { data: tokenInvite } = await serviceClient
       .from('trip_invitations')
       .select('id, email')
@@ -80,7 +98,24 @@ exports.handler = async (event, context) => {
     }
   }
 
-  // Cerca invito per email (usa .limit(1) per gestire eventuali duplicati)
+  // Cerca invito piattaforma per email
+  const { data: platformInviteByEmail } = await serviceClient
+    .from('platform_invitations')
+    .select('id')
+    .eq('email', email)
+    .in('status', ['pending', 'accepted'])
+    .limit(1);
+
+  if (platformInviteByEmail && platformInviteByEmail.length > 0) {
+    console.log(`[check-registration-access] Invito piattaforma trovato per ${email}`);
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({ allowed: true, reason: 'platform_invited' })
+    };
+  }
+
+  // Cerca invito viaggio per email (usa .limit(1) per gestire eventuali duplicati)
   const { data: invitations, error: invError } = await serviceClient
     .from('trip_invitations')
     .select('id, email, status')

@@ -176,6 +176,7 @@ const navigation = {
     const isPast = activePath.includes('past-trips.html');
     const isProfile = activePath.includes('profile.html');
     const isNotifications = activePath.includes('notifications.html');
+    const isHelp = activePath.includes('/help');
 
     // Icone SVG
     const toggleExpandSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>`;
@@ -185,6 +186,7 @@ const navigation = {
     const clockSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>`;
     const gearSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
     const shieldSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`;
+    const helpSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
 
     const sidebarHtml = `
       <div class="app-sidebar-overlay" id="app-sidebar-overlay"></div>
@@ -192,6 +194,7 @@ const navigation = {
         <div class="sidebar-header">
           <a href="/index.html" class="sidebar-logo">
             <img src="/assets/icons/travel-flow-logo-bk.png" alt="Travel Flow" class="sidebar-logo-img">
+            <span class="sidebar-beta-badge">Beta</span>
           </a>
           <button class="sidebar-toggle" id="sidebar-toggle" title="Toggle sidebar">${toggleExpandSvg}</button>
           <button class="sidebar-close" id="sidebar-close">${closeSvg}</button>
@@ -213,6 +216,10 @@ const navigation = {
           <a href="/profile.html" class="sidebar-link${isProfile ? ' sidebar-link--active' : ''}" data-tooltip="Impostazioni">
             ${gearSvg}
             <span data-i18n="nav.settings">Impostazioni</span>
+          </a>
+          <a href="/help.html" class="sidebar-link${isHelp ? ' sidebar-link--active' : ''}" data-tooltip="Aiuto">
+            ${helpSvg}
+            <span data-i18n="nav.help">Aiuto</span>
           </a>
           ${isAdmin ? `
           <a href="/admin.html" class="sidebar-link" data-tooltip="Admin">
@@ -243,6 +250,7 @@ const navigation = {
 
     // Salva sidebar HTML in cache per instant-render al prossimo page load
     try {
+      sessionStorage.setItem('sidebar-cache-v', '4');
       sessionStorage.setItem('sidebar-cache', sidebarHtml);
     } catch (e) { /* sessionStorage pieno, ignora */ }
   },
@@ -259,11 +267,13 @@ const navigation = {
       if (source) activePath = source;
     }
 
+    const isHelpPage = activePath.includes('help');
     document.querySelectorAll('.sidebar-link').forEach(link => {
       const linkPath = new URL(link.href, location.origin).pathname;
       const isActive = linkPath === activePath ||
         ((activePath.endsWith('/') || activePath.endsWith('index.html')) && linkPath === '/index.html') ||
-        (activePath === '/' && linkPath === '/index.html');
+        (activePath === '/' && linkPath === '/index.html') ||
+        (isHelpPage && linkPath === '/help.html');
       link.classList.toggle('sidebar-link--active', isActive);
     });
   },
@@ -385,13 +395,28 @@ const navigation = {
     // Pagine standard supportate dalla navigazione SPA
     const spaPages = ['/', '/index.html', '/past-trips.html', '/notifications.html', '/profile.html'];
 
-    // Mappa pagina → funzione init
+    // Mappa pagina → funzione init (async: dynamic import se il modulo non è caricato)
     const pageInitMap = {
-      '/': () => window.homePage?.init(),
-      '/index.html': () => window.homePage?.init(),
-      '/past-trips.html': () => window.pastTripsPage?.init(),
-      '/notifications.html': () => window.notificationsPage?.init(),
-      '/profile.html': () => window.profilePage?.init(),
+      '/': async () => {
+        if (!window.homePage) await import('./homePage.js');
+        window.homePage?.init();
+      },
+      '/index.html': async () => {
+        if (!window.homePage) await import('./homePage.js');
+        window.homePage?.init();
+      },
+      '/past-trips.html': async () => {
+        if (!window.pastTripsPage) await import('./pastTripsPage.js');
+        window.pastTripsPage?.init();
+      },
+      '/notifications.html': async () => {
+        if (!window.notificationsPage) await import('./notifications.js');
+        window.notificationsPage?.init();
+      },
+      '/profile.html': async () => {
+        if (!window.profilePage) await import('./profile.js');
+        window.profilePage?.init();
+      },
     };
 
     const isSpaPage = (url) => {
@@ -402,6 +427,11 @@ const navigation = {
     const isTripPage = (url) => {
       const path = new URL(url, location.origin).pathname;
       return path.includes('trip.html');
+    };
+
+    const isHelpUrl = (url) => {
+      const path = new URL(url, location.origin).pathname;
+      return path.includes('/help');
     };
 
     // Template HTML della pagina trip (iniettato nell'app-content durante SPA navigation)
@@ -490,7 +520,7 @@ const navigation = {
       currentAppContent.innerHTML = newPageWrapper.innerHTML;
 
       // Rimuovi classi pagina-specifiche e ripristina theme-color
-      document.body.classList.remove('trip-page');
+      document.body.classList.remove('trip-page', 'help-page');
       document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#ffffff');
 
       // Aggiorna titolo e URL
@@ -517,9 +547,9 @@ const navigation = {
         existingFab?.remove();
       }
 
-      // Init pagina target
+      // Init pagina target (async: attende dynamic import se necessario)
       const initFn = pageInitMap[targetPath];
-      if (initFn) initFn();
+      if (initFn) await initFn();
 
       if (typeof i18n !== 'undefined') i18n.apply();
       navigation.refreshPendingCount?.();
@@ -580,6 +610,87 @@ const navigation = {
     };
 
     /**
+     * Naviga verso help.html o help-detail.html via SPA (carica moduli dinamicamente)
+     */
+    const navigateToHelp = async (url, pushState) => {
+      const targetPath = new URL(url, location.origin).pathname;
+      const isDetail = targetPath.includes('help-detail');
+
+      const currentAppContent = document.querySelector('.app-content');
+      if (!currentAppContent) { window.location.href = url; return; }
+
+      // Salva pagina attiva per sidebar
+      sessionStorage.setItem('sidebar-active-page', targetPath);
+
+      // Aggiorna link attivo sidebar: Aiuto per tutte le pagine help
+      document.querySelectorAll('.sidebar-link').forEach(link => {
+        const linkPath = new URL(link.href, location.origin).pathname;
+        link.classList.toggle('sidebar-link--active', linkPath === '/help.html');
+      });
+
+      // Chiudi sidebar su mobile
+      if (window.innerWidth < 768) closeSidebar();
+
+      // Fetch della nuova pagina
+      const res = await fetch(url);
+      if (!res.ok) { window.location.href = url; return; }
+      const html = await res.text();
+
+      // Parse HTML ed estrai contenuto del page-wrapper
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      const newPageWrapper = doc.querySelector('.page-wrapper');
+      if (!newPageWrapper) { window.location.href = url; return; }
+
+      // Carica help.css se non ancora presente nel documento
+      if (!document.querySelector('link[href*="help.css"]')) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = '/css/help.css';
+        document.head.appendChild(link);
+      }
+
+      // Aggiunge classe help-page, rimuove trip-page
+      document.body.classList.remove('trip-page');
+      document.body.classList.add('help-page');
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#ffffff');
+
+      // Rimuovi FAB se presente
+      document.getElementById('fab-new-trip')?.remove();
+
+      // Sostituisci contenuto
+      currentAppContent.innerHTML = newPageWrapper.innerHTML;
+
+      // Aggiorna titolo e URL
+      document.title = doc.title;
+      if (pushState) history.pushState({ spaNav: true }, '', url);
+
+      // Ri-renderizza header
+      const headerPlaceholder = currentAppContent.querySelector('#header-placeholder');
+      if (headerPlaceholder) {
+        const isAuthenticated = window.auth?.isAuthenticated();
+        const profile = window.auth?.profile;
+        navigation.loadHomeHeader(headerPlaceholder, isAuthenticated, profile);
+        navigation.initNotificationDropdown();
+      }
+
+      // Carica moduli help se non ancora caricati
+      if (!window.helpPage) await import('./helpPage.js');
+      if (isDetail && !window.helpDetailPage) await import('./helpDetailPage.js');
+
+      // Init pagina
+      if (isDetail) {
+        window.helpDetailPage?.init();
+      } else {
+        window.helpPage?.init();
+      }
+
+      if (typeof i18n !== 'undefined') i18n.apply();
+      navigation.refreshPendingCount?.();
+      window.scrollTo(0, 0);
+    };
+
+    /**
      * Funzione navigate principale
      */
     const navigate = async (url, pushState = true) => {
@@ -594,6 +705,8 @@ const navigation = {
       try {
         if (isTripPage(url)) {
           await navigateToTrip(url, pushState);
+        } else if (isHelpUrl(url)) {
+          await navigateToHelp(url, pushState);
         } else if (isSpaPage(url)) {
           await navigateToPage(url, pushState);
         } else {
@@ -607,9 +720,9 @@ const navigation = {
       }
     };
 
-    // Intercetta click sui link sidebar (pagine standard)
+    // Intercetta click sui link sidebar (SPA pages + help pages)
     document.querySelectorAll('.sidebar-link').forEach(link => {
-      if (!isSpaPage(link.href)) return;
+      if (!isSpaPage(link.href) && !isHelpUrl(link.href)) return;
       link.addEventListener('click', (e) => {
         e.preventDefault();
         navigate(link.href);
@@ -654,7 +767,7 @@ const navigation = {
     // Gestione back/forward del browser
     window.addEventListener('popstate', (e) => {
       const href = location.href;
-      if (isSpaPage(href) || isTripPage(href)) {
+      if (isSpaPage(href) || isTripPage(href) || isHelpUrl(href)) {
         navigate(href, false);
       }
     });

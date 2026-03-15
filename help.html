@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Aiuto - Travel Flow</title>
+
+  <!-- Favicon & PWA -->
+  <link rel="icon" type="image/svg+xml" href="assets/icons/favicon.svg">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Travel Flow">
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="css/reset.css">
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/utilities.css">
+  <link rel="stylesheet" href="css/auth.css">
+  <link rel="stylesheet" href="css/help.css">
+
+  <!-- Fonts (self-hosted) -->
+  <link rel="stylesheet" href="./css/fonts.css">
+</head>
+<body class="help-page">
+  <script>try{if(localStorage.getItem('sb-ftivlqthgsziuljruiqo-auth-token')){document.body.classList.add('has-sidebar');if(localStorage.getItem('sidebar-collapsed')==='true')document.body.classList.add('sidebar-collapsed');var sc=sessionStorage.getItem('sidebar-cache-v')==='4'&&sessionStorage.getItem('sidebar-cache');if(sc)document.body.insertAdjacentHTML('afterbegin',sc)}sessionStorage.setItem('sidebar-active-page',location.pathname)}catch(e){}</script>
+  <div class="page-wrapper">
+    <div id="header-placeholder"></div>
+
+    <main>
+      <div class="container">
+
+        <!-- Hero con ricerca -->
+        <section class="help-hero">
+          <h1 class="help-hero-title" data-i18n="help.heroTitle">Hai bisogno di aiuto?</h1>
+          <p class="help-hero-subtitle" data-i18n="help.heroSubtitle">Trova risposta a tutte le tue domande su Travel Flow</p>
+          <div class="help-search-wrapper">
+            <svg class="help-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input
+              type="text"
+              id="help-search-input"
+              class="help-search-input"
+              data-i18n-placeholder="help.searchPlaceholder"
+              placeholder="Cerca una guida..."
+              autocomplete="off"
+              aria-autocomplete="list"
+              aria-controls="help-autocomplete-dropdown"
+              role="combobox"
+              aria-expanded="false"
+            >
+            <button class="help-search-btn" id="help-search-btn" data-i18n="help.searchBtn">Cerca</button>
+            <!-- Autocomplete dropdown -->
+            <div id="help-autocomplete-dropdown" class="help-autocomplete-dropdown" role="listbox" aria-label="Suggerimenti di ricerca">
+            </div>
+          </div>
+        </section>
+
+        <!-- Risultati ricerca -->
+        <div id="help-search-results" class="help-search-results">
+          <p class="help-search-results-header" id="help-search-results-header"></p>
+          <div id="help-search-results-list"></div>
+        </div>
+
+        <!-- Card categorie -->
+        <section id="help-categories-section" class="help-categories">
+          <h2 class="help-categories-title" data-i18n="help.categoriesTitle">Esplora per argomento</h2>
+          <div class="help-categories-grid" id="help-categories-grid">
+            <!-- Popolato da JS -->
+          </div>
+        </section>
+
+        <!-- Sezioni dettaglio -->
+        <div id="help-sections-container" class="help-sections">
+          <!-- Popolato da JS -->
+        </div>
+
+        <!-- FAQ -->
+        <section id="help-faq" class="help-faq">
+          <div class="help-faq-layout">
+            <div class="help-faq-sidebar">
+              <h2 class="help-faq-sidebar-title" data-i18n="help.faqTitle">Domande frequenti</h2>
+              <p class="help-faq-sidebar-desc" data-i18n="help.faqDesc">Non trovi quello che cerchi? Sfoglia le domande più comuni degli utenti.</p>
+
+            </div>
+            <div id="help-faq-list" class="help-faq-list">
+              <!-- Popolato da JS -->
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+
+    <div id="footer-placeholder"></div>
+  </div>
+
+  <!-- JS -->
+  <script type="module" src="/js/entries/help-entry.js"></script>
+</body>
+</html>

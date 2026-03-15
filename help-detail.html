@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Aiuto - Travel Flow</title>
+
+  <!-- Favicon & PWA -->
+  <link rel="icon" type="image/svg+xml" href="assets/icons/favicon.svg">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Travel Flow">
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="css/reset.css">
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/utilities.css">
+  <link rel="stylesheet" href="css/auth.css">
+  <link rel="stylesheet" href="css/help.css">
+
+  <!-- Fonts (self-hosted) -->
+  <link rel="stylesheet" href="./css/fonts.css">
+</head>
+<body class="help-page">
+  <script>try{if(localStorage.getItem('sb-ftivlqthgsziuljruiqo-auth-token')){document.body.classList.add('has-sidebar');if(localStorage.getItem('sidebar-collapsed')==='true')document.body.classList.add('sidebar-collapsed');var sc=sessionStorage.getItem('sidebar-cache-v')==='4'&&sessionStorage.getItem('sidebar-cache');if(sc)document.body.insertAdjacentHTML('afterbegin',sc)}sessionStorage.setItem('sidebar-active-page',location.pathname)}catch(e){}</script>
+  <div class="page-wrapper">
+    <div id="header-placeholder"></div>
+
+    <main>
+      <div class="container">
+
+        <!-- Breadcrumb navigabile -->
+        <nav class="help-breadcrumb" aria-label="Breadcrumb">
+          <a href="/help.html" data-i18n="nav.help">Aiuto</a>
+          <span class="help-breadcrumb-sep" aria-hidden="true">›</span>
+          <span class="help-breadcrumb-current" id="help-breadcrumb-current">…</span>
+        </nav>
+
+        <!-- Hero categoria (piena larghezza) -->
+        <div class="help-detail-hero" id="help-detail-hero">
+          <div class="help-detail-hero-icon" id="help-detail-hero-icon"></div>
+          <div class="help-detail-hero-text">
+            <h1 class="help-detail-hero-title" id="help-detail-hero-title">…</h1>
+            <p class="help-detail-hero-desc" id="help-detail-hero-desc">…</p>
+          </div>
+        </div>
+
+        <!-- Layout 2 colonne: TOC sidebar + contenuto -->
+        <div class="help-detail-layout">
+
+          <!-- TOC sidebar sinistra -->
+          <aside class="help-toc-sidebar">
+            <button class="help-toc-toggle" id="help-toc-toggle" aria-expanded="true">
+              <span data-i18n="help.tocToggle">Indice articoli</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+            <div id="help-toc" class="help-toc-content">
+              <!-- Popolato da renderTOC() -->
+            </div>
+          </aside>
+
+          <!-- Main content -->
+          <div class="help-detail-main">
+            <div id="help-articles-container" class="help-articles">
+              <!-- Popolato da renderArticles() -->
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Altre categorie (piena larghezza) -->
+        <div class="help-other-categories">
+          <h2 class="help-other-categories-title" data-i18n="help.otherTopics">Altri argomenti</h2>
+          <div class="help-other-grid" id="help-other-grid">
+            <!-- Popolato da JS -->
+          </div>
+        </div>
+
+      </div>
+    </main>
+
+    <div id="footer-placeholder"></div>
+  </div>
+
+  <!-- JS -->
+  <script type="module" src="/js/entries/help-detail-entry.js"></script>
+</body>
+</html>

@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.34.1 - 2026-03-15
+
+### Novità
+- **Pagina Aiuto**: nuova sezione accessibile dalla barra laterale con guide complete su tutte le funzionalità di Travel Flow
+- Ricerca intelligente tra gli articoli di aiuto: trova subito la risposta che cerchi
+- Guide dettagliate su: voli, hotel, attività, collaborazione, notifiche, profilo e sicurezza
+- Sezione FAQ con le domande più frequenti
+- Disponibile in italiano e inglese
+
+## 0.34.0 - 2026-03-15
+
+### Novità
+- **Sistema inviti piattaforma**: ogni utente può invitare fino a 5 nuovi utenti al mese direttamente dalle Impostazioni (tab "Inviti")
+- Dopo aver inserito l'email dell'amico, viene generato un link univoco da copiare e condividere (WhatsApp, email, ecc.)
+- Chi riceve il link può registrarsi con Google OAuth o con un codice OTP via email
+- Nella tab si vede quanti inviti sono stati usati questo mese e quando il contatore si azzera
+- Per ogni invito pendente è possibile copiare di nuovo il link o revocarlo
+
 ## 0.33.1 - 2026-03-14
 
 ### Miglioramenti

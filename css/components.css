@@ -9595,3 +9595,231 @@ body:has(#modal-page-slider.at-activity) .trip-fab {
     align-items: flex-start;
   }
 }
+
+/* =========================================================================
+   PLATFORM INVITATIONS — settings tab
+   ========================================================================= */
+
+.invite-quota {
+  margin-top: var(--spacing-4);
+}
+
+.invite-quota-bar-wrap {
+  height: 6px;
+  background: var(--color-gray-200);
+  border-radius: 99px;
+  overflow: hidden;
+  margin-bottom: var(--spacing-2);
+}
+
+.invite-quota-bar {
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: 99px;
+  transition: width 0.4s ease;
+  min-width: 0;
+}
+
+.invite-quota-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-500);
+}
+
+.invite-quota-reset {
+  font-size: var(--font-size-xs, 11px);
+  color: var(--color-gray-400);
+}
+
+.invite-limit-notice {
+  margin-top: var(--spacing-4);
+  padding: var(--spacing-3) var(--spacing-4);
+  background: var(--color-gray-100);
+  border-radius: var(--border-radius);
+  color: var(--color-gray-600);
+  font-size: var(--font-size-sm);
+}
+
+.invite-form {
+  margin-top: var(--spacing-4);
+}
+
+.invite-form-row {
+  display: flex;
+  gap: var(--spacing-2);
+}
+
+.invite-form-row .form-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.invite-form-row .btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  white-space: nowrap;
+}
+
+.invite-hint {
+  margin-top: var(--spacing-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-400);
+}
+
+.invite-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.invite-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3) 0;
+  border-bottom: 1px solid var(--color-gray-100);
+}
+
+.invite-item:last-child {
+  border-bottom: none;
+}
+
+.invite-item-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.invite-item-email {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-gray-800);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.invite-item-date {
+  font-size: var(--font-size-xs, 11px);
+  color: var(--color-gray-400);
+}
+
+.invite-item-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  flex-shrink: 0;
+}
+
+.invite-status {
+  font-size: var(--font-size-xs, 11px);
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 99px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.invite-status--pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.invite-status--accepted {
+  background: var(--color-hotel-50);
+  color: var(--color-hotel-700);
+}
+
+.invite-status--revoked {
+  background: var(--color-gray-100);
+  color: var(--color-gray-500);
+}
+
+.invite-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+}
+
+.btn-icon-sm {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--border-radius-sm);
+  border: 1px solid var(--color-gray-200);
+  background: transparent;
+  color: var(--color-gray-500);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  padding: 0;
+}
+
+.btn-icon-sm:hover {
+  background: var(--color-gray-100);
+  color: var(--color-gray-800);
+}
+
+.invite-empty {
+  color: var(--color-gray-400);
+  font-size: var(--font-size-sm);
+  text-align: center;
+  padding: var(--spacing-4) 0;
+}
+
+/* Toast notifica link copiato */
+.invite-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(16px);
+  background: var(--color-gray-800);
+  color: var(--color-white);
+  padding: var(--spacing-3) var(--spacing-5);
+  border-radius: var(--border-radius);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 9999;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.invite-toast--visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+@media (max-width: 576px) {
+  .invite-form-row {
+    flex-direction: column;
+  }
+
+  .invite-form-row .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .invite-toast {
+    white-space: normal;
+    text-align: center;
+    left: 16px;
+    right: 16px;
+    transform: translateY(16px);
+    width: auto;
+  }
+
+  .invite-toast--visible {
+    transform: translateY(0);
+  }
+}

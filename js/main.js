@@ -65,6 +65,14 @@
     if (path.includes('past-trips.html') && typeof pastTripsPage !== 'undefined') {
       pastTripsPage.init();
     }
+
+    if (path.includes('help-detail.html') && typeof helpDetailPage !== 'undefined') {
+      helpDetailPage.init();
+    }
+
+    if (path.includes('help.html') && !path.includes('help-detail') && typeof helpPage !== 'undefined') {
+      helpPage.init();
+    }
   }
 
   // Listen for language changes to re-render dynamic content
