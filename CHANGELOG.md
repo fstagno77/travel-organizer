@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.35.0 - 2026-03-24
+
+### Fix
+- Accordion "Mostra dettagli" su voli e hotel ora funziona correttamente
+- Tab "Auto" nel segmented control ora si apre sempre dopo il ricaricamento della pagina
+- Link Google Maps dall'app iOS ora vengono riconosciuti correttamente nell'aggiunta attività
+- Messaggio di errore nelle modali ora è sempre visibile su smartphone, anche se la pagina è scrollata verso il basso
+- Corretto bug su PWA iOS che mostrava il messaggio di errore sotto la status bar del sistema
+- Nella modale di condivisione, i collaboratori che hanno già accettato l'invito non appaiono più in doppio
+
+### Novità
+- **Pagina di condivisione pubblica rinnovata**: il link di condivisione mostra ora la stessa struttura della pagina viaggio (Voli, Hotel, Treni, Bus, Auto, Attività), con tab dinamici e card aggiornate — tutto in sola lettura
+
 ## 0.34.10 - 2026-03-15
 
 ### Miglioramenti

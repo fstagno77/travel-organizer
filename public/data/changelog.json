@@ -1,6 +1,14 @@
 {
   "versions": [
     {
+      "version": "0.35.0",
+      "date": "2026-03-24",
+      "changes": {
+        "it": ["Fix accordion \"Mostra dettagli\" su voli e hotel", "Fix tab Auto nel segmented control: ora si apre sempre dopo il ricaricamento", "Fix link Google Maps da app iOS nell'aggiunta attività", "Fix messaggio di errore nelle modali su smartphone con pagina scrollata", "Fix PWA iOS: messaggio errore non più nascosto dalla status bar", "Fix modale condivisione: collaboratori che hanno accettato non appaiono più in doppio", "Pagina di condivisione pubblica rinnovata: stessa struttura della pagina viaggio con tab dinamici e card aggiornate, in sola lettura"],
+        "en": ["Fix accordion \"Show details\" on flights and hotels", "Fix Auto tab in segmented control: always opens after page reload", "Fix Google Maps links from iOS app when adding activities", "Fix error message in modals on mobile when page is scrolled down", "Fix PWA iOS: error message no longer hidden behind system status bar", "Fix share modal: accepted collaborators no longer appear twice", "Public share page redesigned: same structure as trip page with dynamic tabs and updated cards, read-only"]
+      }
+    },
+    {
       "version": "0.34.10",
       "date": "2026-03-15",
       "changes": {
