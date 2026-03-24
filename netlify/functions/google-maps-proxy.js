@@ -79,6 +79,11 @@ exports.handler = async (event) => {
       }
     }
 
+    // Formato app iOS: nessuna coordinata, solo query testuale (es. ?q=Via+Roma,+Milano)
+    if (!placeData && urlInfo.query) {
+      placeData = await searchPlacesByText(apiKey, urlInfo.query);
+    }
+
     if (!placeData) {
       return {
         statusCode: 200,
@@ -156,7 +161,20 @@ async function resolveShortlink(url) {
 }
 
 function parseGoogleMapsUrl(url) {
-  const result = { name: null, latitude: null, longitude: null };
+  const result = { name: null, latitude: null, longitude: null, query: null };
+
+  // Formato app iOS: maps.google.com/maps?q=Nome+Luogo,...
+  // Questo formato non ha coordinate né path /place/ — usiamo il param q come query testuale
+  try {
+    const parsed = new URL(url);
+    const qParam = parsed.searchParams.get('q');
+    if (qParam && !url.includes('/place/') && !url.match(/@-?\d+\.?\d*,-?\d+\.?\d*/)) {
+      result.query = qParam;
+      return result;
+    }
+  } catch {
+    // URL non valido, prosegui con il parsing regex classico
+  }
 
   // Extract place name from /place/Name+Here/
   const placeMatch = url.match(/\/place\/([^/@]+)/);
@@ -322,6 +340,53 @@ async function reverseGeocode(apiKey, latitude, longitude) {
     };
   } catch (error) {
     console.error('Geocoding API request failed:', error);
+    return null;
+  }
+}
+
+/**
+ * Ricerca Places API by text query — usato per URL provenienti dall'app iOS
+ * che usano il formato maps.google.com/maps?q=... senza coordinate.
+ */
+async function searchPlacesByText(apiKey, query) {
+  try {
+    const response = await fetch('https://places.googleapis.com/v1/places:searchText', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': apiKey,
+        'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.primaryType,places.location'
+      },
+      body: JSON.stringify({
+        textQuery: query,
+        languageCode: 'it'
+      })
+    });
+
+    if (!response.ok) {
+      console.error('Places API (text) error:', response.status, await response.text());
+      return null;
+    }
+
+    const data = await response.json();
+
+    if (!data.places || data.places.length === 0) {
+      return null;
+    }
+
+    const place = data.places[0];
+    return {
+      name: place.displayName?.text || null,
+      address: place.formattedAddress || null,
+      latitude: place.location?.latitude || null,
+      longitude: place.location?.longitude || null,
+      rating: place.rating || null,
+      reviewCount: place.userRatingCount || null,
+      category: place.primaryType || null,
+      source: 'places_api'
+    };
+  } catch (error) {
+    console.error('Places API (text) request failed:', error);
     return null;
   }
 }

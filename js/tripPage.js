@@ -383,7 +383,7 @@
     }
 
     // Reset tab render state
-    tabRendered = { activities: false, flights: false, hotels: false, trains: false, buses: false };
+    tabRendered = { activities: false, flights: false, hotels: false, trains: false, buses: false, rentals: false };
 
     // Initialize tab switching (solo se ci sono tab)
     if (visibleTabs.length >= 2) {
@@ -2873,6 +2873,11 @@
       </div>
     `;
 
+    // Backdrop cliccabile per chiudere il pannello cliccando fuori
+    const backdrop = document.createElement('div');
+    backdrop.className = 'panel-backdrop';
+    document.body.appendChild(backdrop);
+
     requestAnimationFrame(() => {
       slider.classList.add('at-activity');
       activityPage.scrollTop = 0;
@@ -2883,6 +2888,7 @@
     const panelFooter = document.getElementById('manage-panel-footer');
 
     const closePanel = (onComplete) => {
+      backdrop.remove();
       slider.classList.remove('at-activity');
       activityPage.addEventListener('transitionend', function onEnd(e) {
         if (e.target !== activityPage) return;
@@ -2894,6 +2900,7 @@
       }, { once: false });
     };
 
+    backdrop.addEventListener('click', () => closePanel());
     document.getElementById('manage-panel-close').addEventListener('click', () => closePanel());
     document.getElementById('manage-close-btn').addEventListener('click', () => closePanel());
 
@@ -3259,6 +3266,11 @@
       </div>
     `;
 
+    // Backdrop cliccabile per chiudere il pannello cliccando fuori
+    const backdrop = document.createElement('div');
+    backdrop.className = 'panel-backdrop';
+    document.body.appendChild(backdrop);
+
     requestAnimationFrame(() => {
       slider.classList.add('at-activity');
       activityPage.scrollTop = 0;
@@ -3276,6 +3288,7 @@
     }
 
     const closePanel = (onComplete) => {
+      backdrop.remove();
       slider.classList.remove('at-activity');
       activityPage.addEventListener('transitionend', function onEnd(e) {
         if (e.target !== activityPage) return;
@@ -3286,6 +3299,8 @@
         if (onComplete) onComplete();
       }, { once: false });
     };
+
+    backdrop.addEventListener('click', () => closePanel());
 
     const performSave = async () => {
       // Validate required fields and patterns

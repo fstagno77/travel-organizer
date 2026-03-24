@@ -1495,6 +1495,15 @@
   pointer-events: auto;
 }
 
+/* Backdrop cliccabile per chiudere i pannelli slide (z-index sopra ::after overlay) */
+.panel-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 111;
+  background: transparent;
+  cursor: pointer;
+}
+
 /* Activity slide panel */
 .modal-page--activity {
   position: fixed;
@@ -7120,7 +7129,7 @@ body:has(> .modal-overlay.active) .trip-hero-tabs {
 /* Toast Notifications */
 .toast-notification {
   position: fixed;
-  top: var(--spacing-6);
+  top: calc(env(safe-area-inset-top, 0px) + var(--spacing-6));
   left: 50%;
   transform: translateX(-50%) translateY(-100px);
   display: flex;

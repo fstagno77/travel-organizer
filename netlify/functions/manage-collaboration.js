@@ -466,6 +466,14 @@ async function handleList(serviceClient, user, { tripId }, headers) {
     .eq('trip_id', tripId)
     .in('status', ['pending']);
 
+  // Deduplica: escludi le invitation per email che hanno già un record in trip_collaborators.
+  // Può succedere quando un utente non registrato riceve un invito (→ trip_invitations pending),
+  // poi si registra e accetta — trip_collaborators viene aggiornato ma trip_invitations rimane pending.
+  const collaboratorEmails = new Set(collaborators.map(c => (c.email || '').toLowerCase()));
+  const filteredInvitations = (invitations || []).filter(
+    inv => !collaboratorEmails.has((inv.email || '').toLowerCase())
+  );
+
   return {
     statusCode: 200,
     headers,
@@ -478,7 +486,7 @@ async function handleList(serviceClient, user, { tripId }, headers) {
         role: 'proprietario'
       },
       collaborators: collaborators || [],
-      invitations: (invitations || []).map(inv => ({
+      invitations: filteredInvitations.map(inv => ({
         id: inv.id,
         email: inv.email,
         role: inv.role,
@@ -822,6 +830,15 @@ async function handleRespondInvite(serviceClient, user, { tripId, accept }, head
       .from('trip_collaborators')
       .update({ status: 'accepted' })
       .eq('id', collab.id);
+
+    // Marca anche l'eventuale invitation in trip_invitations come accepted
+    // per evitare duplicati nel share modal del proprietario
+    await serviceClient
+      .from('trip_invitations')
+      .update({ status: 'accepted' })
+      .eq('trip_id', tripId)
+      .eq('email', user.email.trim().toLowerCase())
+      .eq('status', 'pending');
 
     // Notify the inviter
     await serviceClient.from('notifications').insert({
