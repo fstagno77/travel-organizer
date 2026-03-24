@@ -1320,16 +1320,31 @@ async function getTripCollaborators(sc, { tripId }) {
     if (inviterProfiles) inviterProfiles.forEach(p => inviterMap[p.id] = p);
   }
 
-  const invitationList = (invitations || []).map(inv => ({
-    id: inv.id,
-    email: inv.email,
-    role: inv.role,
-    status: inv.status,
-    invitedBy: inviterMap[inv.invited_by]?.username || inviterMap[inv.invited_by]?.email || '-',
-    createdAt: inv.created_at,
-    updatedAt: inv.updated_at,
-    type: 'invitation'
-  }));
+  // Deduplica: escludi gli inviti pending per email che hanno già un record in trip_collaborators.
+  // Può succedere quando un utente non registrato riceve un invito (→ trip_invitations pending),
+  // poi si registra e accetta — trip_collaborators viene aggiornato ma trip_invitations rimane pending.
+  // Gli inviti revocati vengono mantenuti (storico).
+  const collaboratorEmails = new Set(
+    collaborators.map(c => (c.email || '').toLowerCase()).filter(Boolean)
+  );
+
+  const invitationList = (invitations || [])
+    .filter(inv => {
+      if (inv.status === 'pending') {
+        return !collaboratorEmails.has((inv.email || '').toLowerCase());
+      }
+      return true; // revocati e altri stati: mantieni per storico
+    })
+    .map(inv => ({
+      id: inv.id,
+      email: inv.email,
+      role: inv.role,
+      status: inv.status,
+      invitedBy: inviterMap[inv.invited_by]?.username || inviterMap[inv.invited_by]?.email || '-',
+      createdAt: inv.created_at,
+      updatedAt: inv.updated_at,
+      type: 'invitation'
+    }));
 
   return {
     owner: {

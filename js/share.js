@@ -452,6 +452,10 @@
     // Pulsanti azione nei dettagli voli (classi variabili — usa btn-edit-item già coperto sopra)
     // Rimuovi anche eventuali righe di azione nei dettagli volo
     container.querySelectorAll('.flight-actions-row').forEach(el => el.remove());
+
+    // Bottoni "Mostra dettagli" accordion — non funzionano sulla share page
+    // (gli handler sono registrati solo in tripPage.js)
+    container.querySelectorAll('.flight-toggle-details, .hotel-toggle-details').forEach(el => el.remove());
   }
 
   // ===========================
