@@ -271,6 +271,8 @@ mark.help-ac-highlight {
   flex-direction: column;
   align-items: flex-start;
   border: 1px solid var(--color-gray-100);
+  min-width: 0;       /* evita overflow su Safari in layout grid */
+  align-self: stretch; /* garantisce altezza uniforme tra card nella stessa riga */
 }
 .help-category-card:hover {
   box-shadow: var(--shadow-lg);
