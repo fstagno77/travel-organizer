@@ -29,6 +29,7 @@ const parsePreview = {
     const allTrains = [];
     const allBuses = [];
     const allRentals = [];
+    const allFerries = [];
     const allPassengers = []; // array passeggeri a livello prenotazione (multi-pax)
     let passenger = null;
     let booking = null;
@@ -40,6 +41,7 @@ const parsePreview = {
       if (pr.result.trains) allTrains.push(...pr.result.trains);
       if (pr.result.buses) allBuses.push(...pr.result.buses);
       if (pr.result.rentals) allRentals.push(...pr.result.rentals);
+      if (pr.result.ferries) allFerries.push(...pr.result.ferries);
       if (pr.result.passengers?.length) allPassengers.push(...pr.result.passengers);
       if (pr.result.passenger && !passenger) passenger = pr.result.passenger;
       if (pr.result.booking && !booking) booking = pr.result.booking;
@@ -74,6 +76,12 @@ const parsePreview = {
       const short = provider.length > 12 ? provider.substring(0, 10) + '…' : provider;
       this._segments.push({ type: 'rental', index: i, label: short, icon: 'directions_car' });
     });
+    allFerries.forEach((f, i) => {
+      const dep = f.departure?.port || f.departure?.city || '?';
+      const arr = f.arrival?.port || f.arrival?.city || '?';
+      const short = s => s.length > 10 ? s.substring(0, 8) + '…' : s;
+      this._segments.push({ type: 'ferry', index: i, label: `${short(dep)}→${short(arr)}`, icon: 'directions_boat' });
+    });
 
     const totalItems = this._segments.length;
 
@@ -92,7 +100,7 @@ const parsePreview = {
     }
 
     // ── Passenger (top, solo se nessun tipo di trasporto ha il campo passeggero) ──
-    if (passenger && allFlights.length === 0 && allTrains.length === 0 && allBuses.length === 0) {
+    if (passenger && allFlights.length === 0 && allTrains.length === 0 && allBuses.length === 0 && allFerries.length === 0) {
       html += `<div class="parse-preview-booking">`;
       html += `<div class="parse-section-header"><span>Passeggero</span></div>`;
       html += `<div class="parse-detail-grid">`;
@@ -338,6 +346,79 @@ const parsePreview = {
       html += this._field('Riferimento', r.bookingReference || r.confirmationNumber, 'bookingReference');
       html += this._field('Prezzo', price, 'price');
       html += `</div>`;
+      html += `</div>`;
+      html += `</div>`;
+    });
+
+    allFerries.forEach((f, i) => {
+      const segIdx = allFlights.length + allHotels.length + allTrains.length + allBuses.length + allRentals.length + i;
+      const depPort = f.departure?.port || f.departure?.city || '?';
+      const arrPort = f.arrival?.port || f.arrival?.city || '?';
+      const depTime = f.departure?.time || '';
+      const arrTime = f.arrival?.time || '';
+
+      html += `<div class="parse-panel${segIdx === 0 ? ' active' : ''}" data-panel="${segIdx}">`;
+      html += `<div class="parse-ferry-card" data-type="ferry" data-index="${i}">`;
+      if (f.operator) html += `<div class="parse-rental-provider">${this._esc(f.operator)}</div>`;
+      html += `<div class="parse-transport-route">
+        <div class="parse-transport-endpoint">
+          <span class="parse-transport-station">${this._esc(depPort)}</span>
+          ${depTime ? `<span class="parse-transport-time">${this._esc(depTime)}</span>` : ''}
+        </div>
+        <div class="parse-transport-arrow">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </div>
+        <div class="parse-transport-endpoint">
+          <span class="parse-transport-station">${this._esc(arrPort)}</span>
+          ${arrTime ? `<span class="parse-transport-time">${this._esc(arrTime)}</span>` : ''}
+        </div>
+      </div>`;
+
+      html += `<div class="parse-detail-grid">`;
+      html += this._field('Nome nave', f.ferryName, 'ferryName');
+      html += this._field('Rotta', f.routeNumber, 'routeNumber');
+      html += this._field('Data', this._fmtDate(f.date), 'date', 'date', f.date);
+      html += this._field('Durata', f.duration, 'duration');
+      if (f.cabin != null) html += this._field('Cabina', f.cabin, 'cabin');
+      if (f.deck != null) html += this._field('Deck', f.deck, 'deck');
+      html += this._field('PNR', f.bookingReference, 'bookingReference');
+      html += this._field('Prezzo', this._resolvePrice(f.price), 'price');
+      html += `</div>`;
+
+      // Passeggeri ferry
+      if (f.passengers?.length > 0) {
+        html += `<div class="parse-section-header" style="margin-top:14px"><span>Passeggeri (${f.passengers.length})</span></div>`;
+        html += `<table style="width:100%;border-collapse:collapse;margin-top:4px">`;
+        html += `<thead><tr>
+          <th style="text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);padding:3px 0;border-bottom:1px solid var(--border-color)">Nome</th>
+          <th style="text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);padding:3px 0;border-bottom:1px solid var(--border-color)">Tipo</th>
+        </tr></thead><tbody>`;
+        for (const p of f.passengers) {
+          html += `<tr>
+            <td style="padding:5px 0;font-size:13px">${this._esc(p.name || '—')}</td>
+            <td style="padding:5px 0;font-size:12px;color:var(--text-secondary)">${this._esc(p.type || '—')}</td>
+          </tr>`;
+        }
+        html += `</tbody></table>`;
+      }
+
+      // Veicoli a bordo
+      if (f.vehicles?.length > 0) {
+        html += `<div class="parse-section-header" style="margin-top:14px"><span>Veicoli a bordo</span></div>`;
+        html += `<table style="width:100%;border-collapse:collapse;margin-top:4px">`;
+        html += `<thead><tr>
+          <th style="text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);padding:3px 0;border-bottom:1px solid var(--border-color)">Tipo</th>
+          <th style="text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);padding:3px 0;border-bottom:1px solid var(--border-color)">Targa</th>
+        </tr></thead><tbody>`;
+        for (const v of f.vehicles) {
+          html += `<tr>
+            <td style="padding:5px 0;font-size:13px">${this._esc(v.type || '—')}</td>
+            <td style="padding:5px 0;font-size:12px;color:var(--text-secondary)">${this._esc(v.plate || '—')}</td>
+          </tr>`;
+        }
+        html += `</tbody></table>`;
+      }
+
       html += `</div>`;
       html += `</div>`;
     });
