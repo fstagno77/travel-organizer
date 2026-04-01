@@ -320,6 +320,18 @@ const CAR_RENTAL_SCHEMA = `{
   "passenger":{"name":"FULL NAME"}
 }`;
 
+const FERRY_SCHEMA = `{
+  "ferries": [{"date":"YYYY-MM-DD","operator":"Tirrenia","ferryName":"Nome Nave","routeNumber":null,
+    "departure":{"port":"Genova","city":"Genova","time":"HH:MM"},
+    "arrival":{"port":"Palermo","city":"Palermo","time":"HH:MM"},
+    "duration":null,"cabin":null,"deck":null,
+    "passengers":[{"name":"FULL NAME","type":"ADT"}],
+    "vehicles":[{"type":"car","plate":"XX000XX"}],
+    "bookingReference":"XXXXXX","ticketNumber":null,
+    "price":{"value":0,"currency":"EUR"}}],
+  "passenger":{"name":"FULL NAME"}
+}`;
+
 // ─── System prompt (≥1024 tokens for prompt caching) ────────────────────────
 
 const SYSTEM_PROMPT = `You are a specialized travel document parser. Your task is to extract structured data from travel documents (flight bookings, hotel reservations) and return ONLY valid JSON.
@@ -406,10 +418,10 @@ ${HOTEL_SCHEMA}`;
 // ─── Beta system prompt — extends live with train/bus types ─────────────────
 
 const BETA_SYSTEM_PROMPT = SYSTEM_PROMPT
-  // Extend document type detection to include train/bus/car_rental
+  // Extend document type detection to include train/bus/car_rental/ferry
   .replace(
     'determine if it\'s a flight or hotel booking.\nSet "_docType" to "flight" or "hotel" accordingly.',
-    'determine the document type.\nSet "_docType" to "flight", "hotel", "train", "bus", or "car_rental" accordingly.'
+    'determine the document type.\nSet "_docType" to "flight", "hotel", "train", "bus", "car_rental", or "ferry" accordingly.'
   )
   // Add mandatory fields for trains, buses and car rentals
   .replace(
@@ -455,9 +467,21 @@ const BETA_SYSTEM_PROMPT = SYSTEM_PROMPT
 - driverName: primary driver full name
 - bookingReference: booking/reservation reference code (or confirmationNumber)
 
+### For FERRIES:
+- operator: ferry company (Tirrenia, Grimaldi, GNV, ANEK, Blue Star, Minoan, Corsica Ferries, Brittany Ferries, Stena Line, etc.)
+- date: travel date in YYYY-MM-DD
+- departure.port: departure port name
+- departure.city: departure city name
+- departure.time: departure time in HH:MM
+- arrival.port: arrival port name
+- arrival.city: arrival city name
+- arrival.time: arrival time in HH:MM
+- passengers: array of passengers with name and type
+- bookingReference: booking reference code
+
 ## IMPORTANT OPTIONAL FIELDS`
   )
-  // Add train/bus/car_rental schemas after hotel schema
+  // Add train/bus/car_rental/ferry schemas after hotel schema
   + `
 
 ### Train document:
@@ -467,11 +491,14 @@ ${TRAIN_SCHEMA}
 ${BUS_SCHEMA}
 
 ### Car rental document:
-${CAR_RENTAL_SCHEMA}`;
+${CAR_RENTAL_SCHEMA}
+
+### Ferry document:
+${FERRY_SCHEMA}`;
 
 // ─── Claude API call with prompt caching ────────────────────────────────────
 
-const BETA_DOC_TYPES = ['flight', 'hotel', 'train', 'bus', 'car_rental'];
+const BETA_DOC_TYPES = ['flight', 'hotel', 'train', 'bus', 'car_rental', 'ferry'];
 const LIVE_DOC_TYPES = ['flight', 'hotel', 'train', 'bus', 'car_rental'];
 
 function getSchemaForDocType(docType) {
@@ -480,15 +507,45 @@ function getSchemaForDocType(docType) {
     case 'train':      return TRAIN_SCHEMA;
     case 'bus':        return BUS_SCHEMA;
     case 'car_rental': return CAR_RENTAL_SCHEMA;
+    case 'ferry':      return FERRY_SCHEMA;
     default:           return FLIGHT_SCHEMA;
   }
+}
+
+/**
+ * Ritorna lo schema JSON (come oggetto) per il tipo di documento dato.
+ * Usato nei test e nell'auto-detection per validare la struttura attesa.
+ */
+function getSchema(docType) {
+  return JSON.parse(getSchemaForDocType(docType));
+}
+
+// Keyword per rilevamento automatico ferry (usato prima di Claude)
+const FERRY_KEYWORDS = [
+  'ferry', 'traghetto', 'nave', 'traversata', 'imbarco', 'porto',
+  'imbarcazione', 'motonave', 'grimaldi', 'tirrenia', 'anek', 'blue star',
+  'minoan', 'gnv', 'corsica ferries', 'brittany ferries', 'stena line',
+];
+
+/**
+ * Rileva il tipo di documento in base alle keyword nel testo estratto.
+ * Usato come pre-filtro prima di invocare Claude.
+ * Ritorna 'ferry' se il testo contiene keyword marittime, altrimenti null.
+ */
+function detectDocType(text) {
+  if (!text || typeof text !== 'string') return null;
+  const lower = text.toLowerCase();
+  for (const kw of FERRY_KEYWORDS) {
+    if (lower.includes(kw)) return 'ferry';
+  }
+  return null;
 }
 
 async function parseWithClaude(pdfBase64, docType, extractedText = '', betaMode = false) {
   const client = new Anthropic();
   const useTextMode = extractedText.length > 200;
   const systemPrompt = BETA_SYSTEM_PROMPT;
-  const validTypes = LIVE_DOC_TYPES;
+  const validTypes = betaMode ? BETA_DOC_TYPES : LIVE_DOC_TYPES;
 
   let userPrompt;
   if (docType === 'auto') {
@@ -599,7 +656,8 @@ ${schema}`;
   const trains = result.trains?.length || 0;
   const buses = result.buses?.length || 0;
   const rentals = result.rentals?.length || 0;
-  console.log(`[SmartParse] Claude done, docType: ${detectedDocType}, flights: ${result.flights?.length || 0}, hotels: ${result.hotels?.length || 0}${trains ? `, trains: ${trains}` : ''}${buses ? `, buses: ${buses}` : ''}${rentals ? `, rentals: ${rentals}` : ''}`);
+  const ferries = result.ferries?.length || 0;
+  console.log(`[SmartParse] Claude done, docType: ${detectedDocType}, flights: ${result.flights?.length || 0}, hotels: ${result.hotels?.length || 0}${trains ? `, trains: ${trains}` : ''}${buses ? `, buses: ${buses}` : ''}${rentals ? `, rentals: ${rentals}` : ''}${ferries ? `, ferries: ${ferries}` : ''}`);
 
   return { result, detectedDocType };
 }
@@ -902,6 +960,10 @@ function sanitizeResult(result) {
     if (r.endDate != null) r.endDate = sanitizeDateValue(r.endDate);
   });
 
+  (result.ferries || []).forEach(f => {
+    if (f.date != null) f.date = sanitizeDateValue(f.date);
+  });
+
   (result.flights || []).forEach(fl => {
     if (!fl.departure || typeof fl.departure !== 'object') fl.departure = fl.departure && typeof fl.departure === 'string' ? { date: fl.departure } : (fl.departure || {});
     if (!fl.arrival || typeof fl.arrival !== 'object') fl.arrival = fl.arrival && typeof fl.arrival === 'string' ? { date: fl.arrival } : (fl.arrival || {});
@@ -1079,4 +1141,6 @@ module.exports = {
   parseWithClaude,
   listTemplates,
   deleteTemplate,
+  getSchema,
+  detectDocType,
 };

@@ -66,6 +66,17 @@ const helpPage = {
       icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6v6"/><path d="M15 6v6"/><path d="M2 12h19.6"/><path d="M18 18h3s.5-1.7.8-4.4c.2-2.6.1-4.6.1-4.6V7L14 4H5L2 10v5"/><circle cx="6" cy="18" r="2"/><path d="M8 18h8"/><circle cx="16" cy="18" r="2"/></svg>`,
     },
     {
+      id: 'traghetti',
+      titleIt: 'Traghetti e Navi',
+      titleEn: 'Ferries & Ships',
+      descIt: 'Traversate in traghetto con gestione veicoli e cabine',
+      descEn: 'Ferry crossings with vehicle and cabin management',
+      color: '#0369a1',
+      gradient: 'linear-gradient(135deg, #0ea5e9, #0369a1)',
+      // Stessa icona ferry usata in activityCategories.js (directions_boat → SVG equivalente)
+      icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 21c.6.5 1.2 1 2.5 1C7 22 7 21 9.5 21c2.6 0 2.4 1 5 1 2.5 0 2.5-1 5-1 1.3 0 1.9.5 2.5 1"/><path d="M19.38 20A11.6 11.6 0 0 0 21 14l-9-4-9 4c0 2.4.8 4.6 2.1 6.4"/><path d="M10 10V4"/><path d="M7 7h10l2 7H5Z"/></svg>`,
+    },
+    {
       id: 'noleggio',
       titleIt: 'Noleggio Auto',
       titleEn: 'Car Rentals',

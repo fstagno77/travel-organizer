@@ -110,6 +110,18 @@
       cardBg: 'linear-gradient(135deg, #f5eef8, #e8d5f0)',
       cardBorder: '#d0aae0'
     },
+    traghetto: {
+      key: 'traghetto',
+      labelIt: 'Traghetto',
+      labelEn: 'Ferry',
+      svg: msIcon('directions_boat'),
+      gradient: 'linear-gradient(135deg, #38bdf8, #0369a1)',
+      gradientHover: 'linear-gradient(135deg, #0284c7, #075985)',
+      color: '#0369a1',
+      hoverBg: '#f0f9ff',
+      cardBg: 'linear-gradient(135deg, #f0f9ff, #e0f2fe)',
+      cardBorder: '#bae6fd'
+    },
     noleggio: {
       key: 'noleggio',
       labelIt: 'Noleggio Auto',
@@ -136,7 +148,7 @@
     }
   };
 
-  const CATEGORY_ORDER = ['ristorante', 'volo', 'hotel', 'museo', 'attrazione', 'treno', 'bus', 'noleggio', 'luogo'];
+  const CATEGORY_ORDER = ['ristorante', 'volo', 'hotel', 'museo', 'attrazione', 'treno', 'bus', 'traghetto', 'noleggio', 'luogo'];
 
   const CATEGORY_KEYWORDS = {
     ristorante: [
@@ -159,7 +171,11 @@
       'arena', 'colosseo', 'rovina', 'ruins', 'spiaggia', 'beach',
       'viewpoint', 'belvedere', 'panorama', 'market', 'mercato'
     ],
-    // treno/bus esclusi: si aggiungono solo tramite "aggiungi prenotazione"
+    ferry: [
+      'ferry', 'traghetto', 'nave', 'traversata', 'imbarco', 'porto',
+      'imbarcazione', 'motonave'
+    ],
+    // treno/bus/ferry esclusi dalle attività manuali: si aggiungono solo tramite "aggiungi prenotazione"
   };
 
   function detectCategory(name, description) {
@@ -177,6 +193,7 @@
     if (event.type.startsWith('hotel-')) return CATEGORIES.hotel;
     if (event.type === 'train') return CATEGORIES.treno;
     if (event.type === 'bus') return CATEGORIES.bus;
+    if (event.type === 'ferry') return CATEGORIES.traghetto;
     if (event.type.startsWith('rental-')) return CATEGORIES.noleggio;
     if (event.type === 'activity') {
       const cat = event.data.category || detectCategory(event.data.name, event.data.description);
@@ -190,6 +207,7 @@
     if (event.type.startsWith('hotel-')) return 'hotel';
     if (event.type === 'train') return 'treno';
     if (event.type === 'bus') return 'bus';
+    if (event.type === 'ferry') return 'traghetto';
     if (event.type.startsWith('rental-')) return 'noleggio';
     if (event.type === 'activity') {
       return event.data.category || detectCategory(event.data.name, event.data.description);

@@ -17,7 +17,7 @@
   let currentTripData = null;
   let currentUserRole = 'proprietario'; // 'proprietario', 'viaggiatore', 'ospite'
   let currentTripOwner = null; // { username, email } if not owner
-  let tabRendered = { activities: false, flights: false, hotels: false, trains: false, buses: false, rentals: false };
+  let tabRendered = { activities: false, flights: false, hotels: false, trains: false, buses: false, ferries: false, rentals: false };
   let visibleTabs = []; // tab attualmente visibili (calcolati dinamicamente)
 
   // ===========================
@@ -36,13 +36,14 @@
     loadSlidePanel,
     showAddBookingModal,
     showManageBookingPanel,
+    getVisibleTabs,
 
     /**
      * Re-init per navigazione SPA (moduli già caricati, auth/i18n già inizializzati)
      */
     async spaInit() {
       // Reset stato viaggio
-      tabRendered = { activities: false, flights: false, hotels: false, trains: false, buses: false, rentals: false };
+      tabRendered = { activities: false, flights: false, hotels: false, trains: false, buses: false, ferries: false, rentals: false };
       visibleTabs = [];
       currentTripData = null;
       currentUserRole = 'proprietario';
@@ -293,6 +294,7 @@
     hotels:     { icon: 'bed',             i18nKey: 'trip.hotels',     fallback: 'Hotel' },
     trains:     { icon: 'train',           i18nKey: 'trip.trains',     fallback: 'Treni', beta: true },
     buses:      { icon: 'directions_bus',  i18nKey: 'trip.buses',      fallback: 'Bus', beta: true },
+    ferries:    { icon: 'directions_boat', i18nKey: 'trip.ferries',    fallback: 'Traghetti', beta: true },
     rentals:    { iconSvg: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.8L18 11l-2-4H8L6 11l-2.5.2C2.7 11.3 2 12.1 2 13v3c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>`, i18nKey: 'trip.rentals', fallback: 'Auto' },
   };
 
@@ -305,6 +307,7 @@
                        (tripData.hotels?.length > 0) ||
                        (tripData.trains?.length > 0) ||
                        (tripData.buses?.length > 0) ||
+                       (tripData.ferries?.length > 0) ||
                        (tripData.rentals?.length > 0) ||
                        (tripData.activities?.length > 0);
     if (hasAnyData) tabs.push('activities');
@@ -312,6 +315,7 @@
     if (tripData.hotels?.length > 0) tabs.push('hotels');
     if (tripData.trains?.length > 0) tabs.push('trains');
     if (tripData.buses?.length > 0) tabs.push('buses');
+    if (tripData.ferries?.length > 0) tabs.push('ferries');
     if (tripData.rentals?.length > 0) tabs.push('rentals');
     return tabs;
   }
@@ -333,7 +337,7 @@
         return `
           <button class="segmented-control-btn" data-tab="${tabName}">
             ${cfg.iconSvg ? cfg.iconSvg : `<span class="material-symbols-outlined" style="font-size: 20px;">${cfg.icon}</span>`}
-            <span${tabName === 'trains' || tabName === 'buses' || tabName === 'rentals' ? ' class="segmented-label"' : ''} data-i18n="${cfg.i18nKey}">${cfg.fallback}</span>
+            <span${tabName === 'trains' || tabName === 'buses' || tabName === 'ferries' || tabName === 'rentals' ? ' class="segmented-label"' : ''} data-i18n="${cfg.i18nKey}">${cfg.fallback}</span>
             ${cfg.beta ? '<span class="beta-badge-tab">Beta</span>' : ''}
           </button>
         `;
@@ -383,7 +387,7 @@
     }
 
     // Reset tab render state
-    tabRendered = { activities: false, flights: false, hotels: false, trains: false, buses: false, rentals: false };
+    tabRendered = { activities: false, flights: false, hotels: false, trains: false, buses: false, ferries: false, rentals: false };
 
     // Initialize tab switching (solo se ci sono tab)
     if (visibleTabs.length >= 2) {
@@ -809,7 +813,7 @@
    * Handle toggle details (flights or hotels) with lazy rendering
    */
   function handleToggleDetails(btn, type) {
-    const indexAttrMap = { flight: 'flightIndex', hotel: 'hotelIndex', train: 'trainIndex', bus: 'busIndex', rental: 'rentalIndex' };
+    const indexAttrMap = { flight: 'flightIndex', hotel: 'hotelIndex', train: 'trainIndex', bus: 'busIndex', ferry: 'ferryIndex', rental: 'rentalIndex' };
     const indexAttr = indexAttrMap[type] || 'flightIndex';
     const index = btn.dataset[indexAttr];
     const detailsId = `${type}-details-${index}`;
@@ -823,6 +827,7 @@
         hotel: window.tripHotels._hotels,
         train: window.tripTrains._trains,
         bus: window.tripBuses._buses,
+        ferry: window.tripFerries._ferries,
         rental: window.tripRentals._rentals
       };
       const renderFnMap = {
@@ -830,6 +835,7 @@
         hotel: window.tripHotels.renderDetails,
         train: window.tripTrains.renderDetails,
         bus: window.tripBuses.renderDetails,
+        ferry: window.tripFerries.renderDetails,
         rental: window.tripRentals.renderDetails
       };
       const items = itemsMap[type];
@@ -1000,6 +1006,24 @@
       });
     }
 
+    // --- Ferries container delegation ---
+    const ferriesContainer = document.getElementById('ferries-container');
+    if (ferriesContainer) {
+      ferriesContainer.addEventListener('click', (e) => {
+        const target = e.target;
+        const toggleBtn = target.closest('.ferry-toggle-details');
+        if (toggleBtn) { handleToggleDetails(toggleBtn, 'ferry'); return; }
+        const editBtn = target.closest('.btn-edit-item[data-type="ferry"]');
+        if (editBtn) { e.stopPropagation(); openEditPanelForItem('ferry', editBtn.dataset.id); return; }
+        const deleteBtn = target.closest('.btn-delete-item[data-type="ferry"]');
+        if (deleteBtn) { e.stopPropagation(); showDeleteItemModal('ferry', deleteBtn.dataset.id); return; }
+        const pdfBtn = target.closest('.btn-download-pdf');
+        if (pdfBtn) { e.stopPropagation(); handlePdfDownload(pdfBtn.dataset.pdfPath, pdfBtn); return; }
+        const copyBtn = target.closest('.btn-copy-value');
+        if (copyBtn) { handleCopyValue(copyBtn); return; }
+      });
+    }
+
     // --- Rentals container delegation ---
     const rentalsContainer = document.getElementById('rentals-container');
     if (rentalsContainer) {
@@ -1142,6 +1166,8 @@
       window.tripTrains.render(document.getElementById('trains-container'), currentTripData.trains);
     } else if (tabName === 'buses') {
       window.tripBuses.render(document.getElementById('buses-container'), currentTripData.buses);
+    } else if (tabName === 'ferries') {
+      window.tripFerries.render(document.getElementById('ferries-container'), currentTripData.ferries);
     } else if (tabName === 'rentals') {
       window.tripRentals.render(document.getElementById('rentals-container'), currentTripData.rentals);
     }

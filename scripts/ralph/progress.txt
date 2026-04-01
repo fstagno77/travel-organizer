@@ -1,0 +1,120 @@
+## 2026-04-01 - US-007
+- Aggiunta chiave `trip.ferries` nella sezione "trip" di it.json (valore: "Traghetti") e en.json (valore: "Ferries")
+- Aggiunta sezione `ferry` in it.json e en.json con tutte le chiavi richieste: operator, departure_port, arrival_port, cabin, deck, vehicle, booking_reference, ferry_name + chiavi accessorie
+- Aggiunto anche `trip.noFerries` / `trip.noFerriesText` per stato vuoto del tab (coerente con noTrains/noBuses)
+- Parità chiavi garantita: tutte le chiavi ferry in IT hanno corrispondente in EN e viceversa
+- Creato tests/us007-ferry-i18n.test.js con 40 test (tutti passanti)
+- **Files cambiati:** public/i18n/it.json, public/i18n/en.json, tests/us007-ferry-i18n.test.js (nuovo)
+- **Learnings per iterazioni future:**
+  - Le chiavi del tab bar (trip.trains, trip.buses, trip.ferries) vivono nella sezione "trip" dei file i18n
+  - Le chiavi specifiche del tipo di trasporto vivono in una sezione dedicata ("train", "bus", "ferry") a livello root
+  - Per un nuovo tipo di trasporto: aggiungere `trip.xxx` nella sezione trip, `trip.noXxx` e `trip.noXxxText` per lo stato vuoto, e una sezione `xxx` root con tutte le chiavi campo
+---
+
+## 2026-04-01 - US-006
+- Aggiunta categoria 'traghetti' in CATEGORIES di js/helpPage.js: id:'traghetti', colore:#0369a1, gradient lineare, icona SVG ferry, titleIt:'Traghetti e Navi', titleEn:'Ferries & Ships'
+- Aggiunta sezione 'traghetti' in CONTENT di js/helpDetailPage.js con 4 articoli IT+EN: (1) caricare-ricevuta-traghetto, (2) smartparse-beta-traghetti, (3) veicoli-a-bordo, (4) compagnia-non-riconosciuta
+- Ogni articolo ha id, title, intro, steps (array non vuoto), opzionalmente tips e result
+- Creato tests/us006-ferry-help.test.js con 22 test (tutti passanti)
+- **Files cambiati:** js/helpPage.js, js/helpDetailPage.js, tests/us006-ferry-help.test.js (nuovo)
+- **Learnings per iterazioni future:**
+  - helpPage.js e helpDetailPage.js sono object literal con `window.helpPage` / `window.helpDetailPage` — caricabili con `new Function('window', 'document', code)(win, doc)`
+  - Le categorie help e le categorie activityCategories devono avere lo stesso colore (#0369a1 per ferry)
+  - Per aggiungere una nuova categoria help: 1) CATEGORIES in helpPage.js, 2) CONTENT in helpDetailPage.js (sezione 'id': { it: {...}, en: {...} })
+  - Ogni articolo helpDetailPage ha: id, title, intro, steps[], opzionalmente tips[], result, related[]
+---
+
+## 2026-04-01 - US-005
+- Aggiunto supporto ferry in js/parsePreview.js: raccolta allFerries nel loop iniziale, segmenti ferry in _segments, pannelli ferry con rotta porto→porto, tabelle passeggeri e veicoli
+- Campo cabin/deck mostrato solo se non null (condizione `if (f.cabin != null)`)
+- Sezione veicoli a bordo mostrata solo se `f.vehicles?.length > 0`
+- Condizione passenger section aggiornata: `allFerries.length === 0` aggiunto
+- Creato tests/us005-ferry-preview.test.js con 14 test (tutti passanti)
+- **Files cambiati:** js/parsePreview.js, tests/us005-ferry-preview.test.js (nuovo)
+- **Learnings per iterazioni future:**
+  - parsePreview.js NON è un IIFE: è un oggetto letterale `const parsePreview = {...}` con `window.parsePreview = parsePreview` alla fine — va caricato con `new Function('document', 'window', code)` passando entrambi
+  - Il mock di `document.createElement` per `_esc`: il setter di `textContent` deve aggiornare la stessa variabile che restituisce `innerHTML` — per dati senza HTML speciali sono equivalenti
+  - Per aggiungere un nuovo tipo in parsePreview: 1) allXxx array, 2) segmento in _segments con icon, 3) pannello HTML nel loop, 4) aggiornare la condizione del passenger panel
+---
+
+## Codebase Patterns
+- Frontend JS usa IIFE con `window.xxx` exports — per testare in Jest, usa `new Function('window', ...)` con globals simulati
+- `activityCategories.js` è caricabile in Jest Node (nessuna dipendenza DOM nel corpo principale)
+- `tripPage.js` è async IIFE troppo complesso per caricare in Jest — testa la logica pura inline nel test o verifica via `fs.readFileSync` + `code.includes(...)`
+- Per aggiungere un nuovo tipo di trasporto: 1) CATEGORIES in activityCategories.js, 2) getCategoryForEvent/eventToCategoryKey, 3) CATEGORY_KEYWORDS, 4) TAB_CONFIG + getVisibleTabs in tripPage.js, 5) tabRendered reset (3 posti), 6) renderTab handler, 7) container event delegation
+- Il tab bar usa `segmented-label` CSS class per tabs con label lunga (trains, buses, ferries, rentals)
+- `auth-reload-loop.test.js` ha un bug pre-esistente (sessionStorage non definito in Node.js) — non è rotto da noi
+- `smartParser.js` usa `BETA_DOC_TYPES` per i tipi supportati in beta (incluso ferry) e `LIVE_DOC_TYPES` per prod — ferry va solo in BETA
+- I nuovi tipi in smartParser: aggiungere SCHEMA, case in getSchemaForDocType, in BETA_DOC_TYPES, nel BETA_SYSTEM_PROMPT, in sanitizeResult per le date
+- `getSchema(docType)` esporta lo schema come oggetto parsato (JSON.parse del SCHEMA string)
+- `detectDocType(text)` è una funzione keyword-based esportata per pre-screening testo prima di Claude
+- Per nuovi tab di trasporto: creare `js/tripXxx.js` con `window.tripXxx = { render, renderFerries (alias), renderDetails, buildEditForm, collectUpdates, buildFullEditForm, collectFullUpdates, _items }`, aggiungere import in `js/entries/trip.js` e `js/entries/share-entry.js`, aggiornare `handleToggleDetails` in tripPage.js (indexAttrMap, itemsMap, renderFnMap)
+- mockUtils per i test IIFE dei moduli di trasporto richiede: `escapeHtml`, `formatFlightDate`, `formatDuration`
+- `parsePreview.js` richiede sia `document` che `window` nel mock per i test: `new Function('document', 'window', code)` — il mock di `document.createElement` deve avere textContent setter che aggiorna anche innerHTML
+
+# Ralph Progress Log
+Started: Wed Apr  1 09:50:41 CEST 2026
+---
+
+## 2026-04-01 - US-001
+- Implementata categoria visiva 'traghetto' in activityCategories.js (colore #0369a1, icona directions_boat, gradient blu)
+- getCategoryForEvent e eventToCategoryKey gestiscono type:'ferry' → CATEGORIES.traghetto
+- CATEGORY_KEYWORDS.ferry con 8 keyword (ferry, traghetto, nave, traversata, imbarco, porto, imbarcazione, motonave)
+- Tab 'ferries' aggiunto a TAB_CONFIG in tripPage.js (icon:'directions_boat', i18nKey:'trip.ferries', beta:true)
+- getVisibleTabs() aggiornato per includere 'ferries' condizionalmente
+- getVisibleTabs esposta via window.tripPage per testabilità futura
+- Container event delegation per ferriesContainer aggiunto
+- tabRendered reset aggiornato in tutti e 3 i posti
+- Creato tests/us001-ferry-categories.test.js con 16 test (tutti passanti)
+- **Files cambiati:** js/activityCategories.js, js/tripPage.js, tests/us001-ferry-categories.test.js
+- **Learnings per iterazioni future:**
+  - Il pattern "loadIIFE con new Function" funziona per activityCategories.js ma non per tripPage.js (troppo complesso)
+  - Per testare logica di tripPage.js: usare `fs.readFileSync + code.includes()` per verificare presenza del codice, o definire la funzione inline nel test come spec
+  - Quando si aggiunge un nuovo tab, ricordare: TAB_CONFIG, getVisibleTabs, tabRendered (×3), renderTab, event delegation, segmented-label condition
+---
+
+## 2026-04-01 - US-002
+- Aggiunto FERRY_SCHEMA in smartParser.js con struttura: ferries[{date, operator, ferryName, routeNumber, departure:{port,city,time}, arrival:{port,city,time}, duration, cabin, deck, passengers, vehicles, bookingReference, ticketNumber, price}], passenger:{name}
+- Aggiunte keyword ferry in FERRY_KEYWORDS: ferry, traghetto, nave, traversata, imbarco, porto, imbarcazione, motonave, Grimaldi, Tirrenia, ANEK, Blue Star, Minoan, GNV, Corsica Ferries, Brittany Ferries, Stena Line
+- Creata funzione detectDocType(text) esportata per rilevamento keyword-based
+- Creata funzione getSchema(docType) esportata (ritorna oggetto JSON.parse dello schema)
+- 'ferry' aggiunto a BETA_DOC_TYPES
+- BETA_SYSTEM_PROMPT aggiornato: _docType include 'ferry', sezione mandatory fields ferry aggiunta, FERRY_SCHEMA aggiunto in fondo
+- parseWithClaude usa betaMode ? BETA_DOC_TYPES : LIVE_DOC_TYPES per validTypes
+- sanitizeResult aggiornato per sanitizzare date dei ferry
+- Log Claude aggiornato per mostrare contatore ferries
+- Creato tests/us002-ferry-smartparser.test.js con 27 test (tutti passanti)
+- **Files cambiati:** netlify/functions/utils/smartParser.js, tests/us002-ferry-smartparser.test.js
+- **Learnings per iterazioni future:**
+  - smartParser.js: per ogni nuovo tipo → SCHEMA, getSchemaForDocType case, BETA_DOC_TYPES, BETA_SYSTEM_PROMPT (docType detection + mandatory fields + schema), sanitizeResult
+  - Le BETA_SYSTEM_PROMPT modifiche si fanno via `.replace()` chain già esistente — estendere il blocco mandatory fields con un nuovo "### For FERRIES:" prima di "## IMPORTANT OPTIONAL FIELDS"
+  - I test di smartParser.js si scrivono con require diretto (non IIFE), poiché le functions Node.js usano CommonJS module.exports
+---
+
+## 2026-04-01 - US-003
+- Creato js/tripFerries.js seguendo esattamente il pattern di tripTrains.js e tripBuses.js
+- Espone window.tripFerries con: render, renderFerries (alias), renderDetails, buildEditForm, collectUpdates, buildFullEditForm, collectFullUpdates, _ferries
+- Gestisce campi ferry-specifici: departure.port/arrival.port, ferryName, cabin/deck (opzionali), passengers array, vehicles array
+- Aggiornato handleToggleDetails in tripPage.js: aggiunto 'ferry' in indexAttrMap, itemsMap, renderFnMap
+- Import aggiunto in js/entries/trip.js e js/entries/share-entry.js (dopo tripBuses.js)
+- Creato tests/us003-ferry-rendering.test.js con 21 test (tutti passanti)
+- **Files cambiati:** js/tripFerries.js (nuovo), js/entries/trip.js, js/entries/share-entry.js, js/tripPage.js, tests/us003-ferry-rendering.test.js
+- **Learnings per iterazioni future:**
+  - Il booking reference è nei dettagli (lazy loaded), non nella card principale — testare via renderDetails
+  - Il campo `departure.port` è diverso da `departure.station` (trains/buses) — usare `.port` per ferry
+  - `window.tripFerries._ferries` viene popolato da renderFerries — serve per handleToggleDetails
+---
+
+## 2026-04-01 - US-004
+- Aggiunto loop su `tripData.ferries || []` in `buildDayEvents()` di `js/tripActivities.js`
+- Ogni ferry genera un evento `{ date: ferry.date, time: ferry.departure?.time || null, type: 'ferry', data: ferry }`
+- Ferry senza `date` skippato con `continue` (nessun crash)
+- 'ferry' aggiunto a `typePriority` con priorità 1.5 (stesso livello di train/bus)
+- `buildDayEvents` esposta via `window.tripActivities.buildDayEvents` per testabilità
+- Creato `tests/us004-ferry-activities.test.js` con 14 test (tutti passanti)
+- **Files cambiati:** js/tripActivities.js, tests/us004-ferry-activities.test.js
+- **Learnings per iterazioni future:**
+  - `buildDayEvents` era funzione interna IIFE — per testarla bisogna esporla via `window.tripActivities`
+  - Il pattern per aggiungere eventi in buildDayEvents: `const items = tripData.xxx || []; for (const item of items) { if (!item.date) continue; events.push({...}); }`
+  - `auth-reload-loop.test.js` ha un bug pre-esistente (sessionStorage non definito in Node.js) — non è rotto da noi, exit code 1 atteso
+---

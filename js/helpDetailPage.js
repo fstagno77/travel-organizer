@@ -797,6 +797,144 @@ const helpDetailPage = {
       },
     },
 
+    // ── TRAGHETTI ─────────────────────────────────────────────────────────
+    'traghetti': {
+      it: {
+        title: 'Traghetti e Navi',
+        desc: 'Traversate in traghetto con gestione veicoli e cabine',
+        articles: [
+          {
+            id: 'caricare-ricevuta-traghetto',
+            title: 'Come caricare una ricevuta traghetto',
+            intro: 'Carica il PDF di prenotazione del traghetto per integrarlo nel tuo itinerario.',
+            steps: [
+              { text: 'Nel viaggio, clicca su ⋮ e seleziona "Aggiungi prenotazione".' },
+              { text: 'Carica il PDF della ricevuta traghetto (Grimaldi, Tirrenia, GNV, Blue Star o altra compagnia).' },
+              { text: 'SmartParse estrae: operatore, nome nave, porto di partenza e arrivo, data e orario, passeggeri e veicoli a bordo.' },
+              { text: 'Controlla l\'anteprima dei dati estratti e clicca "Salva" per confermare.' },
+            ],
+            tips: [
+              { type: 'info', text: 'I traghetti sono una funzione in beta. I principali operatori mediterranei sono supportati con template dedicati.' },
+            ],
+            result: 'La traversata appare nel tab Traghetti e nella timeline Attività nel giorno di imbarco.',
+            related: ['attivita'],
+          },
+          {
+            id: 'smartparse-beta-traghetti',
+            title: 'Smart Parser Beta per traghetti',
+            intro: 'Il riconoscimento automatico dei traghetti usa l\'AI in modalità beta per estrarre i dati da qualsiasi PDF di traversata.',
+            steps: [
+              { text: 'Livello 1 — Cache: se hai già caricato un PDF dello stesso operatore, i dati vengono estratti senza chiamate AI.' },
+              { text: 'Livello 2 — Template: SmartParse usa template per gli operatori più comuni (Grimaldi, Tirrenia, GNV, Blue Star, ANEK, Minoan, Corsica Ferries).' },
+              { text: 'Livello 4 — AI (Claude): per operatori senza template, l\'AI analizza la struttura del PDF e tenta l\'estrazione.' },
+              { text: 'L\'anteprima mostra sempre i dati estratti prima del salvataggio, così puoi correggere eventuali errori.' },
+            ],
+            tips: [
+              { type: 'tip', text: 'Più PDF dello stesso operatore carichi, migliore diventa il riconoscimento automatico per tutti gli utenti.' },
+            ],
+            result: 'Ogni traversata viene analizzata e i dati sono disponibili nell\'anteprima per verifica prima del salvataggio.',
+          },
+          {
+            id: 'veicoli-a-bordo',
+            title: 'Veicoli a bordo',
+            intro: 'Se stai trasportando un veicolo sul traghetto, Travel Flow lo gestisce come parte della prenotazione.',
+            steps: [
+              { text: 'SmartParse estrae automaticamente i dati del veicolo dal PDF: tipo (auto, moto, camper) e targa.' },
+              { text: 'I veicoli appaiono nei dettagli della traversata nella sezione "Veicoli a bordo".' },
+              { text: 'Se hai più veicoli sulla stessa traversata, vengono elencati separatamente.' },
+            ],
+            tips: [
+              { type: 'tip', text: 'Se la targa non viene estratta correttamente, puoi modificarla direttamente nella card traghetto.' },
+            ],
+            result: 'Tutti i veicoli prenotati sono visibili nei dettagli della traversata senza aprire il PDF.',
+          },
+          {
+            id: 'compagnia-non-riconosciuta',
+            title: 'La compagnia non viene riconosciuta — cosa fare',
+            intro: 'Se SmartParse non riconosce l\'operatore del traghetto, puoi comunque importare la traversata con l\'aiuto dell\'AI.',
+            steps: [
+              { text: 'Carica il PDF normalmente. SmartParse tenta l\'estrazione con l\'AI anche per compagnie senza template.' },
+              { text: 'Controlla l\'anteprima: l\'AI potrebbe aver estratto alcuni campi ma non tutti.' },
+              { text: 'Correggi o completa i campi mancanti direttamente nell\'anteprima prima di salvare.' },
+              { text: 'Se l\'estrazione fallisce completamente, puoi salvare la traversata con i dati minimi e completarli manualmente.' },
+            ],
+            tips: [
+              { type: 'info', text: 'Hai un PDF di un operatore non supportato? Contatta il supporto — ogni nuovo formato migliora il sistema per tutti.' },
+              { type: 'warn', text: 'Assicurati che il PDF non sia protetto da password: i PDF criptati non possono essere analizzati automaticamente.' },
+            ],
+            result: 'Anche le compagnie senza template vengono gestite con anteprima modificabile prima del salvataggio definitivo.',
+          },
+        ],
+      },
+      en: {
+        title: 'Ferries & Ships',
+        desc: 'Ferry crossings with vehicle and cabin management',
+        articles: [
+          {
+            id: 'caricare-ricevuta-traghetto',
+            title: 'How to upload a ferry receipt',
+            intro: 'Upload the ferry booking PDF to integrate it into your itinerary.',
+            steps: [
+              { text: 'In the trip, click ⋮ and select "Add booking".' },
+              { text: 'Upload the ferry receipt PDF (Grimaldi, Tirrenia, GNV, Blue Star or other operator).' },
+              { text: 'SmartParse extracts: operator, ship name, departure and arrival port, date and time, passengers and vehicles on board.' },
+              { text: 'Check the preview of extracted data and click "Save" to confirm.' },
+            ],
+            tips: [
+              { type: 'info', text: 'Ferries are a beta feature. The main Mediterranean operators are supported with dedicated templates.' },
+            ],
+            result: 'The crossing appears in the Ferries tab and in the Activities timeline on the boarding day.',
+            related: ['attivita'],
+          },
+          {
+            id: 'smartparse-beta-traghetti',
+            title: 'Smart Parser Beta for ferries',
+            intro: 'Automatic ferry recognition uses AI in beta mode to extract data from any crossing PDF.',
+            steps: [
+              { text: 'Level 1 — Cache: if you\'ve already uploaded a PDF from the same operator, data is extracted without AI calls.' },
+              { text: 'Level 2 — Template: SmartParse uses templates for the most common operators (Grimaldi, Tirrenia, GNV, Blue Star, ANEK, Minoan, Corsica Ferries).' },
+              { text: 'Level 4 — AI (Claude): for operators without a template, the AI analyzes the PDF structure and attempts extraction.' },
+              { text: 'The preview always shows extracted data before saving, so you can fix any errors.' },
+            ],
+            tips: [
+              { type: 'tip', text: 'The more PDFs from the same operator you upload, the better the automatic recognition becomes for everyone.' },
+            ],
+            result: 'Every crossing is analyzed and the data is available in the preview for verification before saving.',
+          },
+          {
+            id: 'veicoli-a-bordo',
+            title: 'Vehicles on board',
+            intro: 'If you\'re transporting a vehicle on the ferry, Travel Flow handles it as part of the booking.',
+            steps: [
+              { text: 'SmartParse automatically extracts vehicle data from the PDF: type (car, motorcycle, motorhome) and plate.' },
+              { text: 'Vehicles appear in the crossing details under "Vehicles on board".' },
+              { text: 'If you have multiple vehicles on the same crossing, they are listed separately.' },
+            ],
+            tips: [
+              { type: 'tip', text: 'If the plate is not extracted correctly, you can edit it directly in the ferry card.' },
+            ],
+            result: 'All booked vehicles are visible in the crossing details without opening the PDF.',
+          },
+          {
+            id: 'compagnia-non-riconosciuta',
+            title: 'Operator not recognized — what to do',
+            intro: 'If SmartParse doesn\'t recognize the ferry operator, you can still import the crossing with AI assistance.',
+            steps: [
+              { text: 'Upload the PDF normally. SmartParse attempts extraction with AI even for operators without a template.' },
+              { text: 'Check the preview: the AI may have extracted some fields but not all.' },
+              { text: 'Correct or complete missing fields directly in the preview before saving.' },
+              { text: 'If extraction fails completely, you can save the crossing with minimal data and complete it manually.' },
+            ],
+            tips: [
+              { type: 'info', text: 'Have a PDF from an unsupported operator? Contact support — every new format improves the system for everyone.' },
+              { type: 'warn', text: 'Make sure the PDF is not password-protected: encrypted PDFs cannot be analyzed automatically.' },
+            ],
+            result: 'Even operators without templates are handled with an editable preview before final saving.',
+          },
+        ],
+      },
+    },
+
     // ── NOLEGGIO ──────────────────────────────────────────────────────────
     'noleggio': {
       it: {

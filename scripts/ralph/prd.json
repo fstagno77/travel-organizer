@@ -1,0 +1,138 @@
+{
+  "project": "Travel Organizer",
+  "branchName": "ralph/ferries-maritime-transport",
+  "description": "Trasporti Marittimi (Ferries) — Aggiunta supporto completo a traghetti e navi da crociera come nuova categoria di trasporto, seguendo il pattern esistente di trains/buses",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Categoria visiva ferry e mapping eventi",
+      "description": "Come sviluppatore, devo registrare il tipo 'ferry' nel sistema di categorie visive e nel tab bar della pagina viaggio, così che il resto del frontend può referenziarlo.",
+      "acceptanceCriteria": [
+        "Categoria 'traghetto' aggiunta in CATEGORIES di js/activityCategories.js con key:'traghetto', colore:#0369a1, icona Material Symbol 'directions_boat', gradient e hoverBg coerenti con le altre categorie",
+        "getCategoryForEvent({ type: 'ferry' }) restituisce CATEGORIES.traghetto",
+        "Keywords ferry aggiunte in CATEGORY_KEYWORDS: ['ferry', 'traghetto', 'nave', 'traversata', 'imbarco', 'porto', 'imbarcazione', 'motonave']",
+        "Tab 'ferries' aggiunto a TAB_CONFIG in js/tripPage.js con icon:'directions_boat', i18nKey:'trip.ferries', beta:true",
+        "getVisibleTabs() include il tab ferries solo se tripData.ferries?.length > 0",
+        "Tests: getCategoryForEvent({ type: 'ferry' }) → color '#0369a1'",
+        "Tests: getVisibleTabs() con ferries:[] → tab assente; con ferries:[mockFerry] → tab presente",
+        "Tests: almeno 3 keywords ferry matchano in detectCategory() su testo contenente 'traghetto nave porto'",
+        "Tests pass"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Smart Parser Backend — FERRY_SCHEMA e rilevamento automatico",
+      "description": "Come utente admin in modalità Beta, voglio caricare una ricevuta PDF di traghetto e far estrarre i dati automaticamente, così che non devo inserire manualmente i dati della traversata.",
+      "acceptanceCriteria": [
+        "FERRY_SCHEMA aggiunto in netlify/functions/utils/smartParser.js con struttura: { ferries: [{ date, operator, ferryName, routeNumber, departure:{port,city,time}, arrival:{port,city,time}, duration, cabin, deck, passengers:[{name,type}], vehicles:[{type,plate}], bookingReference, ticketNumber, price:{value,currency} }], passenger:{name} }",
+        "detectDocType() riconosce le keyword: ferry, traghetto, nave, traversata, imbarco, porto, imbarcazione, motonave, Grimaldi, Tirrenia, ANEK, Blue Star, Minoan, GNV, Corsica Ferries, Brittany Ferries, Stena Line",
+        "getSchema('ferry') o equivalente restituisce FERRY_SCHEMA",
+        "'ferry' aggiunto a BETA_DOC_TYPES (o equivalente array dei tipi beta)",
+        "Prompt system aggiornato nel Beta mode per includere istruzioni di estrazione ferry con riferimento allo schema",
+        "Tests: getSchema('ferry') → oggetto con chiave 'ferries'",
+        "Tests: detectDocType() su stringa contenente 'traghetto porto imbarco' → 'ferry'",
+        "Tests: detectDocType() su stringa contenente 'ANEK Lines' → 'ferry'",
+        "Tests pass"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "Ricevuta di esempio: filebooking/ferry/GR26019076838.pdf (traghetto greco). Usa per calibrare le keyword. Pattern di riferimento: schemi esistenti TRAIN_SCHEMA, BUS_SCHEMA, CAR_RENTAL_SCHEMA in smartParser.js"
+    },
+    {
+      "id": "US-003",
+      "title": "Rendering tab Traghetti nella pagina viaggio",
+      "description": "Come utente che apre il tab Traghetti in un viaggio, voglio vedere i dettagli di ogni traversata, così che ho tutte le informazioni di imbarco a portata di mano.",
+      "acceptanceCriteria": [
+        "Nuovo file js/tripFerries.js creato seguendo esattamente il pattern di js/tripTrains.js e js/tripBuses.js",
+        "Export window.tripFerries.renderFerries(container, ferries)",
+        "Renderizza i campi: operatore, nome nave, rotta (numero), porto partenza → porto arrivo, data e orario partenza/arrivo, durata traversata, cabina e deck (solo se presenti nel dato), passeggeri, veicoli a bordo (solo se presenti), riferimento prenotazione, prezzo",
+        "Stato vuoto gestito senza errori quando l'array ferries è vuoto",
+        "tripFerries.js importato nel bundle tramite l'entry point esistente che include tripTrains e tripBuses",
+        "Tests: renderFerries(container, [mockFerry]) → HTML contiene porto di partenza e arrivo",
+        "Tests: renderFerries(container, []) → nessun errore, container mostra stato vuoto",
+        "Tests: ferry con vehicles:[{type:'car',plate:'ME000XX'}] → 'ME000XX' visibile nell'HTML",
+        "Tests: ferry senza cabin → la parola 'undefined' non appare nell'HTML",
+        "Tests pass"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "Pattern di riferimento: js/tripTrains.js e js/tripBuses.js. Non introdurre astrazioni nuove — segui esattamente lo stesso stile."
+    },
+    {
+      "id": "US-004",
+      "title": "Timeline attività — eventi ferry nel calendario giornaliero",
+      "description": "Come utente nella vista attività, voglio vedere le traversate in traghetto nella timeline giornaliera, così che ho una visione completa del giorno di viaggio.",
+      "acceptanceCriteria": [
+        "js/tripActivities.js: loop su tripData.ferries || [] aggiunto in buildDayEvents() o funzione equivalente",
+        "Ogni ferry genera un evento con type:'ferry' nella data di departure.date",
+        "Evento referenzia il dato ferry originale in event.data",
+        "getCategoryForEvent({ type: 'ferry' }) usato per ottenere colore e icona dell'evento",
+        "Ferry senza data gestito gracefully (skipped senza crash)",
+        "Tests: buildDayEvents() con tripData.ferries:[mockFerry] → almeno un evento di tipo 'ferry'",
+        "Tests: evento ferry ha la data corretta (departure.date del mockFerry)",
+        "Tests: buildDayEvents() con ferry senza date → nessun errore thrown",
+        "Tests pass"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "Segui il pattern degli eventi 'train' e 'bus' già presenti in tripActivities.js"
+    },
+    {
+      "id": "US-005",
+      "title": "Preview parsing ferry nel modale di upload",
+      "description": "Come utente che carica una ricevuta traghetto, voglio vedere l'anteprima dei dati estratti nel modale di upload, così che posso verificare prima di salvare.",
+      "acceptanceCriteria": [
+        "js/parsePreview.js gestisce result.ferries nell'anteprima post-parsing",
+        "Panel anteprima mostra: icona directions_boat, porto partenza → porto arrivo, data, orario, operatore",
+        "Se ferry.vehicles è presente e non vuoto → veicoli elencati nel panel",
+        "Se ferry.cabin è assente o null → il campo cabina non appare nel panel (non mostra 'undefined' o stringhe vuote)",
+        "Layout coerente con il panel anteprima di trains e buses",
+        "Tests: renderPreview o funzione equivalente con { ferries:[mockFerry] } → panel HTML contiene operatore e porto arrivo",
+        "Tests: ferry con vehicles → HTML panel contiene tipo veicolo",
+        "Tests: ferry con cabin:null → 'undefined' non appare nell'HTML",
+        "Tests pass"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": "Segui il pattern di rendering preview per 'train' e 'bus' già in parsePreview.js"
+    },
+    {
+      "id": "US-006",
+      "title": "Sezione Help — categoria Traghetti",
+      "description": "Come utente che vuole capire come usare i traghetti, voglio trovare una categoria Traghetti nella sezione Aiuto, così che ho guide dedicate a portata di mano.",
+      "acceptanceCriteria": [
+        "Categoria 'traghetti' aggiunta in CATEGORIES di js/helpPage.js con id:'traghetti', colore:#0369a1, gradiente coerente, icona directions_boat, titleIt:'Traghetti e Navi', titleEn:'Ferries & Ships'",
+        "4 articoli aggiunti in js/helpDetailPage.js per la categoria 'traghetti': (1) Come caricare una ricevuta traghetto, (2) Smart Parser Beta per traghetti, (3) Veicoli a bordo, (4) La compagnia non viene riconosciuta — cosa fare",
+        "Ogni articolo ha titleIt, titleEn, contentIt, contentEn non vuoti",
+        "Colore della categoria help (#0369a1) corrisponde a quello in activityCategories.js",
+        "Tests: CATEGORIES in helpPage.js contiene oggetto con id:'traghetti'",
+        "Tests: articoli help per 'traghetti' → almeno 3 articoli, ognuno con titleIt e titleEn non vuoti",
+        "Tests: colore categoria 'traghetti' in helpPage.js === '#0369a1'",
+        "Tests pass"
+      ],
+      "priority": 6,
+      "passes": true,
+      "notes": "Segui il formato degli articoli esistenti per 'treni' e 'bus' in helpDetailPage.js"
+    },
+    {
+      "id": "US-007",
+      "title": "i18n — chiavi traduzione ferry",
+      "description": "Come utente in qualsiasi lingua, voglio vedere tutte le etichette ferry tradotte in italiano e inglese, così che l'interfaccia è consistente con il resto dell'app.",
+      "acceptanceCriteria": [
+        "Chiavi aggiunte in public/i18n/it.json: trip.ferries, ferry.operator, ferry.departure_port, ferry.arrival_port, ferry.cabin, ferry.deck, ferry.vehicle, ferry.booking_reference, ferry.ferry_name",
+        "Stesse chiavi aggiunte in public/i18n/en.json con valori in inglese",
+        "Nessuna chiave con valore vuoto ('') o null",
+        "Chiave trip.ferries: IT='Traghetti', EN='Ferries'",
+        "Tests: tutte le chiavi ferry.* e trip.ferries presenti in it.json e en.json",
+        "Tests: nessuna chiave ferry con valore undefined, null o stringa vuota in entrambi i file",
+        "Tests pass"
+      ],
+      "priority": 7,
+      "passes": true,
+      "notes": "I file i18n sono in public/i18n/it.json e public/i18n/en.json. Aggiungi le chiavi nella posizione logicamente coerente con le chiavi esistenti per train/bus."
+    }
+  ]
+}
