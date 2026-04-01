@@ -13,6 +13,8 @@ import '../tripBuses.js';
 import '../tripFerries.js';
 import '../tripRentals.js';
 import '../airportAutocomplete.js';
+import '../cityAutocomplete.js';
+import '../editBookingAddField.js';
 import '../activityCategories.js';
 import '../tripActivities.js';
 import '../pdfUpload.js';

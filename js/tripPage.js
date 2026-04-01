@@ -3035,6 +3035,13 @@
         });
       }
 
+      // Add-field mechanism
+      if (window.AddFieldHelper) {
+        panelBody.querySelectorAll('.manage-edit-item').forEach(item => {
+          window.AddFieldHelper.init(item, selectedType);
+        });
+      }
+
       // Update footer
       panelFooter.innerHTML = `
         <button class="btn btn-secondary" id="manage-cancel-btn">${i18n.t('modal.cancel') || 'Annulla'}</button>
@@ -3312,6 +3319,17 @@
           window.AirportAutocomplete.init(panelBody);
         }
       });
+    }
+
+    if (type === 'ferry') {
+      if (window.CityAutocomplete) {
+        window.CityAutocomplete.init(panelBody, 'input[data-field="departure.city"], input[data-field="arrival.city"]');
+      }
+    }
+
+    // Add-field mechanism for all booking types
+    if (window.AddFieldHelper) {
+      window.AddFieldHelper.init(panelBody, type);
     }
 
     const closePanel = (onComplete) => {
