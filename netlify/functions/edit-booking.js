@@ -40,11 +40,11 @@ exports.handler = async (event, context) => {
       };
     }
 
-    if (!['flight', 'hotel', 'train', 'bus', 'rental'].includes(type)) {
+    if (!['flight', 'hotel', 'train', 'bus', 'rental', 'ferry'].includes(type)) {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ success: false, error: 'type must be flight, hotel, train, bus or rental' })
+        body: JSON.stringify({ success: false, error: 'type must be flight, hotel, train, bus, rental or ferry' })
       };
     }
 
@@ -69,7 +69,8 @@ exports.handler = async (event, context) => {
       hotel: tripData.hotels,
       train: tripData.trains,
       bus: tripData.buses,
-      rental: tripData.rentals
+      rental: tripData.rentals,
+      ferry: tripData.ferries
     };
     const items = itemsMap[type];
 
@@ -181,6 +182,13 @@ const ALLOWED_RENTAL_FIELDS = [
   'vehicle', 'price', 'totalAmount', 'insurance'
 ];
 
+const ALLOWED_FERRY_FIELDS = [
+  'date', 'operator', 'ferryName', 'routeNumber', 'duration',
+  'bookingReference', 'ticketNumber', 'cabin', 'deck',
+  'departure', 'arrival',
+  'price', 'passengers', 'vehicles'
+];
+
 function filterUpdates(updates, allowedFields) {
   const filtered = {};
   const blocked = [];
@@ -206,7 +214,8 @@ function applyUpdates(item, updates, type) {
     hotel: ALLOWED_HOTEL_FIELDS,
     train: ALLOWED_TRAIN_FIELDS,
     bus: ALLOWED_BUS_FIELDS,
-    rental: ALLOWED_RENTAL_FIELDS
+    rental: ALLOWED_RENTAL_FIELDS,
+    ferry: ALLOWED_FERRY_FIELDS
   };
   const allowedFields = allowedMap[type];
   updates = filterUpdates(updates, allowedFields);
@@ -386,6 +395,23 @@ function applyUpdates(item, updates, type) {
     if (updates.totalAmount) {
       if (!item.totalAmount) item.totalAmount = {};
       Object.assign(item.totalAmount, updates.totalAmount);
+    }
+  } else if (type === 'ferry') {
+    const simpleFields = ['date', 'operator', 'ferryName', 'routeNumber', 'duration', 'bookingReference', 'ticketNumber', 'cabin', 'deck'];
+    for (const field of simpleFields) {
+      if (updates[field] !== undefined) item[field] = updates[field];
+    }
+    if (updates.departure) {
+      if (!item.departure) item.departure = {};
+      Object.assign(item.departure, updates.departure);
+    }
+    if (updates.arrival) {
+      if (!item.arrival) item.arrival = {};
+      Object.assign(item.arrival, updates.arrival);
+    }
+    if (updates.price) {
+      if (!item.price) item.price = {};
+      Object.assign(item.price, updates.price);
     }
   }
 }

@@ -3269,7 +3269,8 @@
       hotel: window.tripHotels.buildEditForm,
       train: window.tripTrains.buildEditForm,
       bus: window.tripBuses.buildEditForm,
-      rental: window.tripRentals.buildEditForm
+      rental: window.tripRentals.buildEditForm,
+      ferry: window.tripFerries.buildEditForm
     };
     const formHTML = (formBuilders[type] || formBuilders.flight)(item);
 
@@ -3365,7 +3366,8 @@
           hotel: window.tripHotels.collectUpdates,
           train: window.tripTrains.collectUpdates,
           bus: window.tripBuses.collectUpdates,
-          rental: window.tripRentals.collectUpdates
+          rental: window.tripRentals.collectUpdates,
+          ferry: window.tripFerries.collectUpdates
         };
         const updates = (updateCollectors[type] || updateCollectors.flight)(panelBody);
 

@@ -375,6 +375,12 @@ const parsePreview = {
       </div>`;
 
       html += `<div class="parse-detail-grid">`;
+      html += this._field('Porto partenza', f.departure?.port, 'departure.port');
+      html += this._field('Città partenza', f.departure?.city, 'departure.city');
+      html += this._field('Orario partenza', f.departure?.time, 'departure.time');
+      html += this._field('Porto arrivo', f.arrival?.port, 'arrival.port');
+      html += this._field('Città arrivo', f.arrival?.city, 'arrival.city');
+      html += this._field('Orario arrivo', f.arrival?.time, 'arrival.time');
       html += this._field('Nome nave', f.ferryName, 'ferryName');
       html += this._field('Rotta', f.routeNumber, 'routeNumber');
       html += this._field('Data', this._fmtDate(f.date), 'date', 'date', f.date);
