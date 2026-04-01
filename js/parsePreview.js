@@ -192,6 +192,12 @@ const parsePreview = {
         html += `</tbody></table>`;
       }
 
+      // Add-field trigger (visible only in edit mode)
+      html += `<div class="parse-add-field-section" data-card-type="flight" data-card-index="${i}" style="display:none">`;
+      html += `<button type="button" class="parse-add-field-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Aggiungi campo</button>`;
+      html += `<div class="parse-add-field-dropdown" style="display:none"></div>`;
+      html += `</div>`;
+
       html += `</div>`;
       html += `</div>`;
     });
@@ -226,6 +232,12 @@ const parsePreview = {
       html += this._field('Cancellazione', cancellation, 'cancellation');
       html += this._field('Fonte', h.source, 'source');
       html += `</div>`;
+      // Add-field trigger (visible only in edit mode)
+      html += `<div class="parse-add-field-section" data-card-type="hotel" data-card-index="${i}" style="display:none">`;
+      html += `<button type="button" class="parse-add-field-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Aggiungi campo</button>`;
+      html += `<div class="parse-add-field-dropdown" style="display:none"></div>`;
+      html += `</div>`;
+
       html += `</div>`;
       html += `</div>`;
     });
@@ -265,6 +277,11 @@ const parsePreview = {
       html += this._field('Carrozza', t.coach, 'coach');
       html += this._field('Prezzo', this._resolvePrice(t.price), 'price');
       html += `</div>`;
+      // Add-field trigger (visible only in edit mode)
+      html += `<div class="parse-add-field-section" data-card-type="train" data-card-index="${i}" style="display:none">`;
+      html += `<button type="button" class="parse-add-field-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Aggiungi campo</button>`;
+      html += `<div class="parse-add-field-dropdown" style="display:none"></div>`;
+      html += `</div>`;
       html += `</div>`;
       html += `</div>`;
     });
@@ -300,6 +317,11 @@ const parsePreview = {
       html += this._field('PNR', b.bookingReference, 'bookingReference');
       html += this._field('Posto', b.seat, 'seat');
       html += this._field('Prezzo', this._resolvePrice(b.price), 'price');
+      html += `</div>`;
+      // Add-field trigger (visible only in edit mode)
+      html += `<div class="parse-add-field-section" data-card-type="bus" data-card-index="${i}" style="display:none">`;
+      html += `<button type="button" class="parse-add-field-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Aggiungi campo</button>`;
+      html += `<div class="parse-add-field-dropdown" style="display:none"></div>`;
       html += `</div>`;
       html += `</div>`;
       html += `</div>`;
@@ -346,6 +368,11 @@ const parsePreview = {
       html += this._field('Riferimento', r.bookingReference || r.confirmationNumber, 'bookingReference');
       html += this._field('Prezzo', price, 'price');
       html += `</div>`;
+      // Add-field trigger (visible only in edit mode)
+      html += `<div class="parse-add-field-section" data-card-type="rental" data-card-index="${i}" style="display:none">`;
+      html += `<button type="button" class="parse-add-field-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Aggiungi campo</button>`;
+      html += `<div class="parse-add-field-dropdown" style="display:none"></div>`;
+      html += `</div>`;
       html += `</div>`;
       html += `</div>`;
     });
@@ -374,13 +401,20 @@ const parsePreview = {
         </div>
       </div>`;
 
+      html += `<div class="parse-section-header" style="margin-top:10px"><span>Partenza</span></div>`;
       html += `<div class="parse-detail-grid">`;
-      html += this._field('Porto partenza', f.departure?.port, 'departure.port');
-      html += this._field('Città partenza', f.departure?.city, 'departure.city');
-      html += this._field('Orario partenza', f.departure?.time, 'departure.time');
-      html += this._field('Porto arrivo', f.arrival?.port, 'arrival.port');
-      html += this._field('Città arrivo', f.arrival?.city, 'arrival.city');
-      html += this._field('Orario arrivo', f.arrival?.time, 'arrival.time');
+      html += this._field('Porto', f.departure?.port, 'departure.port');
+      html += this._field('Città', f.departure?.city, 'departure.city');
+      html += this._field('Orario', f.departure?.time, 'departure.time');
+      html += `</div>`;
+      html += `<div class="parse-section-header" style="margin-top:10px"><span>Arrivo</span></div>`;
+      html += `<div class="parse-detail-grid">`;
+      html += this._field('Porto', f.arrival?.port, 'arrival.port');
+      html += this._field('Città', f.arrival?.city, 'arrival.city');
+      html += this._field('Orario', f.arrival?.time, 'arrival.time');
+      html += `</div>`;
+      html += `<div class="parse-section-header" style="margin-top:10px"><span>Dettagli</span></div>`;
+      html += `<div class="parse-detail-grid">`;
       html += this._field('Nome nave', f.ferryName, 'ferryName');
       html += this._field('Rotta', f.routeNumber, 'routeNumber');
       html += this._field('Data', this._fmtDate(f.date), 'date', 'date', f.date);
@@ -424,6 +458,14 @@ const parsePreview = {
         }
         html += `</tbody></table>`;
       }
+
+      // Add-field trigger (visible only in edit mode via CSS)
+      html += `<div class="parse-add-field-section" data-card-type="ferry" data-card-index="${i}" style="display:none">`;
+      html += `<button type="button" class="parse-add-field-btn">`;
+      html += `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Aggiungi campo`;
+      html += `</button>`;
+      html += `<div class="parse-add-field-dropdown" style="display:none"></div>`;
+      html += `</div>`;
 
       html += `</div>`;
       html += `</div>`;
@@ -560,11 +602,22 @@ const parsePreview = {
         input.dataset.original = currentText;
         el.replaceWith(input);
       });
+      // Attach city autocomplete to ferry city fields
+      if (window.CityAutocomplete) {
+        container.querySelectorAll('.parse-ferry-card').forEach(card => {
+          window.CityAutocomplete.init(card, 'input[data-field="departure.city"], input[data-field="arrival.city"]');
+        });
+      }
+      // Show and init add-field triggers
+      this._initAddFieldTriggers(container);
     } else {
+      // Hide add-field sections
+      container.querySelectorAll('.parse-add-field-section').forEach(s => { s.style.display = 'none'; });
+      container.querySelectorAll('.parse-add-field-dropdown').forEach(d => { d.style.display = 'none'; });
       this._applyEdits(container);
       editBtn.textContent = 'Modifica';
       preview.classList.remove('parse-editing');
-      // Convert inputs back to display elements
+      // Convert inputs back to display elements (skip added-field inputs — they stay as field-value)
       container.querySelectorAll('.parse-field-input').forEach(input => {
         const fieldKey = input.dataset.field || '';
         if (input.classList.contains('parse-hotel-name-input')) {
@@ -596,6 +649,87 @@ const parsePreview = {
         }
       });
     }
+  },
+
+  _initAddFieldTriggers(container) {
+    // Schema dei campi aggiuntivi per tipo (deve restare sincronizzato con editBookingAddField.js)
+    const SCHEMA = {
+      flight:  [{ label: 'Posto', field: 'seat', t: 'text' }, { label: 'Bagaglio', field: 'baggage', t: 'text' }, { label: 'Terminal partenza', field: 'departure.terminal', t: 'text' }, { label: 'Terminal arrivo', field: 'arrival.terminal', t: 'text' }, { label: 'Durata', field: 'duration', t: 'text' }],
+      hotel:   [{ label: 'Orario check-in', field: 'checkIn.time', t: 'time' }, { label: 'Orario check-out', field: 'checkOut.time', t: 'time' }, { label: 'Colazione inclusa', field: 'breakfast.included', t: 'text' }],
+      train:   [{ label: 'Posto', field: 'seat', t: 'text' }, { label: 'Carrozza', field: 'coach', t: 'text' }, { label: 'Durata', field: 'duration', t: 'text' }],
+      bus:     [{ label: 'Posto', field: 'seat', t: 'text' }, { label: 'Durata', field: 'duration', t: 'text' }],
+      rental:  [{ label: 'Marca veicolo', field: 'vehicle.make', t: 'text' }, { label: 'Modello veicolo', field: 'vehicle.model', t: 'text' }, { label: 'Assicurazione', field: 'insurance', t: 'text' }],
+      ferry:   [{ label: 'Orario partenza', field: 'departure.time', t: 'time' }, { label: 'Orario arrivo', field: 'arrival.time', t: 'time' }, { label: 'Cabina', field: 'cabin', t: 'text' }, { label: 'Ponte', field: 'deck', t: 'text' }, { label: 'Nome nave', field: 'ferryName', t: 'text' }, { label: 'Numero rotta', field: 'routeNumber', t: 'text' }, { label: 'Durata', field: 'duration', t: 'text' }]
+    };
+
+    container.querySelectorAll('.parse-add-field-section').forEach(section => {
+      section.style.display = '';
+      const type = section.dataset.cardType;
+      const cardIndex = section.dataset.cardIndex;
+      const btn = section.querySelector('.parse-add-field-btn');
+      const dropdown = section.querySelector('.parse-add-field-dropdown');
+      if (!btn || !dropdown) return;
+
+      // Find the parent card element
+      const cardClass = `.parse-${type}-card[data-index="${cardIndex}"]`;
+      const card = container.querySelector(cardClass);
+      if (!card) return;
+
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const schema = SCHEMA[type] || [];
+        // Filter out fields already present as inputs in the card
+        const missing = schema.filter(def => !card.querySelector(`input[data-field="${def.field}"]`));
+        if (missing.length === 0) { dropdown.style.display = 'none'; return; }
+
+        if (dropdown.style.display === 'block') { dropdown.style.display = 'none'; return; }
+
+        dropdown.innerHTML = missing.map((def, i) =>
+          `<div class="parse-add-field-option" data-index="${i}">${this._esc(def.label)}</div>`
+        ).join('');
+        dropdown.style.display = 'block';
+
+        dropdown.querySelectorAll('.parse-add-field-option').forEach((el, i) => {
+          el.addEventListener('click', () => {
+            const def = missing[i];
+            // Find or create a "campi aggiuntivi" grid in the card
+            let addedGrid = card.querySelector('.parse-added-fields-grid');
+            if (!addedGrid) {
+              const header = document.createElement('div');
+              header.className = 'parse-section-header';
+              header.style.marginTop = '10px';
+              header.innerHTML = '<span>Campi aggiuntivi</span>';
+              addedGrid = document.createElement('div');
+              addedGrid.className = 'parse-detail-grid parse-added-fields-grid';
+              // Insert before the add-field-section
+              card.insertBefore(header, section);
+              card.insertBefore(addedGrid, section);
+            }
+
+            // Build a field row with an input
+            const row = document.createElement('div');
+            row.className = 'parse-field-row';
+            row.innerHTML = `<span class="parse-field-label">${this._esc(def.label)}</span>`;
+            const input = document.createElement('input');
+            input.type = def.t;
+            input.className = 'parse-field-input';
+            input.dataset.field = def.field;
+            input.dataset.original = '';
+            input.value = '';
+            row.appendChild(input);
+            addedGrid.appendChild(row);
+
+            dropdown.style.display = 'none';
+            setTimeout(() => input.focus(), 50);
+          });
+        });
+      });
+
+      // Close dropdown on outside click
+      document.addEventListener('click', function handler(e) {
+        if (!section.contains(e.target)) dropdown.style.display = 'none';
+      });
+    });
   },
 
   _applyEdits(container) {
