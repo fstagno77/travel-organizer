@@ -1,3 +1,16 @@
+## 2026-04-01 - US-007
+- Aggiunta chiave `trip.ferries` nella sezione "trip" di it.json (valore: "Traghetti") e en.json (valore: "Ferries")
+- Aggiunta sezione `ferry` in it.json e en.json con tutte le chiavi richieste: operator, departure_port, arrival_port, cabin, deck, vehicle, booking_reference, ferry_name + chiavi accessorie
+- Aggiunto anche `trip.noFerries` / `trip.noFerriesText` per stato vuoto del tab (coerente con noTrains/noBuses)
+- Parità chiavi garantita: tutte le chiavi ferry in IT hanno corrispondente in EN e viceversa
+- Creato tests/us007-ferry-i18n.test.js con 40 test (tutti passanti)
+- **Files cambiati:** public/i18n/it.json, public/i18n/en.json, tests/us007-ferry-i18n.test.js (nuovo)
+- **Learnings per iterazioni future:**
+  - Le chiavi del tab bar (trip.trains, trip.buses, trip.ferries) vivono nella sezione "trip" dei file i18n
+  - Le chiavi specifiche del tipo di trasporto vivono in una sezione dedicata ("train", "bus", "ferry") a livello root
+  - Per un nuovo tipo di trasporto: aggiungere `trip.xxx` nella sezione trip, `trip.noXxx` e `trip.noXxxText` per lo stato vuoto, e una sezione `xxx` root con tutte le chiavi campo
+---
+
 ## 2026-04-01 - US-006
 - Aggiunta categoria 'traghetti' in CATEGORIES di js/helpPage.js: id:'traghetti', colore:#0369a1, gradient lineare, icona SVG ferry, titleIt:'Traghetti e Navi', titleEn:'Ferries & Ships'
 - Aggiunta sezione 'traghetti' in CONTENT di js/helpDetailPage.js con 4 articoli IT+EN: (1) caricare-ricevuta-traghetto, (2) smartparse-beta-traghetti, (3) veicoli-a-bordo, (4) compagnia-non-riconosciuta

@@ -131,7 +131,7 @@
         "Tests pass"
       ],
       "priority": 7,
-      "passes": false,
+      "passes": true,
       "notes": "I file i18n sono in public/i18n/it.json e public/i18n/en.json. Aggiungi le chiavi nella posizione logicamente coerente con le chiavi esistenti per train/bus."
     }
   ]
