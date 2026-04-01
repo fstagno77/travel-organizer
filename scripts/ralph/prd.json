@@ -58,7 +58,7 @@
         "Tests pass"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "Pattern di riferimento: js/tripTrains.js e js/tripBuses.js. Non introdurre astrazioni nuove — segui esattamente lo stesso stile."
     },
     {

@@ -9,6 +9,8 @@
 - I nuovi tipi in smartParser: aggiungere SCHEMA, case in getSchemaForDocType, in BETA_DOC_TYPES, nel BETA_SYSTEM_PROMPT, in sanitizeResult per le date
 - `getSchema(docType)` esporta lo schema come oggetto parsato (JSON.parse del SCHEMA string)
 - `detectDocType(text)` è una funzione keyword-based esportata per pre-screening testo prima di Claude
+- Per nuovi tab di trasporto: creare `js/tripXxx.js` con `window.tripXxx = { render, renderFerries (alias), renderDetails, buildEditForm, collectUpdates, buildFullEditForm, collectFullUpdates, _items }`, aggiungere import in `js/entries/trip.js` e `js/entries/share-entry.js`, aggiornare `handleToggleDetails` in tripPage.js (indexAttrMap, itemsMap, renderFnMap)
+- mockUtils per i test IIFE dei moduli di trasporto richiede: `escapeHtml`, `formatFlightDate`, `formatDuration`
 
 # Ralph Progress Log
 Started: Wed Apr  1 09:50:41 CEST 2026
@@ -47,4 +49,18 @@ Started: Wed Apr  1 09:50:41 CEST 2026
   - smartParser.js: per ogni nuovo tipo → SCHEMA, getSchemaForDocType case, BETA_DOC_TYPES, BETA_SYSTEM_PROMPT (docType detection + mandatory fields + schema), sanitizeResult
   - Le BETA_SYSTEM_PROMPT modifiche si fanno via `.replace()` chain già esistente — estendere il blocco mandatory fields con un nuovo "### For FERRIES:" prima di "## IMPORTANT OPTIONAL FIELDS"
   - I test di smartParser.js si scrivono con require diretto (non IIFE), poiché le functions Node.js usano CommonJS module.exports
+---
+
+## 2026-04-01 - US-003
+- Creato js/tripFerries.js seguendo esattamente il pattern di tripTrains.js e tripBuses.js
+- Espone window.tripFerries con: render, renderFerries (alias), renderDetails, buildEditForm, collectUpdates, buildFullEditForm, collectFullUpdates, _ferries
+- Gestisce campi ferry-specifici: departure.port/arrival.port, ferryName, cabin/deck (opzionali), passengers array, vehicles array
+- Aggiornato handleToggleDetails in tripPage.js: aggiunto 'ferry' in indexAttrMap, itemsMap, renderFnMap
+- Import aggiunto in js/entries/trip.js e js/entries/share-entry.js (dopo tripBuses.js)
+- Creato tests/us003-ferry-rendering.test.js con 21 test (tutti passanti)
+- **Files cambiati:** js/tripFerries.js (nuovo), js/entries/trip.js, js/entries/share-entry.js, js/tripPage.js, tests/us003-ferry-rendering.test.js
+- **Learnings per iterazioni future:**
+  - Il booking reference è nei dettagli (lazy loaded), non nella card principale — testare via renderDetails
+  - Il campo `departure.port` è diverso da `departure.station` (trains/buses) — usare `.port` per ferry
+  - `window.tripFerries._ferries` viene popolato da renderFerries — serve per handleToggleDetails
 ---
