@@ -813,7 +813,7 @@
    * Handle toggle details (flights or hotels) with lazy rendering
    */
   function handleToggleDetails(btn, type) {
-    const indexAttrMap = { flight: 'flightIndex', hotel: 'hotelIndex', train: 'trainIndex', bus: 'busIndex', rental: 'rentalIndex' };
+    const indexAttrMap = { flight: 'flightIndex', hotel: 'hotelIndex', train: 'trainIndex', bus: 'busIndex', ferry: 'ferryIndex', rental: 'rentalIndex' };
     const indexAttr = indexAttrMap[type] || 'flightIndex';
     const index = btn.dataset[indexAttr];
     const detailsId = `${type}-details-${index}`;
@@ -827,6 +827,7 @@
         hotel: window.tripHotels._hotels,
         train: window.tripTrains._trains,
         bus: window.tripBuses._buses,
+        ferry: window.tripFerries._ferries,
         rental: window.tripRentals._rentals
       };
       const renderFnMap = {
@@ -834,6 +835,7 @@
         hotel: window.tripHotels.renderDetails,
         train: window.tripTrains.renderDetails,
         bus: window.tripBuses.renderDetails,
+        ferry: window.tripFerries.renderDetails,
         rental: window.tripRentals.renderDetails
       };
       const items = itemsMap[type];
