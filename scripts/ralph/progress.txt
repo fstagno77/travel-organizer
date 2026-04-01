@@ -1,3 +1,29 @@
+## 2026-04-01 - US-006
+- Aggiunta categoria 'traghetti' in CATEGORIES di js/helpPage.js: id:'traghetti', colore:#0369a1, gradient lineare, icona SVG ferry, titleIt:'Traghetti e Navi', titleEn:'Ferries & Ships'
+- Aggiunta sezione 'traghetti' in CONTENT di js/helpDetailPage.js con 4 articoli IT+EN: (1) caricare-ricevuta-traghetto, (2) smartparse-beta-traghetti, (3) veicoli-a-bordo, (4) compagnia-non-riconosciuta
+- Ogni articolo ha id, title, intro, steps (array non vuoto), opzionalmente tips e result
+- Creato tests/us006-ferry-help.test.js con 22 test (tutti passanti)
+- **Files cambiati:** js/helpPage.js, js/helpDetailPage.js, tests/us006-ferry-help.test.js (nuovo)
+- **Learnings per iterazioni future:**
+  - helpPage.js e helpDetailPage.js sono object literal con `window.helpPage` / `window.helpDetailPage` — caricabili con `new Function('window', 'document', code)(win, doc)`
+  - Le categorie help e le categorie activityCategories devono avere lo stesso colore (#0369a1 per ferry)
+  - Per aggiungere una nuova categoria help: 1) CATEGORIES in helpPage.js, 2) CONTENT in helpDetailPage.js (sezione 'id': { it: {...}, en: {...} })
+  - Ogni articolo helpDetailPage ha: id, title, intro, steps[], opzionalmente tips[], result, related[]
+---
+
+## 2026-04-01 - US-005
+- Aggiunto supporto ferry in js/parsePreview.js: raccolta allFerries nel loop iniziale, segmenti ferry in _segments, pannelli ferry con rotta porto→porto, tabelle passeggeri e veicoli
+- Campo cabin/deck mostrato solo se non null (condizione `if (f.cabin != null)`)
+- Sezione veicoli a bordo mostrata solo se `f.vehicles?.length > 0`
+- Condizione passenger section aggiornata: `allFerries.length === 0` aggiunto
+- Creato tests/us005-ferry-preview.test.js con 14 test (tutti passanti)
+- **Files cambiati:** js/parsePreview.js, tests/us005-ferry-preview.test.js (nuovo)
+- **Learnings per iterazioni future:**
+  - parsePreview.js NON è un IIFE: è un oggetto letterale `const parsePreview = {...}` con `window.parsePreview = parsePreview` alla fine — va caricato con `new Function('document', 'window', code)` passando entrambi
+  - Il mock di `document.createElement` per `_esc`: il setter di `textContent` deve aggiornare la stessa variabile che restituisce `innerHTML` — per dati senza HTML speciali sono equivalenti
+  - Per aggiungere un nuovo tipo in parsePreview: 1) allXxx array, 2) segmento in _segments con icon, 3) pannello HTML nel loop, 4) aggiornare la condizione del passenger panel
+---
+
 ## Codebase Patterns
 - Frontend JS usa IIFE con `window.xxx` exports — per testare in Jest, usa `new Function('window', ...)` con globals simulati
 - `activityCategories.js` è caricabile in Jest Node (nessuna dipendenza DOM nel corpo principale)
@@ -11,6 +37,7 @@
 - `detectDocType(text)` è una funzione keyword-based esportata per pre-screening testo prima di Claude
 - Per nuovi tab di trasporto: creare `js/tripXxx.js` con `window.tripXxx = { render, renderFerries (alias), renderDetails, buildEditForm, collectUpdates, buildFullEditForm, collectFullUpdates, _items }`, aggiungere import in `js/entries/trip.js` e `js/entries/share-entry.js`, aggiornare `handleToggleDetails` in tripPage.js (indexAttrMap, itemsMap, renderFnMap)
 - mockUtils per i test IIFE dei moduli di trasporto richiede: `escapeHtml`, `formatFlightDate`, `formatDuration`
+- `parsePreview.js` richiede sia `document` che `window` nel mock per i test: `new Function('document', 'window', code)` — il mock di `document.createElement` deve avere textContent setter che aggiorna anche innerHTML
 
 # Ralph Progress Log
 Started: Wed Apr  1 09:50:41 CEST 2026
