@@ -64,3 +64,17 @@ Started: Wed Apr  1 09:50:41 CEST 2026
   - Il campo `departure.port` è diverso da `departure.station` (trains/buses) — usare `.port` per ferry
   - `window.tripFerries._ferries` viene popolato da renderFerries — serve per handleToggleDetails
 ---
+
+## 2026-04-01 - US-004
+- Aggiunto loop su `tripData.ferries || []` in `buildDayEvents()` di `js/tripActivities.js`
+- Ogni ferry genera un evento `{ date: ferry.date, time: ferry.departure?.time || null, type: 'ferry', data: ferry }`
+- Ferry senza `date` skippato con `continue` (nessun crash)
+- 'ferry' aggiunto a `typePriority` con priorità 1.5 (stesso livello di train/bus)
+- `buildDayEvents` esposta via `window.tripActivities.buildDayEvents` per testabilità
+- Creato `tests/us004-ferry-activities.test.js` con 14 test (tutti passanti)
+- **Files cambiati:** js/tripActivities.js, tests/us004-ferry-activities.test.js
+- **Learnings per iterazioni future:**
+  - `buildDayEvents` era funzione interna IIFE — per testarla bisogna esporla via `window.tripActivities`
+  - Il pattern per aggiungere eventi in buildDayEvents: `const items = tripData.xxx || []; for (const item of items) { if (!item.date) continue; events.push({...}); }`
+  - `auth-reload-loop.test.js` ha un bug pre-esistente (sessionStorage non definito in Node.js) — non è rotto da noi, exit code 1 atteso
+---
