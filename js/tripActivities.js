@@ -82,6 +82,12 @@
       events.push({ date: bus.date, time: bus.departure?.time || null, type: 'bus', data: bus });
     }
 
+    const ferries = tripData.ferries || [];
+    for (const ferry of ferries) {
+      if (!ferry.date) continue;
+      events.push({ date: ferry.date, time: ferry.departure?.time || null, type: 'ferry', data: ferry });
+    }
+
     const rentals = tripData.rentals || [];
     for (const rental of rentals) {
       const pickupDate = rental.date;
@@ -127,7 +133,7 @@
     }
     allDates.sort();
 
-    const typePriority = { 'hotel-checkout': 0, 'rental-dropoff': 0.5, 'flight': 1, 'train': 1.5, 'bus': 1.5, 'rental-pickup': 1.8, 'hotel-checkin': 2, 'hotel-stay': 3, 'rental-active': 3.5, 'activity': 4 };
+    const typePriority = { 'hotel-checkout': 0, 'rental-dropoff': 0.5, 'flight': 1, 'train': 1.5, 'bus': 1.5, 'ferry': 1.5, 'rental-pickup': 1.8, 'hotel-checkin': 2, 'hotel-stay': 3, 'rental-active': 3.5, 'activity': 4 };
     for (const date of allDates) {
       if (grouped[date]) {
         grouped[date].sort((a, b) => {
@@ -1089,6 +1095,7 @@
   }
 
   window.tripActivities = {
-    render: renderActivities
+    render: renderActivities,
+    buildDayEvents
   };
 })();
