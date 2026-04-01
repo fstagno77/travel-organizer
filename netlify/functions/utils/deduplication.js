@@ -571,4 +571,83 @@ function deduplicateRentals(newRentals, existingRentals = []) {
   return { deduplicatedRentals, skippedRentals, updatedRentals };
 }
 
-module.exports = { deduplicateFlights, deduplicateHotels, deduplicateTrains, deduplicateBuses, deduplicateRentals };
+const FERRY_COMPARE_FIELDS = [
+  { path: 'date', label: 'Data' },
+  { path: 'departure.time', label: 'Ora partenza' },
+  { path: 'arrival.time', label: 'Ora arrivo' },
+  { path: 'departure.port', label: 'Porto partenza' },
+  { path: 'arrival.port', label: 'Porto arrivo' },
+  { path: 'cabin', label: 'Cabina' },
+];
+
+/**
+ * Deduplica traghetti contro esistenti e all'interno del batch.
+ * Match su bookingReference + date oppure route + date.
+ */
+function deduplicateFerries(newFerries, existingFerries = []) {
+  const deduplicatedFerries = [];
+  let skippedFerries = 0;
+  const updatedFerries = [];
+
+  for (const newFerry of newFerries) {
+    const bookingRef = newFerry.bookingReference?.toLowerCase()?.trim();
+    const depPort = (newFerry.departure?.port || newFerry.departure?.city)?.toLowerCase()?.trim();
+    const arrPort = (newFerry.arrival?.port || newFerry.arrival?.city)?.toLowerCase()?.trim();
+    const ferryDate = newFerry.date;
+
+    let isDuplicate = false;
+    let isUpdate = false;
+    const allFerries = [...existingFerries, ...deduplicatedFerries];
+
+    // Match esatto: bookingRef + date
+    if (bookingRef && ferryDate) {
+      const exactMatch = allFerries.find(f => {
+        const fRef = f.bookingReference?.toLowerCase()?.trim();
+        return fRef === bookingRef && f.date === ferryDate;
+      });
+      if (exactMatch) isDuplicate = true;
+    } else if (depPort && arrPort && ferryDate) {
+      // Match per rotta + data
+      isDuplicate = !!allFerries.find(f => {
+        const fDep = (f.departure?.port || f.departure?.city)?.toLowerCase()?.trim();
+        const fArr = (f.arrival?.port || f.arrival?.city)?.toLowerCase()?.trim();
+        return fDep === depPort && fArr === arrPort && f.date === ferryDate;
+      });
+    }
+
+    // SOFT MATCH: stesso bookingRef ma data diversa → potenziale update
+    if (!isDuplicate && !isUpdate && bookingRef && existingFerries.length > 0) {
+      const softMatch = existingFerries.find(f => {
+        const fRef = f.bookingReference?.toLowerCase()?.trim();
+        return fRef === bookingRef && f.date !== ferryDate;
+      });
+      if (softMatch) {
+        const changes = diffFields(softMatch, newFerry, FERRY_COMPARE_FIELDS);
+        if (changes.length > 0) {
+          updatedFerries.push({
+            type: 'ferry',
+            existingId: softMatch.id,
+            existing: softMatch,
+            incoming: newFerry,
+            changes,
+            pdfIndex: newFerry._pdfIndex
+          });
+          isUpdate = true;
+        }
+      }
+    }
+
+    if (isUpdate) {
+      console.log(`Detected update for ferry: ${bookingRef || `${depPort}→${arrPort}`}`);
+    } else if (isDuplicate) {
+      console.log(`Skipping duplicate ferry: ${bookingRef || `${depPort}→${arrPort}`}`);
+      skippedFerries++;
+    } else {
+      deduplicatedFerries.push(newFerry);
+    }
+  }
+
+  return { deduplicatedFerries, skippedFerries, updatedFerries };
+}
+
+module.exports = { deduplicateFlights, deduplicateHotels, deduplicateTrains, deduplicateBuses, deduplicateRentals, deduplicateFerries };

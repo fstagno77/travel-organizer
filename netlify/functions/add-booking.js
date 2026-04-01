@@ -14,7 +14,7 @@ const { authenticateRequest, unauthorizedResponse, getCorsHeaders, handleOptions
 const { uploadPdf, deletePdf, downloadPdfAsBase64, moveTmpPdfToTrip, cleanupTmpPdfs } = require('./utils/storage');
 const { processPdfsWithClaude, extractPassengerFromFilename } = require('./utils/pdfProcessor');
 const { updateTripDates } = require('./utils/tripDates');
-const { deduplicateFlights, deduplicateHotels, deduplicateTrains, deduplicateBuses, deduplicateRentals } = require('./utils/deduplication');
+const { deduplicateFlights, deduplicateHotels, deduplicateTrains, deduplicateBuses, deduplicateRentals, deduplicateFerries } = require('./utils/deduplication');
 const { notifyCollaborators } = require('./utils/notificationHelper');
 
 function countFields(flights, hotels) {
@@ -38,7 +38,7 @@ function countFields(flights, hotels) {
  * @returns {{ updatedCounts: Object }}
  */
 async function applyConfirmedUpdates(tripData, confirmedUpdates, resolvedPdfs, tripId) {
-  const updatedCounts = { flights: 0, hotels: 0, trains: 0, buses: 0, rentals: 0 };
+  const updatedCounts = { flights: 0, hotels: 0, trains: 0, buses: 0, rentals: 0, ferries: 0 };
   const deletePromises = [];
   const uploadPromises = [];
 
@@ -50,7 +50,8 @@ async function applyConfirmedUpdates(tripData, confirmedUpdates, resolvedPdfs, t
       hotel: tripData.hotels,
       train: tripData.trains,
       bus: tripData.buses,
-      rental: tripData.rentals
+      rental: tripData.rentals,
+      ferry: tripData.ferries
     };
     const collection = collectionMap[type];
     if (!collection) continue;
@@ -377,11 +378,11 @@ exports.handler = async (event, context) => {
       const { updatedCounts } = await applyConfirmedUpdates(tripData, confirmedUpdates, resolvedPdfs, tripId);
 
       // 2. Aggiungi i booking genuinamente nuovi (pendingNew)
-      const addedCounts = { flights: 0, hotels: 0, trains: 0, buses: 0, rentals: 0 };
+      const addedCounts = { flights: 0, hotels: 0, trains: 0, buses: 0, rentals: 0, ferries: 0 };
       if (pendingNew) {
         const movedTmpPaths = new Set();
 
-        for (const type of ['flights', 'hotels', 'trains', 'buses', 'rentals']) {
+        for (const type of ['flights', 'hotels', 'trains', 'buses', 'rentals', 'ferries']) {
           const items = pendingNew[type];
           if (!items || !items.length) continue;
 
@@ -480,6 +481,7 @@ exports.handler = async (event, context) => {
     const newTrains = [];
     const newBuses = [];
     const newRentals = [];
+    const newFerries = [];
     let smartParseMeta = null;
 
     let results;
@@ -584,9 +586,18 @@ exports.handler = async (event, context) => {
           newRentals.push(rental);
         });
       }
+      if (result.ferries) {
+        result.ferries.forEach(ferry => {
+          ferry._pdfIndex = pdfIndex;
+          if (!ferry.passenger && result.passenger) {
+            ferry.passenger = { ...result.passenger };
+          }
+          newFerries.push(ferry);
+        });
+      }
     }
 
-    if (!newFlights.length && !newHotels.length && !newTrains.length && !newBuses.length && !newRentals.length) {
+    if (!newFlights.length && !newHotels.length && !newTrains.length && !newBuses.length && !newRentals.length && !newFerries.length) {
       const errorCode = apiError ? 'E201' : 'E103';
       return {
         statusCode: 400,
@@ -607,14 +618,16 @@ exports.handler = async (event, context) => {
     const existingTrains = tripData.trains || [];
     const existingBuses = tripData.buses || [];
     const existingRentals = tripData.rentals || [];
+    const existingFerries = tripData.ferries || [];
 
     const { deduplicatedHotels, skippedHotels, updatedHotels } = deduplicateHotels(newHotels, existingHotels);
     const { deduplicatedFlights, skippedFlights, updatedFlights } = deduplicateFlights(newFlights, existingFlights);
     const { deduplicatedTrains, skippedTrains, updatedTrains } = deduplicateTrains(newTrains, existingTrains);
     const { deduplicatedBuses, skippedBuses, updatedBuses } = deduplicateBuses(newBuses, existingBuses);
     const { deduplicatedRentals, skippedRentals, updatedRentals } = deduplicateRentals(newRentals, existingRentals);
+    const { deduplicatedFerries, skippedFerries, updatedFerries } = deduplicateFerries(newFerries, existingFerries);
 
-    const allUpdates = [...updatedFlights, ...updatedHotels, ...updatedTrains, ...updatedBuses, ...updatedRentals];
+    const allUpdates = [...updatedFlights, ...updatedHotels, ...updatedTrains, ...updatedBuses, ...updatedRentals, ...updatedFerries];
 
     // ── Se ci sono aggiornamenti, ritorna senza salvare ──
     if (allUpdates.length > 0) {
@@ -631,6 +644,7 @@ exports.handler = async (event, context) => {
       if (deduplicatedTrains.length) pendingNewBookings.trains = deduplicatedTrains;
       if (deduplicatedBuses.length) pendingNewBookings.buses = deduplicatedBuses;
       if (deduplicatedRentals.length) pendingNewBookings.rentals = deduplicatedRentals;
+      if (deduplicatedFerries.length) pendingNewBookings.ferries = deduplicatedFerries;
 
       // Rimuovi campi interni dai dati existing per sicurezza (no leak di dati sensibili)
       const sanitizedUpdates = allUpdates.map(u => ({
@@ -650,7 +664,7 @@ exports.handler = async (event, context) => {
           hasUpdates: true,
           updates: sanitizedUpdates,
           pendingNew: Object.keys(pendingNewBookings).length > 0 ? pendingNewBookings : null,
-          skipped: { flights: skippedFlights, hotels: skippedHotels, trains: skippedTrains, buses: skippedBuses, rentals: skippedRentals }
+          skipped: { flights: skippedFlights, hotels: skippedHotels, trains: skippedTrains, buses: skippedBuses, rentals: skippedRentals, ferries: skippedFerries }
         })
       };
     }
@@ -658,7 +672,7 @@ exports.handler = async (event, context) => {
     // Check if any existing flights need PDF upload (new passengers added)
     const existingFlightsWithNewPassengers = existingFlights.filter(f => f._needsPdfUpload);
 
-    if (!deduplicatedFlights.length && !deduplicatedHotels.length && !deduplicatedTrains.length && !deduplicatedBuses.length && !deduplicatedRentals.length && existingFlightsWithNewPassengers.length === 0) {
+    if (!deduplicatedFlights.length && !deduplicatedHotels.length && !deduplicatedTrains.length && !deduplicatedBuses.length && !deduplicatedRentals.length && !deduplicatedFerries.length && existingFlightsWithNewPassengers.length === 0) {
       // Build duplicate info for error message
       const duplicateInfo = [];
       if (skippedFlights > 0) {
@@ -690,6 +704,7 @@ exports.handler = async (event, context) => {
     const existingTrainCount = existingTrains.length;
     const existingBusCount = existingBuses.length;
     const existingRentalCount = existingRentals.length;
+    const existingFerryCount = existingFerries.length;
 
     const flightsWithIds = deduplicatedFlights.map((f, i) => ({
       ...f,
@@ -714,6 +729,11 @@ exports.handler = async (event, context) => {
     const rentalsWithIds = deduplicatedRentals.map((r, i) => ({
       ...r,
       id: `rental-${existingRentalCount + i + 1}`
+    }));
+
+    const ferriesWithIds = deduplicatedFerries.map((f, i) => ({
+      ...f,
+      id: `ferry-${existingFerryCount + i + 1}`
     }));
 
     // Upload/move PDFs and link to items (in parallel for speed)
@@ -821,6 +841,19 @@ exports.handler = async (event, context) => {
             .catch(err => console.error(`Error storing PDF for ${rental.id}:`, err))
         );
       }
+
+      // Ferries remain linked at ferry level
+      const ferriesFromPdf = ferriesWithIds.filter(f => f._pdfIndex === pdfIndex);
+      for (const ferry of ferriesFromPdf) {
+        uploadPromises.push(
+          moveOrUpload(ferry.id)
+            .then(pdfPath => {
+              ferry.pdfPath = pdfPath;
+              console.log(`Stored PDF for ${ferry.id}: ${pdfPath}`);
+            })
+            .catch(err => console.error(`Error storing PDF for ${ferry.id}:`, err))
+        );
+      }
     }
 
     // Wait for all uploads to complete
@@ -845,6 +878,7 @@ exports.handler = async (event, context) => {
     trainsWithIds.forEach(t => delete t._pdfIndex);
     busesWithIds.forEach(b => delete b._pdfIndex);
     rentalsWithIds.forEach(r => delete r._pdfIndex);
+    ferriesWithIds.forEach(f => delete f._pdfIndex);
     // Clean up markers from existing flights that got new passengers
     existingFlights.forEach(f => {
       delete f._needsPdfUpload;
@@ -858,6 +892,7 @@ exports.handler = async (event, context) => {
     tripData.trains = [...(tripData.trains || []), ...trainsWithIds];
     tripData.buses = [...(tripData.buses || []), ...busesWithIds];
     tripData.rentals = [...(tripData.rentals || []), ...rentalsWithIds];
+    tripData.ferries = [...(tripData.ferries || []), ...ferriesWithIds];
 
     // Update dates if needed (skip if user chose to keep current dates)
     if (!skipDateUpdate) {

@@ -600,6 +600,7 @@ const parsePreview = {
     let trainIdx = 0;
     let busIdx = 0;
     let rentalIdx = 0;
+    let ferryIdx = 0;
 
     for (const pr of this._parsedResults) {
       if (!pr.result) continue;
@@ -656,6 +657,14 @@ const parsePreview = {
           const card = container.querySelector(`.parse-rental-card[data-index="${rentalIdx}"]`);
           if (card) this._applyCardEdits(card, rental, `rental[${rentalIdx}]`);
           rentalIdx++;
+        }
+      }
+
+      if (pr.result.ferries) {
+        for (const ferry of pr.result.ferries) {
+          const card = container.querySelector(`.parse-ferry-card[data-index="${ferryIdx}"]`);
+          if (card) this._applyCardEdits(card, ferry, `ferry[${ferryIdx}]`);
+          ferryIdx++;
         }
       }
     }

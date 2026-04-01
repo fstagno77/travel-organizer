@@ -1592,6 +1592,7 @@ const adminPage = {
     const trains = result.trains || [];
     const buses = result.buses || [];
     const rentals = result.rentals || [];
+    const ferries = result.ferries || [];
     // Supporta sia passenger (singolare) che passengers (array, formato email)
     const passenger = result.passenger || null;
     const passengers = result.passengers?.length ? result.passengers : (passenger ? [passenger] : []);
@@ -1635,7 +1636,7 @@ const adminPage = {
       const detectedDocType = smartMeta.detectedDocType;
       let detectedTypeHtml = '';
       if (detectedDocType && detectedDocType !== 'auto') {
-        const dtLabels = { flight: '✈ Volo rilevato', hotel: '🏨 Hotel rilevato', train: '🚆 Treno rilevato', bus: '🚌 Autobus rilevato', car_rental: '🚗 Noleggio auto rilevato' };
+        const dtLabels = { flight: '✈ Volo rilevato', hotel: '🏨 Hotel rilevato', train: '🚆 Treno rilevato', bus: '🚌 Autobus rilevato', car_rental: '🚗 Noleggio auto rilevato', ferry: '⛴️ Traghetto rilevato' };
         const dtLabel = dtLabels[detectedDocType] || `📄 ${detectedDocType} rilevato`;
         detectedTypeHtml = `<span class="sp-detected-type">${dtLabel}</span>`;
       }
@@ -1660,7 +1661,7 @@ const adminPage = {
       `;
     }
 
-    const typeLabels = { flight: 'Volo', hotel: 'Hotel', train: 'Treno', bus: 'Autobus', car_rental: 'Noleggio Auto' };
+    const typeLabels = { flight: 'Volo', hotel: 'Hotel', train: 'Treno', bus: 'Autobus', car_rental: 'Noleggio Auto', ferry: 'Traghetto' };
     const typeLabel = typeLabels[docType] || 'Auto';
     let html = `
       <div class="pdf-analyze-result-header">
@@ -1985,7 +1986,43 @@ const adminPage = {
       });
     }
 
-    if (flights.length === 0 && hotels.length === 0 && trains.length === 0 && buses.length === 0 && rentals.length === 0) {
+    if (ferries.length > 0) {
+      html += `<div class="pdf-section-title">Traghetti estratti (${ferries.length})</div>`;
+      const resolveStr = (v) => {
+        if (v == null) return null;
+        if (typeof v === 'string') return v;
+        if (typeof v === 'object') return [v.date, v.time, v.value].filter(Boolean).join(' ') || JSON.stringify(v);
+        return String(v);
+      };
+      const resolvePrice = (v) => {
+        if (!v) return null;
+        if (typeof v === 'number') return String(v);
+        if (typeof v === 'string') return v;
+        if (typeof v === 'object' && v.value != null) return `${v.value}${v.currency ? ' ' + v.currency : ''}`;
+        return null;
+      };
+      ferries.forEach((f, i) => {
+        html += `
+          <div class="pdf-flight-card">
+            <div class="pdf-flight-card-header">⛴️ Traghetto ${i + 1}: ${this.esc(f.departure?.port || f.departure?.city || '?')} → ${this.esc(f.arrival?.port || f.arrival?.city || '?')}</div>
+            <div class="pdf-result-grid">
+              ${this._pdfField('Operatore', resolveStr(f.operator))}
+              ${this._pdfField('Nome nave', resolveStr(f.ferryName))}
+              ${this._pdfField('Rotta', resolveStr(f.routeNumber))}
+              ${this._pdfField('Data', resolveStr(f.date))}
+              ${this._pdfField('Partenza', `${f.departure?.port || f.departure?.city || ''} ${f.departure?.time || ''}`.trim())}
+              ${this._pdfField('Arrivo', `${f.arrival?.port || f.arrival?.city || ''} ${f.arrival?.time || ''}`.trim())}
+              ${this._pdfField('Prenotazione', resolveStr(f.bookingReference))}
+              ${this._pdfField('Cabina', resolveStr(f.cabin))}
+              ${this._pdfField('Veicolo', resolveStr(f.vehicle))}
+              ${this._pdfField('Prezzo', resolvePrice(f.price))}
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    if (flights.length === 0 && hotels.length === 0 && trains.length === 0 && buses.length === 0 && rentals.length === 0 && ferries.length === 0) {
       html += `<div class="pdf-analyze-empty">Nessun documento di viaggio riconoscibile.</div>`;
     }
 
@@ -2774,7 +2811,7 @@ const adminPage = {
     const main = document.querySelector('.admin-content');
     const { templates } = await this.api('smartparse-list-templates');
 
-    const typeIcon = { flight: '✈', hotel: '🏨', train: '🚆', bus: '🚌', any: '📄' };
+    const typeIcon = { flight: '✈', hotel: '🏨', train: '🚆', bus: '🚌', car_rental: '🚗', ferry: '⛴️', any: '📄' };
 
     // email- appartiene al tester (beta), non alla cache live
     const liveTemplates = templates.filter(t => !t.id.startsWith('beta:') && !t.id.startsWith('email-'));
