@@ -1088,6 +1088,246 @@ window.manualBookingForm = (() => {
     return { form, getValues, validate, saveBtn, getFile };
   }
 
+  // Opzioni tipo passeggero per CustomSelect (traghetto)
+  const FERRY_PASSENGER_TYPE_OPTIONS = [
+    { value: '', label: '— Seleziona —' },
+    { value: 'adulto', label: 'Adulto' },
+    { value: 'bambino', label: 'Bambino' },
+    { value: 'ridotto', label: 'Ridotto/Senior' },
+  ];
+
+  // Opzioni tipo veicolo per CustomSelect (traghetto)
+  const FERRY_VEHICLE_TYPE_OPTIONS = [
+    { value: '', label: '— Nessun veicolo —' },
+    { value: 'auto', label: 'Automobile' },
+    { value: 'moto', label: 'Moto/Scooter' },
+    { value: 'camper', label: 'Camper/Furgone' },
+    { value: 'bici', label: 'Bicicletta' },
+  ];
+
+  /**
+   * Costruisce il form traghetto.
+   * @param {Object} prefill - dati da pre-popolare
+   * @returns {{ form: HTMLElement, getValues: function, validate: function, saveBtn: HTMLButtonElement, getFile: function }}
+   */
+  function buildFerryForm(prefill = {}) {
+    const form = document.createElement('div');
+    form.className = 'manual-booking-form manual-booking-form--ferry';
+    form.dataset.bookingType = 'ferry';
+
+    // Intestazione
+    const heading = document.createElement('p');
+    heading.className = 'manual-form-heading';
+    heading.style.cssText = 'font-weight:var(--font-weight-semibold);margin-bottom:var(--spacing-4);color:var(--color-gray-700);';
+    heading.textContent = 'Inserisci i dettagli del traghetto';
+    form.appendChild(heading);
+
+    // Scrollable body
+    const scroll = document.createElement('div');
+    scroll.style.cssText = 'overflow-y:auto;max-height:55vh;padding-right:4px;';
+
+    // --- Campi obbligatori ---
+    const { wrapper: wOperator, input: iOperator } = buildField({
+      id: 'mbf-ferry-operator', label: 'Operatore', required: true,
+      placeholder: 'es. Grimaldi, Tirrenia', value: prefill.operator || ''
+    });
+    const { wrapper: wDate, input: iDate } = buildField({
+      id: 'mbf-ferry-date', label: 'Data', type: 'date', required: true,
+      value: prefill.date || ''
+    });
+    scroll.appendChild(buildRow(wOperator, wDate));
+
+    const { wrapper: wDepPort, input: iDepPort } = buildField({
+      id: 'mbf-ferry-dep-port', label: 'Porto partenza', required: true,
+      placeholder: 'es. Porto di Civitavecchia', value: prefill.departure?.port || prefill.departurePort || ''
+    });
+    const { wrapper: wDepCity, input: iDepCity } = buildField({
+      id: 'mbf-ferry-dep-city', label: 'Città partenza', required: true,
+      placeholder: 'es. Civitavecchia', value: prefill.departure?.city || prefill.departureCity || ''
+    });
+    scroll.appendChild(buildRow(wDepPort, wDepCity));
+
+    const { wrapper: wArrPort, input: iArrPort } = buildField({
+      id: 'mbf-ferry-arr-port', label: 'Porto arrivo', required: true,
+      placeholder: 'es. Porto di Palermo', value: prefill.arrival?.port || prefill.arrivalPort || ''
+    });
+    const { wrapper: wArrCity, input: iArrCity } = buildField({
+      id: 'mbf-ferry-arr-city', label: 'Città arrivo', required: true,
+      placeholder: 'es. Palermo', value: prefill.arrival?.city || prefill.arrivalCity || ''
+    });
+    scroll.appendChild(buildRow(wArrPort, wArrCity));
+
+    const { wrapper: wDepTime, input: iDepTime } = buildField({
+      id: 'mbf-ferry-dep-time', label: 'Orario partenza', type: 'time', required: true,
+      value: prefill.departure?.time || prefill.departureTime || ''
+    });
+    const { wrapper: wArrTime, input: iArrTime } = buildField({
+      id: 'mbf-ferry-arr-time', label: 'Orario arrivo (opzionale)', type: 'time',
+      value: prefill.arrival?.time || prefill.arrivalTime || ''
+    });
+    scroll.appendChild(buildRow(wDepTime, wArrTime));
+
+    // --- Campi opzionali ---
+    const { wrapper: wShipName, input: iShipName } = buildField({
+      id: 'mbf-ferry-ship-name', label: 'Nome nave',
+      placeholder: 'es. Moby Wonder', value: prefill.shipName || ''
+    });
+    const { wrapper: wRoute, input: iRoute } = buildField({
+      id: 'mbf-ferry-route', label: 'Numero rotta',
+      placeholder: 'es. GR201', value: prefill.routeNumber || ''
+    });
+    scroll.appendChild(buildRow(wShipName, wRoute));
+
+    const { wrapper: wCabin, input: iCabin } = buildField({
+      id: 'mbf-ferry-cabin', label: 'Cabina',
+      placeholder: 'es. C12', value: prefill.cabin || ''
+    });
+    const { wrapper: wDeck, input: iDeck } = buildField({
+      id: 'mbf-ferry-deck', label: 'Ponte',
+      placeholder: 'es. Ponte 5', value: prefill.deck || ''
+    });
+    scroll.appendChild(buildRow(wCabin, wDeck));
+
+    // Tipo passeggero (CustomSelect — no <select> nativo)
+    const wPaxType = document.createElement('div');
+    wPaxType.className = 'form-group';
+    const lblPaxType = document.createElement('label');
+    lblPaxType.textContent = 'Tipo passeggero';
+    wPaxType.appendChild(lblPaxType);
+    let paxTypeSelect = null;
+    if (window.CustomSelect) {
+      paxTypeSelect = window.CustomSelect.create({
+        options: FERRY_PASSENGER_TYPE_OPTIONS,
+        selected: prefill.passengerType || '',
+      });
+      wPaxType.appendChild(paxTypeSelect);
+    } else {
+      // Fallback solo per ambienti test senza CustomSelect
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.className = 'form-input';
+      inp.id = 'mbf-ferry-passenger-type';
+      inp.placeholder = 'adulto, bambino…';
+      inp.value = prefill.passengerType || '';
+      wPaxType.appendChild(inp);
+    }
+
+    // Passeggeri (nomi, testo libero)
+    const { wrapper: wPax, input: iPax } = buildField({
+      id: 'mbf-ferry-passengers', label: 'Passeggeri (nomi separati da virgola)',
+      placeholder: 'es. Mario Rossi, Anna Bianchi',
+      value: Array.isArray(prefill.passengers) ? prefill.passengers.map(p => p.name || p).join(', ') : (prefill.passengers || '')
+    });
+    scroll.appendChild(buildRow(wPaxType, wPax));
+
+    // Tipo veicolo a bordo (CustomSelect — no <select> nativo)
+    const wVehicleType = document.createElement('div');
+    wVehicleType.className = 'form-group';
+    const lblVehicleType = document.createElement('label');
+    lblVehicleType.textContent = 'Tipo veicolo a bordo';
+    wVehicleType.appendChild(lblVehicleType);
+    let vehicleTypeSelect = null;
+    if (window.CustomSelect) {
+      vehicleTypeSelect = window.CustomSelect.create({
+        options: FERRY_VEHICLE_TYPE_OPTIONS,
+        selected: prefill.vehicleType || '',
+      });
+      wVehicleType.appendChild(vehicleTypeSelect);
+    } else {
+      // Fallback solo per ambienti test senza CustomSelect
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.className = 'form-input';
+      inp.id = 'mbf-ferry-vehicle-type';
+      inp.placeholder = 'auto, moto, nessuno…';
+      inp.value = prefill.vehicleType || '';
+      wVehicleType.appendChild(inp);
+    }
+
+    const { wrapper: wPnr, input: iPnr } = buildField({
+      id: 'mbf-ferry-pnr', label: 'PNR / Codice prenotazione',
+      placeholder: 'es. GR12345', value: prefill.bookingReference || prefill.pnr || ''
+    });
+    scroll.appendChild(buildRow(wVehicleType, wPnr));
+
+    const { wrapper: wPrice, input: iPrice } = buildField({
+      id: 'mbf-ferry-price', label: 'Prezzo (€)', type: 'number', placeholder: '0.00',
+      value: prefill.price || ''
+    });
+    scroll.appendChild(wPrice);
+
+    // Upload documento
+    const { wrapper: wDoc, getFile } = buildDocumentUpload();
+    scroll.appendChild(wDoc);
+
+    form.appendChild(scroll);
+
+    // Pulsante Salva (gestito dal chiamante, qui solo creato)
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'btn btn-primary';
+    saveBtn.id = 'manual-booking-save';
+    saveBtn.textContent = 'Salva prenotazione';
+    saveBtn.disabled = true;
+
+    // Collega aggiornamento stato save btn a ogni required input
+    form.querySelectorAll('[data-required]').forEach(input => {
+      input.addEventListener('input', () => updateSaveBtn(form, saveBtn));
+      input.addEventListener('change', () => updateSaveBtn(form, saveBtn));
+    });
+
+    const getValues = () => ({
+      operator: iOperator.value.trim(),
+      date: iDate.value,
+      departure: {
+        port: iDepPort.value.trim(),
+        city: iDepCity.value.trim(),
+        time: iDepTime.value,
+      },
+      arrival: {
+        port: iArrPort.value.trim(),
+        city: iArrCity.value.trim(),
+        time: iArrTime.value,
+      },
+      shipName: iShipName.value.trim() || undefined,
+      routeNumber: iRoute.value.trim() || undefined,
+      cabin: iCabin.value.trim() || undefined,
+      deck: iDeck.value.trim() || undefined,
+      passengerType: paxTypeSelect
+        ? window.CustomSelect.getValue(paxTypeSelect)
+        : (form.querySelector('#mbf-ferry-passenger-type')?.value || undefined),
+      passengers: iPax.value.trim() || undefined,
+      vehicleType: vehicleTypeSelect
+        ? window.CustomSelect.getValue(vehicleTypeSelect)
+        : (form.querySelector('#mbf-ferry-vehicle-type')?.value || undefined),
+      bookingReference: iPnr.value.trim() || undefined,
+      price: iPrice.value ? parseFloat(iPrice.value) : undefined,
+    });
+
+    const validate = () => {
+      let valid = true;
+      const checks = [
+        { input: iOperator, msg: 'Inserisci l\'operatore' },
+        { input: iDepPort,  msg: 'Inserisci il porto di partenza' },
+        { input: iDepCity,  msg: 'Inserisci la città di partenza' },
+        { input: iArrPort,  msg: 'Inserisci il porto di arrivo' },
+        { input: iArrCity,  msg: 'Inserisci la città di arrivo' },
+        { input: iDate,     msg: 'Inserisci la data' },
+        { input: iDepTime,  msg: 'Inserisci l\'orario di partenza' },
+      ];
+      checks.forEach(({ input, msg }) => {
+        if (!input.value || input.value.trim() === '') {
+          showFieldError(input, msg);
+          valid = false;
+        } else {
+          clearFieldError(input);
+        }
+      });
+      return valid;
+    };
+
+    return { form, getValues, validate, saveBtn, getFile };
+  }
+
   /**
    * Ripristina il contenuto originale della modale.
    * @param {HTMLElement} modal
@@ -1177,8 +1417,10 @@ window.manualBookingForm = (() => {
       formModule = buildBusForm(prefill);
     } else if (type === 'rental') {
       formModule = buildRentalForm(prefill);
+    } else if (type === 'ferry') {
+      formModule = buildFerryForm(prefill);
     } else {
-      // Tipi non ancora implementati (US-008+): placeholder
+      // Tipi non ancora implementati: placeholder
       modalBody.innerHTML = `
         <div style="padding:var(--spacing-8);text-align:center;color:var(--color-gray-500);">
           <p>Form per <strong>${type}</strong> in arrivo.</p>
