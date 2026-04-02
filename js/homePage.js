@@ -1112,7 +1112,119 @@ const homePage = (function() {
 
   // Funzioni delegate a tripCardUtils
   const renderSectionHeader = (title, subtitle, variant) => tripCardUtils.renderSectionHeader(title, subtitle, variant);
-  const renderTripCard = (trip, lang, isPast, index, nextEvent) => tripCardUtils.renderTripCard(trip, lang, isPast, index, nextEvent);
+  const renderTripCard = (trip, lang, isPast, index) => tripCardUtils.renderTripCard(trip, lang, isPast, index);
+
+  /**
+   * Render the "Prossimo Viaggio" featured card for an upcoming trip starting within 3 days
+   */
+  function renderUpcomingFeaturedCard(trip, upcomingTripsData, lang) {
+    const title = trip.title[lang] || trip.title.en || trip.title.it;
+    const startDate = utils.formatDate(trip.startDate, lang, { month: 'short', day: 'numeric' });
+    const endDate = utils.formatDate(trip.endDate, lang, { month: 'short', day: 'numeric', year: 'numeric' });
+    const tripUrl = `trip.html?id=${trip.id}`;
+    const destinationStr = getTripDestinations(trip);
+
+    // Days until departure
+    const today = getToday();
+    today.setHours(0, 0, 0, 0);
+    const start = new Date(trip.startDate + 'T00:00:00');
+    const daysUntil = Math.round((start - today) / (1000 * 60 * 60 * 24));
+    let countdown;
+    if (daysUntil === 0) countdown = i18n.t('home.todayLabel') || 'Oggi';
+    else if (daysUntil === 1) countdown = i18n.t('home.tomorrow') || 'Domani';
+    else countdown = (i18n.t('home.inDays') || 'Tra {n} giorni').replace('{n}', daysUntil);
+
+    // First upcoming event
+    const tripData = upcomingTripsData.find(t => t.id === trip.id);
+    const firstEvent = collectFirstEvent(tripData, lang);
+    let firstEventHtml = '';
+    if (firstEvent) {
+      const cat = firstEvent.category;
+      const bg = cat?.cardBg || 'linear-gradient(135deg, #faf5ff, #faf5ff)';
+      const border = cat?.cardBorder || '#e9d5ff';
+      const iconGradient = cat?.gradient || 'linear-gradient(135deg, #a855f7, #7c3aed)';
+      const iconHtml = cat?.svg || '<span class="material-symbols-outlined" style="font-size:16px">event</span>';
+      const tabMap = { flight: 'flights', hotel: 'hotels', activity: 'activities', train: 'trains', ferry: 'ferries', bus: 'buses', rental: 'rentals' };
+      const tab = tabMap[firstEvent.type] || 'activities';
+      firstEventHtml = `
+        <div class="current-trip-next">
+          <h4 class="current-trip-next-label">${i18n.t('home.nextEvent') || 'Prossimo'} &middot; ${utils.escapeHtml(firstEvent.dateLabel)}</h4>
+          <div class="current-event-card" style="background: ${bg}; border-color: ${border}"
+               data-event-type="${firstEvent.type}" data-event-id="${firstEvent.id || ''}" data-event-tab="${tab}">
+            <div class="current-event-icon" style="background: ${iconGradient}">
+              <span style="color: white; display: flex; align-items: center; justify-content: center">${iconHtml}</span>
+            </div>
+            <div class="current-event-info">
+              <div class="current-event-header-row">
+                ${firstEvent.time ? `<span class="current-event-time">${utils.escapeHtml(firstEvent.time)}</span><span class="current-event-dot">&middot;</span>` : ''}
+                <span class="current-event-title">${utils.escapeHtml(firstEvent.title)}</span>
+              </div>
+              ${firstEvent.description ? `<span class="current-event-description">${utils.escapeHtml(firstEvent.description)}</span>` : ''}
+            </div>
+            <div class="current-event-arrow">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.4">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    const headerHtml = renderSectionHeader(
+      i18n.t('home.upcomingFeatured') || 'Prossimo Viaggio',
+      countdown,
+      'upcoming'
+    );
+
+    return `
+      <section class="home-section">
+        ${headerHtml}
+        <a href="${tripUrl}" class="current-trip-card">
+          <div class="current-trip-header">
+            <div class="current-trip-info">
+              <h3 class="current-trip-title">${utils.escapeHtml(title)}</h3>
+              ${destinationStr ? `
+                <div class="current-trip-destination">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                    <circle cx="12" cy="10" r="3"></circle>
+                  </svg>
+                  <span>${utils.escapeHtml(destinationStr)}</span>
+                </div>
+              ` : ''}
+              <div class="current-trip-meta">
+                <div class="current-trip-meta-item">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                  </svg>
+                  <span>${startDate} - ${endDate}</span>
+                </div>
+              </div>
+            </div>
+            <div class="current-trip-arrow">
+              <span class="current-trip-arrow-label">${i18n.t('home.viewFullItinerary') || 'Visualizza Itinerario Completo'}</span>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <polyline points="12 5 19 12 12 19"></polyline>
+              </svg>
+            </div>
+          </div>
+          ${firstEventHtml}
+          <div class="current-trip-cta">
+            <span>${i18n.t('home.viewFullItinerary') || 'Visualizza Itinerario Completo'}</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+          </div>
+        </a>
+      </section>
+    `;
+  }
 
   /**
    * Render trips list
@@ -1169,31 +1281,34 @@ const homePage = (function() {
       phase1Html += renderCurrentTripCard(currentTrips[0], todayTrips, lang);
     }
 
-    // Render "Prossimi Viaggi" section
-    const phase1Upcoming = upcomingTrips.slice(0, PHASE1_UPCOMING_COUNT);
-    const phase2Upcoming = upcomingTrips.slice(PHASE1_UPCOMING_COUNT);
+    // Find first upcoming trip that has booking data (starts within 3 days)
+    const featuredUpcomingIndex = upcomingTrips.findIndex(trip => upcomingTripsData.some(t => t.id === trip.id));
+    if (featuredUpcomingIndex >= 0) {
+      phase1Html += renderUpcomingFeaturedCard(upcomingTrips[featuredUpcomingIndex], upcomingTripsData, lang);
+    }
+
+    // Render "Prossimi Viaggi" section — exclude featured trip to avoid duplication
+    const gridUpcoming = upcomingTrips.filter((_, i) => i !== featuredUpcomingIndex);
+    const phase1Upcoming = gridUpcoming.slice(0, PHASE1_UPCOMING_COUNT);
+    const phase2Upcoming = gridUpcoming.slice(PHASE1_UPCOMING_COUNT);
 
     // Sezione "Prossimi Viaggi" — sempre visibile con pulsante "+" Nuovo Viaggio
     {
-      const countLabel = upcomingTrips.length === 0
+      const countLabel = gridUpcoming.length === 0
         ? (i18n.t('home.noUpcoming') || 'Nessun viaggio in programma')
-        : upcomingTrips.length === 1
+        : gridUpcoming.length === 1
           ? `1 ${i18n.t('home.tripPlanned') || 'viaggio pianificato'}`
-          : `${upcomingTrips.length} ${i18n.t('home.tripsPlanned') || 'viaggi pianificati'}`;
+          : `${gridUpcoming.length} ${i18n.t('home.tripsPlanned') || 'viaggi pianificati'}`;
       const headerHtml = renderSectionHeader(
         i18n.t('home.title') || 'Prossimi Viaggi',
         countLabel,
         'upcoming'
       );
-      const cardsHtml = phase1Upcoming.map(trip => {
-        const upcomingData = upcomingTripsData.find(t => t.id === trip.id);
-        const firstEvent = upcomingData ? collectFirstEvent(upcomingData, lang) : null;
-        return renderTripCard(trip, lang, false, cardIndex++, firstEvent);
-      }).join('');
+      const cardsHtml = phase1Upcoming.map(trip => renderTripCard(trip, lang, false, cardIndex++)).join('');
       phase1Html += `
         <section class="home-section">
           ${headerHtml}
-          ${upcomingTrips.length > 0 ? `<div class="grid md:grid-cols-2 lg:grid-cols-3" id="upcoming-trips-grid">${cardsHtml}</div>` : ''}
+          ${gridUpcoming.length > 0 ? `<div class="grid md:grid-cols-2 lg:grid-cols-3" id="upcoming-trips-grid">${cardsHtml}</div>` : ''}
         </section>
       `;
     }

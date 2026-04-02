@@ -74,9 +74,8 @@ const tripCardUtils = (function() {
    * @param {string} lang
    * @param {boolean} isPast
    * @param {number} index
-   * @param {object|null} nextEvent - Primo evento del viaggio (per card upcoming vicine)
    */
-  function renderTripCard(trip, lang, isPast, index, nextEvent) {
+  function renderTripCard(trip, lang, isPast, index) {
     const title = trip.title[lang] || trip.title.en || trip.title.it;
     const startDate = utils.formatDate(trip.startDate, lang, { month: 'short', day: 'numeric' });
     const endDate = utils.formatDate(trip.endDate, lang, { month: 'short', day: 'numeric', year: 'numeric' });
@@ -107,32 +106,6 @@ const tripCardUtils = (function() {
     const roleBadge = trip.role && trip.role !== 'proprietario'
       ? `<span class="trip-role-badge trip-role-badge--${trip.role}">${trip.role === 'viaggiatore' ? (i18n.t('share.roleViaggiatore') || 'Viaggiatore') : (i18n.t('share.roleOspite') || 'Ospite')}</span>`
       : '';
-
-    // Strip prossimo evento (solo per upcoming vicini)
-    let nextEventHtml = '';
-    if (nextEvent) {
-      const cat = nextEvent.category;
-      const bg = cat?.cardBg || 'linear-gradient(135deg, #faf5ff, #faf5ff)';
-      const border = cat?.cardBorder || '#e9d5ff';
-      const iconGradient = cat?.gradient || 'linear-gradient(135deg, #a855f7, #7c3aed)';
-      const iconHtml = cat?.svg || '<span class="material-symbols-outlined" style="font-size:16px">event</span>';
-      nextEventHtml = `
-        <div class="current-trip-next" style="padding: 0 12px 12px">
-          <h4 class="current-trip-next-label">${i18n.t('home.nextEvent') || 'Prossimo'} &middot; ${utils.escapeHtml(nextEvent.dateLabel || '')}</h4>
-          <div class="current-event-card" style="background: ${bg}; border-color: ${border}">
-            <div class="current-event-icon" style="background: ${iconGradient}">
-              <span style="color: white; display: flex; align-items: center; justify-content: center">${iconHtml}</span>
-            </div>
-            <div class="current-event-info">
-              <div class="current-event-header-row">
-                <span class="current-event-title">${utils.escapeHtml(nextEvent.title)}</span>
-              </div>
-              ${nextEvent.description ? `<span class="current-event-description">${utils.escapeHtml(nextEvent.description)}</span>` : ''}
-            </div>
-          </div>
-        </div>
-      `;
-    }
 
     return `
       <div class="trip-card-wrapper">
@@ -167,7 +140,6 @@ const tripCardUtils = (function() {
               <polyline points="12 5 19 12 12 19"></polyline>
             </svg>
           </div>
-          ${nextEventHtml}
         </a>
       </div>
     `;
