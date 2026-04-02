@@ -2904,7 +2904,8 @@
       train: currentTripData?.trains || [],
       bus: currentTripData?.buses || [],
       rental: currentTripData?.rentals || [],
-      ferry: currentTripData?.ferries || []
+      // I ferry di ritorno (_isReturn) non appaiono come voci separate nel manage panel
+      ferry: (currentTripData?.ferries || []).filter(f => !f._isReturn)
     };
     const items = itemsMap[type] || [];
 
@@ -3444,6 +3445,15 @@
       return;
     }
 
+    // Se è un ferry di ritorno, apri il pannello del parent (andata)
+    if (type === 'ferry' && item._isReturn && item.parentFerryId) {
+      const parentFerry = (currentTripData?.ferries || []).find(f => f.id === item.parentFerryId);
+      if (parentFerry) {
+        showEditBookingPanel('ferry', parentFerry, tripId);
+        return;
+      }
+    }
+
     showEditBookingPanel(type, item, tripId);
   }
 
@@ -3460,13 +3470,19 @@
     const savedScrollTop = alreadyOpen ? (slider._savedScrollTop || 0) : mainPage.scrollTop;
     if (!alreadyOpen) slider._savedScrollTop = savedScrollTop;
 
+    // Se è un ferry con ritorno collegato, costruisci il form combinato
+    let returnFerry = null;
+    if (type === 'ferry' && item.returnFerryId) {
+      returnFerry = (currentTripData?.ferries || []).find(f => f.id === item.returnFerryId) || null;
+    }
+
     const formBuilders = {
       flight: window.tripFlights.buildEditForm,
       hotel: window.tripHotels.buildEditForm,
       train: window.tripTrains.buildEditForm,
       bus: window.tripBuses.buildEditForm,
       rental: window.tripRentals.buildEditForm,
-      ferry: window.tripFerries.buildEditForm
+      ferry: (f) => window.tripFerries.buildEditForm(f, returnFerry)
     };
     const formHTML = (formBuilders[type] || formBuilders.flight)(item);
 
@@ -3676,27 +3692,77 @@
           throw new Error('Failed to save');
         }
 
-        // Ferry return trip: se la sezione ritorno è compilata, salva come add-booking separato
+        // Ferry: gestione ritorno
         if (type === 'ferry') {
-          const returnData = window.tripFerries.collectReturnValues
-            ? window.tripFerries.collectReturnValues(panelBody)
-            : null;
-          if (returnData) {
-            // Eredita dal ferry originale: prenotazione, passeggeri, veicoli (stesso biglietto)
-            if (item.bookingReference) returnData.bookingReference = item.bookingReference;
-            if (item.ticketNumber) returnData.ticketNumber = item.ticketNumber;
-            if (item.passengers?.length) returnData.passengers = item.passengers;
-            if (item.vehicles?.length) returnData.vehicles = item.vehicles;
-            if (item.pdfPath) returnData.pdfPath = item.pdfPath;
-            const returnPayload = { action: 'manual-booking', tripId, type: 'ferry', manualData: returnData };
-            const returnRes = await utils.authFetch('/.netlify/functions/add-booking', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(returnPayload),
-            });
-            if (!returnRes.ok) {
-              const errBody = await returnRes.json().catch(() => ({}));
-              utils.showToast(errBody.error || 'Errore salvataggio ritorno', 'error');
+          // Caso A: pannello combinato con ritorno già collegato → aggiorna il ritorno
+          const returnFerryIdEl = panelBody.querySelector('[data-return-ferry-id]');
+          if (returnFerryIdEl) {
+            const returnFerryId = returnFerryIdEl.dataset.returnFerryId;
+            const returnUpdates = window.tripFerries.collectReturnUpdates
+              ? window.tripFerries.collectReturnUpdates(panelBody)
+              : null;
+            if (returnUpdates && returnFerryId) {
+              // Propaga i campi condivisi aggiornati anche al ritorno
+              const sharedFields = {};
+              if (updates.operator !== undefined) sharedFields.operator = updates.operator;
+              if (updates.ferryName !== undefined) sharedFields.ferryName = updates.ferryName;
+              if (updates.bookingReference !== undefined) sharedFields.bookingReference = updates.bookingReference;
+              if (updates.ticketNumber !== undefined) sharedFields.ticketNumber = updates.ticketNumber;
+              if (updates.passengers !== undefined) sharedFields.passengers = updates.passengers;
+              if (updates.vehicles !== undefined) sharedFields.vehicles = updates.vehicles;
+              if (updates.documentUrl !== undefined) sharedFields.documentUrl = updates.documentUrl;
+              if (updates.pdfPath !== undefined) sharedFields.pdfPath = updates.pdfPath;
+              const returnSaveBody = {
+                tripId, type: 'ferry', itemId: returnFerryId,
+                updates: { ...returnUpdates, ...sharedFields }
+              };
+              const returnRes = await utils.authFetch('/.netlify/functions/edit-booking', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(returnSaveBody)
+              });
+              if (!returnRes.ok) {
+                const errBody = await returnRes.json().catch(() => ({}));
+                utils.showToast(errBody.error || 'Errore salvataggio ritorno', 'error');
+              }
+            }
+          } else {
+            // Caso B: form singolo con sezione ritorno non ancora salvata → crea nuova prenotazione ritorno
+            const returnData = window.tripFerries.collectReturnValues
+              ? window.tripFerries.collectReturnValues(panelBody)
+              : null;
+            if (returnData) {
+              // Eredita dal ferry originale: prenotazione, passeggeri, veicoli (stesso biglietto)
+              returnData._isReturn = true;
+              returnData.parentFerryId = item.id;
+              if (updates.bookingReference || item.bookingReference) returnData.bookingReference = updates.bookingReference || item.bookingReference;
+              if (updates.ticketNumber || item.ticketNumber) returnData.ticketNumber = updates.ticketNumber || item.ticketNumber;
+              if (updates.passengers || item.passengers?.length) returnData.passengers = updates.passengers || item.passengers;
+              if (updates.vehicles || item.vehicles?.length) returnData.vehicles = updates.vehicles || item.vehicles;
+              if (updates.pdfPath || item.pdfPath) returnData.pdfPath = updates.pdfPath || item.pdfPath;
+              const returnPayload = { action: 'manual-booking', tripId, type: 'ferry', manualData: returnData };
+              const returnRes = await utils.authFetch('/.netlify/functions/add-booking', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(returnPayload),
+              });
+              if (returnRes.ok) {
+                const returnJson = await returnRes.json().catch(() => ({}));
+                if (returnJson.newBookingId) {
+                  // Aggiorna il ferry parent con il link al ritorno
+                  await utils.authFetch('/.netlify/functions/edit-booking', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      tripId, type: 'ferry', itemId: item.id,
+                      updates: { returnFerryId: returnJson.newBookingId }
+                    })
+                  });
+                }
+              } else {
+                const errBody = await returnRes.json().catch(() => ({}));
+                utils.showToast(errBody.error || 'Errore salvataggio ritorno', 'error');
+              }
             }
           }
         }
@@ -3761,11 +3827,31 @@
         const date = utils.formatFlightDate(rental.date, lang);
         itemDescription = `${esc(rental.provider || 'Noleggio')} - ${esc(rental.pickupLocation?.city || '')} → ${esc(rental.dropoffLocation?.city || '')} (${date})`;
       }
+    } else if (type === 'ferry') {
+      const ferry = currentTripData?.ferries?.find(f => f.id === itemId);
+      if (ferry) {
+        const date = utils.formatFlightDate(ferry.date, lang);
+        const dep = ferry.departure?.port || ferry.departure?.city || '';
+        const arr = ferry.arrival?.port || ferry.arrival?.city || '';
+        itemDescription = `${esc(dep)} → ${esc(arr)} (${date})`;
+
+        // Se questo ferry ha un ritorno collegato, mostra dialog personalizzato
+        if (ferry.returnFerryId) {
+          showFerryDeleteWithReturnDialog(ferry, tripId);
+          return;
+        }
+
+        // Se è un ferry di ritorno, elimina solo il ritorno e aggiorna il parent
+        if (ferry._isReturn && ferry.parentFerryId) {
+          showFerryReturnOnlyDeleteDialog(ferry, tripId);
+          return;
+        }
+      }
     }
 
-    const titleKeyMap = { flight: 'flight.deleteTitle', hotel: 'hotel.deleteTitle', train: 'train.deleteTitle', bus: 'bus.deleteTitle', rental: 'flight.deleteTitle' };
-    const confirmKeyMap = { flight: 'flight.deleteConfirm', hotel: 'hotel.deleteConfirm', train: 'train.deleteConfirm', bus: 'bus.deleteConfirm', rental: 'flight.deleteConfirm' };
-    const deleteKeyMap = { flight: 'flight.delete', hotel: 'hotel.delete', train: 'train.delete', bus: 'bus.delete', rental: 'flight.delete' };
+    const titleKeyMap = { flight: 'flight.deleteTitle', hotel: 'hotel.deleteTitle', train: 'train.deleteTitle', bus: 'bus.deleteTitle', rental: 'flight.deleteTitle', ferry: 'flight.deleteTitle' };
+    const confirmKeyMap = { flight: 'flight.deleteConfirm', hotel: 'hotel.deleteConfirm', train: 'train.deleteConfirm', bus: 'bus.deleteConfirm', rental: 'flight.deleteConfirm', ferry: 'flight.deleteConfirm' };
+    const deleteKeyMap = { flight: 'flight.delete', hotel: 'hotel.delete', train: 'train.delete', bus: 'bus.delete', rental: 'flight.delete', ferry: 'flight.delete' };
     const titleKey = titleKeyMap[type] || 'flight.deleteTitle';
     const confirmKey = confirmKeyMap[type] || 'flight.deleteConfirm';
     const deleteKey = deleteKeyMap[type] || 'flight.delete';
@@ -3896,6 +3982,155 @@
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
     i18n.apply(modal);
+  }
+
+  /**
+   * Mostra dialog per eliminare un ferry con ritorno collegato.
+   * Opzioni: "Solo andata" (elimina andata, rimuove returnFerryId dal figlio) o "Entrambi".
+   */
+  function showFerryDeleteWithReturnDialog(ferry, tripId) {
+    const existing = document.getElementById('ferry-delete-return-modal');
+    if (existing) existing.remove();
+
+    const modalHTML = `
+      <div class="modal-overlay" id="ferry-delete-return-modal">
+        <div class="modal">
+          <div class="modal-header">
+            <h2>Elimina traghetto</h2>
+            <button class="modal-close" id="ferry-del-ret-close">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <p>Questo traghetto ha un viaggio di ritorno collegato. Cosa vuoi eliminare?</p>
+          </div>
+          <div class="modal-footer" style="flex-direction:column;gap:8px">
+            <button class="btn btn-danger" id="ferry-del-ret-both">Elimina entrambi (andata e ritorno)</button>
+            <button class="btn btn-outline" id="ferry-del-ret-outbound">Elimina solo l'andata</button>
+            <button class="btn btn-secondary" id="ferry-del-ret-cancel">Annulla</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    const modal = document.getElementById('ferry-delete-return-modal');
+    const closeModal = () => { modal.remove(); document.body.style.overflow = ''; };
+
+    const doDelete = async (deleteReturnToo) => {
+      const btnBoth = document.getElementById('ferry-del-ret-both');
+      const btnOut = document.getElementById('ferry-del-ret-outbound');
+      if (btnBoth) btnBoth.disabled = true;
+      if (btnOut) btnOut.disabled = true;
+
+      try {
+        if (deleteReturnToo && ferry.returnFerryId) {
+          await utils.authFetch('/.netlify/functions/delete-booking', {
+            method: 'POST',
+            body: JSON.stringify({ tripId: currentTripData.id, type: 'ferry', itemId: ferry.returnFerryId })
+          });
+          currentTripData.ferries = (currentTripData.ferries || []).filter(f => f.id !== ferry.returnFerryId);
+        } else if (!deleteReturnToo && ferry.returnFerryId) {
+          // Rimuovi il link parentFerryId dal ritorno prima di eliminare l'andata
+          await utils.authFetch('/.netlify/functions/edit-booking', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tripId: currentTripData.id, type: 'ferry', itemId: ferry.returnFerryId, updates: { parentFerryId: '', _isReturn: false } })
+          });
+        }
+
+        await utils.authFetch('/.netlify/functions/delete-booking', {
+          method: 'POST',
+          body: JSON.stringify({ tripId: currentTripData.id, type: 'ferry', itemId: ferry.id })
+        });
+        currentTripData.ferries = (currentTripData.ferries || []).filter(f => f.id !== ferry.id);
+
+        closeModal();
+        rerenderCurrentTab();
+        utils.showToast('Traghetto eliminato', 'success');
+      } catch (err) {
+        console.error('Error deleting ferry:', err);
+        utils.showToast('Errore durante l\'eliminazione', 'error');
+        closeModal();
+      }
+    };
+
+    document.getElementById('ferry-del-ret-both').addEventListener('click', () => doDelete(true));
+    document.getElementById('ferry-del-ret-outbound').addEventListener('click', () => doDelete(false));
+    document.getElementById('ferry-del-ret-cancel').addEventListener('click', closeModal);
+    document.getElementById('ferry-del-ret-close').addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+
+  /**
+   * Mostra dialog per eliminare solo il ferry di ritorno (card ritorno).
+   * Rimuove `returnFerryId` dal parent e cancella il ritorno.
+   */
+  function showFerryReturnOnlyDeleteDialog(ferry, tripId) {
+    const existing = document.getElementById('ferry-delete-return-only-modal');
+    if (existing) existing.remove();
+
+    const modalHTML = `
+      <div class="modal-overlay" id="ferry-delete-return-only-modal">
+        <div class="modal">
+          <div class="modal-header">
+            <h2>Elimina ritorno</h2>
+            <button class="modal-close" id="ferry-del-ret-only-close">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <p>Vuoi eliminare il viaggio di ritorno? L'andata rimarrà invariata.</p>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" id="ferry-del-ret-only-cancel">Annulla</button>
+            <button class="btn btn-danger" id="ferry-del-ret-only-confirm">Elimina ritorno</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    const modal = document.getElementById('ferry-delete-return-only-modal');
+    const closeModal = () => { modal.remove(); document.body.style.overflow = ''; };
+
+    document.getElementById('ferry-del-ret-only-confirm').addEventListener('click', async () => {
+      const confirmBtn = document.getElementById('ferry-del-ret-only-confirm');
+      confirmBtn.disabled = true;
+      confirmBtn.innerHTML = '<span class="spinner spinner-sm"></span>';
+      try {
+        // Rimuovi returnFerryId dal parent
+        if (ferry.parentFerryId) {
+          await utils.authFetch('/.netlify/functions/edit-booking', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tripId: currentTripData.id, type: 'ferry', itemId: ferry.parentFerryId, updates: { returnFerryId: '' } })
+          });
+          const parent = (currentTripData.ferries || []).find(f => f.id === ferry.parentFerryId);
+          if (parent) delete parent.returnFerryId;
+        }
+
+        await utils.authFetch('/.netlify/functions/delete-booking', {
+          method: 'POST',
+          body: JSON.stringify({ tripId: currentTripData.id, type: 'ferry', itemId: ferry.id })
+        });
+        currentTripData.ferries = (currentTripData.ferries || []).filter(f => f.id !== ferry.id);
+
+        closeModal();
+        rerenderCurrentTab();
+        utils.showToast('Ritorno eliminato', 'success');
+      } catch (err) {
+        console.error('Error deleting return ferry:', err);
+        utils.showToast('Errore durante l\'eliminazione', 'error');
+        closeModal();
+      }
+    });
+
+    document.getElementById('ferry-del-ret-only-cancel').addEventListener('click', closeModal);
+    document.getElementById('ferry-del-ret-only-close').addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
   }
 
   // ===========================

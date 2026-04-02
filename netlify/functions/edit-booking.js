@@ -186,7 +186,8 @@ const ALLOWED_FERRY_FIELDS = [
   'date', 'operator', 'ferryName', 'routeNumber', 'duration',
   'bookingReference', 'ticketNumber', 'cabin', 'deck',
   'departure', 'arrival',
-  'price', 'passengers', 'vehicles', 'documentUrl', 'pdfPath'
+  'price', 'passengers', 'vehicles', 'documentUrl', 'pdfPath',
+  'returnFerryId', 'parentFerryId', '_isReturn'
 ];
 
 function filterUpdates(updates, allowedFields) {
@@ -397,7 +398,7 @@ function applyUpdates(item, updates, type) {
       Object.assign(item.totalAmount, updates.totalAmount);
     }
   } else if (type === 'ferry') {
-    const simpleFields = ['date', 'operator', 'ferryName', 'routeNumber', 'duration', 'bookingReference', 'ticketNumber', 'cabin', 'deck'];
+    const simpleFields = ['date', 'operator', 'ferryName', 'routeNumber', 'duration', 'bookingReference', 'ticketNumber', 'cabin', 'deck', 'returnFerryId', 'parentFerryId', '_isReturn'];
     for (const field of simpleFields) {
       if (updates[field] !== undefined) item[field] = updates[field];
     }

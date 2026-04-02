@@ -87,6 +87,7 @@
         <div class="ferry-card${isPast ? ' past' : ''}" data-id="${ferry.id}">
           <div class="ferry-card-header">
             <span class="ferry-header-date">${esc(formattedDate)}</span>
+            ${ferry._isReturn ? `<span class="ferry-return-badge">Ritorno</span>` : ''}
             ${ferry.routeNumber ? `<span class="ferry-header-route">${esc(ferry.routeNumber)}</span>` : ''}
           </div>
 
@@ -339,7 +340,7 @@
     `;
   }
 
-  function buildFerryEditForm(ferry) {
+  function buildFerryEditForm(ferry, returnFerry) {
     // Normalise passengers (may be array or single object)
     const passengers = ferry.passengers?.length
       ? ferry.passengers
@@ -349,63 +350,52 @@
     const passengerRowsHtml = passengers.map((p, idx) => buildPassengerRow(p, idx)).join('');
     const vehicleRowsHtml = vehicles.map((v, idx) => buildVehicleRow(v, idx)).join('');
 
-    return `
-      <div class="edit-booking-form">
-        <div class="edit-booking-section">
-          <div class="edit-booking-section-title">Traghetto</div>
+    // Sezione ritorno: se returnFerry è presente, mostra form combinato già popolato
+    const returnSection = returnFerry ? `
+        <!-- Sezione RITORNO — già collegata -->
+        <input type="hidden" data-return-ferry-id="${escAttr(returnFerry.id)}">
+        <div class="edit-booking-section" style="margin-top:16px;background:var(--color-blue-50,#eff6ff);border:1px solid var(--color-blue-200,#bfdbfe);border-radius:10px;padding:16px;" data-return-section>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--color-blue-200,#bfdbfe);">
+            <span class="edit-booking-section-title" style="margin:0;">Ritorno</span>
+          </div>
           <div class="edit-booking-grid">
             <div class="edit-booking-field">
-              <label>Data</label>
-              <input type="date" data-field="date" value="${escAttr(ferry.date)}" required>
-            </div>
-            <div class="edit-booking-field">
-              <label>Operatore</label>
-              <input type="text" data-field="operator" value="${escAttr(ferry.operator)}">
-            </div>
-            <div class="edit-booking-field">
-              <label>Nome nave</label>
-              <input type="text" data-field="ferryName" value="${escAttr(ferry.ferryName)}">
-            </div>
-            <div class="edit-booking-field">
-              <label>Numero rotta</label>
-              <input type="text" data-field="routeNumber" value="${escAttr(ferry.routeNumber)}">
+              <label>Data <span style="color:var(--color-danger,#e53e3e)">*</span></label>
+              <input type="date" data-return-field="date" value="${escAttr(returnFerry.date)}" required>
             </div>
           </div>
-        </div>
-        <div class="edit-booking-section">
-          <div class="edit-booking-section-title">Partenza</div>
+          <div class="edit-booking-section-title" style="font-size:var(--font-size-xs);margin-top:12px;">Partenza</div>
           <div class="edit-booking-grid">
             <div class="edit-booking-field">
               <label>Porto</label>
-              <input type="text" data-field="departure.port" value="${escAttr(ferry.departure?.port)}">
+              <input type="text" data-return-field="departure.port" value="${escAttr(returnFerry.departure?.port)}">
             </div>
             <div class="edit-booking-field">
               <label>Città</label>
-              <input type="text" data-field="departure.city" value="${escAttr(ferry.departure?.city)}">
+              <input type="text" data-return-field="departure.city" value="${escAttr(returnFerry.departure?.city)}">
             </div>
             <div class="edit-booking-field full-width">
               <label>Orario</label>
-              <input type="time" data-field="departure.time" value="${escAttr(ferry.departure?.time)}">
+              <input type="time" data-return-field="departure.time" value="${escAttr(returnFerry.departure?.time)}">
             </div>
           </div>
-        </div>
-        <div class="edit-booking-section">
-          <div class="edit-booking-section-title">Arrivo</div>
+          <div class="edit-booking-section-title" style="font-size:var(--font-size-xs);margin-top:12px;">Arrivo</div>
           <div class="edit-booking-grid">
             <div class="edit-booking-field">
               <label>Porto</label>
-              <input type="text" data-field="arrival.port" value="${escAttr(ferry.arrival?.port)}">
+              <input type="text" data-return-field="arrival.port" value="${escAttr(returnFerry.arrival?.port)}">
             </div>
             <div class="edit-booking-field">
               <label>Città</label>
-              <input type="text" data-field="arrival.city" value="${escAttr(ferry.arrival?.city)}">
+              <input type="text" data-return-field="arrival.city" value="${escAttr(returnFerry.arrival?.city)}">
             </div>
             <div class="edit-booking-field full-width">
               <label>Orario</label>
-              <input type="time" data-field="arrival.time" value="${escAttr(ferry.arrival?.time)}">
+              <input type="time" data-return-field="arrival.time" value="${escAttr(returnFerry.arrival?.time)}">
             </div>
           </div>
         </div>
+    ` : `
         <!-- Pulsante Aggiungi ritorno -->
         <div class="edit-booking-section" style="margin-top:16px">
           <button type="button" class="btn btn-outline ferry-add-return-btn"
@@ -473,6 +463,66 @@
             </div>
           </div>
         </div>
+    `;
+
+    return `
+      <div class="edit-booking-form">
+        <div class="edit-booking-section">
+          <div class="edit-booking-section-title">Traghetto</div>
+          <div class="edit-booking-grid">
+            <div class="edit-booking-field">
+              <label>Data andata</label>
+              <input type="date" data-field="date" value="${escAttr(ferry.date)}" required>
+            </div>
+            <div class="edit-booking-field">
+              <label>Operatore</label>
+              <input type="text" data-field="operator" value="${escAttr(ferry.operator)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>Nome nave</label>
+              <input type="text" data-field="ferryName" value="${escAttr(ferry.ferryName)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>Numero rotta</label>
+              <input type="text" data-field="routeNumber" value="${escAttr(ferry.routeNumber)}">
+            </div>
+          </div>
+        </div>
+        <div class="edit-booking-section">
+          <div class="edit-booking-section-title">${returnFerry ? 'Andata — Partenza' : 'Partenza'}</div>
+          <div class="edit-booking-grid">
+            <div class="edit-booking-field">
+              <label>Porto</label>
+              <input type="text" data-field="departure.port" value="${escAttr(ferry.departure?.port)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>Città</label>
+              <input type="text" data-field="departure.city" value="${escAttr(ferry.departure?.city)}">
+            </div>
+            <div class="edit-booking-field full-width">
+              <label>Orario</label>
+              <input type="time" data-field="departure.time" value="${escAttr(ferry.departure?.time)}">
+            </div>
+          </div>
+        </div>
+        <div class="edit-booking-section">
+          <div class="edit-booking-section-title">${returnFerry ? 'Andata — Arrivo' : 'Arrivo'}</div>
+          <div class="edit-booking-grid">
+            <div class="edit-booking-field">
+              <label>Porto</label>
+              <input type="text" data-field="arrival.port" value="${escAttr(ferry.arrival?.port)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>Città</label>
+              <input type="text" data-field="arrival.city" value="${escAttr(ferry.arrival?.city)}">
+            </div>
+            <div class="edit-booking-field full-width">
+              <label>Orario</label>
+              <input type="time" data-field="arrival.time" value="${escAttr(ferry.arrival?.time)}">
+            </div>
+          </div>
+        </div>
+        ${returnSection}
 
         <div class="edit-booking-section" style="margin-top:16px">
           <div class="edit-booking-section-title">Prenotazione</div>
@@ -766,6 +816,39 @@
   }
 
   /**
+   * Raccoglie gli aggiornamenti per il ferry di ritorno già collegato (pannello combinato).
+   * Legge i campi data-return-field visibili — usato quando data-return-ferry-id è presente.
+   * @param {HTMLElement} formView
+   * @returns {Object|null}
+   */
+  function collectReturnUpdates(formView) {
+    const returnSection = formView.querySelector('[data-return-section]');
+    if (!returnSection) return null;
+
+    const get = (field) => {
+      const el = returnSection.querySelector(`[data-return-field="${field}"]`);
+      return el ? el.value.trim() : '';
+    };
+
+    const date = get('date');
+    if (!date) return null;
+
+    return {
+      date,
+      departure: {
+        port: get('departure.port') || undefined,
+        city: get('departure.city') || undefined,
+        time: get('departure.time') || undefined,
+      },
+      arrival: {
+        port: get('arrival.port') || undefined,
+        city: get('arrival.city') || undefined,
+        time: get('arrival.time') || undefined,
+      },
+    };
+  }
+
+  /**
    * Raccoglie i dati della sezione "Viaggio di ritorno" dal pannello di modifica.
    * Restituisce null se la sezione non è visibile o la data non è compilata.
    * @param {HTMLElement} formView
@@ -808,6 +891,7 @@
     attachFormListeners: attachFerryFormListeners,
     collectUpdates: collectFerryUpdates,
     collectReturnValues: collectReturnValues,
+    collectReturnUpdates: collectReturnUpdates,
     buildFullEditForm: buildFerryEditForm,
     collectFullUpdates: collectFerryUpdates
   };
