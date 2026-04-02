@@ -3183,7 +3183,12 @@
         const itemLabel = selectedType === 'flight'
           ? `${item.flightNumber || ''} ${item.departure?.code || ''} → ${item.arrival?.code || ''}`
           : (item.name || 'Hotel');
-        const form = ({ flight: window.tripFlights, hotel: window.tripHotels, train: window.tripTrains, bus: window.tripBuses, rental: window.tripRentals, ferry: window.tripFerries }[selectedType] || window.tripFlights).buildFullEditForm(item);
+        const returnFerry = selectedType === 'ferry' && item.returnFerryId
+          ? (currentTripData?.ferries || []).find(f => f.id === item.returnFerryId)
+          : null;
+        const form = selectedType === 'ferry'
+          ? window.tripFerries.buildFullEditForm(item, returnFerry)
+          : ({ flight: window.tripFlights, hotel: window.tripHotels, train: window.tripTrains, bus: window.tripBuses, rental: window.tripRentals }[selectedType] || window.tripFlights).buildFullEditForm(item);
         formHTML = `
           <div class="manage-edit-item" data-item-id="${item.id}">
             <div class="manage-edit-item-header">${esc(itemLabel)}</div>

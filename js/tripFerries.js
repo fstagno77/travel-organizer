@@ -63,10 +63,11 @@
 
     const lang = i18n.getLang();
 
+    const today = new Date().toISOString().split('T')[0];
     const sortedFerries = [...ferries].sort((a, b) => {
-      const aPast = isFerryPast(a);
-      const bPast = isFerryPast(b);
-      if (aPast !== bPast) return aPast ? 1 : -1;
+      const aStrictPast = a.date < today;
+      const bStrictPast = b.date < today;
+      if (aStrictPast !== bStrictPast) return aStrictPast ? 1 : -1;
       return new Date(a.date) - new Date(b.date);
     });
 
