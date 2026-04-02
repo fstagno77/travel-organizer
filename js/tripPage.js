@@ -3654,6 +3654,25 @@
           throw new Error('Failed to save');
         }
 
+        // Ferry return trip: se la sezione ritorno è compilata, salva come add-booking separato
+        if (type === 'ferry') {
+          const returnData = window.tripFerries.collectReturnValues
+            ? window.tripFerries.collectReturnValues(panelBody)
+            : null;
+          if (returnData) {
+            const returnPayload = { action: 'manual-booking', tripId, type: 'ferry', manualData: returnData };
+            try {
+              await utils.authFetch('/.netlify/functions/add-booking', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(returnPayload),
+              });
+            } catch {
+              // Non critico — l'edit principale è già salvato
+            }
+          }
+        }
+
         const activeTab = document.querySelector('.segmented-control-btn.active')?.dataset.tab;
         closePanel(async () => {
           await loadTripFromUrl();

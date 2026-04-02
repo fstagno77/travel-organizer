@@ -474,6 +474,72 @@
             <div class="ferry-doc-selected" data-doc-selected style="display:none"></div>
           </div>
         </div>
+
+        <!-- Pulsante Aggiungi ritorno -->
+        <div class="edit-booking-section" style="margin-top:24px">
+          <button type="button" class="btn btn-outline ferry-add-return-btn"
+            style="display:flex;align-items:center;gap:6px;width:100%;justify-content:center;"
+            data-add-return>
+            <span class="material-icons" style="font-size:18px;">swap_horiz</span>
+            <span data-i18n="ferry.add_return">Aggiungi ritorno</span>
+          </button>
+        </div>
+
+        <!-- Sezione ritorno (nascosta di default) -->
+        <div class="edit-booking-section" style="display:none;margin-top:0;" data-return-section>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--color-gray-200);">
+            <span class="edit-booking-section-title" style="margin:0;" data-i18n="ferry.return_trip">Viaggio di ritorno</span>
+            <button type="button" class="ferry-remove-return-btn"
+              style="background:none;border:none;cursor:pointer;color:var(--color-gray-500);padding:2px;display:flex;align-items:center;"
+              aria-label="Rimuovi ritorno" data-remove-return>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div class="edit-booking-grid">
+            <div class="edit-booking-field">
+              <label>Data <span style="color:var(--color-danger,#e53e3e)">*</span></label>
+              <input type="date" data-return-field="date" value="">
+            </div>
+            <div class="edit-booking-field">
+              <label>Operatore</label>
+              <input type="text" data-return-field="operator" value="${escAttr(ferry.operator)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>Nome nave</label>
+              <input type="text" data-return-field="ferryName" value="${escAttr(ferry.ferryName)}">
+            </div>
+          </div>
+          <div class="edit-booking-section-title" style="font-size:var(--font-size-xs);margin-top:12px;">Partenza</div>
+          <div class="edit-booking-grid">
+            <div class="edit-booking-field">
+              <label>Porto</label>
+              <input type="text" data-return-field="departure.port" value="${escAttr(ferry.arrival?.port)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>Città</label>
+              <input type="text" data-return-field="departure.city" value="${escAttr(ferry.arrival?.city)}">
+            </div>
+            <div class="edit-booking-field full-width">
+              <label>Orario</label>
+              <input type="time" data-return-field="departure.time" value="">
+            </div>
+          </div>
+          <div class="edit-booking-section-title" style="font-size:var(--font-size-xs);margin-top:12px;">Arrivo</div>
+          <div class="edit-booking-grid">
+            <div class="edit-booking-field">
+              <label>Porto</label>
+              <input type="text" data-return-field="arrival.port" value="${escAttr(ferry.departure?.port)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>Città</label>
+              <input type="text" data-return-field="arrival.city" value="${escAttr(ferry.departure?.city)}">
+            </div>
+            <div class="edit-booking-field full-width">
+              <label>Orario</label>
+              <input type="time" data-return-field="arrival.time" value="">
+            </div>
+          </div>
+        </div>
       </div>
     `;
   }
@@ -529,6 +595,29 @@
         vehList.appendChild(row);
         row.querySelector('.edit-booking-remove-row').addEventListener('click', () => row.remove());
         row.querySelector('input').focus();
+      });
+    }
+
+    // Add return trip toggle
+    const addReturnBtn = formEl.querySelector('[data-add-return]');
+    const returnSection = formEl.querySelector('[data-return-section]');
+    const removeReturnBtn = formEl.querySelector('[data-remove-return]');
+
+    if (addReturnBtn && returnSection) {
+      addReturnBtn.addEventListener('click', () => {
+        addReturnBtn.closest('.edit-booking-section').style.display = 'none';
+        returnSection.style.display = '';
+        if (window.i18n) window.i18n.apply(returnSection);
+      });
+    }
+    if (removeReturnBtn && returnSection && addReturnBtn) {
+      removeReturnBtn.addEventListener('click', () => {
+        returnSection.style.display = 'none';
+        addReturnBtn.closest('.edit-booking-section').style.display = '';
+        // Reset campi ritorno
+        returnSection.querySelectorAll('input[data-return-field]').forEach(inp => {
+          if (inp.type === 'date' || inp.type === 'time') inp.value = '';
+        });
       });
     }
 
@@ -673,6 +762,41 @@
     return updates;
   }
 
+  /**
+   * Raccoglie i dati della sezione "Viaggio di ritorno" dal pannello di modifica.
+   * Restituisce null se la sezione non è visibile o la data non è compilata.
+   * @param {HTMLElement} formView
+   * @returns {Object|null}
+   */
+  function collectReturnValues(formView) {
+    const returnSection = formView.querySelector('[data-return-section]');
+    if (!returnSection || returnSection.style.display === 'none') return null;
+
+    const dateEl = returnSection.querySelector('[data-return-field="date"]');
+    if (!dateEl || !dateEl.value) return null;
+
+    const get = (field) => {
+      const el = returnSection.querySelector(`[data-return-field="${field}"]`);
+      return el ? el.value.trim() : '';
+    };
+
+    return {
+      date: dateEl.value,
+      operator: get('operator') || undefined,
+      ferryName: get('ferryName') || undefined,
+      departure: {
+        port: get('departure.port') || undefined,
+        city: get('departure.city') || undefined,
+        time: get('departure.time') || undefined,
+      },
+      arrival: {
+        port: get('arrival.port') || undefined,
+        city: get('arrival.city') || undefined,
+        time: get('arrival.time') || undefined,
+      },
+    };
+  }
+
   window.tripFerries = {
     render: renderFerries,
     renderFerries: renderFerries,
@@ -680,6 +804,7 @@
     buildEditForm: buildFerryEditForm,
     attachFormListeners: attachFerryFormListeners,
     collectUpdates: collectFerryUpdates,
+    collectReturnValues: collectReturnValues,
     buildFullEditForm: buildFerryEditForm,
     collectFullUpdates: collectFerryUpdates
   };

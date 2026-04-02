@@ -1256,11 +1256,119 @@ window.manualBookingForm = (() => {
     });
     scroll.appendChild(wPrice);
 
+    // --- Pulsante "Aggiungi ritorno" ---
+    const addReturnBtn = document.createElement('button');
+    addReturnBtn.type = 'button';
+    addReturnBtn.className = 'btn btn-outline';
+    addReturnBtn.style.cssText = 'display:flex;align-items:center;gap:6px;margin-top:var(--spacing-3);width:100%;justify-content:center;';
+    addReturnBtn.innerHTML = `
+      <span class="material-icons" style="font-size:18px;">swap_horiz</span>
+      <span data-i18n="ferry.add_return">Aggiungi ritorno</span>
+    `;
+
+    // Sezione ritorno (inizialmente nascosta)
+    const returnSection = document.createElement('div');
+    returnSection.style.cssText = 'display:none;margin-top:var(--spacing-4);';
+    returnSection.id = 'mbf-ferry-return-section';
+
+    // Header sezione ritorno con X
+    const returnHeader = document.createElement('div');
+    returnHeader.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--spacing-3);padding-bottom:var(--spacing-2);border-bottom:1px solid var(--color-gray-200);';
+
+    const returnTitle = document.createElement('span');
+    returnTitle.style.cssText = 'font-weight:var(--font-weight-semibold);color:var(--color-gray-700);font-size:var(--font-size-sm);';
+    returnTitle.setAttribute('data-i18n', 'ferry.return_trip');
+    returnTitle.textContent = 'Viaggio di ritorno';
+
+    const removeReturnBtn = document.createElement('button');
+    removeReturnBtn.type = 'button';
+    removeReturnBtn.style.cssText = 'background:none;border:none;cursor:pointer;color:var(--color-gray-500);padding:2px;display:flex;align-items:center;';
+    removeReturnBtn.setAttribute('aria-label', 'Rimuovi ritorno');
+    removeReturnBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+
+    returnHeader.appendChild(returnTitle);
+    returnHeader.appendChild(removeReturnBtn);
+    returnSection.appendChild(returnHeader);
+
+    // Campi ritorno — rotta inversa pre-popolata, data vuota obbligatoria
+    const { wrapper: wReturnDate, input: iReturnDate } = buildField({
+      id: 'mbf-ferry-return-date', label: 'Data', type: 'date', required: false,
+      placeholder: '', value: ''
+    });
+    // La data ritorno è required ma gestita separatamente dalla validate principale
+    iReturnDate.dataset.returnRequired = '1';
+
+    const { wrapper: wReturnDepPort, input: iReturnDepPort } = buildField({
+      id: 'mbf-ferry-return-dep-port', label: 'Porto partenza', placeholder: 'es. Porto di Palermo',
+      value: iArrPort.value || ''
+    });
+    const { wrapper: wReturnDepCity, input: iReturnDepCity } = buildField({
+      id: 'mbf-ferry-return-dep-city', label: 'Città partenza', placeholder: 'es. Palermo',
+      value: iArrCity.value || ''
+    });
+
+    const { wrapper: wReturnArrPort, input: iReturnArrPort } = buildField({
+      id: 'mbf-ferry-return-arr-port', label: 'Porto arrivo', placeholder: 'es. Porto di Civitavecchia',
+      value: iDepPort.value || ''
+    });
+    const { wrapper: wReturnArrCity, input: iReturnArrCity } = buildField({
+      id: 'mbf-ferry-return-arr-city', label: 'Città arrivo', placeholder: 'es. Civitavecchia',
+      value: iDepCity.value || ''
+    });
+
+    const { wrapper: wReturnOperator, input: iReturnOperator } = buildField({
+      id: 'mbf-ferry-return-operator', label: 'Operatore', placeholder: 'es. Grimaldi, Tirrenia',
+      value: iOperator.value || ''
+    });
+    const { wrapper: wReturnShipName, input: iReturnShipName } = buildField({
+      id: 'mbf-ferry-return-ship-name', label: 'Nome nave', placeholder: 'es. Moby Wonder',
+      value: iShipName.value || ''
+    });
+
+    const { wrapper: wReturnDepTime, input: iReturnDepTime } = buildField({
+      id: 'mbf-ferry-return-dep-time', label: 'Orario partenza (opzionale)', type: 'time', value: ''
+    });
+    const { wrapper: wReturnArrTime, input: iReturnArrTime } = buildField({
+      id: 'mbf-ferry-return-arr-time', label: 'Orario arrivo (opzionale)', type: 'time', value: ''
+    });
+
+    returnSection.appendChild(wReturnDate);
+    returnSection.appendChild(buildRow(wReturnDepPort, wReturnDepCity));
+    returnSection.appendChild(buildRow(wReturnArrPort, wReturnArrCity));
+    returnSection.appendChild(buildRow(wReturnOperator, wReturnShipName));
+    returnSection.appendChild(buildRow(wReturnDepTime, wReturnArrTime));
+
+    scroll.appendChild(addReturnBtn);
+    scroll.appendChild(returnSection);
+
     // Upload documento
     const { wrapper: wDoc, getFile } = buildDocumentUpload();
     scroll.appendChild(wDoc);
 
     form.appendChild(scroll);
+
+    // Logica toggle sezione ritorno
+    addReturnBtn.addEventListener('click', () => {
+      // Aggiorna pre-popolamento con i valori correnti al momento del click
+      iReturnDepPort.value = iArrPort.value || '';
+      iReturnDepCity.value = iArrCity.value || '';
+      iReturnArrPort.value = iDepPort.value || '';
+      iReturnArrCity.value = iDepCity.value || '';
+      iReturnOperator.value = iOperator.value || '';
+      iReturnShipName.value = iShipName.value || '';
+
+      addReturnBtn.style.display = 'none';
+      returnSection.style.display = '';
+    });
+
+    removeReturnBtn.addEventListener('click', () => {
+      returnSection.style.display = 'none';
+      addReturnBtn.style.display = '';
+      // Reset campi ritorno
+      iReturnDate.value = '';
+      iReturnDepTime.value = '';
+      iReturnArrTime.value = '';
+    });
 
     // Pulsante Salva (gestito dal chiamante, qui solo creato)
     const saveBtn = document.createElement('button');
@@ -1303,6 +1411,30 @@ window.manualBookingForm = (() => {
       price: iPrice.value ? parseFloat(iPrice.value) : undefined,
     });
 
+    /**
+     * Restituisce i valori del viaggio di ritorno se la sezione è visibile e la data è compilata.
+     * @returns {Object|null}
+     */
+    const getReturnValues = () => {
+      if (returnSection.style.display === 'none') return null;
+      if (!iReturnDate.value) return null;
+      return {
+        operator: iReturnOperator.value.trim() || iOperator.value.trim(),
+        date: iReturnDate.value,
+        departure: {
+          port: iReturnDepPort.value.trim(),
+          city: iReturnDepCity.value.trim(),
+          time: iReturnDepTime.value || undefined,
+        },
+        arrival: {
+          port: iReturnArrPort.value.trim(),
+          city: iReturnArrCity.value.trim(),
+          time: iReturnArrTime.value || undefined,
+        },
+        shipName: iReturnShipName.value.trim() || undefined,
+      };
+    };
+
     const validate = () => {
       let valid = true;
       const checks = [
@@ -1322,10 +1454,19 @@ window.manualBookingForm = (() => {
           clearFieldError(input);
         }
       });
+
+      // Valida data ritorno se la sezione è aperta
+      if (returnSection.style.display !== 'none' && !iReturnDate.value) {
+        showFieldError(iReturnDate, 'Inserisci la data del viaggio di ritorno');
+        valid = false;
+      } else if (returnSection.style.display !== 'none') {
+        clearFieldError(iReturnDate);
+      }
+
       return valid;
     };
 
-    return { form, getValues, validate, saveBtn, getFile };
+    return { form, getValues, getReturnValues, validate, saveBtn, getFile };
   }
 
   /**
@@ -1437,7 +1578,7 @@ window.manualBookingForm = (() => {
       return;
     }
 
-    const { form, getValues, validate, saveBtn, getFile } = formModule;
+    const { form, getValues, getReturnValues, validate, saveBtn, getFile } = formModule;
 
     // Aggiorna lo stato del Save btn con la funzione pubblica
     updateSaveBtn(form, saveBtn);
@@ -1465,8 +1606,17 @@ window.manualBookingForm = (() => {
 
       try {
         const manualData = getValues();
-        const docFile = getFile();
+        const docFile = getFile ? getFile() : null;
         await saveManualBooking(tripId, type, manualData, docFile, prefillDocStoragePath);
+
+        // Se è un ferry con viaggio di ritorno compilato, salva anche il secondo booking
+        if (typeof getReturnValues === 'function') {
+          const returnData = getReturnValues();
+          if (returnData) {
+            await saveManualBooking(tripId, type, returnData, null, null);
+          }
+        }
+
         utils.showToast('Prenotazione aggiunta', 'success');
         if (typeof onSaved === 'function') onSaved();
       } catch (err) {

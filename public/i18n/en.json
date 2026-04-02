@@ -392,7 +392,9 @@
     "arrivalTime": "Arrival time",
     "duration": "Crossing duration",
     "currency": "Currency",
-    "amount": "Amount"
+    "amount": "Amount",
+    "add_return": "Add return trip",
+    "return_trip": "Return trip"
   },
   "changelog": {
     "title": "Changelog",
