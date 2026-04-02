@@ -738,6 +738,139 @@ window.manualBookingForm = (() => {
   }
 
   /**
+   * Costruisce il form bus.
+   * @param {Object} prefill - dati da pre-popolare
+   * @returns {{ form: HTMLElement, getValues: function, validate: function, saveBtn: HTMLButtonElement, getFile: function }}
+   */
+  function buildBusForm(prefill = {}) {
+    const form = document.createElement('div');
+    form.className = 'manual-booking-form manual-booking-form--bus';
+    form.dataset.bookingType = 'bus';
+
+    // Intestazione
+    const heading = document.createElement('p');
+    heading.className = 'manual-form-heading';
+    heading.style.cssText = 'font-weight:var(--font-weight-semibold);margin-bottom:var(--spacing-4);color:var(--color-gray-700);';
+    heading.textContent = 'Inserisci i dettagli del bus';
+    form.appendChild(heading);
+
+    // Scrollable body
+    const scroll = document.createElement('div');
+    scroll.style.cssText = 'overflow-y:auto;max-height:55vh;padding-right:4px;';
+
+    // --- Campi obbligatori ---
+    const { wrapper: wDepCity, input: iDepCity } = buildField({
+      id: 'mbf-bus-departure-city', label: 'Città partenza', required: true,
+      placeholder: 'es. Roma', value: prefill.departureCity || (prefill.departure?.city || '')
+    });
+    const { wrapper: wArrCity, input: iArrCity } = buildField({
+      id: 'mbf-bus-arrival-city', label: 'Città arrivo', required: true,
+      placeholder: 'es. Napoli', value: prefill.arrivalCity || (prefill.arrival?.city || '')
+    });
+    scroll.appendChild(buildRow(wDepCity, wArrCity));
+
+    const { wrapper: wDate, input: iDate } = buildField({
+      id: 'mbf-bus-date', label: 'Data', type: 'date', required: true,
+      value: prefill.date || ''
+    });
+    const { wrapper: wDepTime, input: iDepTime } = buildField({
+      id: 'mbf-bus-departure-time', label: 'Orario partenza', type: 'time', required: true,
+      value: prefill.departureTime || (prefill.departure?.time || '')
+    });
+    scroll.appendChild(buildRow(wDate, wDepTime));
+
+    const { wrapper: wOperator, input: iOperator } = buildField({
+      id: 'mbf-bus-operator', label: 'Operatore', required: true,
+      placeholder: 'es. FlixBus', value: prefill.operator || ''
+    });
+    scroll.appendChild(wOperator);
+
+    // --- Campi opzionali ---
+    const { wrapper: wDepStation, input: iDepStation } = buildField({
+      id: 'mbf-bus-departure-station', label: 'Stazione/terminal partenza',
+      placeholder: 'es. Tiburtina', value: prefill.departureStation || (prefill.departure?.station || '')
+    });
+    const { wrapper: wArrStation, input: iArrStation } = buildField({
+      id: 'mbf-bus-arrival-station', label: 'Stazione/terminal arrivo',
+      placeholder: 'es. Metropark', value: prefill.arrivalStation || (prefill.arrival?.station || '')
+    });
+    scroll.appendChild(buildRow(wDepStation, wArrStation));
+
+    const { wrapper: wRoute, input: iRoute } = buildField({
+      id: 'mbf-bus-route', label: 'Numero rotta',
+      placeholder: 'es. 001', value: prefill.routeNumber || ''
+    });
+    const { wrapper: wSeat, input: iSeat } = buildField({
+      id: 'mbf-bus-seat', label: 'Posto',
+      placeholder: 'es. 12', value: prefill.seat || ''
+    });
+    scroll.appendChild(buildRow(wRoute, wSeat));
+
+    const { wrapper: wPrice, input: iPrice } = buildField({
+      id: 'mbf-bus-price', label: 'Prezzo (€)', type: 'number', placeholder: '0.00',
+      value: prefill.price || ''
+    });
+    scroll.appendChild(wPrice);
+
+    // Upload documento
+    const { wrapper: wDoc, getFile } = buildDocumentUpload();
+    scroll.appendChild(wDoc);
+
+    form.appendChild(scroll);
+
+    // Pulsante Salva
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'btn btn-primary';
+    saveBtn.id = 'manual-booking-save';
+    saveBtn.textContent = 'Salva bus';
+    saveBtn.disabled = true;
+
+    // Aggiornamento stato bottone
+    const requiredInputs = [iDepCity, iArrCity, iDate, iDepTime, iOperator];
+    requiredInputs.forEach(inp => {
+      inp.addEventListener('input', () => {
+        clearFieldError(inp);
+        updateSaveBtn(form, saveBtn);
+      });
+    });
+
+    const getValues = () => ({
+      departureCity: iDepCity.value.trim(),
+      arrivalCity: iArrCity.value.trim(),
+      date: iDate.value,
+      departureTime: iDepTime.value,
+      operator: iOperator.value.trim(),
+      departureStation: iDepStation.value.trim() || undefined,
+      arrivalStation: iArrStation.value.trim() || undefined,
+      routeNumber: iRoute.value.trim() || undefined,
+      seat: iSeat.value.trim() || undefined,
+      price: iPrice.value ? parseFloat(iPrice.value) : undefined,
+    });
+
+    const validate = () => {
+      let valid = true;
+      const checks = [
+        { input: iDepCity,  msg: 'Inserisci la città di partenza' },
+        { input: iArrCity,  msg: 'Inserisci la città di arrivo' },
+        { input: iDate,     msg: 'Inserisci la data del bus' },
+        { input: iDepTime,  msg: 'Inserisci l\'orario di partenza' },
+        { input: iOperator, msg: 'Inserisci l\'operatore' },
+      ];
+      checks.forEach(({ input, msg }) => {
+        if (!input.value || input.value.trim() === '') {
+          showFieldError(input, msg);
+          valid = false;
+        } else {
+          clearFieldError(input);
+        }
+      });
+      return valid;
+    };
+
+    return { form, getValues, validate, saveBtn, getFile };
+  }
+
+  /**
    * Ripristina il contenuto originale della modale.
    * @param {HTMLElement} modal
    * @param {string} origBody
@@ -822,8 +955,10 @@ window.manualBookingForm = (() => {
       formModule = buildHotelForm(prefill);
     } else if (type === 'train') {
       formModule = buildTrainForm(prefill);
+    } else if (type === 'bus') {
+      formModule = buildBusForm(prefill);
     } else {
-      // Tipi non ancora implementati (US-005+): placeholder
+      // Tipi non ancora implementati (US-007+): placeholder
       modalBody.innerHTML = `
         <div style="padding:var(--spacing-8);text-align:center;color:var(--color-gray-500);">
           <p>Form per <strong>${type}</strong> in arrivo.</p>
