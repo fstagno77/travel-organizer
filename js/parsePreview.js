@@ -79,8 +79,7 @@ const parsePreview = {
     allFerries.forEach((f, i) => {
       const dep = f.departure?.port || f.departure?.city || '?';
       const arr = f.arrival?.port || f.arrival?.city || '?';
-      const short = s => s.length > 10 ? s.substring(0, 8) + '…' : s;
-      this._segments.push({ type: 'ferry', index: i, label: `${short(dep)}→${short(arr)}`, icon: 'directions_boat' });
+      this._segments.push({ type: 'ferry', index: i, label: `${dep}→${arr}`, icon: 'directions_boat' });
     });
 
     const totalItems = this._segments.length;
