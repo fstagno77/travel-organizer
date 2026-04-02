@@ -7479,7 +7479,7 @@ body:has(> .modal-overlay.active) .trip-hero-tabs {
 .parse-add-field-section {
   margin-top: var(--spacing-3);
   padding-top: var(--spacing-2);
-  border-top: 1px dashed var(--color-gray-200);
+  border-top: none;
   position: relative;
 }
 
