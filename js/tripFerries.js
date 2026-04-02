@@ -424,7 +424,7 @@
           </div>
         </div>
         <div class="edit-booking-section">
-          <div class="edit-booking-section-title" style="display:flex;justify-content:space-between;align-items:center">
+          <div class="edit-booking-section-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
             <span>Passeggeri</span>
             <button type="button" class="edit-booking-add-row" data-add-passenger style="margin:0">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -435,8 +435,8 @@
             ${passengerRowsHtml}
           </div>
         </div>
-        <div class="edit-booking-section">
-          <div class="edit-booking-section-title" style="display:flex;justify-content:space-between;align-items:center">
+        <div class="edit-booking-section" style="margin-top:24px">
+          <div class="edit-booking-section-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
             <span>Veicoli a bordo</span>
             <button type="button" class="edit-booking-add-row" data-add-vehicle style="margin:0">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>

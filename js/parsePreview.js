@@ -79,8 +79,7 @@ const parsePreview = {
     allFerries.forEach((f, i) => {
       const dep = f.departure?.port || f.departure?.city || '?';
       const arr = f.arrival?.port || f.arrival?.city || '?';
-      const short = s => s.length > 10 ? s.substring(0, 8) + '…' : s;
-      this._segments.push({ type: 'ferry', index: i, label: `${short(dep)}→${short(arr)}`, icon: 'directions_boat' });
+      this._segments.push({ type: 'ferry', index: i, label: `${dep}→${arr}`, icon: 'directions_boat' });
     });
 
     const totalItems = this._segments.length;
@@ -183,10 +182,10 @@ const parsePreview = {
         </tr></thead><tbody>`;
         for (const p of allPassengers) {
           html += `<tr>
-            <td style="padding:5px 0;font-size:13px">${this._esc(p.name || '—')}</td>
-            <td style="padding:5px 0;font-size:12px;color:var(--text-secondary)">${this._esc(p.type || '—')}</td>
-            <td style="padding:5px 0;font-size:13px">${this._esc(p.seat || '—')}</td>
-            <td style="padding:5px 0;font-size:12px;color:var(--text-secondary)">${this._esc(p.ticketNumber || '—')}</td>
+            <td style="padding:8px 0;font-size:13px">${this._esc(p.name || '—')}</td>
+            <td style="padding:8px 0;font-size:12px;color:var(--text-secondary)">${this._esc(p.type || '—')}</td>
+            <td style="padding:8px 0;font-size:13px">${this._esc(p.seat || '—')}</td>
+            <td style="padding:8px 0;font-size:12px;color:var(--text-secondary)">${this._esc(p.ticketNumber || '—')}</td>
           </tr>`;
         }
         html += `</tbody></table>`;
@@ -422,7 +421,7 @@ const parsePreview = {
 
       // Passeggeri ferry
       const ferryPassengers = f.passengers?.length > 0 ? f.passengers : [];
-      html += `<div class="parse-section-header parse-ferry-pax-header" style="margin-top:14px;display:flex;justify-content:space-between;align-items:center"><span>Passeggeri (${ferryPassengers.length})</span><button type="button" class="parse-add-pax-btn" style="display:none;font-size:12px;color:var(--primary);background:none;border:none;cursor:pointer;padding:0">+ Aggiungi passeggero</button></div>`;
+      html += `<div class="parse-section-header parse-ferry-pax-header" style="margin-top:14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center"><span>Passeggeri (${ferryPassengers.length})</span><button type="button" class="parse-add-pax-btn" style="display:none;font-size:12px;color:var(--primary);background:none;border:none;cursor:pointer;padding:0">+ Aggiungi passeggero</button></div>`;
       html += `<div class="parse-ferry-passengers" data-ferry-index="${i}">`;
       html += `<table class="parse-ferry-pax-table" style="width:100%;border-collapse:collapse;margin-top:4px">`;
       html += `<thead><tr>
@@ -433,11 +432,11 @@ const parsePreview = {
       for (let pi = 0; pi < ferryPassengers.length; pi++) {
         const p = ferryPassengers[pi];
         html += `<tr data-pax-index="${pi}">
-          <td style="padding:5px 0;font-size:13px">
+          <td style="padding:8px 0;font-size:13px">
             <span class="parse-pax-name-display">${this._esc(p.name || '—')}</span>
             <input class="parse-pax-name-input parse-field-input" data-field="passengers[${pi}].name" data-original="${this._esc(p.name || '')}" value="${this._esc(p.name || '')}" style="display:none;width:100%;box-sizing:border-box">
           </td>
-          <td style="padding:5px 0;font-size:12px;color:var(--text-secondary)">
+          <td style="padding:8px 0;font-size:12px;color:var(--text-secondary)">
             <span class="parse-pax-type-display">${this._esc(p.type || '—')}</span>
             <div class="parse-pax-type-cs-placeholder" data-pax-type="${this._esc(p.type || 'ADT')}" data-field="passengers[${pi}].type" data-original="${this._esc(p.type || '')}" style="display:none"></div>
           </td>
@@ -451,7 +450,7 @@ const parsePreview = {
 
       // Veicoli a bordo
       const ferryVehicles = f.vehicles?.length > 0 ? f.vehicles : [];
-      html += `<div class="parse-section-header parse-ferry-veh-header" style="margin-top:14px;display:flex;justify-content:space-between;align-items:center"><span>Veicoli a bordo (${ferryVehicles.length})</span><button type="button" class="parse-add-veh-btn" style="display:none;font-size:12px;color:var(--primary);background:none;border:none;cursor:pointer;padding:0">+ Aggiungi veicolo</button></div>`;
+      html += `<div class="parse-section-header parse-ferry-veh-header" style="margin-top:24px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center"><span>Veicoli a bordo (${ferryVehicles.length})</span><button type="button" class="parse-add-veh-btn" style="display:none;font-size:12px;color:var(--primary);background:none;border:none;cursor:pointer;padding:0">+ Aggiungi veicolo</button></div>`;
       html += `<div class="parse-ferry-vehicles" data-ferry-index="${i}">`;
       html += `<table class="parse-ferry-veh-table" style="width:100%;border-collapse:collapse;margin-top:4px">`;
       html += `<thead><tr>
@@ -462,11 +461,11 @@ const parsePreview = {
       for (let vi = 0; vi < ferryVehicles.length; vi++) {
         const v = ferryVehicles[vi];
         html += `<tr data-veh-index="${vi}">
-          <td style="padding:5px 0;font-size:13px">
+          <td style="padding:8px 0;font-size:13px">
             <span class="parse-veh-type-display">${this._esc(v.type || '—')}</span>
             <div class="parse-veh-type-cs-placeholder" data-veh-type="${this._esc(v.type || 'auto')}" data-field="vehicles[${vi}].type" data-original="${this._esc(v.type || '')}" style="display:none"></div>
           </td>
-          <td style="padding:5px 0;font-size:12px;color:var(--text-secondary)">
+          <td style="padding:8px 0;font-size:12px;color:var(--text-secondary)">
             <span class="parse-veh-plate-display">${this._esc(v.plate || '—')}</span>
             <input class="parse-veh-plate-input parse-field-input" data-field="vehicles[${vi}].plate" data-original="${this._esc(v.plate || '')}" value="${this._esc(v.plate || '')}" style="display:none;width:100%;box-sizing:border-box">
           </td>
@@ -757,11 +756,11 @@ const parsePreview = {
             tr.dataset.paxIndex = newIndex;
             // Build name td
             const nameTd = document.createElement('td');
-            nameTd.style.cssText = 'padding:5px 0;font-size:13px';
+            nameTd.style.cssText = 'padding:8px 0;font-size:13px';
             nameTd.innerHTML = `<span class="parse-pax-name-display" style="display:none"></span><input class="parse-pax-name-input parse-field-input" data-field="passengers[${newIndex}].name" data-original="" value="" style="width:100%;box-sizing:border-box" placeholder="Nome">`;
             // Build type td with CustomSelect
             const typeTd = document.createElement('td');
-            typeTd.style.cssText = 'padding:5px 0;font-size:12px';
+            typeTd.style.cssText = 'padding:8px 0;font-size:12px';
             const typeDisplay = document.createElement('span');
             typeDisplay.className = 'parse-pax-type-display';
             typeDisplay.style.display = 'none';
@@ -827,7 +826,7 @@ const parsePreview = {
             tr.dataset.vehIndex = newIndex;
             // Build type td with CustomSelect
             const typeTd = document.createElement('td');
-            typeTd.style.cssText = 'padding:5px 0;font-size:13px';
+            typeTd.style.cssText = 'padding:8px 0;font-size:13px';
             const typeDisplay = document.createElement('span');
             typeDisplay.className = 'parse-veh-type-display';
             typeDisplay.style.display = 'none';
@@ -841,7 +840,7 @@ const parsePreview = {
             typeTd.appendChild(typeCs);
             // Build plate td
             const plateTd = document.createElement('td');
-            plateTd.style.cssText = 'padding:5px 0;font-size:12px';
+            plateTd.style.cssText = 'padding:8px 0;font-size:12px';
             plateTd.innerHTML = `<span class="parse-veh-plate-display" style="display:none"></span><input class="parse-veh-plate-input parse-field-input" data-field="vehicles[${newIndex}].plate" data-original="" value="" style="width:100%;box-sizing:border-box" placeholder="Targa">`;
             // Build remove td
             const removeTd = document.createElement('td');
