@@ -447,6 +447,33 @@
             ${vehicleRowsHtml}
           </div>
         </div>
+        <div class="edit-booking-section" style="margin-top:24px" data-doc-section>
+          <div class="edit-booking-section-title">Documento</div>
+          ${ferry.documentUrl ? `
+            <div class="ferry-doc-existing" data-existing-doc>
+              <div class="file-preview-item" style="justify-content:space-between">
+                <span style="font-size:var(--font-size-sm);color:var(--color-gray-700)">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                  Documento allegato
+                </span>
+                <span style="display:flex;gap:8px">
+                  <a href="${escAttr(ferry.documentUrl)}" target="_blank" rel="noopener" style="font-size:var(--font-size-sm);color:var(--color-primary);text-decoration:none">Apri</a>
+                  <button type="button" class="ferry-doc-replace-btn" style="font-size:var(--font-size-sm);color:var(--color-gray-500);background:none;border:none;cursor:pointer;padding:0">Sostituisci</button>
+                  <button type="button" class="ferry-doc-remove-btn" style="font-size:var(--font-size-sm);color:var(--color-danger,#e53e3e);background:none;border:none;cursor:pointer;padding:0">Rimuovi</button>
+                </span>
+              </div>
+            </div>
+          ` : ''}
+          <div class="ferry-doc-upload" data-doc-upload ${ferry.documentUrl ? 'style="display:none"' : ''}>
+            <label class="file-upload-zone" data-doc-drop-zone style="cursor:pointer">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+              <span class="file-upload-zone-text">Carica PDF</span>
+              <span class="file-upload-zone-hint">PDF — max 10 MB</span>
+              <input type="file" accept="application/pdf" data-doc-input style="display:none">
+            </label>
+            <div class="ferry-doc-selected" data-doc-selected style="display:none"></div>
+          </div>
+        </div>
       </div>
     `;
   }
@@ -504,6 +531,93 @@
         row.querySelector('input').focus();
       });
     }
+
+    // Document section
+    const docSection = formEl.querySelector('[data-doc-section]');
+    if (docSection) {
+      const existingDocEl = docSection.querySelector('[data-existing-doc]');
+      const uploadArea = docSection.querySelector('[data-doc-upload]');
+      const docInput = docSection.querySelector('[data-doc-input]');
+      const docSelected = docSection.querySelector('[data-doc-selected]');
+      const dropZone = docSection.querySelector('[data-doc-drop-zone]');
+
+      // Show selected file name
+      const showSelectedFile = (file) => {
+        if (!file || !docSelected) return;
+        docSelected.innerHTML = `
+          <div class="file-preview-item" style="justify-content:space-between;margin-top:8px">
+            <span style="font-size:var(--font-size-sm);color:var(--color-gray-700)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+              ${utils.escapeHtml(file.name)}
+            </span>
+            <button type="button" class="ferry-doc-deselect-btn" style="font-size:var(--font-size-sm);color:var(--color-danger,#e53e3e);background:none;border:none;cursor:pointer;padding:0">✕</button>
+          </div>`;
+        docSelected.style.display = '';
+        docSelected.querySelector('.ferry-doc-deselect-btn').addEventListener('click', () => {
+          if (docInput) docInput.value = '';
+          docSelected.innerHTML = '';
+          docSelected.style.display = 'none';
+        });
+      };
+
+      // File input change
+      if (docInput) {
+        docInput.addEventListener('change', () => {
+          if (docInput.files[0]) {
+            // If user selects a new file, clear any removal sentinel
+            const existingSentinel = formEl.querySelector('[data-doc-remove]');
+            if (existingSentinel) existingSentinel.dataset.docRemove = '0';
+            showSelectedFile(docInput.files[0]);
+          }
+        });
+      }
+
+      // Drag & drop
+      if (dropZone) {
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', (e) => {
+          e.preventDefault();
+          dropZone.classList.remove('dragover');
+          const file = e.dataTransfer.files[0];
+          if (file && file.type === 'application/pdf') {
+            if (docInput) {
+              const dt = new DataTransfer();
+              dt.items.add(file);
+              docInput.files = dt.files;
+            }
+            showSelectedFile(file);
+          }
+        });
+      }
+
+      // Remove existing document
+      const removeBtn = existingDocEl ? existingDocEl.querySelector('.ferry-doc-remove-btn') : null;
+      if (removeBtn) {
+        removeBtn.addEventListener('click', () => {
+          // Mark as removed: hidden input with null sentinel
+          const sentinel = formEl.querySelector('[data-doc-remove]') || (() => {
+            const inp = document.createElement('input');
+            inp.type = 'hidden';
+            inp.dataset.docRemove = '1';
+            formEl.appendChild(inp);
+            return inp;
+          })();
+          sentinel.dataset.docRemove = '1';
+          if (existingDocEl) existingDocEl.style.display = 'none';
+          if (uploadArea) uploadArea.style.display = '';
+        });
+      }
+
+      // Replace existing document — show upload zone, keep existing visible until new file chosen
+      const replaceBtn = existingDocEl ? existingDocEl.querySelector('.ferry-doc-replace-btn') : null;
+      if (replaceBtn) {
+        replaceBtn.addEventListener('click', () => {
+          if (uploadArea) uploadArea.style.display = '';
+          if (existingDocEl) existingDocEl.style.display = 'none';
+        });
+      }
+    }
   }
 
   function collectFerryUpdates(formView) {
@@ -523,6 +637,12 @@
         updates[field] = val;
       }
     });
+
+    // Document removal sentinel — if present and set, signal null to backend
+    const removeSentinel = formView.querySelector('[data-doc-remove]');
+    if (removeSentinel && removeSentinel.dataset.docRemove === '1') {
+      updates.documentUrl = null;
+    }
 
     // Passengers
     const passengerRows = formView.querySelectorAll('.edit-booking-passenger-row');

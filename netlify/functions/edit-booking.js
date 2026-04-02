@@ -186,7 +186,7 @@ const ALLOWED_FERRY_FIELDS = [
   'date', 'operator', 'ferryName', 'routeNumber', 'duration',
   'bookingReference', 'ticketNumber', 'cabin', 'deck',
   'departure', 'arrival',
-  'price', 'passengers', 'vehicles'
+  'price', 'passengers', 'vehicles', 'documentUrl'
 ];
 
 function filterUpdates(updates, allowedFields) {
@@ -425,6 +425,10 @@ function applyUpdates(item, updates, type) {
     // Replace vehicles array entirely when provided
     if (updates.vehicles && Array.isArray(updates.vehicles)) {
       item.vehicles = updates.vehicles;
+    }
+    // Document URL: update or remove (null = explicit removal)
+    if ('documentUrl' in updates) {
+      item.documentUrl = updates.documentUrl === null ? null : updates.documentUrl;
     }
   }
 }

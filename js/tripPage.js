@@ -3626,6 +3626,25 @@
         };
         const updates = (updateCollectors[type] || updateCollectors.flight)(panelBody);
 
+        // Ferry document upload: if a new PDF was selected, encode as base64 and include
+        if (type === 'ferry' && updates.documentUrl === undefined) {
+          const docInput = panelBody.querySelector('[data-doc-input]');
+          if (docInput && docInput.files && docInput.files[0]) {
+            const file = docInput.files[0];
+            try {
+              const base64 = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+              });
+              updates.documentUrl = base64;
+            } catch {
+              // Non critico — continua senza documento
+            }
+          }
+        }
+
         const response = await utils.authFetch('/.netlify/functions/edit-booking', {
           method: 'POST',
           body: JSON.stringify({ tripId, type, itemId: item.id, updates })
