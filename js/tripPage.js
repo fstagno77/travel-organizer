@@ -3519,7 +3519,70 @@
       }, { once: false });
     };
 
-    backdrop.addEventListener('click', () => closePanel());
+    // SafeClose — protezione chiusura con dirty state (locale a showEditBookingPanel)
+    // Snapshot generico: raccoglie tutti i campi data-field presenti nel panelBody
+    const captureBookingSnapshot = () => {
+      const snap = {};
+      panelBody.querySelectorAll('input[data-field], select[data-field], textarea[data-field]').forEach(el => {
+        snap[el.dataset.field] = el.value;
+      });
+      return snap;
+    };
+
+    const isBookingFormDirty = (snapshot) => {
+      const current = captureBookingSnapshot();
+      return Object.keys(snapshot).some(k => snapshot[k] !== current[k]) ||
+             Object.keys(current).some(k => !(k in snapshot));
+    };
+
+    const showBookingSafeCloseInterrupt = () => {
+      return new Promise(resolve => {
+        const existing = activityPage.querySelector('.safe-close-interrupt');
+        if (existing) { resolve(false); return; }
+
+        const interrupt = document.createElement('div');
+        interrupt.className = 'safe-close-interrupt';
+        interrupt.innerHTML = `
+          <div class="safe-close-content">
+            <p class="safe-close-message">${i18n.t('activity.unsavedChanges') || 'Hai modifiche non salvate. Vuoi uscire comunque?'}</p>
+            <div class="safe-close-actions">
+              <button class="btn btn-primary btn-sm" id="booking-safe-close-stay">${i18n.t('activity.keepEditing') || 'Continua a modificare'}</button>
+              <button class="btn btn-outline btn-sm" id="booking-safe-close-discard">${i18n.t('activity.discardExit') || 'Scarta modifiche'}</button>
+            </div>
+          </div>
+        `;
+        activityPage.appendChild(interrupt);
+
+        requestAnimationFrame(() => interrupt.classList.add('active'));
+
+        const cleanup = (result) => {
+          interrupt.classList.remove('active');
+          interrupt.addEventListener('transitionend', () => interrupt.remove(), { once: true });
+          setTimeout(() => { if (interrupt.parentNode) interrupt.remove(); }, 300);
+          resolve(result);
+        };
+
+        document.getElementById('booking-safe-close-stay').addEventListener('click', () => cleanup(false));
+        document.getElementById('booking-safe-close-discard').addEventListener('click', () => cleanup(true));
+      });
+    };
+
+    // requestClose: chiude con dirty check; closePanel chiude direttamente (es. dopo save)
+    let bookingFormSnapshot = null;
+    // Snapshot catturato dopo un tick per dare tempo ai form di inizializzarsi
+    setTimeout(() => { bookingFormSnapshot = captureBookingSnapshot(); }, 50);
+
+    const requestClose = () => {
+      if (bookingFormSnapshot && isBookingFormDirty(bookingFormSnapshot)) {
+        showBookingSafeCloseInterrupt().then(shouldExit => {
+          if (shouldExit) closePanel();
+        });
+      } else {
+        closePanel();
+      }
+    };
+
+    backdrop.addEventListener('click', () => requestClose());
 
     const performSave = async () => {
       // Validate required fields and patterns
@@ -3586,8 +3649,8 @@
       }
     };
 
-    document.getElementById('edit-panel-close').addEventListener('click', () => closePanel());
-    document.getElementById('edit-panel-cancel').addEventListener('click', () => closePanel());
+    document.getElementById('edit-panel-close').addEventListener('click', () => requestClose());
+    document.getElementById('edit-panel-cancel').addEventListener('click', () => requestClose());
     saveBtn.addEventListener('click', performSave);
   }
 
