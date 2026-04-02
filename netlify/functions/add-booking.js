@@ -340,7 +340,7 @@ exports.handler = async (event, context) => {
         train: ['departure.station', 'departure.city', 'arrival.station', 'arrival.city', 'date', 'departureTime', 'trainNumber', 'operator'],
         bus: ['departure.city', 'arrival.city', 'date', 'departureTime', 'operator'],
         rental: ['provider', 'pickupLocation.city', 'date', 'pickupLocation.time', 'endDate', 'dropoffLocation.time'],
-        ferry: ['operator', 'departure.port', 'departure.city', 'arrival.port', 'arrival.city', 'date', 'departure.time']
+        ferry: ['departure.port', 'departure.city', 'arrival.port', 'arrival.city', 'date']
       };
 
       const COLLECTION_BY_TYPE = {

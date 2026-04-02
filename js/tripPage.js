@@ -3661,14 +3661,14 @@
             : null;
           if (returnData) {
             const returnPayload = { action: 'manual-booking', tripId, type: 'ferry', manualData: returnData };
-            try {
-              await utils.authFetch('/.netlify/functions/add-booking', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(returnPayload),
-              });
-            } catch {
-              // Non critico — l'edit principale è già salvato
+            const returnRes = await utils.authFetch('/.netlify/functions/add-booking', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(returnPayload),
+            });
+            if (!returnRes.ok) {
+              const errBody = await returnRes.json().catch(() => ({}));
+              utils.showToast(errBody.error || 'Errore salvataggio ritorno', 'error');
             }
           }
         }
