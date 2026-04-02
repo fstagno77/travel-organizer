@@ -3062,6 +3062,8 @@
     `;
 
     // Backdrop cliccabile per chiudere il pannello cliccando fuori
+    // Rimuovi eventuali backdrop esistenti prima di crearne uno nuovo
+    document.querySelectorAll('.panel-backdrop').forEach(b => b.remove());
     const backdrop = document.createElement('div');
     backdrop.className = 'panel-backdrop';
     document.body.appendChild(backdrop);
@@ -3464,6 +3466,8 @@
     `;
 
     // Backdrop cliccabile per chiudere il pannello cliccando fuori
+    // Rimuovi eventuali backdrop esistenti prima di crearne uno nuovo
+    document.querySelectorAll('.panel-backdrop').forEach(b => b.remove());
     const backdrop = document.createElement('div');
     backdrop.className = 'panel-backdrop';
     document.body.appendChild(backdrop);
