@@ -353,6 +353,229 @@ window.manualBookingForm = (() => {
   }
 
   /**
+   * Calcola il numero di notti tra due date in formato YYYY-MM-DD.
+   * @param {string} checkIn
+   * @param {string} checkOut
+   * @returns {number|null}
+   */
+  function calcNights(checkIn, checkOut) {
+    if (!checkIn || !checkOut) return null;
+    const d1 = new Date(checkIn);
+    const d2 = new Date(checkOut);
+    const diff = Math.round((d2 - d1) / (1000 * 60 * 60 * 24));
+    return diff > 0 ? diff : null;
+  }
+
+  /**
+   * Costruisce il form hotel.
+   * @param {Object} prefill - dati da pre-popolare
+   * @returns {{ form: HTMLElement, getValues: function, validate: function, saveBtn: HTMLButtonElement, getFile: function }}
+   */
+  function buildHotelForm(prefill = {}) {
+    const form = document.createElement('div');
+    form.className = 'manual-booking-form manual-booking-form--hotel';
+    form.dataset.bookingType = 'hotel';
+
+    // Intestazione
+    const heading = document.createElement('p');
+    heading.className = 'manual-form-heading';
+    heading.style.cssText = 'font-weight:var(--font-weight-semibold);margin-bottom:var(--spacing-4);color:var(--color-gray-700);';
+    heading.textContent = 'Inserisci i dettagli dell\'hotel';
+    form.appendChild(heading);
+
+    // Scrollable body
+    const scroll = document.createElement('div');
+    scroll.style.cssText = 'overflow-y:auto;max-height:55vh;padding-right:4px;';
+
+    // --- Campi obbligatori ---
+    const { wrapper: wName, input: iName } = buildField({
+      id: 'mbf-hotel-name', label: 'Nome hotel', required: true,
+      placeholder: 'es. Hotel Excelsior', value: prefill.name || ''
+    });
+    const { wrapper: wCity, input: iCity } = buildField({
+      id: 'mbf-hotel-city', label: 'Città', required: true,
+      placeholder: 'es. Roma', value: prefill.city || (prefill.address?.city || '')
+    });
+    scroll.appendChild(buildRow(wName, wCity));
+
+    const { wrapper: wCheckIn, input: iCheckIn } = buildField({
+      id: 'mbf-hotel-checkin', label: 'Data check-in', type: 'date', required: true,
+      value: prefill.checkIn?.date || prefill.checkInDate || ''
+    });
+    const { wrapper: wCheckOut, input: iCheckOut } = buildField({
+      id: 'mbf-hotel-checkout', label: 'Data check-out', type: 'date', required: true,
+      value: prefill.checkOut?.date || prefill.checkOutDate || ''
+    });
+    scroll.appendChild(buildRow(wCheckIn, wCheckOut));
+
+    // Notti — campo read-only calcolato automaticamente
+    const nightsWrapper = document.createElement('div');
+    nightsWrapper.className = 'form-group';
+    const nightsLbl = document.createElement('label');
+    nightsLbl.textContent = 'Notti';
+    nightsWrapper.appendChild(nightsLbl);
+    const nightsInput = document.createElement('input');
+    nightsInput.type = 'text';
+    nightsInput.id = 'mbf-hotel-nights';
+    nightsInput.className = 'form-input';
+    nightsInput.readOnly = true;
+    nightsInput.placeholder = '— calcolato automaticamente —';
+    nightsWrapper.appendChild(nightsInput);
+
+    const updateNights = () => {
+      const n = calcNights(iCheckIn.value, iCheckOut.value);
+      nightsInput.value = n !== null ? `${n} nott${n === 1 ? 'e' : 'i'}` : '';
+    };
+
+    iCheckIn.addEventListener('change', updateNights);
+    iCheckOut.addEventListener('change', updateNights);
+    updateNights();
+
+    // --- Campi opzionali ---
+    const { wrapper: wAddress, input: iAddress } = buildField({
+      id: 'mbf-hotel-address', label: 'Indirizzo',
+      placeholder: 'es. Via Roma 1', value: prefill.address?.fullAddress || prefill.address || ''
+    });
+    scroll.appendChild(buildRow(nightsWrapper, wAddress));
+
+    const { wrapper: wRooms, input: iRooms } = buildField({
+      id: 'mbf-hotel-rooms', label: 'Numero camere', type: 'number',
+      placeholder: '1', value: prefill.rooms || ''
+    });
+    const { wrapper: wRoomType, input: iRoomType } = buildField({
+      id: 'mbf-hotel-room-type', label: 'Tipo camera',
+      placeholder: 'es. Doppia, Suite', value: prefill.roomType || ''
+    });
+    scroll.appendChild(buildRow(wRooms, wRoomType));
+
+    const { wrapper: wGuest, input: iGuest } = buildField({
+      id: 'mbf-hotel-guest', label: 'Nome ospite',
+      placeholder: 'es. Mario Rossi', value: prefill.guestName || ''
+    });
+    const { wrapper: wConfirm, input: iConfirm } = buildField({
+      id: 'mbf-hotel-confirmation', label: 'Numero conferma',
+      placeholder: 'es. BK123456789', value: prefill.confirmationNumber || ''
+    });
+    scroll.appendChild(buildRow(wGuest, wConfirm));
+
+    // Colazione inclusa (CustomSelect — no <select> nativo)
+    const wBreakfast = document.createElement('div');
+    wBreakfast.className = 'form-group';
+    const lblBreakfast = document.createElement('label');
+    lblBreakfast.textContent = 'Colazione inclusa';
+    wBreakfast.appendChild(lblBreakfast);
+    let breakfastSelect = null;
+    if (window.CustomSelect) {
+      breakfastSelect = window.CustomSelect.create({
+        options: [
+          { value: '', label: '— Seleziona —' },
+          { value: 'yes', label: 'Sì' },
+          { value: 'no', label: 'No' },
+        ],
+        selected: prefill.breakfastIncluded ? 'yes' : (prefill.breakfastIncluded === false ? 'no' : ''),
+      });
+      wBreakfast.appendChild(breakfastSelect);
+    } else {
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.className = 'form-input';
+      inp.id = 'mbf-hotel-breakfast';
+      inp.placeholder = 'Sì / No';
+      wBreakfast.appendChild(inp);
+    }
+
+    const { wrapper: wPrice, input: iPrice } = buildField({
+      id: 'mbf-hotel-price', label: 'Prezzo (€)', type: 'number', placeholder: '0.00',
+      value: prefill.price || ''
+    });
+    scroll.appendChild(buildRow(wBreakfast, wPrice));
+
+    const { wrapper: wPolicy, input: iPolicy } = buildField({
+      id: 'mbf-hotel-cancellation', label: 'Cancellation policy',
+      placeholder: 'es. Gratuita fino a 24h prima', value: prefill.cancellationPolicy || ''
+    });
+    scroll.appendChild(wPolicy);
+
+    // Upload documento
+    const { wrapper: wDoc, getFile } = buildDocumentUpload();
+    scroll.appendChild(wDoc);
+
+    form.appendChild(scroll);
+
+    // Pulsante Salva
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'btn btn-primary';
+    saveBtn.id = 'manual-booking-save';
+    saveBtn.textContent = 'Salva hotel';
+    saveBtn.disabled = true;
+
+    // Aggiornamento stato bottone
+    const requiredInputs = [iName, iCity, iCheckIn, iCheckOut];
+    requiredInputs.forEach(inp => {
+      inp.addEventListener('input', () => {
+        clearFieldError(inp);
+        updateSaveBtn(form, saveBtn);
+      });
+      inp.addEventListener('change', () => {
+        clearFieldError(inp);
+        updateSaveBtn(form, saveBtn);
+      });
+    });
+
+    const getValues = () => {
+      const breakfastVal = breakfastSelect
+        ? window.CustomSelect.getValue(breakfastSelect)
+        : (form.querySelector('#mbf-hotel-breakfast')?.value || '');
+
+      return {
+        name: iName.value.trim(),
+        city: iCity.value.trim(),
+        checkIn: { date: iCheckIn.value },
+        checkOut: { date: iCheckOut.value },
+        address: iAddress.value.trim() ? { fullAddress: iAddress.value.trim(), city: iCity.value.trim() } : undefined,
+        rooms: iRooms.value ? parseInt(iRooms.value, 10) : undefined,
+        roomType: iRoomType.value.trim() || undefined,
+        guestName: iGuest.value.trim() || undefined,
+        confirmationNumber: iConfirm.value.trim() || undefined,
+        breakfastIncluded: breakfastVal === 'yes' ? true : (breakfastVal === 'no' ? false : undefined),
+        price: iPrice.value ? parseFloat(iPrice.value) : undefined,
+        cancellationPolicy: iPolicy.value.trim() || undefined,
+      };
+    };
+
+    const validate = () => {
+      let valid = true;
+
+      // Validazione check-out non antecedente check-in
+      if (iCheckIn.value && iCheckOut.value) {
+        const nights = calcNights(iCheckIn.value, iCheckOut.value);
+        if (nights === null || nights <= 0) {
+          showFieldError(iCheckOut, 'La data di check-out deve essere successiva al check-in');
+          valid = false;
+        }
+      }
+
+      const checks = [
+        { input: iName,     msg: 'Inserisci il nome dell\'hotel' },
+        { input: iCity,     msg: 'Inserisci la città' },
+        { input: iCheckIn,  msg: 'Inserisci la data di check-in' },
+        { input: iCheckOut, msg: 'Inserisci la data di check-out' },
+      ];
+      checks.forEach(({ input, msg }) => {
+        if (!input.value || input.value.trim() === '') {
+          showFieldError(input, msg);
+          valid = false;
+        } else if (input !== iCheckOut) {
+          clearFieldError(input);
+        }
+      });
+      return valid;
+    };
+
+    return { form, getValues, validate, saveBtn, getFile };
+  }
+
+  /**
    * Ripristina il contenuto originale della modale.
    * @param {HTMLElement} modal
    * @param {string} origBody
@@ -433,8 +656,10 @@ window.manualBookingForm = (() => {
     let formModule;
     if (type === 'flight') {
       formModule = buildFlightForm(prefill);
+    } else if (type === 'hotel') {
+      formModule = buildHotelForm(prefill);
     } else {
-      // Tipi non ancora implementati (US-004+): placeholder
+      // Tipi non ancora implementati (US-005+): placeholder
       modalBody.innerHTML = `
         <div style="padding:var(--spacing-8);text-align:center;color:var(--color-gray-500);">
           <p>Form per <strong>${type}</strong> in arrivo.</p>
@@ -468,6 +693,7 @@ window.manualBookingForm = (() => {
     modalFooter.appendChild(saveBtn);
 
     // Gestione submit
+    const saveBtnOriginalText = saveBtn.textContent;
     saveBtn.addEventListener('click', async () => {
       if (!validate()) return;
       saveBtn.disabled = true;
@@ -482,7 +708,7 @@ window.manualBookingForm = (() => {
       } catch (err) {
         utils.showToast(err.message || 'Errore durante il salvataggio', 'error');
         saveBtn.disabled = false;
-        saveBtn.textContent = 'Salva volo';
+        saveBtn.textContent = saveBtnOriginalText;
       }
     });
   }
