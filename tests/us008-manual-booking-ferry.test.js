@@ -231,6 +231,6 @@ describe('Form traghetto — submit type ferry', () => {
     // La funzione open() riceve type e lo passa a saveManualBooking — verificabile nel codice
     expect(formCode).toContain("type === 'ferry'");
     // saveManualBooking usa la variabile type passata dal chiamante
-    expect(formCode).toContain('saveManualBooking(tripId, type, manualData, docFile)');
+    expect(formCode).toContain('saveManualBooking(tripId, type, manualData, docFile');
   });
 });

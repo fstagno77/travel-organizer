@@ -1355,7 +1355,7 @@ window.manualBookingForm = (() => {
    * @param {File|null} docFile
    * @returns {Promise<Object>}
    */
-  async function saveManualBooking(tripId, type, manualData, docFile) {
+  async function saveManualBooking(tripId, type, manualData, docFile, fallbackDocStoragePath = null) {
     let documentUrl = undefined;
 
     // Upload opzionale del documento
@@ -1371,6 +1371,9 @@ window.manualBookingForm = (() => {
       } catch {
         // Upload documento non critico — continua senza
       }
+    } else if (fallbackDocStoragePath) {
+      // US-009: PDF già in storage (da SmartParse fallback) — usa il percorso direttamente
+      documentUrl = fallbackDocStoragePath;
     }
 
     const payload = { action: 'manual-booking', tripId, type, manualData };
@@ -1397,7 +1400,7 @@ window.manualBookingForm = (() => {
    * @param {{ onSaved?: function, prefill?: Object }} opts
    */
   function open(type, modal, tripId, opts = {}) {
-    const { onSaved, prefill = {} } = opts;
+    const { onSaved, prefill = {}, prefillDocStoragePath = null } = opts;
     const modalBody = modal.querySelector('.modal-body');
     const modalFooter = modal.querySelector('.modal-footer');
     if (!modalBody || !modalFooter) return;
@@ -1463,7 +1466,7 @@ window.manualBookingForm = (() => {
       try {
         const manualData = getValues();
         const docFile = getFile();
-        await saveManualBooking(tripId, type, manualData, docFile);
+        await saveManualBooking(tripId, type, manualData, docFile, prefillDocStoragePath);
         utils.showToast('Prenotazione aggiunta', 'success');
         if (typeof onSaved === 'function') onSaved();
       } catch (err) {

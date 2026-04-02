@@ -1496,6 +1496,15 @@
         }
 
         if (!response.ok || !result.success) {
+          // US-009: Se SmartParse non ha trovato dati viaggio → fallback a creazione manuale
+          const noTravelData = result.error && (
+            result.error.includes('travel data') || result.error.includes('extract')
+          );
+          if (noTravelData) {
+            phraseController.stop();
+            showSmartParseFallback(modalBody, modalFooter, originalBodyContent, null, _uploadedPdfs);
+            return;
+          }
           throw Object.assign(
             new Error(result.error || 'Failed to parse PDFs'),
             { errorCode: result.errorCode }
@@ -1504,6 +1513,17 @@
 
         phraseController.stop();
         _parsedResults = result.parsedResults;
+
+        // US-009: Controlla se tipo documento non riconosciuto o dati parziali
+        const hasKnownType = _parsedResults.some(pr => pr.detectedDocType);
+        const dataKeys = ['flights', 'hotels', 'trains', 'buses', 'rentals', 'ferries'];
+        const hasData = _parsedResults.some(pr => pr.result && dataKeys.some(k => (pr.result[k]?.length || 0) > 0));
+
+        if (!hasData) {
+          const partialResult = hasKnownType ? _parsedResults.find(pr => pr.detectedDocType) : null;
+          showSmartParseFallback(modalBody, modalFooter, originalBodyContent, partialResult, _uploadedPdfs);
+          return;
+        }
 
         const modalHeader = modal.querySelector('.modal-header h2');
 
@@ -1843,6 +1863,66 @@
         bindBookingTypeCardEvents();
         i18n.apply(modal);
       });
+    };
+
+    /**
+     * US-009: Mostra step 1 con messaggio fallback SmartParse.
+     * Usato quando il documento non è riconosciuto o i dati estratti sono parziali.
+     * @param {HTMLElement} modalBody
+     * @param {HTMLElement} modalFooter
+     * @param {string} originalBodyContent
+     * @param {Object|null} partialResult - parsedResult con detectedDocType impostato ma dati incompleti
+     * @param {Array|null} uploadedPdfs - PDF già caricati in storage
+     */
+    const showSmartParseFallback = (modalBody, modalFooter, originalBodyContent, partialResult, uploadedPdfs) => {
+      // Ripristina step 1
+      modalBody.innerHTML = originalBodyContent;
+      modalFooter.style.display = '';
+      i18n.apply(modalBody);
+      bindUploadZoneEvents();
+
+      // Inserisce messaggio fallback sopra le card tipo
+      const bookingTypeSection = modalBody.querySelector('.booking-type-section');
+      if (bookingTypeSection) {
+        const msg = document.createElement('p');
+        msg.className = 'smartparse-fallback-message';
+        msg.textContent = 'Documento non riconosciuto automaticamente. Seleziona il tipo di prenotazione per continuare.';
+        bookingTypeSection.insertBefore(msg, bookingTypeSection.firstChild);
+      }
+
+      // Se tipo parziale rilevato → pre-seleziona card e apre form pre-popolato
+      if (partialResult?.detectedDocType) {
+        const typeMap = { car_rental: 'rental' };
+        const bookingType = typeMap[partialResult.detectedDocType] || partialResult.detectedDocType;
+
+        // Estrai dati parziali per prefill
+        const r = partialResult.result || {};
+        const collectionKey = partialResult.detectedDocType === 'car_rental' ? 'rentals' : `${partialResult.detectedDocType}s`;
+        const items = r[collectionKey] || [];
+        const prefillData = items[0] || {};
+
+        // Storagepath PDF già caricato come documento allegato
+        const prefillDocStoragePath = uploadedPdfs?.[0]?.storagePath || null;
+
+        // Pre-seleziona card visivamente
+        const grid = modalBody.querySelector('#add-booking-type-grid');
+        if (grid) {
+          const card = grid.querySelector(`[data-booking-type="${bookingType}"]`);
+          if (card) card.classList.add('booking-type-card--selected');
+        }
+
+        // Apri form manuale con prefill
+        if (window.manualBookingForm && typeof window.manualBookingForm.open === 'function') {
+          window.manualBookingForm.open(bookingType, modal, tripId, {
+            onSaved: () => {
+              closeModal();
+              loadTripData(tripId);
+            },
+            prefill: prefillData,
+            prefillDocStoragePath
+          });
+        }
+      }
     };
 
     /** Collega i click sulle card tipo prenotazione */
