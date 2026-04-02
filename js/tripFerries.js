@@ -480,7 +480,9 @@
           <button type="button" class="btn btn-outline ferry-add-return-btn"
             style="display:flex;align-items:center;gap:6px;width:100%;justify-content:center;"
             data-add-return>
-            <span class="material-icons" style="font-size:18px;">swap_horiz</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 96 960 960" fill="currentColor" style="flex-shrink:0">
+              <path d="M280 896 80 696l200-200 57 57-103 103h526v80H234l103 103-57 57Zm400-344-57-57 103-103H200v-80h526L623 209l57-57 200 200-200 200Z"/>
+            </svg>
             <span data-i18n="ferry.add_return">Aggiungi ritorno</span>
           </button>
         </div>
