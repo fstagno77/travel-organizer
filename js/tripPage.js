@@ -2896,14 +2896,15 @@
     if (!alreadyOpen) slider._savedScrollTop = savedScrollTop;
 
     const currentTab = document.querySelector('.segmented-control-btn.active')?.dataset.tab || 'flights';
-    const typeMap = { flights: 'flight', hotels: 'hotel', trains: 'train', buses: 'bus', rentals: 'rental' };
+    const typeMap = { flights: 'flight', hotels: 'hotel', trains: 'train', buses: 'bus', rentals: 'rental', ferries: 'ferry' };
     const type = typeMap[currentTab] || 'flight';
     const itemsMap = {
       flight: currentTripData?.flights || [],
       hotel: currentTripData?.hotels || [],
       train: currentTripData?.trains || [],
       bus: currentTripData?.buses || [],
-      rental: currentTripData?.rentals || []
+      rental: currentTripData?.rentals || [],
+      ferry: currentTripData?.ferries || []
     };
     const items = itemsMap[type] || [];
 
@@ -3013,6 +3014,27 @@
               <span class="manage-booking-item-label">
                 <span><strong>${esc(ref)}</strong>${driverName ? ` &middot; ${esc(driverName)}` : ''}</span>
                 <div class="manage-booking-flights">${rentalLines}</div>
+              </span>
+            </div>`;
+        } else if (type === 'ferry') {
+          const ferryLines = groupItems.map(f => {
+            const dep = f.departure?.port || f.departure?.city || '';
+            const arr = f.arrival?.port || f.arrival?.city || '';
+            const date = f.date || '';
+            const time = f.departure?.time || '';
+            return `<div class="manage-booking-flight-row">
+              ${f.operator ? `<span class="manage-booking-flight-num">${esc(f.operator)}</span>` : ''}
+              <span>${esc(dep)} → ${esc(arr)}</span>
+              ${date ? `<span class="manage-booking-flight-date">${date}${time ? ' ' + time : ''}</span>` : ''}
+            </div>`;
+          }).join('');
+
+          const passengerName = groupItems[0]?.passengers?.[0]?.name || '';
+          listHTML += `
+            <div class="manage-booking-item" data-value="${itemIds}" data-type="${type}" data-mode="booking" data-ref="${esc(ref)}">
+              <span class="manage-booking-item-label">
+                <span><strong>${esc(ref)}</strong>${passengerName ? ` &middot; ${esc(passengerName)}` : ''}</span>
+                <div class="manage-booking-flights">${ferryLines}</div>
               </span>
             </div>`;
         } else {
