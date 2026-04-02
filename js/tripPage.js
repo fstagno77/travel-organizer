@@ -3066,7 +3066,9 @@
     document.querySelectorAll('.panel-backdrop').forEach(b => b.remove());
     const backdrop = document.createElement('div');
     backdrop.className = 'panel-backdrop';
-    document.body.appendChild(backdrop);
+    // Appendiamo al slider (dentro .page-wrapper con isolation:isolate) invece che al body,
+    // così il backdrop e il panel competono nello stesso stacking context e z-index 111 < 120
+    slider.appendChild(backdrop);
 
     requestAnimationFrame(() => {
       slider.classList.add('at-activity');
@@ -3470,7 +3472,9 @@
     document.querySelectorAll('.panel-backdrop').forEach(b => b.remove());
     const backdrop = document.createElement('div');
     backdrop.className = 'panel-backdrop';
-    document.body.appendChild(backdrop);
+    // Appendiamo al slider (dentro .page-wrapper con isolation:isolate) invece che al body,
+    // così il backdrop e il panel competono nello stesso stacking context e z-index 111 < 120
+    slider.appendChild(backdrop);
 
     requestAnimationFrame(() => {
       slider.classList.add('at-activity');
