@@ -367,7 +367,7 @@
           <div class="trip-empty-state-actions">
             <button class="btn btn-primary" id="empty-trip-upload">
               ${uploadBtnSvg}
-              <span data-i18n="trip.uploadBooking">Carica prenotazione</span>
+              <span data-i18n="trip.uploadBooking">Aggiungi prenotazione</span>
             </button>
             <button class="btn btn-outline" id="empty-trip-activity">
               ${eventBtnSvg}
@@ -481,7 +481,7 @@
           <button class="fab-bottom-sheet-option" data-action="upload">
             <span class="fab-bottom-sheet-option-icon fab-bottom-sheet-option-icon--upload">${uploadSvg}</span>
             <div class="fab-bottom-sheet-option-text">
-              <span class="fab-bottom-sheet-option-title" data-i18n="trip.uploadBooking">Carica prenotazione</span>
+              <span class="fab-bottom-sheet-option-title" data-i18n="trip.uploadBooking">Aggiungi prenotazione</span>
               <span class="fab-bottom-sheet-option-desc" data-i18n="trip.uploadBookingDesc">PDF di volo, hotel, treno o bus</span>
             </div>
           </button>
