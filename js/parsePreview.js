@@ -402,13 +402,13 @@ const parsePreview = {
       </div>`;
 
       html += `<div class="parse-section-header" style="margin-top:10px"><span>Partenza</span></div>`;
-      html += `<div class="parse-detail-grid">`;
+      html += `<div class="parse-detail-grid parse-detail-grid--2col">`;
       html += this._field('Porto', f.departure?.port, 'departure.port');
       html += this._field('Città', f.departure?.city, 'departure.city');
       html += this._field('Orario', f.departure?.time, 'departure.time');
       html += `</div>`;
       html += `<div class="parse-section-header" style="margin-top:10px"><span>Arrivo</span></div>`;
-      html += `<div class="parse-detail-grid">`;
+      html += `<div class="parse-detail-grid parse-detail-grid--2col">`;
       html += this._field('Porto', f.arrival?.port, 'arrival.port');
       html += this._field('Città', f.arrival?.city, 'arrival.city');
       html += this._field('Orario', f.arrival?.time, 'arrival.time');

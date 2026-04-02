@@ -9025,6 +9025,14 @@ a.notification-trip:hover {
   gap: var(--spacing-2) var(--spacing-3);
 }
 
+/* 2-column detail grid — used for ferry departure/arrival sections */
+.parse-detail-grid--2col {
+  display: grid;
+  width: 100%;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-2) var(--spacing-3);
+}
+
 .parse-field {
   min-width: 0;
 }
