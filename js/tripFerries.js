@@ -295,7 +295,7 @@
               <label>Città</label>
               <input type="text" data-field="departure.city" value="${escAttr(ferry.departure?.city)}">
             </div>
-            <div class="edit-booking-field">
+            <div class="edit-booking-field full-width">
               <label>Orario</label>
               <input type="time" data-field="departure.time" value="${escAttr(ferry.departure?.time)}">
             </div>
@@ -312,7 +312,7 @@
               <label>Città</label>
               <input type="text" data-field="arrival.city" value="${escAttr(ferry.arrival?.city)}">
             </div>
-            <div class="edit-booking-field">
+            <div class="edit-booking-field full-width">
               <label>Orario</label>
               <input type="time" data-field="arrival.time" value="${escAttr(ferry.arrival?.time)}">
             </div>
