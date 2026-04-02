@@ -1363,9 +1363,33 @@
     if (type === 'flight') titleKey = 'trip.addFlightTitle';
     else if (type === 'hotel') titleKey = 'trip.addHotelTitle';
 
+    // Definizione tipi prenotazione per le card step 1
+    const bookingTypes = [
+      { type: 'flight',  labelIt: 'Volo',         gradient: 'linear-gradient(135deg, #3b82f6, #4f46e5)', color: '#2563eb', hoverBg: '#eff6ff',
+        icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg>` },
+      { type: 'hotel',   labelIt: 'Hotel',         gradient: 'linear-gradient(135deg, #34d399, #14b8a6)', color: '#10b981', hoverBg: '#ecfdf5',
+        icon: `<span class="material-symbols-outlined" style="font-size:18px;line-height:1">bed</span>` },
+      { type: 'train',   labelIt: 'Treno',         gradient: 'linear-gradient(135deg, #f5a54d, #e67e22)', color: '#e67e22', hoverBg: '#fef6ee',
+        icon: `<span class="material-symbols-outlined" style="font-size:18px;line-height:1">train</span>` },
+      { type: 'bus',     labelIt: 'Bus',           gradient: 'linear-gradient(135deg, #b87fd1, #8e44ad)', color: '#8e44ad', hoverBg: '#f5eef8',
+        icon: `<span class="material-symbols-outlined" style="font-size:18px;line-height:1">directions_bus</span>` },
+      { type: 'rental',  labelIt: 'Noleggio',      gradient: 'linear-gradient(135deg, #0ea5e9, #0891b2)', color: '#0891b2', hoverBg: '#f0f9ff',
+        icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.8L18 11l-2-4H8L6 11l-2.5.2C2.7 11.3 2 12.1 2 13v3c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>` },
+      { type: 'ferry',   labelIt: 'Traghetto',     gradient: 'linear-gradient(135deg, #38bdf8, #0369a1)', color: '#0369a1', hoverBg: '#f0f9ff',
+        icon: `<span class="material-symbols-outlined" style="font-size:18px;line-height:1">directions_boat</span>` },
+    ];
+
+    const bookingCardsHTML = bookingTypes.map(bt => `
+      <button class="booking-type-card" data-booking-type="${bt.type}"
+        style="--booking-card-color:${bt.color};--booking-card-hover-bg:${bt.hoverBg};--booking-card-gradient:${bt.gradient}">
+        <div class="booking-type-card__icon">${bt.icon}</div>
+        <span class="booking-type-card__label">${bt.labelIt}</span>
+      </button>
+    `).join('');
+
     const modalHTML = `
       <div class="modal-overlay" id="add-booking-modal">
-        <div class="modal">
+        <div class="modal modal--wide">
           <div class="modal-header">
             <h2 data-i18n="${titleKey}">Add booking</h2>
             <button class="modal-close" id="add-booking-close">
@@ -1385,6 +1409,12 @@
               </svg>
               <div class="upload-zone-text" data-i18n="trip.uploadHint">Drag PDFs here or click to select</div>
               <div class="upload-zone-hint">PDF</div>
+            </div>
+            <div class="booking-type-section">
+              <p class="booking-type-section-label">oppure crea manualmente</p>
+              <div class="booking-type-grid" id="add-booking-type-grid">
+                ${bookingCardsHTML}
+              </div>
             </div>
           </div>
           <div class="modal-footer">
@@ -1778,8 +1808,60 @@
       });
     };
 
+    /** Apre il form manuale per il tipo prenotazione selezionato */
+    const showManualBookingForm = (bookingType) => {
+      // US-003+ implementerà i form specifici per ogni tipo.
+      // Qui registriamo il tipo selezionato e deleghiamo a window.manualBookingForm se disponibile.
+      if (window.manualBookingForm && typeof window.manualBookingForm.open === 'function') {
+        window.manualBookingForm.open(bookingType, modal, tripId, {
+          onSaved: () => {
+            closeModal();
+            loadTripData(tripId);
+          }
+        });
+        return;
+      }
+      // Placeholder: form non ancora implementato
+      const modalBody = modal.querySelector('.modal-body');
+      const modalFooter = modal.querySelector('.modal-footer');
+      originalBodyContent = modalBody.innerHTML;
+      modalBody.innerHTML = `
+        <div class="processing-state" data-manual-form="${bookingType}">
+          <p style="color:var(--color-gray-500);text-align:center;">
+            Form manuale per <strong>${bookingType}</strong> — disponibile a breve.
+          </p>
+        </div>
+      `;
+      modalFooter.innerHTML = `
+        <button class="btn btn-secondary" id="add-booking-back">Indietro</button>
+      `;
+      document.getElementById('add-booking-back')?.addEventListener('click', () => {
+        modalBody.innerHTML = originalBodyContent;
+        modalFooter.innerHTML = `<button class="btn btn-secondary" id="add-booking-cancel" data-i18n="modal.cancel">Annulla</button>`;
+        document.getElementById('add-booking-cancel')?.addEventListener('click', closeModal);
+        bindUploadZoneEvents();
+        bindBookingTypeCardEvents();
+        i18n.apply(modal);
+      });
+    };
+
+    /** Collega i click sulle card tipo prenotazione */
+    const bindBookingTypeCardEvents = () => {
+      const grid = document.getElementById('add-booking-type-grid');
+      if (!grid) return;
+      grid.querySelectorAll('.booking-type-card').forEach(card => {
+        card.addEventListener('click', () => {
+          const bookingType = card.dataset.bookingType;
+          if (bookingType) showManualBookingForm(bookingType);
+        });
+      });
+    };
+
     // Upload zone events
     bindUploadZoneEvents();
+
+    // Booking type card events
+    bindBookingTypeCardEvents();
 
     // Modal events
     closeBtn.addEventListener('click', closeModal);
