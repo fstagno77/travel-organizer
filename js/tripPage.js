@@ -3245,7 +3245,8 @@
       hotel: currentTripData?.hotels || [],
       train: currentTripData?.trains || [],
       bus: currentTripData?.buses || [],
-      rental: currentTripData?.rentals || []
+      rental: currentTripData?.rentals || [],
+      ferry: currentTripData?.ferries || []
     };
     const items = itemsMap[type] || [];
 
