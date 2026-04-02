@@ -242,8 +242,8 @@
       ` : ''}
 
       <div class="ferry-actions">
-        ${ferry.pdfPath ? `
-        <button class="ferry-btn ferry-btn--primary btn-download-pdf" data-pdf-path="${ferry.pdfPath}">
+        ${(ferry.pdfPath || ferry.documentUrl) ? `
+        <button class="ferry-btn ferry-btn--primary btn-download-pdf" data-pdf-path="${escAttr(ferry.pdfPath || ferry.documentUrl)}">
           ${downloadIcon}
           <span>Prenotazione</span>
         </button>
