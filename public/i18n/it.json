@@ -44,7 +44,8 @@
     "dayProgress": "Giorno {current} di {total}",
     "nextEvent": "Prossimo",
     "tomorrow": "Domani",
-    "inDays": "Tra {n} giorni"
+    "inDays": "Tra {n} giorni",
+    "upcomingFeatured": "Prossimo Viaggio"
   },
   "trip": {
     "new": "Nuovo Viaggio",

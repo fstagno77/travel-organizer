@@ -1213,7 +1213,7 @@ const homePage = (function() {
               </svg>
             </div>
           </div>
-          ${firstEventHtml}
+          ${firstEventHtml ? `<div class="current-trip-summary">${firstEventHtml}</div>` : ''}
           <div class="current-trip-cta">
             <span>${i18n.t('home.viewFullItinerary') || 'Visualizza Itinerario Completo'}</span>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
