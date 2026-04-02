@@ -7293,6 +7293,72 @@ body:has(> .modal-overlay.active) .trip-hero-tabs {
   margin-bottom: var(--spacing-2);
 }
 
+/* Ferry editable passenger / vehicle rows */
+.edit-booking-passenger-row,
+.edit-booking-vehicle-row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--spacing-2);
+  margin-bottom: var(--spacing-2);
+}
+
+.edit-booking-passenger-row .edit-booking-field,
+.edit-booking-vehicle-row .edit-booking-field {
+  margin-bottom: 0;
+}
+
+.edit-booking-passenger-row select,
+.edit-booking-vehicle-row select {
+  width: 100%;
+  padding: var(--spacing-2) var(--spacing-3);
+  font-size: var(--font-size-sm);
+  border: 1px solid var(--color-gray-300);
+  border-radius: var(--radius-md);
+  background-color: var(--color-white);
+  color: var(--color-gray-900);
+  height: 38px;
+}
+
+.edit-booking-remove-row {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-bottom: 4px;
+  background: none;
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-md);
+  color: var(--color-gray-400);
+  cursor: pointer;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.edit-booking-remove-row:hover {
+  color: var(--color-error, #ef4444);
+  border-color: var(--color-error, #ef4444);
+}
+
+.edit-booking-add-row {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  margin-top: var(--spacing-2);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-primary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: var(--spacing-1) 0;
+  transition: opacity var(--transition-fast);
+}
+
+.edit-booking-add-row:hover {
+  opacity: 0.75;
+}
+
 /* Airport Autocomplete */
 .airport-autocomplete-dropdown {
   display: none;

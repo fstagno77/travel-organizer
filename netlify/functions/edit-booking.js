@@ -413,5 +413,18 @@ function applyUpdates(item, updates, type) {
       if (!item.price) item.price = {};
       Object.assign(item.price, updates.price);
     }
+    // Replace passengers array entirely when provided
+    if (updates.passengers && Array.isArray(updates.passengers)) {
+      item.passengers = updates.passengers;
+      // Keep legacy singular passenger in sync with first entry
+      if (updates.passengers.length > 0) {
+        if (!item.passenger) item.passenger = {};
+        Object.assign(item.passenger, updates.passengers[0]);
+      }
+    }
+    // Replace vehicles array entirely when provided
+    if (updates.vehicles && Array.isArray(updates.vehicles)) {
+      item.vehicles = updates.vehicles;
+    }
   }
 }

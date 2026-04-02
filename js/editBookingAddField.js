@@ -121,6 +121,25 @@ window.AddFieldHelper = (() => {
   }
 
   /**
+   * Position a fixed dropdown below a trigger button.
+   * Uses getBoundingClientRect() to avoid being clipped by overflow:hidden ancestors.
+   */
+  function positionDropdownFixed(dropdown, btn) {
+    const rect = btn.getBoundingClientRect();
+    dropdown.style.position = 'fixed';
+    dropdown.style.top = (rect.bottom + 4) + 'px';
+    dropdown.style.left = rect.left + 'px';
+    dropdown.style.zIndex = '9999';
+    // Clamp to viewport right edge
+    requestAnimationFrame(() => {
+      const ddRect = dropdown.getBoundingClientRect();
+      if (ddRect.right > window.innerWidth - 8) {
+        dropdown.style.left = (window.innerWidth - ddRect.width - 8) + 'px';
+      }
+    });
+  }
+
+  /**
    * Attach event listener to the "+ Aggiungi campo" trigger inside formEl.
    * Must be called after formEl is in the DOM.
    */
@@ -130,6 +149,9 @@ window.AddFieldHelper = (() => {
     const btn = section.querySelector('.add-field-btn');
     const dropdown = section.querySelector('.add-field-dropdown');
     if (!btn || !dropdown) return;
+
+    // Detach from parent and append to body so it is never clipped by overflow:hidden
+    document.body.appendChild(dropdown);
 
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -150,6 +172,7 @@ window.AddFieldHelper = (() => {
         `<div class="add-field-option" data-index="${i}">${def.label}</div>`
       ).join('');
       dropdown.style.display = 'block';
+      positionDropdownFixed(dropdown, btn);
 
       dropdown.querySelectorAll('.add-field-option').forEach((el, i) => {
         el.addEventListener('click', () => {
@@ -161,7 +184,7 @@ window.AddFieldHelper = (() => {
 
     // Close dropdown when clicking outside
     document.addEventListener('click', function closeDropdown(e) {
-      if (!section.contains(e.target)) {
+      if (!section.contains(e.target) && e.target !== dropdown && !dropdown.contains(e.target)) {
         dropdown.style.display = 'none';
       }
     });

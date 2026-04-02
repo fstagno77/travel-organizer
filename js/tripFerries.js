@@ -260,7 +260,59 @@
     `;
   }
 
+  const PASSENGER_TYPE_OPTIONS = ['ADT', 'CHD', 'INF'];
+  const VEHICLE_TYPE_OPTIONS = ['auto', 'moto', 'camper', 'furgone'];
+
+  function buildPassengerRow(p, idx) {
+    return `
+      <div class="edit-booking-passenger-row" data-passenger-index="${idx}">
+        <div class="edit-booking-field" style="flex:1">
+          <label>Nome</label>
+          <input type="text" data-pax-field="name" data-pax-index="${idx}" value="${escAttr(p.name)}">
+        </div>
+        <div class="edit-booking-field" style="width:90px">
+          <label>Tipo</label>
+          <select data-pax-field="type" data-pax-index="${idx}">
+            ${PASSENGER_TYPE_OPTIONS.map(opt => `<option value="${opt}"${(p.type || 'ADT') === opt ? ' selected' : ''}>${opt}</option>`).join('')}
+          </select>
+        </div>
+        <button type="button" class="edit-booking-remove-row" title="Rimuovi passeggero">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    `;
+  }
+
+  function buildVehicleRow(v, idx) {
+    return `
+      <div class="edit-booking-vehicle-row" data-vehicle-index="${idx}">
+        <div class="edit-booking-field" style="width:110px">
+          <label>Tipo</label>
+          <select data-veh-field="type" data-veh-index="${idx}">
+            ${VEHICLE_TYPE_OPTIONS.map(opt => `<option value="${opt}"${(v.type || 'auto') === opt ? ' selected' : ''}>${opt}</option>`).join('')}
+          </select>
+        </div>
+        <div class="edit-booking-field" style="flex:1">
+          <label>Targa</label>
+          <input type="text" data-veh-field="plate" data-veh-index="${idx}" value="${escAttr(v.plate)}">
+        </div>
+        <button type="button" class="edit-booking-remove-row" title="Rimuovi veicolo">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    `;
+  }
+
   function buildFerryEditForm(ferry) {
+    // Normalise passengers (may be array or single object)
+    const passengers = ferry.passengers?.length
+      ? ferry.passengers
+      : (ferry.passenger?.name ? [ferry.passenger] : []);
+    const vehicles = ferry.vehicles?.length ? ferry.vehicles : [];
+
+    const passengerRowsHtml = passengers.map((p, idx) => buildPassengerRow(p, idx)).join('');
+    const vehicleRowsHtml = vehicles.map((v, idx) => buildVehicleRow(v, idx)).join('');
+
     return `
       <div class="edit-booking-form">
         <div class="edit-booking-section">
@@ -335,15 +387,85 @@
             </div>
           </div>
         </div>
+        <div class="edit-booking-section">
+          <div class="edit-booking-section-title">Passeggeri</div>
+          <div class="edit-booking-passengers-list" data-passengers>
+            ${passengerRowsHtml}
+          </div>
+          <button type="button" class="edit-booking-add-row" data-add-passenger>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Aggiungi passeggero
+          </button>
+        </div>
+        <div class="edit-booking-section">
+          <div class="edit-booking-section-title">Veicoli a bordo</div>
+          <div class="edit-booking-vehicles-list" data-vehicles>
+            ${vehicleRowsHtml}
+          </div>
+          <button type="button" class="edit-booking-add-row" data-add-vehicle>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Aggiungi veicolo
+          </button>
+        </div>
       </div>
     `;
   }
 
+  /**
+   * Attach add/remove row behaviour for ferry passengers and vehicles.
+   * Must be called after the form HTML is inserted into the DOM.
+   */
+  function attachFerryFormListeners(formEl) {
+    function attachRemoveListeners(list, rowClass) {
+      list.querySelectorAll('.edit-booking-remove-row').forEach(btn => {
+        const fresh = btn.cloneNode(true);
+        btn.replaceWith(fresh);
+        fresh.addEventListener('click', () => {
+          fresh.closest('.' + rowClass).remove();
+        });
+      });
+    }
+
+    // Add passenger
+    const addPaxBtn = formEl.querySelector('[data-add-passenger]');
+    const paxList = formEl.querySelector('[data-passengers]');
+    if (addPaxBtn && paxList) {
+      attachRemoveListeners(paxList, 'edit-booking-passenger-row');
+      addPaxBtn.addEventListener('click', () => {
+        const idx = paxList.querySelectorAll('.edit-booking-passenger-row').length;
+        const tmp = document.createElement('div');
+        tmp.innerHTML = buildPassengerRow({ name: '', type: 'ADT' }, idx);
+        const row = tmp.firstElementChild;
+        paxList.appendChild(row);
+        row.querySelector('.edit-booking-remove-row').addEventListener('click', () => row.remove());
+        row.querySelector('input').focus();
+      });
+    }
+
+    // Add vehicle
+    const addVehBtn = formEl.querySelector('[data-add-vehicle]');
+    const vehList = formEl.querySelector('[data-vehicles]');
+    if (addVehBtn && vehList) {
+      attachRemoveListeners(vehList, 'edit-booking-vehicle-row');
+      addVehBtn.addEventListener('click', () => {
+        const idx = vehList.querySelectorAll('.edit-booking-vehicle-row').length;
+        const tmp = document.createElement('div');
+        tmp.innerHTML = buildVehicleRow({ type: 'auto', plate: '' }, idx);
+        const row = tmp.firstElementChild;
+        vehList.appendChild(row);
+        row.querySelector('.edit-booking-remove-row').addEventListener('click', () => row.remove());
+        row.querySelector('input').focus();
+      });
+    }
+  }
+
   function collectFerryUpdates(formView) {
     const updates = {};
-    formView.querySelectorAll('input[data-field]').forEach(input => {
-      const field = input.dataset.field;
-      const val = input.value.trim();
+
+    // Standard input[data-field] fields
+    formView.querySelectorAll('input[data-field], select[data-field]').forEach(el => {
+      const field = el.dataset.field;
+      const val = el.value.trim();
       if (field.startsWith('departure.')) {
         if (!updates.departure) updates.departure = {};
         updates.departure[field.split('.')[1]] = val;
@@ -354,6 +476,33 @@
         updates[field] = val;
       }
     });
+
+    // Passengers
+    const passengerRows = formView.querySelectorAll('.edit-booking-passenger-row');
+    if (passengerRows.length > 0) {
+      updates.passengers = Array.from(passengerRows).map(row => {
+        const nameEl = row.querySelector('[data-pax-field="name"]');
+        const typeEl = row.querySelector('[data-pax-field="type"]');
+        return {
+          name: nameEl ? nameEl.value.trim() : '',
+          type: typeEl ? typeEl.value : 'ADT'
+        };
+      }).filter(p => p.name);
+    }
+
+    // Vehicles
+    const vehicleRows = formView.querySelectorAll('.edit-booking-vehicle-row');
+    if (vehicleRows.length > 0) {
+      updates.vehicles = Array.from(vehicleRows).map(row => {
+        const typeEl = row.querySelector('[data-veh-field="type"]');
+        const plateEl = row.querySelector('[data-veh-field="plate"]');
+        return {
+          type: typeEl ? typeEl.value : 'auto',
+          plate: plateEl ? plateEl.value.trim().toUpperCase() : ''
+        };
+      });
+    }
+
     return updates;
   }
 
@@ -362,6 +511,7 @@
     renderFerries: renderFerries,
     renderDetails: renderFerryDetails,
     buildEditForm: buildFerryEditForm,
+    attachFormListeners: attachFerryFormListeners,
     collectUpdates: collectFerryUpdates,
     buildFullEditForm: buildFerryEditForm,
     collectFullUpdates: collectFerryUpdates

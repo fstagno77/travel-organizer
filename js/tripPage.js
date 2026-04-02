@@ -3325,6 +3325,9 @@
       if (window.CityAutocomplete) {
         window.CityAutocomplete.init(panelBody, 'input[data-field="departure.city"], input[data-field="arrival.city"]');
       }
+      if (window.tripFerries && window.tripFerries.attachFormListeners) {
+        window.tripFerries.attachFormListeners(panelBody);
+      }
     }
 
     // Add-field mechanism for all booking types
