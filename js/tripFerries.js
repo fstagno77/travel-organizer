@@ -99,7 +99,7 @@
 
             <div class="ferry-route">
               <div class="ferry-endpoint">
-                ${ferry.departure?.time ? `<div class="ferry-time-lg">${esc(ferry.departure.time)}</div>` : ''}
+                <div class="ferry-time-lg">${esc(ferry.departure?.time || '--:--')}</div>
                 <div class="ferry-port-name">${esc(depPort)}</div>
               </div>
 
@@ -116,7 +116,7 @@
               </div>
 
               <div class="ferry-endpoint">
-                ${ferry.arrival?.time ? `<div class="ferry-time-lg">${esc(ferry.arrival.time)}</div>` : ''}
+                <div class="ferry-time-lg">${esc(ferry.arrival?.time || '--:--')}</div>
                 <div class="ferry-port-name">${esc(arrPort)}</div>
               </div>
             </div>
