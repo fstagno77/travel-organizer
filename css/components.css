@@ -5808,6 +5808,14 @@ input[type="time"].form-input {
   background: linear-gradient(135deg, #e8d5f0, #d0aae0);
 }
 
+.activity-card[data-category="traghetto"] {
+  background: linear-gradient(135deg, #eff6ff, #dbeafe);
+  border-color: #bfdbfe;
+}
+.activity-card[data-category="traghetto"]:hover {
+  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+}
+
 .activity-card[data-category="luogo"] {
   background: linear-gradient(135deg, #ecfeff, #ecfeff);
   border-color: #a5f3fc;
