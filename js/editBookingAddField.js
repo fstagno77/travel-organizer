@@ -121,21 +121,52 @@ window.AddFieldHelper = (() => {
   }
 
   /**
-   * Position a fixed dropdown below a trigger button.
+   * Position a fixed dropdown relative to a trigger button.
    * Uses getBoundingClientRect() to avoid being clipped by overflow:hidden ancestors.
+   * - Opens upward if not enough space below
+   * - Aligns to right edge of trigger if dropdown overflows viewport right
+   * - Caps max-height and enables internal scroll if content overflows
    */
   function positionDropdownFixed(dropdown, btn) {
     const rect = btn.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const MARGIN = 8;
+    const MAX_HEIGHT = 240;
+
+    // Apply fixed positioning first so we can measure
     dropdown.style.position = 'fixed';
-    dropdown.style.top = (rect.bottom + 4) + 'px';
-    dropdown.style.left = rect.left + 'px';
     dropdown.style.zIndex = '9999';
-    // Clamp to viewport right edge
+    dropdown.style.maxHeight = MAX_HEIGHT + 'px';
+    dropdown.style.overflowY = 'auto';
+
+    // Measure dropdown dimensions after it becomes visible
     requestAnimationFrame(() => {
       const ddRect = dropdown.getBoundingClientRect();
-      if (ddRect.right > window.innerWidth - 8) {
-        dropdown.style.left = (window.innerWidth - ddRect.width - 8) + 'px';
+      const ddWidth = ddRect.width;
+      const ddHeight = Math.min(ddRect.height, MAX_HEIGHT);
+
+      // Vertical: open downward by default, flip up if not enough room below
+      const spaceBelow = vh - rect.bottom - MARGIN;
+      if (spaceBelow >= ddHeight || spaceBelow >= 60) {
+        // Enough space below (or at least 60px — render down and scroll)
+        dropdown.style.top = (rect.bottom + 4) + 'px';
+        dropdown.style.bottom = 'auto';
+      } else {
+        // Open upward
+        dropdown.style.top = 'auto';
+        dropdown.style.bottom = (vh - rect.top + 4) + 'px';
       }
+
+      // Horizontal: align to left edge of button, clamp to right viewport boundary
+      let left = rect.left;
+      if (left + ddWidth > vw - MARGIN) {
+        // Align to right edge of button instead
+        left = rect.right - ddWidth;
+        // Final safety clamp
+        if (left < MARGIN) left = MARGIN;
+      }
+      dropdown.style.left = left + 'px';
     });
   }
 
