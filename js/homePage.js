@@ -42,7 +42,7 @@ const homePage = (function() {
     if (cachedJson) {
       try {
         const cached = JSON.parse(cachedJson);
-        renderTrips(tripsContainer, cached.trips || [], cached.todayTrips || []);
+        renderTrips(tripsContainer, cached.trips || [], cached.todayTrips || [], cached.upcomingTrips || []);
       } catch (e) {
         invalidateCache();
       }
@@ -52,6 +52,7 @@ const homePage = (function() {
     try {
       let allTrips = [];
       let todayTrips = [];
+      let upcomingTrips = [];
 
       try {
         const testDate = new URLSearchParams(window.location.search).get('testDate');
@@ -64,18 +65,21 @@ const homePage = (function() {
         if (result.todayTrips) {
           todayTrips = result.todayTrips;
         }
+        if (result.upcomingTrips) {
+          upcomingTrips = result.upcomingTrips;
+        }
       } catch (e) {
         console.log('Could not load trips from database');
         if (cachedJson) return;
       }
 
       // Save fresh data to cache
-      const freshJson = JSON.stringify({ trips: allTrips, todayTrips });
+      const freshJson = JSON.stringify({ trips: allTrips, todayTrips, upcomingTrips });
       try { sessionStorage.setItem(CACHE_KEY, freshJson); } catch (e) { /* ignore */ }
 
       // Only re-render if data changed (or no cache existed)
       if (freshJson !== cachedJson) {
-        renderTrips(tripsContainer, allTrips, todayTrips);
+        renderTrips(tripsContainer, allTrips, todayTrips, upcomingTrips);
       }
     } catch (error) {
       console.error('Error loading trips:', error);
@@ -554,6 +558,63 @@ const homePage = (function() {
       }
     }
 
+    // Treni futuri
+    for (const train of (tripData.trains || [])) {
+      if (train.date > today) {
+        const depCity = train.departure?.city || train.departure?.station || '';
+        const arrCity = train.arrival?.city || train.arrival?.station || '';
+        const cat = cats?.CATEGORIES?.treno;
+        futureEvents.push({
+          type: 'train',
+          id: train.id,
+          date: train.date,
+          time: train.departure?.time || train.departureTime || '',
+          title: `${depCity} → ${arrCity}`,
+          description: train.trainNumber || train.operator || '',
+          location: train.departure?.station || '',
+          category: cat || null
+        });
+      }
+    }
+
+    // Traghetti futuri
+    for (const ferry of (tripData.ferries || [])) {
+      if (ferry.date > today) {
+        const depPort = ferry.departure?.port || ferry.departure?.city || '';
+        const arrPort = ferry.arrival?.port || ferry.arrival?.city || '';
+        const cat = cats?.CATEGORIES?.traghetto;
+        futureEvents.push({
+          type: 'ferry',
+          id: ferry.id,
+          date: ferry.date,
+          time: ferry.departure?.time || '',
+          title: `${depPort} → ${arrPort}`,
+          description: ferry.operator || ferry.ferryName || '',
+          location: ferry.departure?.port || '',
+          category: cat || null
+        });
+      }
+    }
+
+    // Bus futuri
+    for (const bus of (tripData.buses || [])) {
+      if (bus.date > today) {
+        const depCity = bus.departure?.city || bus.departure?.station || '';
+        const arrCity = bus.arrival?.city || bus.arrival?.station || '';
+        const cat = cats?.CATEGORIES?.bus;
+        futureEvents.push({
+          type: 'bus',
+          id: bus.id,
+          date: bus.date,
+          time: bus.departure?.time || bus.departureTime || '',
+          title: `${depCity} → ${arrCity}`,
+          description: bus.busNumber || bus.operator || '',
+          location: bus.departure?.station || '',
+          category: cat || null
+        });
+      }
+    }
+
     if (futureEvents.length === 0) return null;
 
     // Ordina per data e orario, prendi il primo
@@ -581,6 +642,148 @@ const homePage = (function() {
     }
 
     return next;
+  }
+
+  /**
+   * Collect the first upcoming event for a trip (for upcoming-soon cards)
+   * @param {object} tripData - Full trip data from upcomingTrips
+   * @param {string} lang
+   * @returns {object|null}
+   */
+  function collectFirstEvent(tripData, lang) {
+    if (!tripData) return null;
+    const d = getToday();
+    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const cats = window.activityCategories;
+    const allEvents = [];
+
+    // Voli
+    for (const flight of (tripData.flights || [])) {
+      if (flight.date) {
+        const depCity = flight.departure?.city || '';
+        const arrCity = flight.arrival?.city || '';
+        const cat = cats?.CATEGORIES?.volo;
+        allEvents.push({
+          type: 'flight', id: flight.id, date: flight.date,
+          time: flight.departureTime || '',
+          title: `${depCity} → ${arrCity}`,
+          description: flight.flightNumber || '',
+          location: flight.departure?.airport || '',
+          category: cat || null
+        });
+      }
+    }
+
+    // Hotel check-in
+    for (const hotel of (tripData.hotels || [])) {
+      const checkInDate = hotel.checkIn?.date;
+      if (checkInDate) {
+        const cat = cats?.CATEGORIES?.hotel;
+        allEvents.push({
+          type: 'hotel', id: hotel.id, date: checkInDate,
+          time: hotel.checkIn?.time || '15:00',
+          title: hotel.name || 'Hotel',
+          description: i18n.t('hotel.checkIn') || 'Check-in',
+          location: hotel.address?.city || hotel.address?.fullAddress || '',
+          category: cat || null
+        });
+      }
+    }
+
+    // Treni
+    for (const train of (tripData.trains || [])) {
+      if (train.date) {
+        const depCity = train.departure?.city || train.departure?.station || '';
+        const arrCity = train.arrival?.city || train.arrival?.station || '';
+        const cat = cats?.CATEGORIES?.treno;
+        allEvents.push({
+          type: 'train', id: train.id, date: train.date,
+          time: train.departure?.time || train.departureTime || '',
+          title: `${depCity} → ${arrCity}`,
+          description: train.trainNumber || train.operator || '',
+          location: train.departure?.station || '',
+          category: cat || null
+        });
+      }
+    }
+
+    // Traghetti
+    for (const ferry of (tripData.ferries || [])) {
+      if (ferry.date) {
+        const depPort = ferry.departure?.port || ferry.departure?.city || '';
+        const arrPort = ferry.arrival?.port || ferry.arrival?.city || '';
+        const cat = cats?.CATEGORIES?.traghetto;
+        allEvents.push({
+          type: 'ferry', id: ferry.id, date: ferry.date,
+          time: ferry.departure?.time || '',
+          title: `${depPort} → ${arrPort}`,
+          description: ferry.operator || ferry.ferryName || '',
+          location: ferry.departure?.port || '',
+          category: cat || null
+        });
+      }
+    }
+
+    // Bus
+    for (const bus of (tripData.buses || [])) {
+      if (bus.date) {
+        const depCity = bus.departure?.city || bus.departure?.station || '';
+        const arrCity = bus.arrival?.city || bus.arrival?.station || '';
+        const cat = cats?.CATEGORIES?.bus;
+        allEvents.push({
+          type: 'bus', id: bus.id, date: bus.date,
+          time: bus.departure?.time || bus.departureTime || '',
+          title: `${depCity} → ${arrCity}`,
+          description: bus.busNumber || bus.operator || '',
+          location: bus.departure?.station || '',
+          category: cat || null
+        });
+      }
+    }
+
+    // Attività
+    for (const activity of (tripData.activities || [])) {
+      if (activity.date) {
+        const catKey = cats?.detectCategory?.(activity.name, activity.description) || 'luogo';
+        const cat = cats?.CATEGORIES?.[activity.category || catKey];
+        allEvents.push({
+          type: 'activity', id: activity.id, date: activity.date,
+          time: activity.startTime || '',
+          title: activity.name || '',
+          description: activity.description || '',
+          location: activity.address || '',
+          category: cat || null
+        });
+      }
+    }
+
+    if (allEvents.length === 0) return null;
+
+    // Sort by date then time, take the first
+    allEvents.sort((a, b) => {
+      const dateCmp = a.date.localeCompare(b.date);
+      if (dateCmp !== 0) return dateCmp;
+      if (!a.time && b.time) return 1;
+      if (a.time && !b.time) return -1;
+      return (a.time || '').localeCompare(b.time || '');
+    });
+
+    const first = allEvents[0];
+
+    // Calcola label data relativa rispetto a oggi
+    const eventDate = new Date(first.date + 'T00:00:00');
+    const todayDate = new Date(today + 'T00:00:00');
+    const diffDays = Math.round((eventDate - todayDate) / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 1) {
+      first.dateLabel = i18n.t('home.tomorrow') || 'Domani';
+    } else if (diffDays <= 7) {
+      first.dateLabel = (i18n.t('home.inDays') || 'Tra {n} giorni').replace('{n}', diffDays);
+    } else {
+      first.dateLabel = utils.formatDate(first.date, lang, { day: 'numeric', month: 'short' });
+    }
+
+    return first;
   }
 
   /**
@@ -723,7 +926,7 @@ const homePage = (function() {
       const iconGradient = cat?.gradient || 'linear-gradient(135deg, #a855f7, #7c3aed)';
       const iconHtml = cat?.svg || '<span class="material-symbols-outlined" style="font-size:16px">event</span>';
 
-      const tabMap = { flight: 'flights', hotel: 'hotels', activity: 'activities' };
+      const tabMap = { flight: 'flights', hotel: 'hotels', activity: 'activities', train: 'trains', ferry: 'ferries', bus: 'buses', rental: 'rentals' };
       const nextTab = tabMap[nextEvent.type] || 'activities';
 
       nextEventHtml = `
@@ -812,7 +1015,7 @@ const homePage = (function() {
         const iconHtml = cat?.svg || '<span class="material-symbols-outlined">location_on</span>';
 
         // Map event type to trip page tab name
-        const tabMap = { flight: 'flights', hotel: 'hotels', activity: 'activities' };
+        const tabMap = { flight: 'flights', hotel: 'hotels', activity: 'activities', train: 'trains', ferry: 'ferries', bus: 'buses', rental: 'rentals' };
         const tab = tabMap[event.type] || 'activities';
 
         return `
@@ -909,15 +1112,16 @@ const homePage = (function() {
 
   // Funzioni delegate a tripCardUtils
   const renderSectionHeader = (title, subtitle, variant) => tripCardUtils.renderSectionHeader(title, subtitle, variant);
-  const renderTripCard = (trip, lang, isPast, index) => tripCardUtils.renderTripCard(trip, lang, isPast, index);
+  const renderTripCard = (trip, lang, isPast, index, nextEvent) => tripCardUtils.renderTripCard(trip, lang, isPast, index, nextEvent);
 
   /**
    * Render trips list
    * @param {HTMLElement} container
    * @param {Array} trips
    * @param {Array} todayTrips - Trips with detailed flight/hotel data for today
+   * @param {Array} upcomingTripsData - Trips starting within 3 days with full booking data
    */
-  function renderTrips(container, trips, todayTrips) {
+  function renderTrips(container, trips, todayTrips, upcomingTripsData) {
     // Hide old today section (replaced by In Corso)
     const todaySection = document.querySelector('.today-section');
     if (todaySection) todaySection.style.display = 'none';
@@ -946,6 +1150,7 @@ const homePage = (function() {
     const lang = i18n.getLang();
     const generation = ++renderGeneration;
     todayTrips = todayTrips || [];
+    upcomingTripsData = upcomingTripsData || [];
 
     // Separa in 2 categorie: in corso e prossimi (viaggi passati in pagina dedicata)
     const currentTrips = trips.filter(t => isTripCurrent(t));
@@ -980,7 +1185,11 @@ const homePage = (function() {
         countLabel,
         'upcoming'
       );
-      const cardsHtml = phase1Upcoming.map(trip => renderTripCard(trip, lang, false, cardIndex++)).join('');
+      const cardsHtml = phase1Upcoming.map(trip => {
+        const upcomingData = upcomingTripsData.find(t => t.id === trip.id);
+        const firstEvent = upcomingData ? collectFirstEvent(upcomingData, lang) : null;
+        return renderTripCard(trip, lang, false, cardIndex++, firstEvent);
+      }).join('');
       phase1Html += `
         <section class="home-section">
           ${headerHtml}

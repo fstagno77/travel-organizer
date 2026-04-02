@@ -70,8 +70,13 @@ const tripCardUtils = (function() {
 
   /**
    * Render di una singola trip card
+   * @param {object} trip
+   * @param {string} lang
+   * @param {boolean} isPast
+   * @param {number} index
+   * @param {object|null} nextEvent - Primo evento del viaggio (per card upcoming vicine)
    */
-  function renderTripCard(trip, lang, isPast, index) {
+  function renderTripCard(trip, lang, isPast, index, nextEvent) {
     const title = trip.title[lang] || trip.title.en || trip.title.it;
     const startDate = utils.formatDate(trip.startDate, lang, { month: 'short', day: 'numeric' });
     const endDate = utils.formatDate(trip.endDate, lang, { month: 'short', day: 'numeric', year: 'numeric' });
@@ -102,6 +107,28 @@ const tripCardUtils = (function() {
     const roleBadge = trip.role && trip.role !== 'proprietario'
       ? `<span class="trip-role-badge trip-role-badge--${trip.role}">${trip.role === 'viaggiatore' ? (i18n.t('share.roleViaggiatore') || 'Viaggiatore') : (i18n.t('share.roleOspite') || 'Ospite')}</span>`
       : '';
+
+    // Strip prossimo evento (solo per upcoming vicini)
+    let nextEventHtml = '';
+    if (nextEvent) {
+      const cat = nextEvent.category;
+      const bg = cat?.cardBg || 'linear-gradient(135deg, #eff6ff, #eef2ff)';
+      const border = cat?.cardBorder || '#bfdbfe';
+      const iconGradient = cat?.gradient || 'linear-gradient(135deg, #3b82f6, #4f46e5)';
+      const iconHtml = cat?.svg || '<span class="material-symbols-outlined" style="font-size:16px;color:white">event</span>';
+      nextEventHtml = `
+        <div class="trip-card-next-event" style="margin-top:8px;padding:8px 10px;border-radius:8px;background:${bg};border:1px solid ${border};display:flex;align-items:center;gap:8px">
+          <div style="width:28px;height:28px;border-radius:6px;background:${iconGradient};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            ${iconHtml}
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:11px;color:var(--color-gray-500);margin-bottom:1px">${utils.escapeHtml(nextEvent.dateLabel || '')}</div>
+            <div style="font-size:13px;font-weight:600;color:var(--color-gray-900);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${utils.escapeHtml(nextEvent.title)}</div>
+            ${nextEvent.description ? `<div style="font-size:12px;color:var(--color-gray-500);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${utils.escapeHtml(nextEvent.description)}</div>` : ''}
+          </div>
+        </div>
+      `;
+    }
 
     return `
       <div class="trip-card-wrapper">
@@ -136,6 +163,7 @@ const tripCardUtils = (function() {
               <polyline points="12 5 19 12 12 19"></polyline>
             </svg>
           </div>
+          ${nextEventHtml}
         </a>
       </div>
     `;
