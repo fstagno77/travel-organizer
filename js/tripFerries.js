@@ -407,7 +407,7 @@
           </div>
         </div>
         <!-- Pulsante Aggiungi ritorno -->
-        <div class="edit-booking-section" style="margin-top:24px">
+        <div class="edit-booking-section" style="margin-top:16px">
           <button type="button" class="btn btn-outline ferry-add-return-btn"
             style="display:flex;align-items:center;gap:6px;width:100%;justify-content:center;"
             data-add-return>
@@ -474,7 +474,7 @@
           </div>
         </div>
 
-        <div class="edit-booking-section" style="margin-top:24px">
+        <div class="edit-booking-section" style="margin-top:16px">
           <div class="edit-booking-section-title">Prenotazione</div>
           <div class="edit-booking-grid">
             <div class="edit-booking-field">
@@ -491,7 +491,7 @@
             </div>
           </div>
         </div>
-        <div class="edit-booking-section" style="margin-top:24px">
+        <div class="edit-booking-section" style="margin-top:16px">
           <div class="edit-booking-section-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
             <span>Passeggeri</span>
             <button type="button" class="edit-booking-add-row" data-add-passenger style="margin:0">
@@ -503,7 +503,7 @@
             ${passengerRowsHtml}
           </div>
         </div>
-        <div class="edit-booking-section" style="margin-top:24px">
+        <div class="edit-booking-section" style="margin-top:16px">
           <div class="edit-booking-section-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
             <span>Veicoli a bordo</span>
             <button type="button" class="edit-booking-add-row" data-add-vehicle style="margin:0">
@@ -522,10 +522,10 @@
               <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--color-gray-200);border-radius:8px;background:var(--color-gray-50,#f9fafb)">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" stroke-width="1.5" style="flex-shrink:0"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
                 <span style="font-size:var(--font-size-sm);color:var(--color-gray-700);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(ferry.pdfPath || ferry.documentUrl || '').split('/').pop().replace(/\.[^.]+$/, '') || 'documento.pdf'}</span>
-                <a href="${escAttr(ferry.pdfPath || ferry.documentUrl)}" target="_blank" rel="noopener" title="Apri" style="display:flex;align-items:center;color:var(--color-primary);flex-shrink:0">
+                <a href="${escAttr(ferry.pdfPath || ferry.documentUrl)}" target="_blank" rel="noopener" title="Apri" class="ferry-doc-action-btn" style="display:flex;align-items:center;color:var(--color-primary);flex-shrink:0;padding:4px;border-radius:4px;transition:background .15s">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                 </a>
-                <button type="button" class="ferry-doc-remove-btn" title="Rimuovi" style="display:flex;align-items:center;background:none;border:none;cursor:pointer;color:var(--color-gray-400);padding:0;flex-shrink:0">
+                <button type="button" class="ferry-doc-remove-btn ferry-doc-action-btn" title="Rimuovi" style="display:flex;align-items:center;background:none;border:none;cursor:pointer;color:var(--color-danger,#e53e3e);padding:4px;border-radius:4px;flex-shrink:0;transition:background .15s">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
                 </button>
               </div>

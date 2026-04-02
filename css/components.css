@@ -10633,3 +10633,8 @@ body:has(#modal-page-slider.at-activity) .trip-fab {
   line-height: 1.2;
 }
 }
+
+/* Ferry doc action buttons hover */
+.ferry-doc-action-btn:hover {
+  background: var(--color-gray-100, #f3f4f6) !important;
+}
