@@ -98,7 +98,7 @@
 
             <div class="train-route">
               <div class="train-endpoint">
-                <div class="train-time-lg">${esc(train.departure?.time || '')}</div>
+                ${train.departure?.time ? `<div class="train-time-lg">${esc(train.departure.time)}</div>` : ''}
                 <div class="train-station-name">${esc(depStation)}</div>
               </div>
 
@@ -115,7 +115,7 @@
               </div>
 
               <div class="train-endpoint">
-                <div class="train-time-lg">${esc(train.arrival?.time || '')}</div>
+                ${train.arrival?.time ? `<div class="train-time-lg">${esc(train.arrival.time)}</div>` : ''}
                 <div class="train-station-name">${esc(arrStation)}</div>
               </div>
             </div>
