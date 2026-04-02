@@ -39,7 +39,7 @@
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "Leggi la struttura di add-booking.js per capire come i dati parsati vengono salvati in tripData. Il manuale usa la stessa struttura dati — solo salta il parsing."
     },
     {
@@ -61,7 +61,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "Crea il form in un file dedicato js/manualBookingFlight.js o inline nel modulo modale. Usa gli stessi stili CSS dei form edit esistenti."
     },
     {

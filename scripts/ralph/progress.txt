@@ -5,6 +5,13 @@
 - Per delegare ad un modulo futuro, usare `window.nomModulo.nomeMetodo` con guard `if (window.nomModulo && typeof window.nomModulo.open === 'function')`
 - I test Us-xxx usano code analysis con `fs.readFileSync` + `toContain` per verificare struttura HTML generata dinamicamente
 - us005-ferry-preview.test.js ha una failure pre-esistente ("Veicoli a bordo") non correlata a US-001
+- I test backend (netlify/functions) usano jest.mock su auth, storage, pdfProcessor, tripDates, deduplication, notificationHelper — pattern già consolidato in manage-activity.test.js e delete-passenger.test.js
+- delete-passenger.test.js ha failure pre-esistenti (getServiceClient not a function) — non correlate a questo PRD
+- Il nuovo branch `action='manual-booking'` va inserito in add-booking.js PRIMA della destructuring `const { pdfs, tripId, ... }` (riga ~321) ma DOPO il branch upload-passenger-pdf
+- Campi obbligatori nei required fields per tipo: flight=['date','departureCity','arrivalCity','departureTime','flightNumber','airline'], hotel=['name','city','checkIn.date','checkOut.date']
+- manualBookingForm.js pattern: buildFlightForm() restituisce { form, getValues, validate, saveBtn, getFile } — lo stesso pattern va usato per US-004+ (hotel, train, bus, rental, ferry)
+- Per ogni tipo di form manuale: aggiungere un branch `if (type === 'X') { formModule = buildXForm(prefill); }` nella funzione `open()` di manualBookingForm.js
+- I campi con id `mbf-{campo}` usano `data-required` dataset per il controllo updateSaveBtn — tutti i required devono avere `required: true` in buildField()
 
 # Ralph Progress Log
 Started: Thu Apr  2 12:25:58 CEST 2026
@@ -24,4 +31,35 @@ Started: Thu Apr  2 12:25:58 CEST 2026
   - Il punto di estensione per i form manuali è `window.manualBookingForm.open(type, modal, tripId, { onSaved })`
   - La griglia CSS usa `grid-template-columns: repeat(3, 1fr)` — 3 card per riga, 2 righe per 6 tipi
   - CSS custom properties `--booking-card-color`, `--booking-card-hover-bg`, `--booking-card-gradient` sono impostati inline sulle card
+---
+
+## 2026-04-02 - US-002
+- Aggiunto branch `action='manual-booking'` in `netlify/functions/add-booking.js`
+- Validazione campi obbligatori per tutti i 6 tipi (flight, hotel, train, bus, rental, ferry) con supporto dot notation per campi annidati (es. `checkIn.date`)
+- Il dato viene salvato nella collection corretta (flights/hotels/trains/etc.) con id assegnato automaticamente (`{type}-{n}`)
+- documentUrl opzionale salvato nel campo `source` del booking
+- 9 test creati in `tests/us002-manual-booking-backend.test.js`
+- Files changed: `netlify/functions/add-booking.js`, `tests/us002-manual-booking-backend.test.js`
+- **Learnings for future iterations:**
+  - Il handler add-booking.js verifica `body.action` prima di tutto — aggiungere nuovi branch prima della destructuring `const { pdfs, tripId, ... }`
+  - I required fields usano dot notation per campi annidati: `checkIn.date`, `departure.city` ecc. — `getNestedVal()` helper risolve la path
+  - Per i test backend: mockare `getServiceClient` nella stessa mock di `utils/auth` (viene importato da lì)
+  - Il pattern action-based è consolidato: aggiungere `if (body.action === '...')` in cima all'handler
+---
+
+## 2026-04-02 - US-003
+- Creato js/manualBookingForm.js con window.manualBookingForm.open(type, modal, tripId, { onSaved })
+- Implementato buildFlightForm(prefill) con 6 campi obbligatori + 6 opzionali + CustomSelect per classe
+- Validazione inline (showFieldError/clearFieldError), bottone Salva disabilitato fino a required compilati
+- Upload documento opzionale con drag-drop (buildDocumentUpload)
+- saveManualBooking() chiama add-booking con action='manual-booking'
+- Aggiunto import in js/entries/trip.js (prima di tripPage.js per disponibilità window.manualBookingForm)
+- 32 test in tests/us003-manual-booking-flight.test.js — tutti passano
+- Files changed: js/manualBookingForm.js (nuovo), js/entries/trip.js, tests/us003-manual-booking-flight.test.js (nuovo)
+- **Learnings for future iterations:**
+  - buildFlightForm() restituisce { form, getValues, validate, saveBtn, getFile } — replicare pattern per US-004+
+  - Per aggiungere tipo: aggiungere `if (type === 'X') { formModule = buildXForm(prefill); }` in open()
+  - id campi: prefisso `mbf-` + nome campo (es. mbf-hotel-name, mbf-hotel-city, ecc.)
+  - buildRow() affianca due form-group con display:flex — utile per tutti i form
+  - Il form viene inserito nel modal-body; footer viene svuotato e popolato con Indietro + Salva
 ---
