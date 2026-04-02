@@ -108,6 +108,8 @@ window.AddFieldHelper = (() => {
 
   /**
    * Build the "+ Aggiungi campo" section HTML.
+   * Uses an inline <select> + button instead of a floating dropdown to avoid
+   * clipping issues caused by modal transform containing blocks.
    * @param {string} type - 'ferry' | 'flight' | 'hotel' | 'train' | 'bus' | 'rental'
    */
   function buildTriggerHTML(type) {
@@ -116,132 +118,56 @@ window.AddFieldHelper = (() => {
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         Aggiungi campo
       </button>
-      <div class="add-field-dropdown" style="display:none"></div>
+      <div class="add-field-inline-picker" style="display:none">
+        <select class="add-field-select"></select>
+        <button type="button" class="add-field-confirm-btn">Aggiungi</button>
+        <button type="button" class="add-field-cancel-btn">✕</button>
+      </div>
     </div>`;
   }
 
   /**
-   * Position a dropdown relative to a trigger button.
-   * Uses position:absolute on document.body + getBoundingClientRect() + window.scrollY
-   * to calculate absolute page coordinates — immune to any containing block created
-   * by transform/filter/perspective on ancestor elements.
-   *
-   * Strategy:
-   *   1. Make dropdown invisible but measurable (visibility:hidden, display:block)
-   *   2. Read btn viewport coords via getBoundingClientRect()
-   *   3. Convert to absolute page coords adding window.scrollY / window.scrollX
-   *   4. Flip upward if not enough space below; clamp horizontally to viewport
-   *   5. Make dropdown visible
-   *
-   * - Opens upward if not enough space below
-   * - Aligns to right edge of trigger if dropdown overflows viewport right
-   * - max-height: 240px with overflow-y: auto
-   */
-  function positionDropdownFixed(dropdown, btn) {
-    const MARGIN = 8;
-    const MAX_HEIGHT = 240;
-
-    // Step 1: prepare for measurement — visible in layout, invisible to user
-    dropdown.style.position = 'absolute';
-    dropdown.style.zIndex = '9999';
-    dropdown.style.maxHeight = MAX_HEIGHT + 'px';
-    dropdown.style.overflowY = 'auto';
-    dropdown.style.visibility = 'hidden';
-    // Temporarily set top/left to avoid layout reflow side-effects
-    dropdown.style.top = '0px';
-    dropdown.style.left = '0px';
-    dropdown.style.bottom = '';
-    dropdown.style.right = '';
-
-    // Step 2: measure — force layout sync via offsetHeight
-    const ddWidth = dropdown.offsetWidth;
-    const ddHeight = Math.min(dropdown.offsetHeight, MAX_HEIGHT);
-
-    // Step 3: get btn position in viewport then convert to page coords
-    const rect = btn.getBoundingClientRect();
-    const scrollX = window.scrollX || window.pageXOffset || 0;
-    const scrollY = window.scrollY || window.pageYOffset || 0;
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-
-    // Step 4a: vertical — open downward unless not enough room below
-    const spaceBelow = vh - rect.bottom - MARGIN;
-    let top;
-    if (spaceBelow >= ddHeight || spaceBelow >= 60) {
-      // Open downward (scroll internally if needed)
-      top = rect.bottom + scrollY + 4;
-      dropdown.style.top = top + 'px';
-      dropdown.style.bottom = '';
-    } else {
-      // Open upward
-      top = rect.top + scrollY - ddHeight - 4;
-      dropdown.style.top = top + 'px';
-      dropdown.style.bottom = '';
-    }
-
-    // Step 4b: horizontal — align to left of btn, clamp to right viewport boundary
-    let left = rect.left + scrollX;
-    if (rect.left + ddWidth > vw - MARGIN) {
-      // Align to right edge of button
-      left = rect.right + scrollX - ddWidth;
-      // Final safety clamp
-      if (left < scrollX + MARGIN) left = scrollX + MARGIN;
-    }
-    dropdown.style.left = left + 'px';
-
-    // Step 5: make visible
-    dropdown.style.visibility = 'visible';
-  }
-
-  /**
    * Attach event listener to the "+ Aggiungi campo" trigger inside formEl.
+   * Uses an inline <select> + confirm button — no floating dropdown, no clipping.
    * Must be called after formEl is in the DOM.
    */
   function attachTrigger(formEl, type) {
     const section = formEl.querySelector('.add-field-section');
     if (!section) return;
     const btn = section.querySelector('.add-field-btn');
-    const dropdown = section.querySelector('.add-field-dropdown');
-    if (!btn || !dropdown) return;
+    const picker = section.querySelector('.add-field-inline-picker');
+    const select = section.querySelector('.add-field-select');
+    const confirmBtn = section.querySelector('.add-field-confirm-btn');
+    const cancelBtn = section.querySelector('.add-field-cancel-btn');
+    if (!btn || !picker || !select || !confirmBtn || !cancelBtn) return;
 
-    // Detach from parent and append to body so it is never clipped by overflow:hidden
-    // or affected by transform/filter containing blocks on modal ancestors
-    document.body.appendChild(dropdown);
-
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-
+    btn.addEventListener('click', () => {
       const missing = getMissingFields(formEl, type);
-      if (missing.length === 0) {
-        dropdown.style.display = 'none';
-        return;
-      }
+      if (missing.length === 0) return;
 
-      // Toggle dropdown
-      if (dropdown.style.display === 'block') {
-        dropdown.style.display = 'none';
-        return;
-      }
-
-      dropdown.innerHTML = missing.map((def, i) =>
-        `<div class="add-field-option" data-index="${i}">${def.label}</div>`
+      // Populate select options
+      select.innerHTML = missing.map((def, i) =>
+        `<option value="${i}">${def.label}</option>`
       ).join('');
-      dropdown.style.display = 'block';
-      positionDropdownFixed(dropdown, btn);
 
-      dropdown.querySelectorAll('.add-field-option').forEach((el, i) => {
-        el.addEventListener('click', () => {
-          appendField(formEl, missing[i]);
-          dropdown.style.display = 'none';
-        });
-      });
+      btn.style.display = 'none';
+      picker.style.display = '';
+      select.focus();
     });
 
-    // Close dropdown when clicking outside
-    document.addEventListener('click', function closeDropdown(e) {
-      if (!section.contains(e.target) && e.target !== dropdown && !dropdown.contains(e.target)) {
-        dropdown.style.display = 'none';
+    confirmBtn.addEventListener('click', () => {
+      const missing = getMissingFields(formEl, type);
+      const idx = parseInt(select.value, 10);
+      if (!isNaN(idx) && missing[idx]) {
+        appendField(formEl, missing[idx]);
       }
+      picker.style.display = 'none';
+      btn.style.display = '';
+    });
+
+    cancelBtn.addEventListener('click', () => {
+      picker.style.display = 'none';
+      btn.style.display = '';
     });
   }
 

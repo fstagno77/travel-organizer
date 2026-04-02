@@ -195,7 +195,6 @@ const parsePreview = {
       // Add-field trigger (visible only in edit mode)
       html += `<div class="parse-add-field-section" data-card-type="flight" data-card-index="${i}" style="display:none">`;
       html += `<button type="button" class="parse-add-field-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Aggiungi campo</button>`;
-      html += `<div class="parse-add-field-dropdown" style="display:none"></div>`;
       html += `</div>`;
 
       html += `</div>`;
@@ -235,7 +234,6 @@ const parsePreview = {
       // Add-field trigger (visible only in edit mode)
       html += `<div class="parse-add-field-section" data-card-type="hotel" data-card-index="${i}" style="display:none">`;
       html += `<button type="button" class="parse-add-field-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Aggiungi campo</button>`;
-      html += `<div class="parse-add-field-dropdown" style="display:none"></div>`;
       html += `</div>`;
 
       html += `</div>`;
@@ -280,7 +278,6 @@ const parsePreview = {
       // Add-field trigger (visible only in edit mode)
       html += `<div class="parse-add-field-section" data-card-type="train" data-card-index="${i}" style="display:none">`;
       html += `<button type="button" class="parse-add-field-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Aggiungi campo</button>`;
-      html += `<div class="parse-add-field-dropdown" style="display:none"></div>`;
       html += `</div>`;
       html += `</div>`;
       html += `</div>`;
@@ -321,7 +318,6 @@ const parsePreview = {
       // Add-field trigger (visible only in edit mode)
       html += `<div class="parse-add-field-section" data-card-type="bus" data-card-index="${i}" style="display:none">`;
       html += `<button type="button" class="parse-add-field-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Aggiungi campo</button>`;
-      html += `<div class="parse-add-field-dropdown" style="display:none"></div>`;
       html += `</div>`;
       html += `</div>`;
       html += `</div>`;
@@ -371,7 +367,6 @@ const parsePreview = {
       // Add-field trigger (visible only in edit mode)
       html += `<div class="parse-add-field-section" data-card-type="rental" data-card-index="${i}" style="display:none">`;
       html += `<button type="button" class="parse-add-field-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Aggiungi campo</button>`;
-      html += `<div class="parse-add-field-dropdown" style="display:none"></div>`;
       html += `</div>`;
       html += `</div>`;
       html += `</div>`;
@@ -426,45 +421,79 @@ const parsePreview = {
       html += `</div>`;
 
       // Passeggeri ferry
-      if (f.passengers?.length > 0) {
-        html += `<div class="parse-section-header" style="margin-top:14px"><span>Passeggeri (${f.passengers.length})</span></div>`;
-        html += `<table style="width:100%;border-collapse:collapse;margin-top:4px">`;
-        html += `<thead><tr>
-          <th style="text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);padding:3px 0;border-bottom:1px solid var(--border-color)">Nome</th>
-          <th style="text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);padding:3px 0;border-bottom:1px solid var(--border-color)">Tipo</th>
-        </tr></thead><tbody>`;
-        for (const p of f.passengers) {
-          html += `<tr>
-            <td style="padding:5px 0;font-size:13px">${this._esc(p.name || '—')}</td>
-            <td style="padding:5px 0;font-size:12px;color:var(--text-secondary)">${this._esc(p.type || '—')}</td>
-          </tr>`;
-        }
-        html += `</tbody></table>`;
+      const ferryPassengers = f.passengers?.length > 0 ? f.passengers : [];
+      html += `<div class="parse-section-header parse-ferry-pax-header" style="margin-top:14px"><span>Passeggeri (${ferryPassengers.length})</span></div>`;
+      html += `<div class="parse-ferry-passengers" data-ferry-index="${i}">`;
+      html += `<table class="parse-ferry-pax-table" style="width:100%;border-collapse:collapse;margin-top:4px">`;
+      html += `<thead><tr>
+        <th style="text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);padding:3px 0;border-bottom:1px solid var(--border-color)">Nome</th>
+        <th style="text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);padding:3px 0;border-bottom:1px solid var(--border-color)">Tipo</th>
+        <th class="parse-ferry-edit-col" style="display:none;width:28px"></th>
+      </tr></thead><tbody>`;
+      for (let pi = 0; pi < ferryPassengers.length; pi++) {
+        const p = ferryPassengers[pi];
+        html += `<tr data-pax-index="${pi}">
+          <td style="padding:5px 0;font-size:13px">
+            <span class="parse-pax-name-display">${this._esc(p.name || '—')}</span>
+            <input class="parse-pax-name-input parse-field-input" data-field="passengers[${pi}].name" data-original="${this._esc(p.name || '')}" value="${this._esc(p.name || '')}" style="display:none;width:100%;box-sizing:border-box">
+          </td>
+          <td style="padding:5px 0;font-size:12px;color:var(--text-secondary)">
+            <span class="parse-pax-type-display">${this._esc(p.type || '—')}</span>
+            <select class="parse-pax-type-select" data-field="passengers[${pi}].type" data-original="${this._esc(p.type || '')}" style="display:none">
+              <option value="ADT"${p.type === 'ADT' ? ' selected' : ''}>ADT</option>
+              <option value="CHD"${p.type === 'CHD' ? ' selected' : ''}>CHD</option>
+              <option value="INF"${p.type === 'INF' ? ' selected' : ''}>INF</option>
+            </select>
+          </td>
+          <td class="parse-ferry-edit-col" style="display:none;text-align:center">
+            <button type="button" class="parse-pax-remove-btn" data-pax-index="${pi}" title="Rimuovi" style="background:none;border:none;cursor:pointer;color:var(--text-secondary);font-size:14px;padding:0 4px">×</button>
+          </td>
+        </tr>`;
       }
+      html += `</tbody></table>`;
+      html += `<button type="button" class="parse-add-pax-btn" style="display:none;margin-top:6px;font-size:12px;color:var(--primary);background:none;border:none;cursor:pointer;padding:0">+ Aggiungi passeggero</button>`;
+      html += `</div>`;
 
       // Veicoli a bordo
-      if (f.vehicles?.length > 0) {
-        html += `<div class="parse-section-header" style="margin-top:14px"><span>Veicoli a bordo</span></div>`;
-        html += `<table style="width:100%;border-collapse:collapse;margin-top:4px">`;
-        html += `<thead><tr>
-          <th style="text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);padding:3px 0;border-bottom:1px solid var(--border-color)">Tipo</th>
-          <th style="text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);padding:3px 0;border-bottom:1px solid var(--border-color)">Targa</th>
-        </tr></thead><tbody>`;
-        for (const v of f.vehicles) {
-          html += `<tr>
-            <td style="padding:5px 0;font-size:13px">${this._esc(v.type || '—')}</td>
-            <td style="padding:5px 0;font-size:12px;color:var(--text-secondary)">${this._esc(v.plate || '—')}</td>
-          </tr>`;
-        }
-        html += `</tbody></table>`;
+      const ferryVehicles = f.vehicles?.length > 0 ? f.vehicles : [];
+      html += `<div class="parse-section-header parse-ferry-veh-header" style="margin-top:14px"><span>Veicoli a bordo (${ferryVehicles.length})</span></div>`;
+      html += `<div class="parse-ferry-vehicles" data-ferry-index="${i}">`;
+      html += `<table class="parse-ferry-veh-table" style="width:100%;border-collapse:collapse;margin-top:4px">`;
+      html += `<thead><tr>
+        <th style="text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);padding:3px 0;border-bottom:1px solid var(--border-color)">Tipo</th>
+        <th style="text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);padding:3px 0;border-bottom:1px solid var(--border-color)">Targa</th>
+        <th class="parse-ferry-edit-col" style="display:none;width:28px"></th>
+      </tr></thead><tbody>`;
+      for (let vi = 0; vi < ferryVehicles.length; vi++) {
+        const v = ferryVehicles[vi];
+        html += `<tr data-veh-index="${vi}">
+          <td style="padding:5px 0;font-size:13px">
+            <span class="parse-veh-type-display">${this._esc(v.type || '—')}</span>
+            <select class="parse-veh-type-select" data-field="vehicles[${vi}].type" data-original="${this._esc(v.type || '')}" style="display:none">
+              <option value="auto"${v.type === 'auto' ? ' selected' : ''}>Auto</option>
+              <option value="moto"${v.type === 'moto' ? ' selected' : ''}>Moto</option>
+              <option value="camper"${v.type === 'camper' ? ' selected' : ''}>Camper</option>
+              <option value="furgone"${v.type === 'furgone' ? ' selected' : ''}>Furgone</option>
+            </select>
+          </td>
+          <td style="padding:5px 0;font-size:12px;color:var(--text-secondary)">
+            <span class="parse-veh-plate-display">${this._esc(v.plate || '—')}</span>
+            <input class="parse-veh-plate-input parse-field-input" data-field="vehicles[${vi}].plate" data-original="${this._esc(v.plate || '')}" value="${this._esc(v.plate || '')}" style="display:none;width:100%;box-sizing:border-box">
+          </td>
+          <td class="parse-ferry-edit-col" style="display:none;text-align:center">
+            <button type="button" class="parse-veh-remove-btn" data-veh-index="${vi}" title="Rimuovi" style="background:none;border:none;cursor:pointer;color:var(--text-secondary);font-size:14px;padding:0 4px">×</button>
+          </td>
+        </tr>`;
       }
+      html += `</tbody></table>`;
+      html += `<button type="button" class="parse-add-veh-btn" style="display:none;margin-top:6px;font-size:12px;color:var(--primary);background:none;border:none;cursor:pointer;padding:0">+ Aggiungi veicolo</button>`;
+      html += `</div>`;
 
       // Add-field trigger (visible only in edit mode via CSS)
       html += `<div class="parse-add-field-section" data-card-type="ferry" data-card-index="${i}" style="display:none">`;
       html += `<button type="button" class="parse-add-field-btn">`;
       html += `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Aggiungi campo`;
       html += `</button>`;
-      html += `<div class="parse-add-field-dropdown" style="display:none"></div>`;
       html += `</div>`;
 
       html += `</div>`;
@@ -608,12 +637,16 @@ const parsePreview = {
           window.CityAutocomplete.init(card, 'input[data-field="departure.city"], input[data-field="arrival.city"]');
         });
       }
+      // Enable ferry passengers/vehicles edit mode
+      this._enterFerryEditMode(container);
       // Show and init add-field triggers
       this._initAddFieldTriggers(container);
     } else {
       // Hide add-field sections
       container.querySelectorAll('.parse-add-field-section').forEach(s => { s.style.display = 'none'; });
-      container.querySelectorAll('.parse-add-field-dropdown').forEach(d => { d.style.display = 'none'; });
+      container.querySelectorAll('.parse-add-field-inline-picker').forEach(d => { d.style.display = 'none'; });
+      // Exit ferry passengers/vehicles edit mode
+      this._exitFerryEditMode(container);
       this._applyEdits(container);
       editBtn.textContent = 'Modifica';
       preview.classList.remove('parse-editing');
@@ -651,6 +684,187 @@ const parsePreview = {
     }
   },
 
+  _enterFerryEditMode(container) {
+    container.querySelectorAll('.parse-ferry-card').forEach(card => {
+      // Show edit columns
+      card.querySelectorAll('.parse-ferry-edit-col').forEach(el => { el.style.display = ''; });
+
+      // Passengers: show inputs, hide display spans
+      const paxSection = card.querySelector('.parse-ferry-passengers');
+      if (paxSection) {
+        paxSection.querySelectorAll('.parse-pax-name-display').forEach(el => { el.style.display = 'none'; });
+        paxSection.querySelectorAll('.parse-pax-name-input').forEach(el => { el.style.display = ''; });
+        paxSection.querySelectorAll('.parse-pax-type-display').forEach(el => { el.style.display = 'none'; });
+        paxSection.querySelectorAll('.parse-pax-type-select').forEach(el => { el.style.display = ''; });
+
+        // Remove buttons
+        paxSection.querySelectorAll('.parse-pax-remove-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            btn.closest('tr').remove();
+            // Update header count
+            const header = card.querySelector('.parse-ferry-pax-header span');
+            if (header) header.textContent = `Passeggeri (${paxSection.querySelectorAll('tbody tr').length})`;
+          });
+        });
+
+        // Add passenger button
+        const addPaxBtn = paxSection.querySelector('.parse-add-pax-btn');
+        if (addPaxBtn) {
+          addPaxBtn.style.display = '';
+          // Avoid duplicate listeners
+          const newAddPaxBtn = addPaxBtn.cloneNode(true);
+          addPaxBtn.replaceWith(newAddPaxBtn);
+          newAddPaxBtn.addEventListener('click', () => {
+            const tbody = paxSection.querySelector('tbody');
+            const newIndex = tbody.querySelectorAll('tr').length;
+            const tr = document.createElement('tr');
+            tr.dataset.paxIndex = newIndex;
+            tr.innerHTML = `
+              <td style="padding:5px 0;font-size:13px">
+                <span class="parse-pax-name-display" style="display:none"></span>
+                <input class="parse-pax-name-input parse-field-input" data-field="passengers[${newIndex}].name" data-original="" value="" style="width:100%;box-sizing:border-box" placeholder="Nome">
+              </td>
+              <td style="padding:5px 0;font-size:12px">
+                <span class="parse-pax-type-display" style="display:none"></span>
+                <select class="parse-pax-type-select" data-field="passengers[${newIndex}].type" data-original="">
+                  <option value="ADT">ADT</option>
+                  <option value="CHD">CHD</option>
+                  <option value="INF">INF</option>
+                </select>
+              </td>
+              <td class="parse-ferry-edit-col" style="text-align:center">
+                <button type="button" class="parse-pax-remove-btn" title="Rimuovi" style="background:none;border:none;cursor:pointer;color:var(--text-secondary);font-size:14px;padding:0 4px">×</button>
+              </td>`;
+            tbody.appendChild(tr);
+            tr.querySelector('.parse-pax-remove-btn').addEventListener('click', () => {
+              tr.remove();
+              const header = card.querySelector('.parse-ferry-pax-header span');
+              if (header) header.textContent = `Passeggeri (${paxSection.querySelectorAll('tbody tr').length})`;
+            });
+            const header = card.querySelector('.parse-ferry-pax-header span');
+            if (header) header.textContent = `Passeggeri (${paxSection.querySelectorAll('tbody tr').length})`;
+            tr.querySelector('.parse-pax-name-input').focus();
+          });
+        }
+      }
+
+      // Vehicles: show inputs, hide display spans
+      const vehSection = card.querySelector('.parse-ferry-vehicles');
+      if (vehSection) {
+        vehSection.querySelectorAll('.parse-veh-type-display').forEach(el => { el.style.display = 'none'; });
+        vehSection.querySelectorAll('.parse-veh-type-select').forEach(el => { el.style.display = ''; });
+        vehSection.querySelectorAll('.parse-veh-plate-display').forEach(el => { el.style.display = 'none'; });
+        vehSection.querySelectorAll('.parse-veh-plate-input').forEach(el => { el.style.display = ''; });
+
+        // Remove buttons
+        vehSection.querySelectorAll('.parse-veh-remove-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            btn.closest('tr').remove();
+            const header = card.querySelector('.parse-ferry-veh-header span');
+            if (header) header.textContent = `Veicoli a bordo (${vehSection.querySelectorAll('tbody tr').length})`;
+          });
+        });
+
+        // Add vehicle button
+        const addVehBtn = vehSection.querySelector('.parse-add-veh-btn');
+        if (addVehBtn) {
+          addVehBtn.style.display = '';
+          const newAddVehBtn = addVehBtn.cloneNode(true);
+          addVehBtn.replaceWith(newAddVehBtn);
+          newAddVehBtn.addEventListener('click', () => {
+            const tbody = vehSection.querySelector('tbody');
+            const newIndex = tbody.querySelectorAll('tr').length;
+            const tr = document.createElement('tr');
+            tr.dataset.vehIndex = newIndex;
+            tr.innerHTML = `
+              <td style="padding:5px 0;font-size:13px">
+                <span class="parse-veh-type-display" style="display:none"></span>
+                <select class="parse-veh-type-select" data-field="vehicles[${newIndex}].type" data-original="">
+                  <option value="auto">Auto</option>
+                  <option value="moto">Moto</option>
+                  <option value="camper">Camper</option>
+                  <option value="furgone">Furgone</option>
+                </select>
+              </td>
+              <td style="padding:5px 0;font-size:12px">
+                <span class="parse-veh-plate-display" style="display:none"></span>
+                <input class="parse-veh-plate-input parse-field-input" data-field="vehicles[${newIndex}].plate" data-original="" value="" style="width:100%;box-sizing:border-box" placeholder="Targa">
+              </td>
+              <td class="parse-ferry-edit-col" style="text-align:center">
+                <button type="button" class="parse-veh-remove-btn" title="Rimuovi" style="background:none;border:none;cursor:pointer;color:var(--text-secondary);font-size:14px;padding:0 4px">×</button>
+              </td>`;
+            tbody.appendChild(tr);
+            tr.querySelector('.parse-veh-remove-btn').addEventListener('click', () => {
+              tr.remove();
+              const header = card.querySelector('.parse-ferry-veh-header span');
+              if (header) header.textContent = `Veicoli a bordo (${vehSection.querySelectorAll('tbody tr').length})`;
+            });
+            const header = card.querySelector('.parse-ferry-veh-header span');
+            if (header) header.textContent = `Veicoli a bordo (${vehSection.querySelectorAll('tbody tr').length})`;
+            tr.querySelector('.parse-veh-plate-input').focus();
+          });
+        }
+      }
+    });
+  },
+
+  _exitFerryEditMode(container) {
+    container.querySelectorAll('.parse-ferry-card').forEach(card => {
+      // Hide edit columns
+      card.querySelectorAll('.parse-ferry-edit-col').forEach(el => { el.style.display = 'none'; });
+
+      // Passengers: show display spans, hide inputs
+      const paxSection = card.querySelector('.parse-ferry-passengers');
+      if (paxSection) {
+        paxSection.querySelectorAll('tbody tr').forEach(tr => {
+          const nameInput = tr.querySelector('.parse-pax-name-input');
+          const nameDisplay = tr.querySelector('.parse-pax-name-display');
+          const typeSelect = tr.querySelector('.parse-pax-type-select');
+          const typeDisplay = tr.querySelector('.parse-pax-type-display');
+          if (nameInput && nameDisplay) {
+            nameDisplay.textContent = nameInput.value || '—';
+            nameDisplay.style.display = '';
+            nameInput.style.display = 'none';
+          }
+          if (typeSelect && typeDisplay) {
+            typeDisplay.textContent = typeSelect.value || '—';
+            typeDisplay.style.display = '';
+            typeSelect.style.display = 'none';
+          }
+        });
+        const addPaxBtn = paxSection.querySelector('.parse-add-pax-btn');
+        if (addPaxBtn) addPaxBtn.style.display = 'none';
+        const header = card.querySelector('.parse-ferry-pax-header span');
+        if (header) header.textContent = `Passeggeri (${paxSection.querySelectorAll('tbody tr').length})`;
+      }
+
+      // Vehicles: show display spans, hide inputs
+      const vehSection = card.querySelector('.parse-ferry-vehicles');
+      if (vehSection) {
+        vehSection.querySelectorAll('tbody tr').forEach(tr => {
+          const typeSelect = tr.querySelector('.parse-veh-type-select');
+          const typeDisplay = tr.querySelector('.parse-veh-type-display');
+          const plateInput = tr.querySelector('.parse-veh-plate-input');
+          const plateDisplay = tr.querySelector('.parse-veh-plate-display');
+          if (typeSelect && typeDisplay) {
+            typeDisplay.textContent = typeSelect.value || '—';
+            typeDisplay.style.display = '';
+            typeSelect.style.display = 'none';
+          }
+          if (plateInput && plateDisplay) {
+            plateDisplay.textContent = plateInput.value || '—';
+            plateDisplay.style.display = '';
+            plateInput.style.display = 'none';
+          }
+        });
+        const addVehBtn = vehSection.querySelector('.parse-add-veh-btn');
+        if (addVehBtn) addVehBtn.style.display = 'none';
+        const header = card.querySelector('.parse-ferry-veh-header span');
+        if (header) header.textContent = `Veicoli a bordo (${vehSection.querySelectorAll('tbody tr').length})`;
+      }
+    });
+  },
+
   _initAddFieldTriggers(container) {
     // Schema dei campi aggiuntivi per tipo (deve restare sincronizzato con editBookingAddField.js)
     const SCHEMA = {
@@ -667,68 +881,90 @@ const parsePreview = {
       const type = section.dataset.cardType;
       const cardIndex = section.dataset.cardIndex;
       const btn = section.querySelector('.parse-add-field-btn');
-      const dropdown = section.querySelector('.parse-add-field-dropdown');
-      if (!btn || !dropdown) return;
+      if (!btn) return;
 
       // Find the parent card element
       const cardClass = `.parse-${type}-card[data-index="${cardIndex}"]`;
       const card = container.querySelector(cardClass);
       if (!card) return;
 
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
+      // Build inline picker (select + confirm + cancel) — avoids floating dropdown clipping
+      const picker = document.createElement('div');
+      picker.className = 'parse-add-field-inline-picker';
+      picker.style.display = 'none';
+      picker.style.marginTop = '8px';
+      picker.style.display = 'none';
+      const select = document.createElement('select');
+      select.className = 'parse-add-field-select';
+      const confirmBtn = document.createElement('button');
+      confirmBtn.type = 'button';
+      confirmBtn.className = 'parse-add-field-confirm-btn';
+      confirmBtn.textContent = 'Aggiungi';
+      const cancelBtn = document.createElement('button');
+      cancelBtn.type = 'button';
+      cancelBtn.className = 'parse-add-field-cancel-btn';
+      cancelBtn.textContent = '✕';
+      picker.appendChild(select);
+      picker.appendChild(confirmBtn);
+      picker.appendChild(cancelBtn);
+      section.appendChild(picker);
+
+      const openPicker = () => {
         const schema = SCHEMA[type] || [];
-        // Filter out fields already present as inputs in the card
         const missing = schema.filter(def => !card.querySelector(`input[data-field="${def.field}"]`));
-        if (missing.length === 0) { dropdown.style.display = 'none'; return; }
-
-        if (dropdown.style.display === 'block') { dropdown.style.display = 'none'; return; }
-
-        dropdown.innerHTML = missing.map((def, i) =>
-          `<div class="parse-add-field-option" data-index="${i}">${this._esc(def.label)}</div>`
+        if (missing.length === 0) return;
+        select.innerHTML = missing.map((def, i) =>
+          `<option value="${i}">${this._esc(def.label)}</option>`
         ).join('');
-        dropdown.style.display = 'block';
+        select._missing = missing;
+        btn.style.display = 'none';
+        picker.style.display = '';
+        select.focus();
+      };
 
-        dropdown.querySelectorAll('.parse-add-field-option').forEach((el, i) => {
-          el.addEventListener('click', () => {
-            const def = missing[i];
-            // Find or create a "campi aggiuntivi" grid in the card
-            let addedGrid = card.querySelector('.parse-added-fields-grid');
-            if (!addedGrid) {
-              const header = document.createElement('div');
-              header.className = 'parse-section-header';
-              header.style.marginTop = '10px';
-              header.innerHTML = '<span>Campi aggiuntivi</span>';
-              addedGrid = document.createElement('div');
-              addedGrid.className = 'parse-detail-grid parse-added-fields-grid';
-              // Insert before the add-field-section
-              card.insertBefore(header, section);
-              card.insertBefore(addedGrid, section);
-            }
+      const closePicker = () => {
+        picker.style.display = 'none';
+        btn.style.display = '';
+      };
 
-            // Build a field row with an input
-            const row = document.createElement('div');
-            row.className = 'parse-field-row';
-            row.innerHTML = `<span class="parse-field-label">${this._esc(def.label)}</span>`;
-            const input = document.createElement('input');
-            input.type = def.t;
-            input.className = 'parse-field-input';
-            input.dataset.field = def.field;
-            input.dataset.original = '';
-            input.value = '';
-            row.appendChild(input);
-            addedGrid.appendChild(row);
+      const addField = () => {
+        const missing = select._missing || [];
+        const idx = parseInt(select.value, 10);
+        if (isNaN(idx) || !missing[idx]) { closePicker(); return; }
+        const def = missing[idx];
 
-            dropdown.style.display = 'none';
-            setTimeout(() => input.focus(), 50);
-          });
-        });
-      });
+        // Find or create a "campi aggiuntivi" grid in the card
+        let addedGrid = card.querySelector('.parse-added-fields-grid');
+        if (!addedGrid) {
+          const header = document.createElement('div');
+          header.className = 'parse-section-header';
+          header.style.marginTop = '10px';
+          header.innerHTML = '<span>Campi aggiuntivi</span>';
+          addedGrid = document.createElement('div');
+          addedGrid.className = 'parse-detail-grid parse-added-fields-grid';
+          card.insertBefore(header, section);
+          card.insertBefore(addedGrid, section);
+        }
 
-      // Close dropdown on outside click
-      document.addEventListener('click', function handler(e) {
-        if (!section.contains(e.target)) dropdown.style.display = 'none';
-      });
+        const row = document.createElement('div');
+        row.className = 'parse-field-row';
+        row.innerHTML = `<span class="parse-field-label">${this._esc(def.label)}</span>`;
+        const input = document.createElement('input');
+        input.type = def.t;
+        input.className = 'parse-field-input';
+        input.dataset.field = def.field;
+        input.dataset.original = '';
+        input.value = '';
+        row.appendChild(input);
+        addedGrid.appendChild(row);
+
+        closePicker();
+        setTimeout(() => input.focus(), 50);
+      };
+
+      btn.addEventListener('click', openPicker);
+      confirmBtn.addEventListener('click', addField);
+      cancelBtn.addEventListener('click', closePicker);
     });
   },
 
@@ -811,7 +1047,14 @@ const parsePreview = {
   },
 
   _applyCardEdits(card, dataObj, prefix) {
-    const inputs = card.querySelectorAll('.parse-field-input:not(.parse-hotel-name-input):not(.parse-hotel-address-input)');
+    // Exclude pax/veh ferry inputs (handled separately) and hotel name/address
+    const inputs = card.querySelectorAll(
+      '.parse-field-input' +
+      ':not(.parse-hotel-name-input)' +
+      ':not(.parse-hotel-address-input)' +
+      ':not(.parse-pax-name-input)' +
+      ':not(.parse-veh-plate-input)'
+    );
     inputs.forEach(input => {
       const field = input.dataset.field;
       if (!field) return;
@@ -841,6 +1084,46 @@ const parsePreview = {
         dataObj[field] = newVal;
       }
     });
+
+    // Ferry passengers — rebuild array from DOM rows
+    const paxSection = card.querySelector('.parse-ferry-passengers');
+    if (paxSection) {
+      const rows = paxSection.querySelectorAll('tbody tr');
+      if (rows.length > 0) {
+        const newPassengers = [];
+        rows.forEach(tr => {
+          const nameInput = tr.querySelector('.parse-pax-name-input');
+          const typeSelect = tr.querySelector('.parse-pax-type-select');
+          const nameDisplay = tr.querySelector('.parse-pax-name-display');
+          const typeDisplay = tr.querySelector('.parse-pax-type-display');
+          const name = nameInput ? nameInput.value.trim() : (nameDisplay ? nameDisplay.textContent.trim() : '');
+          const type = typeSelect ? typeSelect.value : (typeDisplay ? typeDisplay.textContent.trim() : '');
+          if (name && name !== '—') newPassengers.push({ name, type: type || 'ADT' });
+        });
+        dataObj.passengers = newPassengers;
+        this._editedFields.push(`${prefix}.passengers`);
+      }
+    }
+
+    // Ferry vehicles — rebuild array from DOM rows
+    const vehSection = card.querySelector('.parse-ferry-vehicles');
+    if (vehSection) {
+      const rows = vehSection.querySelectorAll('tbody tr');
+      if (rows.length > 0) {
+        const newVehicles = [];
+        rows.forEach(tr => {
+          const typeSelect = tr.querySelector('.parse-veh-type-select');
+          const plateInput = tr.querySelector('.parse-veh-plate-input');
+          const typeDisplay = tr.querySelector('.parse-veh-type-display');
+          const plateDisplay = tr.querySelector('.parse-veh-plate-display');
+          const type = typeSelect ? typeSelect.value : (typeDisplay ? typeDisplay.textContent.trim() : '');
+          const plate = plateInput ? plateInput.value.trim() : (plateDisplay ? plateDisplay.textContent.trim() : '');
+          if (type || (plate && plate !== '—')) newVehicles.push({ type: type || 'auto', plate: plate || '' });
+        });
+        dataObj.vehicles = newVehicles;
+        this._editedFields.push(`${prefix}.vehicles`);
+      }
+    }
   },
 
   // ── Helpers ──
