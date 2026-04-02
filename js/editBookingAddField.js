@@ -121,53 +121,76 @@ window.AddFieldHelper = (() => {
   }
 
   /**
-   * Position a fixed dropdown relative to a trigger button.
-   * Uses getBoundingClientRect() to avoid being clipped by overflow:hidden ancestors.
+   * Position a dropdown relative to a trigger button.
+   * Uses position:absolute on document.body + getBoundingClientRect() + window.scrollY
+   * to calculate absolute page coordinates — immune to any containing block created
+   * by transform/filter/perspective on ancestor elements.
+   *
+   * Strategy:
+   *   1. Make dropdown invisible but measurable (visibility:hidden, display:block)
+   *   2. Read btn viewport coords via getBoundingClientRect()
+   *   3. Convert to absolute page coords adding window.scrollY / window.scrollX
+   *   4. Flip upward if not enough space below; clamp horizontally to viewport
+   *   5. Make dropdown visible
+   *
    * - Opens upward if not enough space below
    * - Aligns to right edge of trigger if dropdown overflows viewport right
-   * - Caps max-height and enables internal scroll if content overflows
+   * - max-height: 240px with overflow-y: auto
    */
   function positionDropdownFixed(dropdown, btn) {
-    const rect = btn.getBoundingClientRect();
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
     const MARGIN = 8;
     const MAX_HEIGHT = 240;
 
-    // Apply fixed positioning first so we can measure
-    dropdown.style.position = 'fixed';
+    // Step 1: prepare for measurement — visible in layout, invisible to user
+    dropdown.style.position = 'absolute';
     dropdown.style.zIndex = '9999';
     dropdown.style.maxHeight = MAX_HEIGHT + 'px';
     dropdown.style.overflowY = 'auto';
+    dropdown.style.visibility = 'hidden';
+    // Temporarily set top/left to avoid layout reflow side-effects
+    dropdown.style.top = '0px';
+    dropdown.style.left = '0px';
+    dropdown.style.bottom = '';
+    dropdown.style.right = '';
 
-    // Measure dropdown dimensions after it becomes visible
-    requestAnimationFrame(() => {
-      const ddRect = dropdown.getBoundingClientRect();
-      const ddWidth = ddRect.width;
-      const ddHeight = Math.min(ddRect.height, MAX_HEIGHT);
+    // Step 2: measure — force layout sync via offsetHeight
+    const ddWidth = dropdown.offsetWidth;
+    const ddHeight = Math.min(dropdown.offsetHeight, MAX_HEIGHT);
 
-      // Vertical: open downward by default, flip up if not enough room below
-      const spaceBelow = vh - rect.bottom - MARGIN;
-      if (spaceBelow >= ddHeight || spaceBelow >= 60) {
-        // Enough space below (or at least 60px — render down and scroll)
-        dropdown.style.top = (rect.bottom + 4) + 'px';
-        dropdown.style.bottom = 'auto';
-      } else {
-        // Open upward
-        dropdown.style.top = 'auto';
-        dropdown.style.bottom = (vh - rect.top + 4) + 'px';
-      }
+    // Step 3: get btn position in viewport then convert to page coords
+    const rect = btn.getBoundingClientRect();
+    const scrollX = window.scrollX || window.pageXOffset || 0;
+    const scrollY = window.scrollY || window.pageYOffset || 0;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
 
-      // Horizontal: align to left edge of button, clamp to right viewport boundary
-      let left = rect.left;
-      if (left + ddWidth > vw - MARGIN) {
-        // Align to right edge of button instead
-        left = rect.right - ddWidth;
-        // Final safety clamp
-        if (left < MARGIN) left = MARGIN;
-      }
-      dropdown.style.left = left + 'px';
-    });
+    // Step 4a: vertical — open downward unless not enough room below
+    const spaceBelow = vh - rect.bottom - MARGIN;
+    let top;
+    if (spaceBelow >= ddHeight || spaceBelow >= 60) {
+      // Open downward (scroll internally if needed)
+      top = rect.bottom + scrollY + 4;
+      dropdown.style.top = top + 'px';
+      dropdown.style.bottom = '';
+    } else {
+      // Open upward
+      top = rect.top + scrollY - ddHeight - 4;
+      dropdown.style.top = top + 'px';
+      dropdown.style.bottom = '';
+    }
+
+    // Step 4b: horizontal — align to left of btn, clamp to right viewport boundary
+    let left = rect.left + scrollX;
+    if (rect.left + ddWidth > vw - MARGIN) {
+      // Align to right edge of button
+      left = rect.right + scrollX - ddWidth;
+      // Final safety clamp
+      if (left < scrollX + MARGIN) left = scrollX + MARGIN;
+    }
+    dropdown.style.left = left + 'px';
+
+    // Step 5: make visible
+    dropdown.style.visibility = 'visible';
   }
 
   /**
@@ -182,6 +205,7 @@ window.AddFieldHelper = (() => {
     if (!btn || !dropdown) return;
 
     // Detach from parent and append to body so it is never clipped by overflow:hidden
+    // or affected by transform/filter containing blocks on modal ancestors
     document.body.appendChild(dropdown);
 
     btn.addEventListener('click', (e) => {
