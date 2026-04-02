@@ -3682,6 +3682,12 @@
             ? window.tripFerries.collectReturnValues(panelBody)
             : null;
           if (returnData) {
+            // Eredita dal ferry originale: prenotazione, passeggeri, veicoli (stesso biglietto)
+            if (item.bookingReference) returnData.bookingReference = item.bookingReference;
+            if (item.ticketNumber) returnData.ticketNumber = item.ticketNumber;
+            if (item.passengers?.length) returnData.passengers = item.passengers;
+            if (item.vehicles?.length) returnData.vehicles = item.vehicles;
+            if (item.pdfPath) returnData.pdfPath = item.pdfPath;
             const returnPayload = { action: 'manual-booking', tripId, type: 'ferry', manualData: returnData };
             const returnRes = await utils.authFetch('/.netlify/functions/add-booking', {
               method: 'POST',
