@@ -7300,7 +7300,7 @@ body:has(> .modal-overlay.active) .trip-hero-tabs {
   align-items: flex-end;
   gap: var(--spacing-2);
   margin-bottom: var(--spacing-2);
-  padding: 8px 0;
+  padding: 8px 8px 8px 0;
 }
 
 .edit-booking-passenger-row .edit-booking-field,
@@ -7329,16 +7329,15 @@ body:has(> .modal-overlay.active) .trip-hero-tabs {
   height: 28px;
   margin-bottom: 4px;
   background: none;
-  border: 1px solid var(--color-gray-200);
+  border: none;
   border-radius: var(--radius-md);
   color: var(--color-gray-400);
   cursor: pointer;
-  transition: color var(--transition-fast), border-color var(--transition-fast);
+  transition: color var(--transition-fast);
 }
 
 .edit-booking-remove-row:hover {
   color: var(--color-error, #ef4444);
-  border-color: var(--color-error, #ef4444);
 }
 
 .edit-booking-add-row {

@@ -432,11 +432,11 @@ const parsePreview = {
       for (let pi = 0; pi < ferryPassengers.length; pi++) {
         const p = ferryPassengers[pi];
         html += `<tr data-pax-index="${pi}">
-          <td style="padding:8px 0;font-size:13px">
+          <td style="padding:8px 8px 8px 0;font-size:13px">
             <span class="parse-pax-name-display">${this._esc(p.name || '—')}</span>
             <input class="parse-pax-name-input parse-field-input" data-field="passengers[${pi}].name" data-original="${this._esc(p.name || '')}" value="${this._esc(p.name || '')}" style="display:none;width:100%;box-sizing:border-box">
           </td>
-          <td style="padding:8px 0;font-size:12px;color:var(--text-secondary)">
+          <td style="padding:8px 8px 8px 0;font-size:12px;color:var(--text-secondary)">
             <span class="parse-pax-type-display">${this._esc(p.type || '—')}</span>
             <div class="parse-pax-type-cs-placeholder" data-pax-type="${this._esc(p.type || 'ADT')}" data-field="passengers[${pi}].type" data-original="${this._esc(p.type || '')}" style="display:none"></div>
           </td>
@@ -756,11 +756,11 @@ const parsePreview = {
             tr.dataset.paxIndex = newIndex;
             // Build name td
             const nameTd = document.createElement('td');
-            nameTd.style.cssText = 'padding:8px 0;font-size:13px';
+            nameTd.style.cssText = 'padding:8px 8px 8px 0;font-size:13px';
             nameTd.innerHTML = `<span class="parse-pax-name-display" style="display:none"></span><input class="parse-pax-name-input parse-field-input" data-field="passengers[${newIndex}].name" data-original="" value="" style="width:100%;box-sizing:border-box" placeholder="Nome">`;
             // Build type td with CustomSelect
             const typeTd = document.createElement('td');
-            typeTd.style.cssText = 'padding:8px 0;font-size:12px';
+            typeTd.style.cssText = 'padding:8px 8px 8px 0;font-size:12px';
             const typeDisplay = document.createElement('span');
             typeDisplay.className = 'parse-pax-type-display';
             typeDisplay.style.display = 'none';
