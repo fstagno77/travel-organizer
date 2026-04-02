@@ -576,6 +576,168 @@ window.manualBookingForm = (() => {
   }
 
   /**
+   * Costruisce il form treno.
+   * @param {Object} prefill - dati da pre-popolare
+   * @returns {{ form: HTMLElement, getValues: function, validate: function, saveBtn: HTMLButtonElement, getFile: function }}
+   */
+  function buildTrainForm(prefill = {}) {
+    const form = document.createElement('div');
+    form.className = 'manual-booking-form manual-booking-form--train';
+    form.dataset.bookingType = 'train';
+
+    // Intestazione
+    const heading = document.createElement('p');
+    heading.className = 'manual-form-heading';
+    heading.style.cssText = 'font-weight:var(--font-weight-semibold);margin-bottom:var(--spacing-4);color:var(--color-gray-700);';
+    heading.textContent = 'Inserisci i dettagli del treno';
+    form.appendChild(heading);
+
+    // Scrollable body
+    const scroll = document.createElement('div');
+    scroll.style.cssText = 'overflow-y:auto;max-height:55vh;padding-right:4px;';
+
+    // --- Campi obbligatori ---
+    const { wrapper: wDepStation, input: iDepStation } = buildField({
+      id: 'mbf-train-departure-station', label: 'Stazione partenza', required: true,
+      placeholder: 'es. Roma Termini', value: prefill.departure?.station || prefill.departureStation || ''
+    });
+    const { wrapper: wDepCity, input: iDepCity } = buildField({
+      id: 'mbf-train-departure-city', label: 'Città partenza', required: true,
+      placeholder: 'es. Roma', value: prefill.departure?.city || prefill.departureCity || ''
+    });
+    scroll.appendChild(buildRow(wDepStation, wDepCity));
+
+    const { wrapper: wArrStation, input: iArrStation } = buildField({
+      id: 'mbf-train-arrival-station', label: 'Stazione arrivo', required: true,
+      placeholder: 'es. Milano Centrale', value: prefill.arrival?.station || prefill.arrivalStation || ''
+    });
+    const { wrapper: wArrCity, input: iArrCity } = buildField({
+      id: 'mbf-train-arrival-city', label: 'Città arrivo', required: true,
+      placeholder: 'es. Milano', value: prefill.arrival?.city || prefill.arrivalCity || ''
+    });
+    scroll.appendChild(buildRow(wArrStation, wArrCity));
+
+    const { wrapper: wDate, input: iDate } = buildField({
+      id: 'mbf-train-date', label: 'Data', type: 'date', required: true,
+      value: prefill.date || ''
+    });
+    const { wrapper: wDepTime, input: iDepTime } = buildField({
+      id: 'mbf-train-departure-time', label: 'Orario partenza', type: 'time', required: true,
+      value: prefill.departureTime || (prefill.departure?.time || '')
+    });
+    scroll.appendChild(buildRow(wDate, wDepTime));
+
+    const { wrapper: wTrainNum, input: iTrainNum } = buildField({
+      id: 'mbf-train-number', label: 'Numero treno', required: true,
+      placeholder: 'es. FR 9619', value: prefill.trainNumber || ''
+    });
+    const { wrapper: wOperator, input: iOperator } = buildField({
+      id: 'mbf-train-operator', label: 'Operatore', required: true,
+      placeholder: 'es. Trenitalia', value: prefill.operator || ''
+    });
+    scroll.appendChild(buildRow(wTrainNum, wOperator));
+
+    // --- Campi opzionali ---
+    const { wrapper: wArrTime, input: iArrTime } = buildField({
+      id: 'mbf-train-arrival-time', label: 'Orario arrivo', type: 'time',
+      value: prefill.arrivalTime || (prefill.arrival?.time || '')
+    });
+    const { wrapper: wClass, input: iClass } = buildField({
+      id: 'mbf-train-class', label: 'Classe',
+      placeholder: 'es. 1ª, 2ª', value: prefill.class || ''
+    });
+    scroll.appendChild(buildRow(wArrTime, wClass));
+
+    const { wrapper: wSeat, input: iSeat } = buildField({
+      id: 'mbf-train-seat', label: 'Posto',
+      placeholder: 'es. 45', value: prefill.seat || ''
+    });
+    const { wrapper: wCoach, input: iCoach } = buildField({
+      id: 'mbf-train-coach', label: 'Carrozza',
+      placeholder: 'es. 3', value: prefill.coach || ''
+    });
+    scroll.appendChild(buildRow(wSeat, wCoach));
+
+    const { wrapper: wPnr, input: iPnr } = buildField({
+      id: 'mbf-train-pnr', label: 'PNR / Codice prenotazione',
+      placeholder: 'es. ABC123', value: prefill.bookingReference || prefill.pnr || ''
+    });
+    const { wrapper: wPrice, input: iPrice } = buildField({
+      id: 'mbf-train-price', label: 'Prezzo (€)', type: 'number', placeholder: '0.00',
+      value: prefill.price || ''
+    });
+    scroll.appendChild(buildRow(wPnr, wPrice));
+
+    // Upload documento
+    const { wrapper: wDoc, getFile } = buildDocumentUpload();
+    scroll.appendChild(wDoc);
+
+    form.appendChild(scroll);
+
+    // Pulsante Salva
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'btn btn-primary';
+    saveBtn.id = 'manual-booking-save';
+    saveBtn.textContent = 'Salva treno';
+    saveBtn.disabled = true;
+
+    // Aggiornamento stato bottone
+    const requiredInputs = [iDepStation, iDepCity, iArrStation, iArrCity, iDate, iDepTime, iTrainNum, iOperator];
+    requiredInputs.forEach(inp => {
+      inp.addEventListener('input', () => {
+        clearFieldError(inp);
+        updateSaveBtn(form, saveBtn);
+      });
+    });
+
+    const getValues = () => ({
+      departure: {
+        station: iDepStation.value.trim(),
+        city: iDepCity.value.trim(),
+        time: iDepTime.value || undefined,
+      },
+      arrival: {
+        station: iArrStation.value.trim(),
+        city: iArrCity.value.trim(),
+        time: iArrTime.value || undefined,
+      },
+      date: iDate.value,
+      trainNumber: iTrainNum.value.trim(),
+      operator: iOperator.value.trim(),
+      class: iClass.value.trim() || undefined,
+      seat: iSeat.value.trim() || undefined,
+      coach: iCoach.value.trim() || undefined,
+      bookingReference: iPnr.value.trim() || undefined,
+      price: iPrice.value ? parseFloat(iPrice.value) : undefined,
+    });
+
+    const validate = () => {
+      let valid = true;
+      const checks = [
+        { input: iDepStation, msg: 'Inserisci la stazione di partenza' },
+        { input: iDepCity,    msg: 'Inserisci la città di partenza' },
+        { input: iArrStation, msg: 'Inserisci la stazione di arrivo' },
+        { input: iArrCity,    msg: 'Inserisci la città di arrivo' },
+        { input: iDate,       msg: 'Inserisci la data del treno' },
+        { input: iDepTime,    msg: 'Inserisci l\'orario di partenza' },
+        { input: iTrainNum,   msg: 'Inserisci il numero del treno' },
+        { input: iOperator,   msg: 'Inserisci l\'operatore' },
+      ];
+      checks.forEach(({ input, msg }) => {
+        if (!input.value || input.value.trim() === '') {
+          showFieldError(input, msg);
+          valid = false;
+        } else {
+          clearFieldError(input);
+        }
+      });
+      return valid;
+    };
+
+    return { form, getValues, validate, saveBtn, getFile };
+  }
+
+  /**
    * Ripristina il contenuto originale della modale.
    * @param {HTMLElement} modal
    * @param {string} origBody
@@ -658,6 +820,8 @@ window.manualBookingForm = (() => {
       formModule = buildFlightForm(prefill);
     } else if (type === 'hotel') {
       formModule = buildHotelForm(prefill);
+    } else if (type === 'train') {
+      formModule = buildTrainForm(prefill);
     } else {
       // Tipi non ancora implementati (US-005+): placeholder
       modalBody.innerHTML = `
