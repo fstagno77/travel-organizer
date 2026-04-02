@@ -12,6 +12,8 @@
 - manualBookingForm.js pattern: buildFlightForm() restituisce { form, getValues, validate, saveBtn, getFile } — lo stesso pattern va usato per US-004+ (hotel, train, bus, rental, ferry)
 - Per ogni tipo di form manuale: aggiungere un branch `if (type === 'X') { formModule = buildXForm(prefill); }` nella funzione `open()` di manualBookingForm.js
 - I campi con id `mbf-{campo}` usano `data-required` dataset per il controllo updateSaveBtn — tutti i required devono avere `required: true` in buildField()
+- Messaggi di errore con apostrofo nel codice sorgente usano `\'` (es. `dell\'hotel`) — nei test usare `.toContain("dell")` e `.toContain("hotel")` separati, oppure la stringa senza apostrofo
+- I form con date relative (check-in/out, ritiro/restituzione) devono calcolare giorni/notti in read-only con `addEventListener('change', ...)` su entrambi i campi data
 
 # Ralph Progress Log
 Started: Thu Apr  2 12:25:58 CEST 2026
@@ -62,4 +64,21 @@ Started: Thu Apr  2 12:25:58 CEST 2026
   - id campi: prefisso `mbf-` + nome campo (es. mbf-hotel-name, mbf-hotel-city, ecc.)
   - buildRow() affianca due form-group con display:flex — utile per tutti i form
   - Il form viene inserito nel modal-body; footer viene svuotato e popolato con Indietro + Salva
+---
+
+## 2026-04-02 - US-004
+- Creato buildHotelForm(prefill) in js/manualBookingForm.js con 4 campi obbligatori + 9 opzionali
+- Campo notti calcolato automaticamente (read-only) da check-in/check-out con calcNights()
+- Colazione inclusa usa CustomSelect (no <select> nativo), con fallback input text in env test
+- Validazione inline: errore specifico se check-out antecedente check-in
+- Upload documento opzionale (riuso buildDocumentUpload)
+- Branch `type === 'hotel'` aggiunto in open() di manualBookingForm.js
+- Fix catch block in open(): restore del testo originale del save button con saveBtnOriginalText
+- 29 test in tests/us004-manual-booking-hotel.test.js — tutti passano
+- Files changed: js/manualBookingForm.js, tests/us004-manual-booking-hotel.test.js (nuovo)
+- **Learnings for future iterations:**
+  - Per i form con date relative (hotel, noleggio): aggiungere funzione helper `calcXxx()` per il calcolo read-only e agganciarla su `addEventListener('change', ...)` su entrambi i campi data
+  - Messaggi errore con apostrofo vanno testati con toContain() su substring senza apostrofo
+  - Il catch block di open() ora usa `saveBtnOriginalText` per restaurare il testo del bottone — non modificarlo per i prossimi tipi
+  - buildHotelForm restituisce { form, getValues, validate, saveBtn, getFile } — pattern identico a buildFlightForm
 ---
