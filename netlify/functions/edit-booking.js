@@ -186,7 +186,7 @@ const ALLOWED_FERRY_FIELDS = [
   'date', 'operator', 'ferryName', 'routeNumber', 'duration',
   'bookingReference', 'ticketNumber', 'cabin', 'deck',
   'departure', 'arrival',
-  'price', 'passengers', 'vehicles', 'documentUrl'
+  'price', 'passengers', 'vehicles', 'documentUrl', 'pdfPath'
 ];
 
 function filterUpdates(updates, allowedFields) {
@@ -429,6 +429,9 @@ function applyUpdates(item, updates, type) {
     // Document URL: update or remove (null = explicit removal)
     if ('documentUrl' in updates) {
       item.documentUrl = updates.documentUrl === null ? null : updates.documentUrl;
+    }
+    if ('pdfPath' in updates) {
+      item.pdfPath = updates.pdfPath === null ? null : updates.pdfPath;
     }
   }
 }

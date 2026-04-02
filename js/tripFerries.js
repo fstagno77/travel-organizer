@@ -449,7 +449,7 @@
         </div>
         <div class="edit-booking-section" style="margin-top:24px" data-doc-section>
           <div class="edit-booking-section-title">Documento</div>
-          ${ferry.documentUrl ? `
+          ${(ferry.pdfPath || ferry.documentUrl) ? `
             <div class="ferry-doc-existing" data-existing-doc>
               <div class="file-preview-item" style="justify-content:space-between">
                 <span style="font-size:var(--font-size-sm);color:var(--color-gray-700)">
@@ -457,14 +457,14 @@
                   Documento allegato
                 </span>
                 <span style="display:flex;gap:8px">
-                  <a href="${escAttr(ferry.documentUrl)}" target="_blank" rel="noopener" style="font-size:var(--font-size-sm);color:var(--color-primary);text-decoration:none">Apri</a>
+                  <a href="${escAttr(ferry.pdfPath || ferry.documentUrl)}" target="_blank" rel="noopener" style="font-size:var(--font-size-sm);color:var(--color-primary);text-decoration:none">Apri</a>
                   <button type="button" class="ferry-doc-replace-btn" style="font-size:var(--font-size-sm);color:var(--color-gray-500);background:none;border:none;cursor:pointer;padding:0">Sostituisci</button>
                   <button type="button" class="ferry-doc-remove-btn" style="font-size:var(--font-size-sm);color:var(--color-danger,#e53e3e);background:none;border:none;cursor:pointer;padding:0">Rimuovi</button>
                 </span>
               </div>
             </div>
           ` : ''}
-          <div class="ferry-doc-upload" data-doc-upload ${ferry.documentUrl ? 'style="display:none"' : ''}>
+          <div class="ferry-doc-upload" data-doc-upload ${(ferry.pdfPath || ferry.documentUrl) ? 'style="display:none"' : ''}>
             <label class="file-upload-zone" data-doc-drop-zone style="cursor:pointer">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
               <span class="file-upload-zone-text">Carica PDF</span>
@@ -733,6 +733,7 @@
     const removeSentinel = formView.querySelector('[data-doc-remove]');
     if (removeSentinel && removeSentinel.dataset.docRemove === '1') {
       updates.documentUrl = null;
+      updates.pdfPath = null;
     }
 
     // Passengers
