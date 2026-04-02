@@ -3160,9 +3160,15 @@
       const ids = selected.dataset.value.split(',');
       const selectedType = selected.dataset.type;
       const passengerName = selected.dataset.passenger;
-      const allItems = selectedType === 'flight'
-        ? (currentTripData?.flights || [])
-        : (currentTripData?.hotels || []);
+      const allItemsMap = {
+        flight: currentTripData?.flights || [],
+        hotel: currentTripData?.hotels || [],
+        train: currentTripData?.trains || [],
+        bus: currentTripData?.buses || [],
+        rental: currentTripData?.rentals || [],
+        ferry: currentTripData?.ferries || []
+      };
+      const allItems = allItemsMap[selectedType] || [];
       const selectedItems = allItems.filter(it => ids.includes(it.id));
 
       if (selectedItems.length === 0) return;
@@ -3177,7 +3183,7 @@
         const itemLabel = selectedType === 'flight'
           ? `${item.flightNumber || ''} ${item.departure?.code || ''} → ${item.arrival?.code || ''}`
           : (item.name || 'Hotel');
-        const form = ({ flight: window.tripFlights, hotel: window.tripHotels, train: window.tripTrains, bus: window.tripBuses }[selectedType] || window.tripFlights).buildFullEditForm(item);
+        const form = ({ flight: window.tripFlights, hotel: window.tripHotels, train: window.tripTrains, bus: window.tripBuses, rental: window.tripRentals, ferry: window.tripFerries }[selectedType] || window.tripFlights).buildFullEditForm(item);
         formHTML = `
           <div class="manage-edit-item" data-item-id="${item.id}">
             <div class="manage-edit-item-header">${esc(itemLabel)}</div>
@@ -3222,6 +3228,11 @@
             window.AirportAutocomplete.init(panelBody);
           }
         });
+      }
+
+      // Ferry form listeners (custom selects, return toggle, doc handlers)
+      if (selectedType === 'ferry' && window.tripFerries?.attachFormListeners) {
+        window.tripFerries.attachFormListeners(panelBody);
       }
 
       // Add-field mechanism
@@ -3274,7 +3285,7 @@
 
         try {
           if (selectedItems.length === 1) {
-            const updates = ({ flight: window.tripFlights, hotel: window.tripHotels, train: window.tripTrains, bus: window.tripBuses }[selectedType] || window.tripFlights).collectFullUpdates(panelBody);
+            const updates = ({ flight: window.tripFlights, hotel: window.tripHotels, train: window.tripTrains, bus: window.tripBuses, rental: window.tripRentals, ferry: window.tripFerries }[selectedType] || window.tripFlights).collectFullUpdates(panelBody);
 
             const response = await utils.authFetch('/.netlify/functions/edit-booking', {
               method: 'POST',
@@ -3286,7 +3297,7 @@
             const itemSections = panelBody.querySelectorAll('.manage-edit-item');
             for (const section of itemSections) {
               const itemId = section.dataset.itemId;
-              const updates = ({ flight: window.tripFlights, hotel: window.tripHotels, train: window.tripTrains, bus: window.tripBuses }[selectedType] || window.tripFlights).collectFullUpdates(section);
+              const updates = ({ flight: window.tripFlights, hotel: window.tripHotels, train: window.tripTrains, bus: window.tripBuses, rental: window.tripRentals, ferry: window.tripFerries }[selectedType] || window.tripFlights).collectFullUpdates(section);
 
               const response = await utils.authFetch('/.netlify/functions/edit-booking', {
                 method: 'POST',
