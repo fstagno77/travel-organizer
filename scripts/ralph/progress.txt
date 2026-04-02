@@ -82,3 +82,31 @@ Started: Thu Apr  2 12:25:58 CEST 2026
   - Il catch block di open() ora usa `saveBtnOriginalText` per restaurare il testo del bottone — non modificarlo per i prossimi tipi
   - buildHotelForm restituisce { form, getValues, validate, saveBtn, getFile } — pattern identico a buildFlightForm
 ---
+
+## 2026-04-02 - US-005
+- Creato buildTrainForm(prefill) in js/manualBookingForm.js con 8 campi obbligatori + 6 opzionali
+- Campi obbligatori: stazione partenza, città partenza, stazione arrivo, città arrivo, data, orario partenza, numero treno, operatore
+- getValues() restituisce struttura con departure.{station,city,time} e arrival.{station,city,time}
+- Branch `type === 'train'` aggiunto in open() di manualBookingForm.js
+- 33 test in tests/us005-manual-booking-train.test.js — tutti passano
+- Files changed: js/manualBookingForm.js, tests/us005-manual-booking-train.test.js (nuovo)
+- **Learnings for future iterations:**
+  - buildTrainForm usa la stessa struttura { form, getValues, validate, saveBtn, getFile } — consolidato per tutti i form
+  - Per bus (US-006): campi obbligatori sono città (non stazioni) — la stazione è opzionale
+  - Il form treno non ha CustomSelect (classe è testo libero) — non ogni form necessita CustomSelect
+  - I test usano `formCode.slice(formCode.indexOf('function buildTrainForm'), formCode.indexOf('function restoreModal'))` per isolare la sezione del form
+---
+
+## 2026-04-02 - US-006
+- Creato buildBusForm(prefill) in js/manualBookingForm.js con 5 campi obbligatori + 5 opzionali
+- Campi obbligatori: città partenza, città arrivo, data, orario partenza, operatore
+- Campi opzionali: stazione/terminal partenza, stazione/terminal arrivo, numero rotta, posto, prezzo
+- getValues() restituisce struttura piatta (departureCity, arrivalCity) — no oggetti nested come treno
+- Branch `type === 'bus'` aggiunto in open() di manualBookingForm.js
+- 26 test in tests/us006-manual-booking-bus.test.js — tutti passano
+- Files changed: js/manualBookingForm.js, tests/us006-manual-booking-bus.test.js (nuovo)
+- **Learnings for future iterations:**
+  - Bus usa struttura dati piatta (no departure/arrival objects) — diverso da treno che usa oggetti nested
+  - Per ferry (US-008): usare CustomSelect per tipo passeggero e tipo veicolo (nota PRD)
+  - Il pattern per isolare la sezione bus nei test: `formCode.slice(formCode.indexOf('function buildBusForm'), formCode.indexOf('function restoreModal'))`
+---
