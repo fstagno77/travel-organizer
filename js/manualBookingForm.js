@@ -871,6 +871,224 @@ window.manualBookingForm = (() => {
   }
 
   /**
+   * Calcola il numero di giorni tra due date in formato YYYY-MM-DD.
+   * @param {string} dateStart
+   * @param {string} dateEnd
+   * @returns {number|null}
+   */
+  function calcDays(dateStart, dateEnd) {
+    if (!dateStart || !dateEnd) return null;
+    const d1 = new Date(dateStart);
+    const d2 = new Date(dateEnd);
+    const diff = Math.round((d2 - d1) / (1000 * 60 * 60 * 24));
+    return diff > 0 ? diff : null;
+  }
+
+  /**
+   * Costruisce il form noleggio auto.
+   * @param {Object} prefill - dati da pre-popolare
+   * @returns {{ form: HTMLElement, getValues: function, validate: function, saveBtn: HTMLButtonElement, getFile: function }}
+   */
+  function buildRentalForm(prefill = {}) {
+    const form = document.createElement('div');
+    form.className = 'manual-booking-form manual-booking-form--rental';
+    form.dataset.bookingType = 'rental';
+
+    // Intestazione
+    const heading = document.createElement('p');
+    heading.className = 'manual-form-heading';
+    heading.style.cssText = 'font-weight:var(--font-weight-semibold);margin-bottom:var(--spacing-4);color:var(--color-gray-700);';
+    heading.textContent = 'Inserisci i dettagli del noleggio auto';
+    form.appendChild(heading);
+
+    // Scrollable body
+    const scroll = document.createElement('div');
+    scroll.style.cssText = 'overflow-y:auto;max-height:55vh;padding-right:4px;';
+
+    // --- Campi obbligatori ---
+    const { wrapper: wProvider, input: iProvider } = buildField({
+      id: 'mbf-rental-provider', label: 'Fornitore', required: true,
+      placeholder: 'es. Hertz, Avis', value: prefill.provider || ''
+    });
+    const { wrapper: wPickupCity, input: iPickupCity } = buildField({
+      id: 'mbf-rental-pickup-city', label: 'Città ritiro', required: true,
+      placeholder: 'es. Roma', value: prefill.pickupLocation?.city || prefill.pickupCity || ''
+    });
+    scroll.appendChild(buildRow(wProvider, wPickupCity));
+
+    const { wrapper: wPickupDate, input: iPickupDate } = buildField({
+      id: 'mbf-rental-date', label: 'Data ritiro', type: 'date', required: true,
+      value: prefill.date || prefill.pickupDate || ''
+    });
+    const { wrapper: wPickupTime, input: iPickupTime } = buildField({
+      id: 'mbf-rental-pickup-time', label: 'Ora ritiro', type: 'time', required: true,
+      value: prefill.pickupLocation?.time || prefill.pickupTime || ''
+    });
+    scroll.appendChild(buildRow(wPickupDate, wPickupTime));
+
+    const { wrapper: wDropoffDate, input: iDropoffDate } = buildField({
+      id: 'mbf-rental-end-date', label: 'Data restituzione', type: 'date', required: true,
+      value: prefill.endDate || prefill.dropoffDate || ''
+    });
+    const { wrapper: wDropoffTime, input: iDropoffTime } = buildField({
+      id: 'mbf-rental-dropoff-time', label: 'Ora restituzione', type: 'time', required: true,
+      value: prefill.dropoffLocation?.time || prefill.dropoffTime || ''
+    });
+    scroll.appendChild(buildRow(wDropoffDate, wDropoffTime));
+
+    // Giorni noleggio — campo read-only calcolato automaticamente
+    const daysWrapper = document.createElement('div');
+    daysWrapper.className = 'form-group';
+    const daysLbl = document.createElement('label');
+    daysLbl.textContent = 'Giorni noleggio';
+    daysWrapper.appendChild(daysLbl);
+    const daysInput = document.createElement('input');
+    daysInput.type = 'text';
+    daysInput.id = 'mbf-rental-days';
+    daysInput.className = 'form-input';
+    daysInput.readOnly = true;
+    daysInput.placeholder = '— calcolato automaticamente —';
+    daysWrapper.appendChild(daysInput);
+
+    const updateDays = () => {
+      const d = calcDays(iPickupDate.value, iDropoffDate.value);
+      daysInput.value = d !== null ? `${d} giorn${d === 1 ? 'o' : 'i'}` : '';
+    };
+
+    iPickupDate.addEventListener('change', updateDays);
+    iDropoffDate.addEventListener('change', updateDays);
+    updateDays();
+
+    // --- Campi opzionali ---
+    const { wrapper: wPickupAddress, input: iPickupAddress } = buildField({
+      id: 'mbf-rental-pickup-address', label: 'Indirizzo ritiro',
+      placeholder: 'es. Via Roma 1', value: prefill.pickupLocation?.address || ''
+    });
+    scroll.appendChild(buildRow(daysWrapper, wPickupAddress));
+
+    const { wrapper: wPickupAirport, input: iPickupAirport } = buildField({
+      id: 'mbf-rental-pickup-airport', label: 'Aeroporto ritiro',
+      placeholder: 'es. FCO', value: prefill.pickupLocation?.airport || ''
+    });
+    const { wrapper: wDropoffCity, input: iDropoffCity } = buildField({
+      id: 'mbf-rental-dropoff-city', label: 'Città restituzione',
+      placeholder: 'es. Milano', value: prefill.dropoffLocation?.city || ''
+    });
+    scroll.appendChild(buildRow(wPickupAirport, wDropoffCity));
+
+    const { wrapper: wCategory, input: iCategory } = buildField({
+      id: 'mbf-rental-category', label: 'Categoria veicolo',
+      placeholder: 'es. Compatta, SUV', value: prefill.vehicleCategory || ''
+    });
+    const { wrapper: wMake, input: iMake } = buildField({
+      id: 'mbf-rental-make', label: 'Marca',
+      placeholder: 'es. Fiat', value: prefill.vehicleMake || ''
+    });
+    scroll.appendChild(buildRow(wCategory, wMake));
+
+    const { wrapper: wModel, input: iModel } = buildField({
+      id: 'mbf-rental-model', label: 'Modello',
+      placeholder: 'es. 500', value: prefill.vehicleModel || ''
+    });
+    const { wrapper: wConfirm, input: iConfirm } = buildField({
+      id: 'mbf-rental-confirmation', label: 'Numero conferma',
+      placeholder: 'es. HZ123456', value: prefill.confirmationNumber || ''
+    });
+    scroll.appendChild(buildRow(wModel, wConfirm));
+
+    const { wrapper: wInsurance, input: iInsurance } = buildField({
+      id: 'mbf-rental-insurance', label: 'Assicurazione',
+      placeholder: 'es. CDW, Full Coverage', value: prefill.insurance || ''
+    });
+    const { wrapper: wPrice, input: iPrice } = buildField({
+      id: 'mbf-rental-price', label: 'Prezzo (€)', type: 'number', placeholder: '0.00',
+      value: prefill.price || ''
+    });
+    scroll.appendChild(buildRow(wInsurance, wPrice));
+
+    // Upload documento
+    const { wrapper: wDoc, getFile } = buildDocumentUpload();
+    scroll.appendChild(wDoc);
+
+    form.appendChild(scroll);
+
+    // Pulsante Salva
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'btn btn-primary';
+    saveBtn.id = 'manual-booking-save';
+    saveBtn.textContent = 'Salva noleggio';
+    saveBtn.disabled = true;
+
+    // Aggiornamento stato bottone
+    const requiredInputs = [iProvider, iPickupCity, iPickupDate, iPickupTime, iDropoffDate, iDropoffTime];
+    requiredInputs.forEach(inp => {
+      inp.addEventListener('input', () => {
+        clearFieldError(inp);
+        updateSaveBtn(form, saveBtn);
+      });
+      inp.addEventListener('change', () => {
+        clearFieldError(inp);
+        updateSaveBtn(form, saveBtn);
+      });
+    });
+
+    const getValues = () => ({
+      provider: iProvider.value.trim(),
+      pickupLocation: {
+        city: iPickupCity.value.trim(),
+        time: iPickupTime.value,
+        address: iPickupAddress.value.trim() || undefined,
+        airport: iPickupAirport.value.trim() || undefined,
+      },
+      date: iPickupDate.value,
+      endDate: iDropoffDate.value,
+      dropoffLocation: {
+        city: iDropoffCity.value.trim() || undefined,
+        time: iDropoffTime.value,
+      },
+      vehicleCategory: iCategory.value.trim() || undefined,
+      vehicleMake: iMake.value.trim() || undefined,
+      vehicleModel: iModel.value.trim() || undefined,
+      confirmationNumber: iConfirm.value.trim() || undefined,
+      insurance: iInsurance.value.trim() || undefined,
+      price: iPrice.value ? parseFloat(iPrice.value) : undefined,
+    });
+
+    const validate = () => {
+      let valid = true;
+
+      // Validazione data restituzione non antecedente ritiro
+      if (iPickupDate.value && iDropoffDate.value) {
+        const days = calcDays(iPickupDate.value, iDropoffDate.value);
+        if (days === null || days <= 0) {
+          showFieldError(iDropoffDate, 'La data di restituzione deve essere successiva alla data di ritiro');
+          valid = false;
+        }
+      }
+
+      const checks = [
+        { input: iProvider,    msg: 'Inserisci il fornitore' },
+        { input: iPickupCity,  msg: 'Inserisci la città di ritiro' },
+        { input: iPickupDate,  msg: 'Inserisci la data di ritiro' },
+        { input: iPickupTime,  msg: 'Inserisci l\'ora di ritiro' },
+        { input: iDropoffDate, msg: 'Inserisci la data di restituzione' },
+        { input: iDropoffTime, msg: 'Inserisci l\'ora di restituzione' },
+      ];
+      checks.forEach(({ input, msg }) => {
+        if (!input.value || input.value.trim() === '') {
+          showFieldError(input, msg);
+          valid = false;
+        } else if (input !== iDropoffDate) {
+          clearFieldError(input);
+        }
+      });
+      return valid;
+    };
+
+    return { form, getValues, validate, saveBtn, getFile };
+  }
+
+  /**
    * Ripristina il contenuto originale della modale.
    * @param {HTMLElement} modal
    * @param {string} origBody
@@ -957,8 +1175,10 @@ window.manualBookingForm = (() => {
       formModule = buildTrainForm(prefill);
     } else if (type === 'bus') {
       formModule = buildBusForm(prefill);
+    } else if (type === 'rental') {
+      formModule = buildRentalForm(prefill);
     } else {
-      // Tipi non ancora implementati (US-007+): placeholder
+      // Tipi non ancora implementati (US-008+): placeholder
       modalBody.innerHTML = `
         <div style="padding:var(--spacing-8);text-align:center;color:var(--color-gray-500);">
           <p>Form per <strong>${type}</strong> in arrivo.</p>
