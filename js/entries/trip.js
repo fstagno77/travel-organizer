@@ -30,4 +30,5 @@ import '../notifications.js';
 import '../profile.js';
 import '../pendingBookingModal.js';
 import '../main.js';
+import '../manualBookingForm.js';
 import '../tripPage.js';

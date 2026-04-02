@@ -1,0 +1,491 @@
+/**
+ * manualBookingForm.js
+ * Gestisce i form di creazione manuale prenotazione.
+ * Espone window.manualBookingForm.open(type, modal, tripId, { onSaved })
+ */
+window.manualBookingForm = (() => {
+  'use strict';
+
+  // Opzioni classe volo per CustomSelect
+  const FLIGHT_CLASS_OPTIONS = [
+    { value: '', label: '— Seleziona classe —' },
+    { value: 'economy', label: 'Economy' },
+    { value: 'premium_economy', label: 'Premium Economy' },
+    { value: 'business', label: 'Business' },
+    { value: 'first', label: 'First' },
+  ];
+
+  /**
+   * Mostra un errore inline sotto un campo.
+   * @param {HTMLElement} input
+   * @param {string} msg
+   */
+  function showFieldError(input, msg) {
+    input.classList.add('input-error');
+    let err = input.parentElement.querySelector('.field-error-msg');
+    if (!err) {
+      err = document.createElement('p');
+      err.className = 'field-error-msg';
+      err.style.cssText = 'color:var(--color-danger,#e53e3e);font-size:var(--font-size-sm);margin:4px 0 0;';
+      input.parentElement.appendChild(err);
+    }
+    err.textContent = msg;
+  }
+
+  /**
+   * Rimuove l'errore inline da un campo.
+   * @param {HTMLElement} input
+   */
+  function clearFieldError(input) {
+    input.classList.remove('input-error');
+    const err = input.parentElement?.querySelector('.field-error-msg');
+    if (err) err.remove();
+  }
+
+  /**
+   * Aggiorna lo stato del pulsante Salva.
+   * Disabilitato finché tutti i campi obbligatori non hanno un valore.
+   * @param {HTMLElement} form
+   * @param {HTMLButtonElement} saveBtn
+   */
+  function updateSaveBtn(form, saveBtn) {
+    const requiredInputs = form.querySelectorAll('[data-required]');
+    let allFilled = true;
+    requiredInputs.forEach(input => {
+      if (!input.value || input.value.trim() === '') allFilled = false;
+    });
+    saveBtn.disabled = !allFilled;
+  }
+
+  /**
+   * Costruisce un <div class="form-group"> con label + input.
+   * @param {Object} opts
+   * @returns {{wrapper: HTMLElement, input: HTMLInputElement}}
+   */
+  function buildField({ id, label, type = 'text', placeholder = '', required = false, value = '' }) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'form-group';
+
+    const lbl = document.createElement('label');
+    lbl.htmlFor = id;
+    lbl.innerHTML = required
+      ? `${label} <span style="color:var(--color-danger,#e53e3e)">*</span>`
+      : label;
+    wrapper.appendChild(lbl);
+
+    const input = document.createElement('input');
+    input.type = type;
+    input.id = id;
+    input.className = 'form-input';
+    input.placeholder = placeholder;
+    if (value) input.value = value;
+    if (required) input.dataset.required = '1';
+    wrapper.appendChild(input);
+
+    return { wrapper, input };
+  }
+
+  /**
+   * Costruisce un wrapper a due colonne per due form-group affiancati.
+   * @param {HTMLElement} leftGroup
+   * @param {HTMLElement} rightGroup
+   * @returns {HTMLElement}
+   */
+  function buildRow(leftGroup, rightGroup) {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:var(--spacing-3);';
+    leftGroup.style.flex = '1';
+    rightGroup.style.flex = '1';
+    row.appendChild(leftGroup);
+    row.appendChild(rightGroup);
+    return row;
+  }
+
+  /**
+   * Costruisce la sezione upload documento opzionale.
+   * @returns {{wrapper: HTMLElement, getFile: function(): File|null}}
+   */
+  function buildDocumentUpload() {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'form-group manual-booking-doc-upload';
+
+    const lbl = document.createElement('label');
+    lbl.textContent = 'Documento allegato (opzionale)';
+    wrapper.appendChild(lbl);
+
+    const zone = document.createElement('div');
+    zone.className = 'manual-booking-upload-zone';
+    zone.style.cssText = `
+      border: 1.5px dashed var(--color-gray-300);
+      border-radius: var(--radius-md);
+      padding: var(--spacing-4);
+      text-align: center;
+      cursor: pointer;
+      background: var(--color-gray-50,#f9fafb);
+      transition: border-color 0.15s;
+    `;
+
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.pdf,image/*';
+    fileInput.hidden = true;
+    fileInput.id = 'manual-booking-doc-input';
+
+    const hint = document.createElement('p');
+    hint.style.cssText = 'font-size:var(--font-size-sm);color:var(--color-gray-500);margin:0;pointer-events:none;';
+    hint.textContent = 'Clicca o trascina un PDF o immagine';
+
+    zone.appendChild(hint);
+    wrapper.appendChild(fileInput);
+    wrapper.appendChild(zone);
+
+    zone.addEventListener('click', () => fileInput.click());
+    zone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      zone.style.borderColor = 'var(--color-primary)';
+    });
+    zone.addEventListener('dragleave', () => {
+      zone.style.borderColor = 'var(--color-gray-300)';
+    });
+    zone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      zone.style.borderColor = 'var(--color-gray-300)';
+      if (e.dataTransfer.files.length > 0) {
+        fileInput.files = e.dataTransfer.files;
+        hint.textContent = e.dataTransfer.files[0].name;
+      }
+    });
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files.length > 0) {
+        hint.textContent = fileInput.files[0].name;
+      }
+    });
+
+    return {
+      wrapper,
+      getFile: () => (fileInput.files.length > 0 ? fileInput.files[0] : null)
+    };
+  }
+
+  /**
+   * Costruisce il form volo.
+   * @param {Object} prefill - dati da pre-popolare (es. da SmartParse parziale)
+   * @returns {{ form: HTMLElement, getValues: function, saveBtn: HTMLButtonElement }}
+   */
+  function buildFlightForm(prefill = {}) {
+    const form = document.createElement('div');
+    form.className = 'manual-booking-form manual-booking-form--flight';
+    form.dataset.bookingType = 'flight';
+
+    // Intestazione
+    const heading = document.createElement('p');
+    heading.className = 'manual-form-heading';
+    heading.style.cssText = 'font-weight:var(--font-weight-semibold);margin-bottom:var(--spacing-4);color:var(--color-gray-700);';
+    heading.textContent = 'Inserisci i dettagli del volo';
+    form.appendChild(heading);
+
+    // Scrollable body
+    const scroll = document.createElement('div');
+    scroll.style.cssText = 'overflow-y:auto;max-height:55vh;padding-right:4px;';
+
+    // --- Campi obbligatori ---
+    const { wrapper: wFlightNum, input: iFlightNum } = buildField({
+      id: 'mbf-flight-number', label: 'Codice volo', required: true,
+      placeholder: 'es. AZ0610', value: prefill.flightNumber || ''
+    });
+    const { wrapper: wAirline, input: iAirline } = buildField({
+      id: 'mbf-airline', label: 'Compagnia aerea', required: true,
+      placeholder: 'es. ITA Airways', value: prefill.airline || ''
+    });
+    scroll.appendChild(buildRow(wFlightNum, wAirline));
+
+    const { wrapper: wDate, input: iDate } = buildField({
+      id: 'mbf-date', label: 'Data', type: 'date', required: true,
+      value: prefill.date || ''
+    });
+    const { wrapper: wDepTime, input: iDepTime } = buildField({
+      id: 'mbf-departure-time', label: 'Orario partenza', type: 'time', required: true,
+      value: prefill.departureTime || ''
+    });
+    scroll.appendChild(buildRow(wDate, wDepTime));
+
+    const { wrapper: wDepCity, input: iDepCity } = buildField({
+      id: 'mbf-departure-city', label: 'Città/aeroporto partenza', required: true,
+      placeholder: 'es. Roma Fiumicino (FCO)', value: prefill.departureCity || (prefill.departure?.city || '')
+    });
+    const { wrapper: wArrCity, input: iArrCity } = buildField({
+      id: 'mbf-arrival-city', label: 'Città/aeroporto arrivo', required: true,
+      placeholder: 'es. New York (JFK)', value: prefill.arrivalCity || (prefill.arrival?.city || '')
+    });
+    scroll.appendChild(buildRow(wDepCity, wArrCity));
+
+    // --- Campi opzionali ---
+    const { wrapper: wArrTime, input: iArrTime } = buildField({
+      id: 'mbf-arrival-time', label: 'Orario arrivo', type: 'time',
+      value: prefill.arrivalTime || ''
+    });
+
+    // Classe volo (CustomSelect, nessun <select> nativo)
+    const wClass = document.createElement('div');
+    wClass.className = 'form-group';
+    const lblClass = document.createElement('label');
+    lblClass.textContent = 'Classe';
+    wClass.appendChild(lblClass);
+    let classSelect = null;
+    if (window.CustomSelect) {
+      classSelect = window.CustomSelect.create({
+        options: FLIGHT_CLASS_OPTIONS,
+        selected: prefill.class || '',
+      });
+      wClass.appendChild(classSelect);
+    } else {
+      // Fallback solo per ambienti test senza CustomSelect
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.className = 'form-input';
+      inp.id = 'mbf-class';
+      inp.placeholder = 'economy, business…';
+      inp.value = prefill.class || '';
+      wClass.appendChild(inp);
+    }
+
+    scroll.appendChild(buildRow(wArrTime, wClass));
+
+    const { wrapper: wSeat, input: iSeat } = buildField({
+      id: 'mbf-seat', label: 'Posto', placeholder: 'es. 12A', value: prefill.seat || ''
+    });
+    const { wrapper: wBaggage, input: iBaggage } = buildField({
+      id: 'mbf-baggage', label: 'Bagaglio', placeholder: 'es. 23kg', value: prefill.baggage || ''
+    });
+    scroll.appendChild(buildRow(wSeat, wBaggage));
+
+    const { wrapper: wPnr, input: iPnr } = buildField({
+      id: 'mbf-pnr', label: 'PNR / Codice prenotazione', placeholder: 'es. ABC123',
+      value: prefill.bookingReference || prefill.pnr || ''
+    });
+    const { wrapper: wPrice, input: iPrice } = buildField({
+      id: 'mbf-price', label: 'Prezzo (€)', type: 'number', placeholder: '0.00',
+      value: prefill.price || ''
+    });
+    scroll.appendChild(buildRow(wPnr, wPrice));
+
+    // Passeggeri (testo libero)
+    const { wrapper: wPax, input: iPax } = buildField({
+      id: 'mbf-passengers', label: 'Passeggeri (nomi separati da virgola)',
+      placeholder: 'es. Mario Rossi, Anna Bianchi',
+      value: Array.isArray(prefill.passengers) ? prefill.passengers.map(p => p.name || p).join(', ') : (prefill.passengers || '')
+    });
+    scroll.appendChild(wPax);
+
+    // Upload documento
+    const { wrapper: wDoc, getFile } = buildDocumentUpload();
+    scroll.appendChild(wDoc);
+
+    form.appendChild(scroll);
+
+    // Pulsante Salva (gestito dal chiamante, qui solo creato)
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'btn btn-primary';
+    saveBtn.id = 'manual-booking-save';
+    saveBtn.textContent = 'Salva volo';
+    saveBtn.disabled = true;
+
+    // Aggiornamento stato bottone al cambio dei required
+    const requiredInputs = [iFlightNum, iAirline, iDate, iDepTime, iDepCity, iArrCity];
+    requiredInputs.forEach(inp => {
+      inp.addEventListener('input', () => {
+        clearFieldError(inp);
+        updateSaveBtn(form, saveBtn);
+      });
+    });
+
+    // Restituisce valori del form
+    const getValues = () => {
+      const flightClass = classSelect ? window.CustomSelect.getValue(classSelect) : (form.querySelector('#mbf-class')?.value || '');
+      const paxRaw = iPax.value.trim();
+      const passengers = paxRaw
+        ? paxRaw.split(',').map(n => n.trim()).filter(Boolean).map(name => ({ name }))
+        : [];
+
+      return {
+        flightNumber: iFlightNum.value.trim(),
+        airline: iAirline.value.trim(),
+        date: iDate.value,
+        departureTime: iDepTime.value,
+        departureCity: iDepCity.value.trim(),
+        arrivalCity: iArrCity.value.trim(),
+        arrivalTime: iArrTime.value || undefined,
+        class: flightClass || undefined,
+        seat: iSeat.value.trim() || undefined,
+        baggage: iBaggage.value.trim() || undefined,
+        bookingReference: iPnr.value.trim() || undefined,
+        price: iPrice.value ? parseFloat(iPrice.value) : undefined,
+        passengers: passengers.length > 0 ? passengers : undefined,
+      };
+    };
+
+    /**
+     * Valida i campi obbligatori e mostra gli errori.
+     * @returns {boolean} true se tutto valido
+     */
+    const validate = () => {
+      let valid = true;
+      const checks = [
+        { input: iFlightNum, msg: 'Inserisci il codice volo' },
+        { input: iAirline,   msg: 'Inserisci la compagnia aerea' },
+        { input: iDate,      msg: 'Inserisci la data del volo' },
+        { input: iDepTime,   msg: 'Inserisci l\'orario di partenza' },
+        { input: iDepCity,   msg: 'Inserisci la città/aeroporto di partenza' },
+        { input: iArrCity,   msg: 'Inserisci la città/aeroporto di arrivo' },
+      ];
+      checks.forEach(({ input, msg }) => {
+        if (!input.value || input.value.trim() === '') {
+          showFieldError(input, msg);
+          valid = false;
+        } else {
+          clearFieldError(input);
+        }
+      });
+      return valid;
+    };
+
+    return { form, getValues, validate, saveBtn, getFile };
+  }
+
+  /**
+   * Ripristina il contenuto originale della modale.
+   * @param {HTMLElement} modal
+   * @param {string} origBody
+   * @param {string} origFooter
+   */
+  function restoreModal(modal, origBody, origFooter) {
+    const modalBody = modal.querySelector('.modal-body');
+    const modalFooter = modal.querySelector('.modal-footer');
+    if (modalBody) modalBody.innerHTML = origBody;
+    if (modalFooter) modalFooter.innerHTML = origFooter;
+    // Ri-applica i18n
+    if (window.i18n) i18n.apply(modal);
+    // Ri-collega gli eventi della modale originale
+    if (window.tripPage && typeof window.tripPage._rebindAddBookingModal === 'function') {
+      window.tripPage._rebindAddBookingModal(modal);
+    }
+  }
+
+  /**
+   * Salva una prenotazione manuale via API.
+   * @param {string} tripId
+   * @param {string} type
+   * @param {Object} manualData
+   * @param {File|null} docFile
+   * @returns {Promise<Object>}
+   */
+  async function saveManualBooking(tripId, type, manualData, docFile) {
+    let documentUrl = undefined;
+
+    // Upload opzionale del documento
+    if (docFile) {
+      try {
+        const base64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(docFile);
+        });
+        documentUrl = base64;
+      } catch {
+        // Upload documento non critico — continua senza
+      }
+    }
+
+    const payload = { action: 'manual-booking', tripId, type, manualData };
+    if (documentUrl) payload.documentUrl = documentUrl;
+
+    const response = await utils.authFetch('/.netlify/functions/add-booking', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || 'Errore durante il salvataggio');
+    }
+    return result;
+  }
+
+  /**
+   * Apre il form manuale per il tipo specificato nella modale.
+   * @param {string} type - 'flight'|'hotel'|'train'|'bus'|'rental'|'ferry'
+   * @param {HTMLElement} modal - l'elemento modale (#add-booking-modal)
+   * @param {string} tripId
+   * @param {{ onSaved?: function, prefill?: Object }} opts
+   */
+  function open(type, modal, tripId, opts = {}) {
+    const { onSaved, prefill = {} } = opts;
+    const modalBody = modal.querySelector('.modal-body');
+    const modalFooter = modal.querySelector('.modal-footer');
+    if (!modalBody || !modalFooter) return;
+
+    // Salva contenuto originale per il tasto "Indietro"
+    const origBody = modalBody.innerHTML;
+    const origFooter = modalFooter.innerHTML;
+
+    let formModule;
+    if (type === 'flight') {
+      formModule = buildFlightForm(prefill);
+    } else {
+      // Tipi non ancora implementati (US-004+): placeholder
+      modalBody.innerHTML = `
+        <div style="padding:var(--spacing-8);text-align:center;color:var(--color-gray-500);">
+          <p>Form per <strong>${type}</strong> in arrivo.</p>
+        </div>`;
+      modalFooter.innerHTML = '';
+      const backBtn = document.createElement('button');
+      backBtn.className = 'btn btn-secondary';
+      backBtn.textContent = 'Indietro';
+      backBtn.addEventListener('click', () => restoreModal(modal, origBody, origFooter));
+      modalFooter.appendChild(backBtn);
+      return;
+    }
+
+    const { form, getValues, validate, saveBtn, getFile } = formModule;
+
+    // Aggiorna lo stato del Save btn con la funzione pubblica
+    updateSaveBtn(form, saveBtn);
+
+    // Sostituisce contenuto modale
+    modalBody.innerHTML = '';
+    modalBody.appendChild(form);
+
+    // Footer: Indietro + Salva
+    modalFooter.innerHTML = '';
+    const backBtn = document.createElement('button');
+    backBtn.className = 'btn btn-secondary';
+    backBtn.id = 'manual-booking-back';
+    backBtn.textContent = 'Indietro';
+    backBtn.addEventListener('click', () => restoreModal(modal, origBody, origFooter));
+    modalFooter.appendChild(backBtn);
+    modalFooter.appendChild(saveBtn);
+
+    // Gestione submit
+    saveBtn.addEventListener('click', async () => {
+      if (!validate()) return;
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Salvataggio…';
+
+      try {
+        const manualData = getValues();
+        const docFile = getFile();
+        await saveManualBooking(tripId, type, manualData, docFile);
+        utils.showToast('Prenotazione aggiunta', 'success');
+        if (typeof onSaved === 'function') onSaved();
+      } catch (err) {
+        utils.showToast(err.message || 'Errore durante il salvataggio', 'error');
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Salva volo';
+      }
+    });
+  }
+
+  return { open };
+})();
