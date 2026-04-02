@@ -422,7 +422,7 @@ const parsePreview = {
 
       // Passeggeri ferry
       const ferryPassengers = f.passengers?.length > 0 ? f.passengers : [];
-      html += `<div class="parse-section-header parse-ferry-pax-header" style="margin-top:14px"><span>Passeggeri (${ferryPassengers.length})</span></div>`;
+      html += `<div class="parse-section-header parse-ferry-pax-header" style="margin-top:14px;display:flex;justify-content:space-between;align-items:center"><span>Passeggeri (${ferryPassengers.length})</span><button type="button" class="parse-add-pax-btn" style="display:none;font-size:12px;color:var(--primary);background:none;border:none;cursor:pointer;padding:0">+ Aggiungi passeggero</button></div>`;
       html += `<div class="parse-ferry-passengers" data-ferry-index="${i}">`;
       html += `<table class="parse-ferry-pax-table" style="width:100%;border-collapse:collapse;margin-top:4px">`;
       html += `<thead><tr>
@@ -439,11 +439,7 @@ const parsePreview = {
           </td>
           <td style="padding:5px 0;font-size:12px;color:var(--text-secondary)">
             <span class="parse-pax-type-display">${this._esc(p.type || '—')}</span>
-            <select class="parse-pax-type-select" data-field="passengers[${pi}].type" data-original="${this._esc(p.type || '')}" style="display:none">
-              <option value="ADT"${p.type === 'ADT' ? ' selected' : ''}>ADT</option>
-              <option value="CHD"${p.type === 'CHD' ? ' selected' : ''}>CHD</option>
-              <option value="INF"${p.type === 'INF' ? ' selected' : ''}>INF</option>
-            </select>
+            <div class="parse-pax-type-cs-placeholder" data-pax-type="${this._esc(p.type || 'ADT')}" data-field="passengers[${pi}].type" data-original="${this._esc(p.type || '')}" style="display:none"></div>
           </td>
           <td class="parse-ferry-edit-col" style="display:none;text-align:center">
             <button type="button" class="parse-pax-remove-btn" data-pax-index="${pi}" title="Rimuovi" style="background:none;border:none;cursor:pointer;color:var(--text-secondary);font-size:14px;padding:0 4px">×</button>
@@ -451,12 +447,11 @@ const parsePreview = {
         </tr>`;
       }
       html += `</tbody></table>`;
-      html += `<button type="button" class="parse-add-pax-btn" style="display:none;margin-top:6px;font-size:12px;color:var(--primary);background:none;border:none;cursor:pointer;padding:0">+ Aggiungi passeggero</button>`;
       html += `</div>`;
 
       // Veicoli a bordo
       const ferryVehicles = f.vehicles?.length > 0 ? f.vehicles : [];
-      html += `<div class="parse-section-header parse-ferry-veh-header" style="margin-top:14px"><span>Veicoli a bordo (${ferryVehicles.length})</span></div>`;
+      html += `<div class="parse-section-header parse-ferry-veh-header" style="margin-top:14px;display:flex;justify-content:space-between;align-items:center"><span>Veicoli a bordo (${ferryVehicles.length})</span><button type="button" class="parse-add-veh-btn" style="display:none;font-size:12px;color:var(--primary);background:none;border:none;cursor:pointer;padding:0">+ Aggiungi veicolo</button></div>`;
       html += `<div class="parse-ferry-vehicles" data-ferry-index="${i}">`;
       html += `<table class="parse-ferry-veh-table" style="width:100%;border-collapse:collapse;margin-top:4px">`;
       html += `<thead><tr>
@@ -469,12 +464,7 @@ const parsePreview = {
         html += `<tr data-veh-index="${vi}">
           <td style="padding:5px 0;font-size:13px">
             <span class="parse-veh-type-display">${this._esc(v.type || '—')}</span>
-            <select class="parse-veh-type-select" data-field="vehicles[${vi}].type" data-original="${this._esc(v.type || '')}" style="display:none">
-              <option value="auto"${v.type === 'auto' ? ' selected' : ''}>Auto</option>
-              <option value="moto"${v.type === 'moto' ? ' selected' : ''}>Moto</option>
-              <option value="camper"${v.type === 'camper' ? ' selected' : ''}>Camper</option>
-              <option value="furgone"${v.type === 'furgone' ? ' selected' : ''}>Furgone</option>
-            </select>
+            <div class="parse-veh-type-cs-placeholder" data-veh-type="${this._esc(v.type || 'auto')}" data-field="vehicles[${vi}].type" data-original="${this._esc(v.type || '')}" style="display:none"></div>
           </td>
           <td style="padding:5px 0;font-size:12px;color:var(--text-secondary)">
             <span class="parse-veh-plate-display">${this._esc(v.plate || '—')}</span>
@@ -486,7 +476,6 @@ const parsePreview = {
         </tr>`;
       }
       html += `</tbody></table>`;
-      html += `<button type="button" class="parse-add-veh-btn" style="display:none;margin-top:6px;font-size:12px;color:var(--primary);background:none;border:none;cursor:pointer;padding:0">+ Aggiungi veicolo</button>`;
       html += `</div>`;
 
       // Add-field trigger (visible only in edit mode via CSS)
@@ -685,6 +674,52 @@ const parsePreview = {
   },
 
   _enterFerryEditMode(container) {
+    const PAX_TYPE_OPTIONS = [
+      { value: 'ADT', label: 'ADT' },
+      { value: 'CHD', label: 'CHD' },
+      { value: 'INF', label: 'INF' }
+    ];
+    const VEH_TYPE_OPTIONS = [
+      { value: 'auto',    label: 'Auto' },
+      { value: 'moto',    label: 'Moto' },
+      { value: 'camper',  label: 'Camper' },
+      { value: 'furgone', label: 'Furgone' }
+    ];
+
+    /** Upgrade all .parse-pax-type-cs-placeholder elements in an element to CustomSelect */
+    const _upgradePaxPlaceholders = (scope) => {
+      scope.querySelectorAll('.parse-pax-type-cs-placeholder').forEach(ph => {
+        const cs = window.CustomSelect.create({
+          options: PAX_TYPE_OPTIONS,
+          selected: ph.dataset.paxType || 'ADT',
+          className: 'parse-pax-type-cs',
+          dataAttrs: {
+            field: ph.dataset.field || '',
+            original: ph.dataset.original || ''
+          }
+        });
+        cs.style.cssText = ph.style.cssText; // preserve display:none etc.
+        ph.replaceWith(cs);
+      });
+    };
+
+    /** Upgrade all .parse-veh-type-cs-placeholder elements in an element to CustomSelect */
+    const _upgradeVehPlaceholders = (scope) => {
+      scope.querySelectorAll('.parse-veh-type-cs-placeholder').forEach(ph => {
+        const cs = window.CustomSelect.create({
+          options: VEH_TYPE_OPTIONS,
+          selected: ph.dataset.vehType || 'auto',
+          className: 'parse-veh-type-cs',
+          dataAttrs: {
+            field: ph.dataset.field || '',
+            original: ph.dataset.original || ''
+          }
+        });
+        cs.style.cssText = ph.style.cssText;
+        ph.replaceWith(cs);
+      });
+    };
+
     container.querySelectorAll('.parse-ferry-card').forEach(card => {
       // Show edit columns
       card.querySelectorAll('.parse-ferry-edit-col').forEach(el => { el.style.display = ''; });
@@ -695,23 +730,24 @@ const parsePreview = {
         paxSection.querySelectorAll('.parse-pax-name-display').forEach(el => { el.style.display = 'none'; });
         paxSection.querySelectorAll('.parse-pax-name-input').forEach(el => { el.style.display = ''; });
         paxSection.querySelectorAll('.parse-pax-type-display').forEach(el => { el.style.display = 'none'; });
-        paxSection.querySelectorAll('.parse-pax-type-select').forEach(el => { el.style.display = ''; });
+
+        // Upgrade placeholders → CustomSelect, then show them
+        _upgradePaxPlaceholders(paxSection);
+        paxSection.querySelectorAll('.parse-pax-type-cs').forEach(el => { el.style.display = ''; });
 
         // Remove buttons
         paxSection.querySelectorAll('.parse-pax-remove-btn').forEach(btn => {
           btn.addEventListener('click', () => {
             btn.closest('tr').remove();
-            // Update header count
             const header = card.querySelector('.parse-ferry-pax-header span');
             if (header) header.textContent = `Passeggeri (${paxSection.querySelectorAll('tbody tr').length})`;
           });
         });
 
-        // Add passenger button
-        const addPaxBtn = paxSection.querySelector('.parse-add-pax-btn');
+        // Add passenger button — now in the header
+        const addPaxBtn = card.querySelector('.parse-ferry-pax-header .parse-add-pax-btn');
         if (addPaxBtn) {
           addPaxBtn.style.display = '';
-          // Avoid duplicate listeners
           const newAddPaxBtn = addPaxBtn.cloneNode(true);
           addPaxBtn.replaceWith(newAddPaxBtn);
           newAddPaxBtn.addEventListener('click', () => {
@@ -719,22 +755,32 @@ const parsePreview = {
             const newIndex = tbody.querySelectorAll('tr').length;
             const tr = document.createElement('tr');
             tr.dataset.paxIndex = newIndex;
-            tr.innerHTML = `
-              <td style="padding:5px 0;font-size:13px">
-                <span class="parse-pax-name-display" style="display:none"></span>
-                <input class="parse-pax-name-input parse-field-input" data-field="passengers[${newIndex}].name" data-original="" value="" style="width:100%;box-sizing:border-box" placeholder="Nome">
-              </td>
-              <td style="padding:5px 0;font-size:12px">
-                <span class="parse-pax-type-display" style="display:none"></span>
-                <select class="parse-pax-type-select" data-field="passengers[${newIndex}].type" data-original="">
-                  <option value="ADT">ADT</option>
-                  <option value="CHD">CHD</option>
-                  <option value="INF">INF</option>
-                </select>
-              </td>
-              <td class="parse-ferry-edit-col" style="text-align:center">
-                <button type="button" class="parse-pax-remove-btn" title="Rimuovi" style="background:none;border:none;cursor:pointer;color:var(--text-secondary);font-size:14px;padding:0 4px">×</button>
-              </td>`;
+            // Build name td
+            const nameTd = document.createElement('td');
+            nameTd.style.cssText = 'padding:5px 0;font-size:13px';
+            nameTd.innerHTML = `<span class="parse-pax-name-display" style="display:none"></span><input class="parse-pax-name-input parse-field-input" data-field="passengers[${newIndex}].name" data-original="" value="" style="width:100%;box-sizing:border-box" placeholder="Nome">`;
+            // Build type td with CustomSelect
+            const typeTd = document.createElement('td');
+            typeTd.style.cssText = 'padding:5px 0;font-size:12px';
+            const typeDisplay = document.createElement('span');
+            typeDisplay.className = 'parse-pax-type-display';
+            typeDisplay.style.display = 'none';
+            const typeCs = window.CustomSelect.create({
+              options: PAX_TYPE_OPTIONS,
+              selected: 'ADT',
+              className: 'parse-pax-type-cs',
+              dataAttrs: { field: `passengers[${newIndex}].type`, original: '' }
+            });
+            typeTd.appendChild(typeDisplay);
+            typeTd.appendChild(typeCs);
+            // Build remove td
+            const removeTd = document.createElement('td');
+            removeTd.className = 'parse-ferry-edit-col';
+            removeTd.style.textAlign = 'center';
+            removeTd.innerHTML = `<button type="button" class="parse-pax-remove-btn" title="Rimuovi" style="background:none;border:none;cursor:pointer;color:var(--text-secondary);font-size:14px;padding:0 4px">×</button>`;
+            tr.appendChild(nameTd);
+            tr.appendChild(typeTd);
+            tr.appendChild(removeTd);
             tbody.appendChild(tr);
             tr.querySelector('.parse-pax-remove-btn').addEventListener('click', () => {
               tr.remove();
@@ -752,9 +798,12 @@ const parsePreview = {
       const vehSection = card.querySelector('.parse-ferry-vehicles');
       if (vehSection) {
         vehSection.querySelectorAll('.parse-veh-type-display').forEach(el => { el.style.display = 'none'; });
-        vehSection.querySelectorAll('.parse-veh-type-select').forEach(el => { el.style.display = ''; });
         vehSection.querySelectorAll('.parse-veh-plate-display').forEach(el => { el.style.display = 'none'; });
         vehSection.querySelectorAll('.parse-veh-plate-input').forEach(el => { el.style.display = ''; });
+
+        // Upgrade placeholders → CustomSelect, then show them
+        _upgradeVehPlaceholders(vehSection);
+        vehSection.querySelectorAll('.parse-veh-type-cs').forEach(el => { el.style.display = ''; });
 
         // Remove buttons
         vehSection.querySelectorAll('.parse-veh-remove-btn').forEach(btn => {
@@ -765,8 +814,8 @@ const parsePreview = {
           });
         });
 
-        // Add vehicle button
-        const addVehBtn = vehSection.querySelector('.parse-add-veh-btn');
+        // Add vehicle button — now in the header
+        const addVehBtn = card.querySelector('.parse-ferry-veh-header .parse-add-veh-btn');
         if (addVehBtn) {
           addVehBtn.style.display = '';
           const newAddVehBtn = addVehBtn.cloneNode(true);
@@ -776,23 +825,32 @@ const parsePreview = {
             const newIndex = tbody.querySelectorAll('tr').length;
             const tr = document.createElement('tr');
             tr.dataset.vehIndex = newIndex;
-            tr.innerHTML = `
-              <td style="padding:5px 0;font-size:13px">
-                <span class="parse-veh-type-display" style="display:none"></span>
-                <select class="parse-veh-type-select" data-field="vehicles[${newIndex}].type" data-original="">
-                  <option value="auto">Auto</option>
-                  <option value="moto">Moto</option>
-                  <option value="camper">Camper</option>
-                  <option value="furgone">Furgone</option>
-                </select>
-              </td>
-              <td style="padding:5px 0;font-size:12px">
-                <span class="parse-veh-plate-display" style="display:none"></span>
-                <input class="parse-veh-plate-input parse-field-input" data-field="vehicles[${newIndex}].plate" data-original="" value="" style="width:100%;box-sizing:border-box" placeholder="Targa">
-              </td>
-              <td class="parse-ferry-edit-col" style="text-align:center">
-                <button type="button" class="parse-veh-remove-btn" title="Rimuovi" style="background:none;border:none;cursor:pointer;color:var(--text-secondary);font-size:14px;padding:0 4px">×</button>
-              </td>`;
+            // Build type td with CustomSelect
+            const typeTd = document.createElement('td');
+            typeTd.style.cssText = 'padding:5px 0;font-size:13px';
+            const typeDisplay = document.createElement('span');
+            typeDisplay.className = 'parse-veh-type-display';
+            typeDisplay.style.display = 'none';
+            const typeCs = window.CustomSelect.create({
+              options: VEH_TYPE_OPTIONS,
+              selected: 'auto',
+              className: 'parse-veh-type-cs',
+              dataAttrs: { field: `vehicles[${newIndex}].type`, original: '' }
+            });
+            typeTd.appendChild(typeDisplay);
+            typeTd.appendChild(typeCs);
+            // Build plate td
+            const plateTd = document.createElement('td');
+            plateTd.style.cssText = 'padding:5px 0;font-size:12px';
+            plateTd.innerHTML = `<span class="parse-veh-plate-display" style="display:none"></span><input class="parse-veh-plate-input parse-field-input" data-field="vehicles[${newIndex}].plate" data-original="" value="" style="width:100%;box-sizing:border-box" placeholder="Targa">`;
+            // Build remove td
+            const removeTd = document.createElement('td');
+            removeTd.className = 'parse-ferry-edit-col';
+            removeTd.style.textAlign = 'center';
+            removeTd.innerHTML = `<button type="button" class="parse-veh-remove-btn" title="Rimuovi" style="background:none;border:none;cursor:pointer;color:var(--text-secondary);font-size:14px;padding:0 4px">×</button>`;
+            tr.appendChild(typeTd);
+            tr.appendChild(plateTd);
+            tr.appendChild(removeTd);
             tbody.appendChild(tr);
             tr.querySelector('.parse-veh-remove-btn').addEventListener('click', () => {
               tr.remove();
@@ -819,20 +877,20 @@ const parsePreview = {
         paxSection.querySelectorAll('tbody tr').forEach(tr => {
           const nameInput = tr.querySelector('.parse-pax-name-input');
           const nameDisplay = tr.querySelector('.parse-pax-name-display');
-          const typeSelect = tr.querySelector('.parse-pax-type-select');
+          const typeCs = tr.querySelector('.parse-pax-type-cs');
           const typeDisplay = tr.querySelector('.parse-pax-type-display');
           if (nameInput && nameDisplay) {
             nameDisplay.textContent = nameInput.value || '—';
             nameDisplay.style.display = '';
             nameInput.style.display = 'none';
           }
-          if (typeSelect && typeDisplay) {
-            typeDisplay.textContent = typeSelect.value || '—';
+          if (typeCs && typeDisplay) {
+            typeDisplay.textContent = window.CustomSelect.getValue(typeCs) || '—';
             typeDisplay.style.display = '';
-            typeSelect.style.display = 'none';
+            typeCs.style.display = 'none';
           }
         });
-        const addPaxBtn = paxSection.querySelector('.parse-add-pax-btn');
+        const addPaxBtn = card.querySelector('.parse-ferry-pax-header .parse-add-pax-btn');
         if (addPaxBtn) addPaxBtn.style.display = 'none';
         const header = card.querySelector('.parse-ferry-pax-header span');
         if (header) header.textContent = `Passeggeri (${paxSection.querySelectorAll('tbody tr').length})`;
@@ -842,14 +900,14 @@ const parsePreview = {
       const vehSection = card.querySelector('.parse-ferry-vehicles');
       if (vehSection) {
         vehSection.querySelectorAll('tbody tr').forEach(tr => {
-          const typeSelect = tr.querySelector('.parse-veh-type-select');
+          const typeCs = tr.querySelector('.parse-veh-type-cs');
           const typeDisplay = tr.querySelector('.parse-veh-type-display');
           const plateInput = tr.querySelector('.parse-veh-plate-input');
           const plateDisplay = tr.querySelector('.parse-veh-plate-display');
-          if (typeSelect && typeDisplay) {
-            typeDisplay.textContent = typeSelect.value || '—';
+          if (typeCs && typeDisplay) {
+            typeDisplay.textContent = window.CustomSelect.getValue(typeCs) || '—';
             typeDisplay.style.display = '';
-            typeSelect.style.display = 'none';
+            typeCs.style.display = 'none';
           }
           if (plateInput && plateDisplay) {
             plateDisplay.textContent = plateInput.value || '—';
@@ -857,7 +915,7 @@ const parsePreview = {
             plateInput.style.display = 'none';
           }
         });
-        const addVehBtn = vehSection.querySelector('.parse-add-veh-btn');
+        const addVehBtn = card.querySelector('.parse-ferry-veh-header .parse-add-veh-btn');
         if (addVehBtn) addVehBtn.style.display = 'none';
         const header = card.querySelector('.parse-ferry-veh-header span');
         if (header) header.textContent = `Veicoli a bordo (${vehSection.querySelectorAll('tbody tr').length})`;
@@ -888,14 +946,13 @@ const parsePreview = {
       const card = container.querySelector(cardClass);
       if (!card) return;
 
-      // Build inline picker (select + confirm + cancel) — avoids floating dropdown clipping
+      // Build inline picker (CustomSelect + confirm + cancel) — avoids floating dropdown clipping
       const picker = document.createElement('div');
       picker.className = 'parse-add-field-inline-picker';
       picker.style.display = 'none';
-      picker.style.marginTop = '8px';
-      picker.style.display = 'none';
-      const select = document.createElement('select');
-      select.className = 'parse-add-field-select';
+      // CustomSelect wrapper — populated dynamically when picker opens
+      let fieldCs = null; // will hold the current .cs-wrapper
+      let _missingFields = [];
       const confirmBtn = document.createElement('button');
       confirmBtn.type = 'button';
       confirmBtn.className = 'parse-add-field-confirm-btn';
@@ -904,7 +961,6 @@ const parsePreview = {
       cancelBtn.type = 'button';
       cancelBtn.className = 'parse-add-field-cancel-btn';
       cancelBtn.textContent = '✕';
-      picker.appendChild(select);
       picker.appendChild(confirmBtn);
       picker.appendChild(cancelBtn);
       section.appendChild(picker);
@@ -913,13 +969,17 @@ const parsePreview = {
         const schema = SCHEMA[type] || [];
         const missing = schema.filter(def => !card.querySelector(`input[data-field="${def.field}"]`));
         if (missing.length === 0) return;
-        select.innerHTML = missing.map((def, i) =>
-          `<option value="${i}">${this._esc(def.label)}</option>`
-        ).join('');
-        select._missing = missing;
+        _missingFields = missing;
+        // Re-build the CustomSelect with current missing options
+        if (fieldCs) fieldCs.remove();
+        fieldCs = window.CustomSelect.create({
+          options: missing.map((def, i) => ({ value: String(i), label: def.label })),
+          selected: '0',
+          className: 'parse-add-field-cs'
+        });
+        picker.insertBefore(fieldCs, confirmBtn);
         btn.style.display = 'none';
         picker.style.display = '';
-        select.focus();
       };
 
       const closePicker = () => {
@@ -928,8 +988,8 @@ const parsePreview = {
       };
 
       const addField = () => {
-        const missing = select._missing || [];
-        const idx = parseInt(select.value, 10);
+        const missing = _missingFields;
+        const idx = parseInt(fieldCs ? window.CustomSelect.getValue(fieldCs) : '0', 10);
         if (isNaN(idx) || !missing[idx]) { closePicker(); return; }
         const def = missing[idx];
 
@@ -1093,11 +1153,11 @@ const parsePreview = {
         const newPassengers = [];
         rows.forEach(tr => {
           const nameInput = tr.querySelector('.parse-pax-name-input');
-          const typeSelect = tr.querySelector('.parse-pax-type-select');
+          const typeCs = tr.querySelector('.parse-pax-type-cs');
           const nameDisplay = tr.querySelector('.parse-pax-name-display');
           const typeDisplay = tr.querySelector('.parse-pax-type-display');
           const name = nameInput ? nameInput.value.trim() : (nameDisplay ? nameDisplay.textContent.trim() : '');
-          const type = typeSelect ? typeSelect.value : (typeDisplay ? typeDisplay.textContent.trim() : '');
+          const type = typeCs ? window.CustomSelect.getValue(typeCs) : (typeDisplay ? typeDisplay.textContent.trim() : '');
           if (name && name !== '—') newPassengers.push({ name, type: type || 'ADT' });
         });
         dataObj.passengers = newPassengers;
@@ -1112,11 +1172,11 @@ const parsePreview = {
       if (rows.length > 0) {
         const newVehicles = [];
         rows.forEach(tr => {
-          const typeSelect = tr.querySelector('.parse-veh-type-select');
+          const typeCs = tr.querySelector('.parse-veh-type-cs');
           const plateInput = tr.querySelector('.parse-veh-plate-input');
           const typeDisplay = tr.querySelector('.parse-veh-type-display');
           const plateDisplay = tr.querySelector('.parse-veh-plate-display');
-          const type = typeSelect ? typeSelect.value : (typeDisplay ? typeDisplay.textContent.trim() : '');
+          const type = typeCs ? window.CustomSelect.getValue(typeCs) : (typeDisplay ? typeDisplay.textContent.trim() : '');
           const plate = plateInput ? plateInput.value.trim() : (plateDisplay ? plateDisplay.textContent.trim() : '');
           if (type || (plate && plate !== '—')) newVehicles.push({ type: type || 'auto', plate: plate || '' });
         });

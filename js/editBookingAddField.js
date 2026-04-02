@@ -108,7 +108,7 @@ window.AddFieldHelper = (() => {
 
   /**
    * Build the "+ Aggiungi campo" section HTML.
-   * Uses an inline <select> + button instead of a floating dropdown to avoid
+   * Uses an inline CustomSelect + button instead of a floating dropdown to avoid
    * clipping issues caused by modal transform containing blocks.
    * @param {string} type - 'ferry' | 'flight' | 'hotel' | 'train' | 'bus' | 'rental'
    */
@@ -119,7 +119,7 @@ window.AddFieldHelper = (() => {
         Aggiungi campo
       </button>
       <div class="add-field-inline-picker" style="display:none">
-        <select class="add-field-select"></select>
+        <div class="add-field-cs-mount"></div>
         <button type="button" class="add-field-confirm-btn">Aggiungi</button>
         <button type="button" class="add-field-cancel-btn">✕</button>
       </div>
@@ -128,7 +128,7 @@ window.AddFieldHelper = (() => {
 
   /**
    * Attach event listener to the "+ Aggiungi campo" trigger inside formEl.
-   * Uses an inline <select> + confirm button — no floating dropdown, no clipping.
+   * Uses an inline CustomSelect + confirm button — no native <select>, no OS panel, no clipping.
    * Must be called after formEl is in the DOM.
    */
   function attachTrigger(formEl, type) {
@@ -136,30 +136,36 @@ window.AddFieldHelper = (() => {
     if (!section) return;
     const btn = section.querySelector('.add-field-btn');
     const picker = section.querySelector('.add-field-inline-picker');
-    const select = section.querySelector('.add-field-select');
+    const csMount = section.querySelector('.add-field-cs-mount');
     const confirmBtn = section.querySelector('.add-field-confirm-btn');
     const cancelBtn = section.querySelector('.add-field-cancel-btn');
-    if (!btn || !picker || !select || !confirmBtn || !cancelBtn) return;
+    if (!btn || !picker || !csMount || !confirmBtn || !cancelBtn) return;
+
+    let fieldCs = null;   // current .cs-wrapper
+    let currentMissing = [];
 
     btn.addEventListener('click', () => {
       const missing = getMissingFields(formEl, type);
       if (missing.length === 0) return;
+      currentMissing = missing;
 
-      // Populate select options
-      select.innerHTML = missing.map((def, i) =>
-        `<option value="${i}">${def.label}</option>`
-      ).join('');
+      // Re-build CustomSelect with current missing field options
+      if (fieldCs) fieldCs.remove();
+      fieldCs = window.CustomSelect.create({
+        options: missing.map((def, i) => ({ value: String(i), label: def.label })),
+        selected: '0',
+        className: 'add-field-cs'
+      });
+      csMount.appendChild(fieldCs);
 
       btn.style.display = 'none';
       picker.style.display = '';
-      select.focus();
     });
 
     confirmBtn.addEventListener('click', () => {
-      const missing = getMissingFields(formEl, type);
-      const idx = parseInt(select.value, 10);
-      if (!isNaN(idx) && missing[idx]) {
-        appendField(formEl, missing[idx]);
+      const idx = parseInt(fieldCs ? window.CustomSelect.getValue(fieldCs) : '0', 10);
+      if (!isNaN(idx) && currentMissing[idx]) {
+        appendField(formEl, currentMissing[idx]);
       }
       picker.style.display = 'none';
       btn.style.display = '';

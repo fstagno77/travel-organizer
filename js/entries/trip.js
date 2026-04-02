@@ -2,6 +2,7 @@
 import '../perf.js';
 import '../supabaseClient.js';
 import '../utils.js';
+import '../customSelect.js';
 import '../i18n.js';
 import '../auth.js';
 import '../changelog.js';

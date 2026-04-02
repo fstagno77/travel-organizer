@@ -260,8 +260,48 @@
     `;
   }
 
-  const PASSENGER_TYPE_OPTIONS = ['ADT', 'CHD', 'INF'];
-  const VEHICLE_TYPE_OPTIONS = ['auto', 'moto', 'camper', 'furgone'];
+  const PASSENGER_TYPE_OPTIONS = [
+    { value: 'ADT', label: 'ADT' },
+    { value: 'CHD', label: 'CHD' },
+    { value: 'INF', label: 'INF' }
+  ];
+  const VEHICLE_TYPE_OPTIONS = [
+    { value: 'auto',    label: 'Auto' },
+    { value: 'moto',    label: 'Moto' },
+    { value: 'camper',  label: 'Camper' },
+    { value: 'furgone', label: 'Furgone' }
+  ];
+
+  /**
+   * Upgrade all cs-placeholder divs inside a container to CustomSelect instances.
+   * Called after HTML is inserted into the DOM.
+   */
+  function upgradeCustomSelects(container) {
+    container.querySelectorAll('[data-cs-pax-type]').forEach(ph => {
+      const cs = window.CustomSelect.create({
+        options: PASSENGER_TYPE_OPTIONS,
+        selected: ph.dataset.csPaxType || 'ADT',
+        className: 'cs-pax-type',
+        dataAttrs: {
+          paxField: 'type',
+          paxIndex: ph.dataset.paxIndex || ''
+        }
+      });
+      ph.replaceWith(cs);
+    });
+    container.querySelectorAll('[data-cs-veh-type]').forEach(ph => {
+      const cs = window.CustomSelect.create({
+        options: VEHICLE_TYPE_OPTIONS,
+        selected: ph.dataset.csVehType || 'auto',
+        className: 'cs-veh-type',
+        dataAttrs: {
+          vehField: 'type',
+          vehIndex: ph.dataset.vehIndex || ''
+        }
+      });
+      ph.replaceWith(cs);
+    });
+  }
 
   function buildPassengerRow(p, idx) {
     return `
@@ -272,9 +312,7 @@
         </div>
         <div class="edit-booking-field" style="width:90px">
           <label>Tipo</label>
-          <select data-pax-field="type" data-pax-index="${idx}">
-            ${PASSENGER_TYPE_OPTIONS.map(opt => `<option value="${opt}"${(p.type || 'ADT') === opt ? ' selected' : ''}>${opt}</option>`).join('')}
-          </select>
+          <div data-cs-pax-type="${escAttr(p.type || 'ADT')}" data-pax-index="${idx}"></div>
         </div>
         <button type="button" class="edit-booking-remove-row" title="Rimuovi passeggero">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -288,9 +326,7 @@
       <div class="edit-booking-vehicle-row" data-vehicle-index="${idx}">
         <div class="edit-booking-field" style="width:110px">
           <label>Tipo</label>
-          <select data-veh-field="type" data-veh-index="${idx}">
-            ${VEHICLE_TYPE_OPTIONS.map(opt => `<option value="${opt}"${(v.type || 'auto') === opt ? ' selected' : ''}>${opt}</option>`).join('')}
-          </select>
+          <div data-cs-veh-type="${escAttr(v.type || 'auto')}" data-veh-index="${idx}"></div>
         </div>
         <div class="edit-booking-field" style="flex:1">
           <label>Targa</label>
@@ -388,24 +424,28 @@
           </div>
         </div>
         <div class="edit-booking-section">
-          <div class="edit-booking-section-title">Passeggeri</div>
+          <div class="edit-booking-section-title" style="display:flex;justify-content:space-between;align-items:center">
+            <span>Passeggeri</span>
+            <button type="button" class="edit-booking-add-row" data-add-passenger style="margin:0">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Aggiungi passeggero
+            </button>
+          </div>
           <div class="edit-booking-passengers-list" data-passengers>
             ${passengerRowsHtml}
           </div>
-          <button type="button" class="edit-booking-add-row" data-add-passenger>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Aggiungi passeggero
-          </button>
         </div>
         <div class="edit-booking-section">
-          <div class="edit-booking-section-title">Veicoli a bordo</div>
+          <div class="edit-booking-section-title" style="display:flex;justify-content:space-between;align-items:center">
+            <span>Veicoli a bordo</span>
+            <button type="button" class="edit-booking-add-row" data-add-vehicle style="margin:0">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Aggiungi veicolo
+            </button>
+          </div>
           <div class="edit-booking-vehicles-list" data-vehicles>
             ${vehicleRowsHtml}
           </div>
-          <button type="button" class="edit-booking-add-row" data-add-vehicle>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Aggiungi veicolo
-          </button>
         </div>
       </div>
     `;
@@ -426,6 +466,9 @@
       });
     }
 
+    // Upgrade placeholder divs → CustomSelect for all existing rows
+    upgradeCustomSelects(formEl);
+
     // Add passenger
     const addPaxBtn = formEl.querySelector('[data-add-passenger]');
     const paxList = formEl.querySelector('[data-passengers]');
@@ -436,6 +479,8 @@
         const tmp = document.createElement('div');
         tmp.innerHTML = buildPassengerRow({ name: '', type: 'ADT' }, idx);
         const row = tmp.firstElementChild;
+        // The placeholder div is in tmp — upgrade it before appending to DOM
+        upgradeCustomSelects(row);
         paxList.appendChild(row);
         row.querySelector('.edit-booking-remove-row').addEventListener('click', () => row.remove());
         row.querySelector('input').focus();
@@ -452,6 +497,8 @@
         const tmp = document.createElement('div');
         tmp.innerHTML = buildVehicleRow({ type: 'auto', plate: '' }, idx);
         const row = tmp.firstElementChild;
+        // The placeholder div is in tmp — upgrade it before appending to DOM
+        upgradeCustomSelects(row);
         vehList.appendChild(row);
         row.querySelector('.edit-booking-remove-row').addEventListener('click', () => row.remove());
         row.querySelector('input').focus();
@@ -482,10 +529,10 @@
     if (passengerRows.length > 0) {
       updates.passengers = Array.from(passengerRows).map(row => {
         const nameEl = row.querySelector('[data-pax-field="name"]');
-        const typeEl = row.querySelector('[data-pax-field="type"]');
+        const typeCs = row.querySelector('.cs-pax-type');
         return {
           name: nameEl ? nameEl.value.trim() : '',
-          type: typeEl ? typeEl.value : 'ADT'
+          type: typeCs ? window.CustomSelect.getValue(typeCs) : 'ADT'
         };
       }).filter(p => p.name);
     }
@@ -494,10 +541,10 @@
     const vehicleRows = formView.querySelectorAll('.edit-booking-vehicle-row');
     if (vehicleRows.length > 0) {
       updates.vehicles = Array.from(vehicleRows).map(row => {
-        const typeEl = row.querySelector('[data-veh-field="type"]');
+        const typeCs = row.querySelector('.cs-veh-type');
         const plateEl = row.querySelector('[data-veh-field="plate"]');
         return {
-          type: typeEl ? typeEl.value : 'auto',
+          type: typeCs ? window.CustomSelect.getValue(typeCs) : 'auto',
           plate: plateEl ? plateEl.value.trim().toUpperCase() : ''
         };
       });
