@@ -1,3 +1,33 @@
+## 2026-04-02 - US-009
+- Aggiunto showSmartParseFallback() in tripPage.js dentro showAddBookingModal()
+- Modifica parseBooking(): intercetta errore 400 "no travel data" → mostra step 1 con messaggio fallback
+- Modifica parseBooking(): controlla hasKnownType e hasData dopo SmartParse — se !hasData chiama showSmartParseFallback
+- showSmartParseFallback ripristina step 1, inserisce messaggio "Documento non riconosciuto automaticamente", pre-seleziona card e apre form manuale pre-popolato se detectedDocType è impostato
+- Supporto prefillDocStoragePath in manualBookingForm.js: open() + saveManualBooking() usano il percorso storage del PDF già caricato come documentUrl
+- 19 test in tests/us009-smartparse-fallback.test.js — tutti passano
+- Fix test us008 per adattarsi alla nuova firma saveManualBooking() con parametro opzionale
+- Files changed: js/tripPage.js, js/manualBookingForm.js, tests/us009-smartparse-fallback.test.js, tests/us008-manual-booking-ferry.test.js
+- **Learnings for future iterations:**
+  - La detection del fallback avviene in 2 punti: errore 400 (no travel data) e dopo _parsedResults set (hasData check)
+  - La collection per car_rental è "rentals", non "car_rentals" — mappatura in typeMap + collectionKey
+  - Per aggiungere parametri opzionali a funzioni usate nei test: aggiorna anche i test che verificano la firma con toContain parziale (senza parentesi chiusa)
+---
+
+## 2026-04-02 - US-008
+- Creato buildFerryForm(prefill) in js/manualBookingForm.js con 7 campi obbligatori + 9 opzionali
+- Campi obbligatori: operatore, porto partenza, città partenza, porto arrivo, città arrivo, data, orario partenza
+- CustomSelect per tipo passeggero (FERRY_PASSENGER_TYPE_OPTIONS) e tipo veicolo (FERRY_VEHICLE_TYPE_OPTIONS) — nessun <select> nativo
+- Fallback input text per ambienti senza CustomSelect (test environment)
+- getValues() restituisce struttura con departure.{port,city,time} e arrival.{port,city,time}
+- Branch `type === 'ferry'` aggiunto in open() di manualBookingForm.js
+- 39 test in tests/us008-manual-booking-ferry.test.js — tutti passano
+- Files changed: js/manualBookingForm.js, tests/us008-manual-booking-ferry.test.js (nuovo)
+- **Learnings for future iterations:**
+  - Per US-009 (fallback SmartParse): il punto di intercettazione è nel frontend dopo la risposta del parser — leggere smartParser.js e tripCreator.js per capire quando viene gestita la risposta
+  - Le costanti di opzioni (FERRY_PASSENGER_TYPE_OPTIONS, FERRY_VEHICLE_TYPE_OPTIONS) vanno dichiarate subito prima della funzione che le usa
+  - Il pattern per isolare la sezione ferry nei test: `formCode.slice(formCode.indexOf('function buildFerryForm'), formCode.indexOf('function restoreModal'))`
+---
+
 ## Codebase Patterns
 - tripPage.js usa IIFE `(async function() { ... })()` — i test si basano su code analysis (grep sul sorgente), non su esecuzione DOM
 - La modale "Aggiungi prenotazione" è costruita dinamicamente in `showAddBookingModal` con template literal; i test verificano i pattern nel sorgente
@@ -109,4 +139,20 @@ Started: Thu Apr  2 12:25:58 CEST 2026
   - Bus usa struttura dati piatta (no departure/arrival objects) — diverso da treno che usa oggetti nested
   - Per ferry (US-008): usare CustomSelect per tipo passeggero e tipo veicolo (nota PRD)
   - Il pattern per isolare la sezione bus nei test: `formCode.slice(formCode.indexOf('function buildBusForm'), formCode.indexOf('function restoreModal'))`
+---
+
+## 2026-04-02 - US-007
+- Creato buildRentalForm(prefill) in js/manualBookingForm.js con 6 campi obbligatori + 9 opzionali
+- Campi obbligatori: fornitore, città ritiro, data ritiro, ora ritiro, data restituzione, ora restituzione
+- Giorni noleggio calcolati automaticamente (read-only) tramite calcDays() — pattern analogo a calcNights()
+- getValues() restituisce struttura con pickupLocation.{city,time,address,airport} e dropoffLocation.{city,time}
+- Validazione: data restituzione antecedente ritiro mostra errore inline
+- Branch `type === 'rental'` aggiunto in open() di manualBookingForm.js
+- 38 test in tests/us007-manual-booking-rental.test.js — tutti passano
+- Files changed: js/manualBookingForm.js, tests/us007-manual-booking-rental.test.js (nuovo)
+- **Learnings for future iterations:**
+  - Per noleggio: `date` = data ritiro, `endDate` = data restituzione — coerente con required fields di US-002
+  - Il pattern per isolare la sezione rental nei test: `formCode.slice(formCode.indexOf('function buildRentalForm'), formCode.indexOf('function restoreModal'))`
+  - calcDays() funziona identicamente a calcNights() — entrambe restituiscono null per date uguali o invertite
+  - Per ferry (US-008): usare CustomSelect per tipo passeggero e tipo veicolo; il form ferry deve avere 7 campi obbligatori
 ---
