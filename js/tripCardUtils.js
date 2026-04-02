@@ -112,19 +112,23 @@ const tripCardUtils = (function() {
     let nextEventHtml = '';
     if (nextEvent) {
       const cat = nextEvent.category;
-      const bg = cat?.cardBg || 'linear-gradient(135deg, #eff6ff, #eef2ff)';
-      const border = cat?.cardBorder || '#bfdbfe';
-      const iconGradient = cat?.gradient || 'linear-gradient(135deg, #3b82f6, #4f46e5)';
-      const iconHtml = cat?.svg || '<span class="material-symbols-outlined" style="font-size:16px;color:white">event</span>';
+      const bg = cat?.cardBg || 'linear-gradient(135deg, #faf5ff, #faf5ff)';
+      const border = cat?.cardBorder || '#e9d5ff';
+      const iconGradient = cat?.gradient || 'linear-gradient(135deg, #a855f7, #7c3aed)';
+      const iconHtml = cat?.svg || '<span class="material-symbols-outlined" style="font-size:16px">event</span>';
       nextEventHtml = `
-        <div class="trip-card-next-event" style="margin-top:8px;padding:8px 10px;border-radius:8px;background:${bg};border:1px solid ${border};display:flex;align-items:center;gap:8px">
-          <div style="width:28px;height:28px;border-radius:6px;background:${iconGradient};display:flex;align-items:center;justify-content:center;flex-shrink:0">
-            ${iconHtml}
-          </div>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:11px;color:var(--color-gray-500);margin-bottom:1px">${utils.escapeHtml(nextEvent.dateLabel || '')}</div>
-            <div style="font-size:13px;font-weight:600;color:var(--color-gray-900);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${utils.escapeHtml(nextEvent.title)}</div>
-            ${nextEvent.description ? `<div style="font-size:12px;color:var(--color-gray-500);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${utils.escapeHtml(nextEvent.description)}</div>` : ''}
+        <div class="current-trip-next" style="padding: 0 12px 12px">
+          <h4 class="current-trip-next-label">${i18n.t('home.nextEvent') || 'Prossimo'} &middot; ${utils.escapeHtml(nextEvent.dateLabel || '')}</h4>
+          <div class="current-event-card" style="background: ${bg}; border-color: ${border}">
+            <div class="current-event-icon" style="background: ${iconGradient}">
+              <span style="color: white; display: flex; align-items: center; justify-content: center">${iconHtml}</span>
+            </div>
+            <div class="current-event-info">
+              <div class="current-event-header-row">
+                <span class="current-event-title">${utils.escapeHtml(nextEvent.title)}</span>
+              </div>
+              ${nextEvent.description ? `<span class="current-event-description">${utils.escapeHtml(nextEvent.description)}</span>` : ''}
+            </div>
           </div>
         </div>
       `;
