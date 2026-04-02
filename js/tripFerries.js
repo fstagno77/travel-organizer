@@ -406,24 +406,6 @@
             </div>
           </div>
         </div>
-        <div class="edit-booking-section">
-          <div class="edit-booking-section-title">Prenotazione</div>
-          <div class="edit-booking-grid">
-            <div class="edit-booking-field">
-              <label>Riferimento</label>
-              <input type="text" data-field="bookingReference" value="${escAttr(ferry.bookingReference)}">
-            </div>
-            <div class="edit-booking-field">
-              <label>Cabina</label>
-              <input type="text" data-field="cabin" value="${escAttr(ferry.cabin)}">
-            </div>
-            <div class="edit-booking-field">
-              <label>Ponte</label>
-              <input type="text" data-field="deck" value="${escAttr(ferry.deck)}">
-            </div>
-          </div>
-        </div>
-
         <!-- Pulsante Aggiungi ritorno -->
         <div class="edit-booking-section" style="margin-top:24px">
           <button type="button" class="btn btn-outline ferry-add-return-btn"
@@ -492,6 +474,23 @@
           </div>
         </div>
 
+        <div class="edit-booking-section" style="margin-top:24px">
+          <div class="edit-booking-section-title">Prenotazione</div>
+          <div class="edit-booking-grid">
+            <div class="edit-booking-field">
+              <label>Riferimento</label>
+              <input type="text" data-field="bookingReference" value="${escAttr(ferry.bookingReference)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>Cabina</label>
+              <input type="text" data-field="cabin" value="${escAttr(ferry.cabin)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>Ponte</label>
+              <input type="text" data-field="deck" value="${escAttr(ferry.deck)}">
+            </div>
+          </div>
+        </div>
         <div class="edit-booking-section" style="margin-top:24px">
           <div class="edit-booking-section-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
             <span>Passeggeri</span>
