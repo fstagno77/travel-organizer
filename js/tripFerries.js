@@ -423,57 +423,6 @@
             </div>
           </div>
         </div>
-        <div class="edit-booking-section">
-          <div class="edit-booking-section-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <span>Passeggeri</span>
-            <button type="button" class="edit-booking-add-row" data-add-passenger style="margin:0">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Aggiungi passeggero
-            </button>
-          </div>
-          <div class="edit-booking-passengers-list" data-passengers>
-            ${passengerRowsHtml}
-          </div>
-        </div>
-        <div class="edit-booking-section" style="margin-top:24px">
-          <div class="edit-booking-section-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <span>Veicoli a bordo</span>
-            <button type="button" class="edit-booking-add-row" data-add-vehicle style="margin:0">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Aggiungi veicolo
-            </button>
-          </div>
-          <div class="edit-booking-vehicles-list" data-vehicles>
-            ${vehicleRowsHtml}
-          </div>
-        </div>
-        <div class="edit-booking-section" style="margin-top:24px" data-doc-section>
-          <div class="edit-booking-section-title">Documento</div>
-          ${(ferry.pdfPath || ferry.documentUrl) ? `
-            <div class="ferry-doc-existing" data-existing-doc>
-              <div class="file-preview-item" style="justify-content:space-between">
-                <span style="font-size:var(--font-size-sm);color:var(--color-gray-700)">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                  Documento allegato
-                </span>
-                <span style="display:flex;gap:8px">
-                  <a href="${escAttr(ferry.pdfPath || ferry.documentUrl)}" target="_blank" rel="noopener" style="font-size:var(--font-size-sm);color:var(--color-primary);text-decoration:none">Apri</a>
-                  <button type="button" class="ferry-doc-replace-btn" style="font-size:var(--font-size-sm);color:var(--color-gray-500);background:none;border:none;cursor:pointer;padding:0">Sostituisci</button>
-                  <button type="button" class="ferry-doc-remove-btn" style="font-size:var(--font-size-sm);color:var(--color-danger,#e53e3e);background:none;border:none;cursor:pointer;padding:0">Rimuovi</button>
-                </span>
-              </div>
-            </div>
-          ` : ''}
-          <div class="ferry-doc-upload" data-doc-upload ${(ferry.pdfPath || ferry.documentUrl) ? 'style="display:none"' : ''}>
-            <label class="file-upload-zone" data-doc-drop-zone style="cursor:pointer">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-              <span class="file-upload-zone-text">Carica PDF</span>
-              <span class="file-upload-zone-hint">PDF — max 10 MB</span>
-              <input type="file" accept="application/pdf" data-doc-input style="display:none">
-            </label>
-            <div class="ferry-doc-selected" data-doc-selected style="display:none"></div>
-          </div>
-        </div>
 
         <!-- Pulsante Aggiungi ritorno -->
         <div class="edit-booking-section" style="margin-top:24px">
@@ -488,8 +437,8 @@
         </div>
 
         <!-- Sezione ritorno (nascosta di default) -->
-        <div class="edit-booking-section" style="display:none;margin-top:0;" data-return-section>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--color-gray-200);">
+        <div class="edit-booking-section" style="display:none;margin-top:16px;background:var(--color-blue-50,#eff6ff);border:1px solid var(--color-blue-200,#bfdbfe);border-radius:10px;padding:16px;" data-return-section>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--color-blue-200,#bfdbfe);">
             <span class="edit-booking-section-title" style="margin:0;" data-i18n="ferry.return_trip">Viaggio di ritorno</span>
             <button type="button" class="ferry-remove-return-btn"
               style="background:none;border:none;cursor:pointer;color:var(--color-gray-500);padding:2px;display:flex;align-items:center;"
@@ -542,6 +491,59 @@
             </div>
           </div>
         </div>
+
+        <div class="edit-booking-section" style="margin-top:24px">
+          <div class="edit-booking-section-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <span>Passeggeri</span>
+            <button type="button" class="edit-booking-add-row" data-add-passenger style="margin:0">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Aggiungi passeggero
+            </button>
+          </div>
+          <div class="edit-booking-passengers-list" data-passengers>
+            ${passengerRowsHtml}
+          </div>
+        </div>
+        <div class="edit-booking-section" style="margin-top:24px">
+          <div class="edit-booking-section-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <span>Veicoli a bordo</span>
+            <button type="button" class="edit-booking-add-row" data-add-vehicle style="margin:0">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Aggiungi veicolo
+            </button>
+          </div>
+          <div class="edit-booking-vehicles-list" data-vehicles>
+            ${vehicleRowsHtml}
+          </div>
+        </div>
+        <div class="edit-booking-section" style="margin-top:24px" data-doc-section>
+          <div class="edit-booking-section-title">Documento</div>
+          ${(ferry.pdfPath || ferry.documentUrl) ? `
+            <div class="ferry-doc-existing" data-existing-doc>
+              <div class="file-preview-item" style="justify-content:space-between">
+                <span style="font-size:var(--font-size-sm);color:var(--color-gray-700)">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                  Documento allegato
+                </span>
+                <span style="display:flex;gap:8px">
+                  <a href="${escAttr(ferry.pdfPath || ferry.documentUrl)}" target="_blank" rel="noopener" style="font-size:var(--font-size-sm);color:var(--color-primary);text-decoration:none">Apri</a>
+                  <button type="button" class="ferry-doc-replace-btn" style="font-size:var(--font-size-sm);color:var(--color-gray-500);background:none;border:none;cursor:pointer;padding:0">Sostituisci</button>
+                  <button type="button" class="ferry-doc-remove-btn" style="font-size:var(--font-size-sm);color:var(--color-danger,#e53e3e);background:none;border:none;cursor:pointer;padding:0">Rimuovi</button>
+                </span>
+              </div>
+            </div>
+          ` : ''}
+          <div class="ferry-doc-upload" data-doc-upload ${(ferry.pdfPath || ferry.documentUrl) ? 'style="display:none"' : ''}>
+            <label class="file-upload-zone" data-doc-drop-zone style="cursor:pointer">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+              <span class="file-upload-zone-text">Carica PDF</span>
+              <span class="file-upload-zone-hint">PDF — max 10 MB</span>
+              <input type="file" accept="application/pdf" data-doc-input style="display:none">
+            </label>
+            <div class="ferry-doc-selected" data-doc-selected style="display:none"></div>
+          </div>
+        </div>
+
       </div>
     `;
   }
