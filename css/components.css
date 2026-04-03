@@ -7661,6 +7661,30 @@ body:has(> .modal-overlay.active) .trip-hero-tabs {
   border-color: var(--color-error);
 }
 
+.edit-booking-field textarea {
+  width: 100%;
+  padding: 10px var(--spacing-3);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-family);
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-md);
+  background-color: var(--color-white);
+  transition: border-color var(--transition-fast), background-color var(--transition-fast);
+  box-sizing: border-box;
+  resize: none;
+}
+
+.edit-booking-field textarea:hover {
+  border-color: var(--color-gray-300);
+}
+
+.edit-booking-field textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  background-color: var(--color-white);
+  box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb, 59, 130, 246), 0.12);
+}
+
 .edit-booking-passenger {
   border-top: 1px dashed var(--color-gray-200);
   padding-top: var(--spacing-3);
