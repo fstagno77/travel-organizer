@@ -1119,6 +1119,15 @@
         const targetTab = tab.dataset.tab;
         if (targetTab) switchToTab(targetTab);
       });
+
+      // iOS Safari: touchend explicit fallback — prevents 300ms click delay
+      // and handles cases where SVG path intercepts touch events despite pointer-events: none
+      tab.addEventListener('touchend', (e) => {
+        const targetTab = tab.dataset.tab;
+        if (!targetTab) return;
+        e.preventDefault(); // prevent ghost click after touchend
+        switchToTab(targetTab);
+      }, { passive: false });
     });
   }
 

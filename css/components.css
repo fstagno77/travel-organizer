@@ -3094,6 +3094,11 @@ input[type="time"].form-input {
   pointer-events: none;
 }
 
+/* iOS Safari bug: pointer-events: none on <svg> does not always cascade to <path> children */
+.segmented-control-btn svg * {
+  pointer-events: none;
+}
+
 /* ===== HOTEL CARD - Emerald Theme ===== */
 .hotel-card {
   background-color: var(--color-white);
