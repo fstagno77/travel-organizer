@@ -102,6 +102,303 @@ window.manualBookingForm = (() => {
   }
 
   /**
+   * Costruisce una sezione con titolo, usando le classi del form di edit.
+   * @param {string} title
+   * @returns {{ section: HTMLElement, grid: HTMLElement }}
+   */
+  function buildSection(title) {
+    const section = document.createElement('div');
+    section.className = 'edit-booking-section';
+
+    if (title) {
+      const titleEl = document.createElement('div');
+      titleEl.className = 'edit-booking-section-title';
+      titleEl.textContent = title;
+      section.appendChild(titleEl);
+    }
+
+    const grid = document.createElement('div');
+    grid.className = 'edit-booking-grid';
+    section.appendChild(grid);
+
+    return { section, grid };
+  }
+
+  /**
+   * Costruisce un campo nel formato edit-booking-field.
+   * @param {Object} opts
+   * @returns {{ wrapper: HTMLElement, input: HTMLInputElement }}
+   */
+  function buildEditField({ id, label, type = 'text', placeholder = '', required = false, value = '', fullWidth = false }) {
+    const wrapper = document.createElement('div');
+    wrapper.className = fullWidth ? 'edit-booking-field full-width' : 'edit-booking-field';
+
+    const lbl = document.createElement('label');
+    lbl.htmlFor = id;
+    lbl.innerHTML = required
+      ? `${label} <span style="color:var(--color-danger,#e53e3e)">*</span>`
+      : label;
+    wrapper.appendChild(lbl);
+
+    const input = document.createElement('input');
+    input.type = type;
+    input.id = id;
+    input.placeholder = placeholder;
+    if (value) input.value = value;
+    if (required) input.dataset.required = '1';
+    wrapper.appendChild(input);
+
+    return { wrapper, input };
+  }
+
+  /**
+   * Costruisce la sezione passeggeri con header + bottone "+ Aggiungi" + lista dinamica.
+   * Pattern identico al form di edit ferry.
+   * @param {Array} initialPassengers - array di passeggeri da pre-popolare
+   * @param {Array} passengerTypeOptions - opzioni per CustomSelect tipo passeggero
+   * @returns {{ section: HTMLElement, getPassengers: function }}
+   */
+  function buildPassengersSection(initialPassengers = [], passengerTypeOptions) {
+    const section = document.createElement('div');
+    section.className = 'edit-booking-section';
+    section.style.marginTop = '16px';
+
+    // Header con bottone aggiungi
+    const header = document.createElement('div');
+    header.className = 'edit-booking-section-title';
+    header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:8px';
+
+    const titleSpan = document.createElement('span');
+    titleSpan.textContent = 'Passeggeri';
+    header.appendChild(titleSpan);
+
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'edit-booking-add-row';
+    addBtn.style.margin = '0';
+    addBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Aggiungi passeggero`;
+    header.appendChild(addBtn);
+    section.appendChild(header);
+
+    const list = document.createElement('div');
+    list.className = 'edit-booking-passengers-list';
+    section.appendChild(list);
+
+    const removeIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+
+    function addPassengerRow(pax = { name: '', type: '' }) {
+      const idx = list.querySelectorAll('.edit-booking-passenger-row').length;
+      const row = document.createElement('div');
+      row.className = 'edit-booking-passenger-row';
+      row.dataset.passengerIndex = idx;
+
+      // Nome
+      const nameField = document.createElement('div');
+      nameField.className = 'edit-booking-field';
+      nameField.style.flex = '1';
+      const nameLbl = document.createElement('label');
+      nameLbl.textContent = 'Nome';
+      nameField.appendChild(nameLbl);
+      const nameInput = document.createElement('input');
+      nameInput.type = 'text';
+      nameInput.dataset.paxField = 'name';
+      nameInput.dataset.paxIndex = idx;
+      nameInput.value = pax.name || '';
+      nameField.appendChild(nameInput);
+      row.appendChild(nameField);
+
+      // Tipo (CustomSelect)
+      const typeField = document.createElement('div');
+      typeField.className = 'edit-booking-field';
+      typeField.style.width = '130px';
+      const typeLbl = document.createElement('label');
+      typeLbl.textContent = 'Tipo';
+      typeField.appendChild(typeLbl);
+      if (window.CustomSelect) {
+        const cs = window.CustomSelect.create({
+          options: passengerTypeOptions,
+          selected: pax.type || (passengerTypeOptions[0]?.value || ''),
+          className: 'cs-pax-type',
+          dataAttrs: { paxField: 'type', paxIndex: String(idx) }
+        });
+        typeField.appendChild(cs);
+      } else {
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.dataset.paxField = 'type';
+        inp.dataset.paxIndex = idx;
+        inp.value = pax.type || '';
+        typeField.appendChild(inp);
+      }
+      row.appendChild(typeField);
+
+      // Rimuovi
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'edit-booking-remove-row';
+      removeBtn.title = 'Rimuovi passeggero';
+      removeBtn.innerHTML = removeIcon;
+      removeBtn.addEventListener('click', () => row.remove());
+      row.appendChild(removeBtn);
+
+      list.appendChild(row);
+      return nameInput;
+    }
+
+    // Pre-popola
+    initialPassengers.forEach(p => addPassengerRow(p));
+
+    addBtn.addEventListener('click', () => {
+      const inp = addPassengerRow({ name: '', type: '' });
+      inp.focus();
+    });
+
+    const getPassengers = () => {
+      const rows = list.querySelectorAll('.edit-booking-passenger-row');
+      const result = [];
+      rows.forEach(row => {
+        const nameInput = row.querySelector('input[data-pax-field="name"]');
+        const name = nameInput?.value.trim() || '';
+        let type = '';
+        const csWrapper = row.querySelector('.cs-wrapper');
+        if (csWrapper && window.CustomSelect) {
+          type = window.CustomSelect.getValue(csWrapper) || '';
+        } else {
+          const typeInput = row.querySelector('input[data-pax-field="type"]');
+          type = typeInput?.value.trim() || '';
+        }
+        if (name) result.push({ name, type: type || undefined });
+      });
+      return result;
+    };
+
+    return { section, getPassengers };
+  }
+
+  /**
+   * Costruisce la sezione veicoli con header + bottone "+ Aggiungi" + lista dinamica.
+   * Pattern identico al form di edit ferry.
+   * @param {Array} initialVehicles - array di veicoli da pre-popolare
+   * @param {Array} vehicleTypeOptions - opzioni per CustomSelect tipo veicolo
+   * @returns {{ section: HTMLElement, getVehicles: function }}
+   */
+  function buildVehiclesSection(initialVehicles = [], vehicleTypeOptions) {
+    const section = document.createElement('div');
+    section.className = 'edit-booking-section';
+    section.style.marginTop = '16px';
+
+    const header = document.createElement('div');
+    header.className = 'edit-booking-section-title';
+    header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:8px';
+
+    const titleSpan = document.createElement('span');
+    titleSpan.textContent = 'Veicoli a bordo';
+    header.appendChild(titleSpan);
+
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'edit-booking-add-row';
+    addBtn.style.margin = '0';
+    addBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Aggiungi veicolo`;
+    header.appendChild(addBtn);
+    section.appendChild(header);
+
+    const list = document.createElement('div');
+    list.className = 'edit-booking-vehicles-list';
+    section.appendChild(list);
+
+    const removeIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+
+    function addVehicleRow(veh = { type: '', plate: '' }) {
+      const idx = list.querySelectorAll('.edit-booking-vehicle-row').length;
+      const row = document.createElement('div');
+      row.className = 'edit-booking-vehicle-row';
+      row.dataset.vehicleIndex = idx;
+
+      // Tipo (CustomSelect)
+      const typeField = document.createElement('div');
+      typeField.className = 'edit-booking-field';
+      typeField.style.width = '130px';
+      const typeLbl = document.createElement('label');
+      typeLbl.textContent = 'Tipo';
+      typeField.appendChild(typeLbl);
+      if (window.CustomSelect) {
+        const cs = window.CustomSelect.create({
+          options: vehicleTypeOptions,
+          selected: veh.type || (vehicleTypeOptions[0]?.value || ''),
+          className: 'cs-veh-type',
+          dataAttrs: { vehField: 'type', vehIndex: String(idx) }
+        });
+        typeField.appendChild(cs);
+      } else {
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.dataset.vehField = 'type';
+        inp.dataset.vehIndex = idx;
+        inp.value = veh.type || '';
+        typeField.appendChild(inp);
+      }
+      row.appendChild(typeField);
+
+      // Targa
+      const plateField = document.createElement('div');
+      plateField.className = 'edit-booking-field';
+      plateField.style.flex = '1';
+      const plateLbl = document.createElement('label');
+      plateLbl.textContent = 'Targa';
+      plateField.appendChild(plateLbl);
+      const plateInput = document.createElement('input');
+      plateInput.type = 'text';
+      plateInput.dataset.vehField = 'plate';
+      plateInput.dataset.vehIndex = idx;
+      plateInput.value = veh.plate || '';
+      plateField.appendChild(plateInput);
+      row.appendChild(plateField);
+
+      // Rimuovi
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'edit-booking-remove-row';
+      removeBtn.title = 'Rimuovi veicolo';
+      removeBtn.innerHTML = removeIcon;
+      removeBtn.addEventListener('click', () => row.remove());
+      row.appendChild(removeBtn);
+
+      list.appendChild(row);
+      return plateInput;
+    }
+
+    // Pre-popola
+    initialVehicles.forEach(v => addVehicleRow(v));
+
+    addBtn.addEventListener('click', () => {
+      const inp = addVehicleRow({ type: '', plate: '' });
+      inp.focus();
+    });
+
+    const getVehicles = () => {
+      const rows = list.querySelectorAll('.edit-booking-vehicle-row');
+      const result = [];
+      rows.forEach(row => {
+        let type = '';
+        const csWrapper = row.querySelector('.cs-wrapper');
+        if (csWrapper && window.CustomSelect) {
+          type = window.CustomSelect.getValue(csWrapper) || '';
+        } else {
+          const typeInput = row.querySelector('input[data-veh-field="type"]');
+          type = typeInput?.value.trim() || '';
+        }
+        const plateInput = row.querySelector('input[data-veh-field="plate"]');
+        const plate = plateInput?.value.trim() || '';
+        if (type || plate) result.push({ type: type || undefined, plate: plate || undefined });
+      });
+      return result;
+    };
+
+    return { section, getVehicles };
+  }
+
+  /**
    * Costruisce la sezione upload documento opzionale.
    * @returns {{wrapper: HTMLElement, getFile: function(): File|null}}
    */
@@ -174,60 +471,94 @@ window.manualBookingForm = (() => {
    */
   function buildFlightForm(prefill = {}) {
     const form = document.createElement('div');
-    form.className = 'manual-booking-form manual-booking-form--flight';
+    form.className = 'manual-booking-form manual-booking-form--flight edit-booking-form';
     form.dataset.bookingType = 'flight';
-
-    // Intestazione
-    const heading = document.createElement('p');
-    heading.className = 'manual-form-heading';
-    heading.style.cssText = 'font-weight:var(--font-weight-semibold);margin-bottom:var(--spacing-4);color:var(--color-gray-700);';
-    heading.textContent = 'Inserisci i dettagli del volo';
-    form.appendChild(heading);
 
     // Scrollable body
     const scroll = document.createElement('div');
     scroll.style.cssText = 'overflow-y:auto;max-height:55vh;padding-right:4px;';
 
-    // --- Campi obbligatori ---
-    const { wrapper: wFlightNum, input: iFlightNum } = buildField({
+    // --- SEZIONE: Volo ---
+    const { section: sVolo, grid: gVolo } = buildSection('Volo');
+
+    const { wrapper: wFlightNum, input: iFlightNum } = buildEditField({
       id: 'mbf-flight-number', label: 'Codice volo', required: true,
       placeholder: 'es. AZ0610', value: prefill.flightNumber || ''
     });
-    const { wrapper: wAirline, input: iAirline } = buildField({
+    const { wrapper: wAirline, input: iAirline } = buildEditField({
       id: 'mbf-airline', label: 'Compagnia aerea', required: true,
       placeholder: 'es. ITA Airways', value: prefill.airline || ''
     });
-    scroll.appendChild(buildRow(wFlightNum, wAirline));
-
-    const { wrapper: wDate, input: iDate } = buildField({
+    const { wrapper: wDate, input: iDate } = buildEditField({
       id: 'mbf-date', label: 'Data', type: 'date', required: true,
       value: prefill.date || ''
     });
-    const { wrapper: wDepTime, input: iDepTime } = buildField({
+    const { wrapper: wDepTime, input: iDepTime } = buildEditField({
       id: 'mbf-departure-time', label: 'Orario partenza', type: 'time', required: true,
       value: prefill.departureTime || ''
     });
-    scroll.appendChild(buildRow(wDate, wDepTime));
-
-    const { wrapper: wDepCity, input: iDepCity } = buildField({
-      id: 'mbf-departure-city', label: 'Città/aeroporto partenza', required: true,
-      placeholder: 'es. Roma Fiumicino (FCO)', value: prefill.departureCity || (prefill.departure?.city || '')
-    });
-    const { wrapper: wArrCity, input: iArrCity } = buildField({
-      id: 'mbf-arrival-city', label: 'Città/aeroporto arrivo', required: true,
-      placeholder: 'es. New York (JFK)', value: prefill.arrivalCity || (prefill.arrival?.city || '')
-    });
-    scroll.appendChild(buildRow(wDepCity, wArrCity));
-
-    // --- Campi opzionali ---
-    const { wrapper: wArrTime, input: iArrTime } = buildField({
+    const { wrapper: wArrTime, input: iArrTime } = buildEditField({
       id: 'mbf-arrival-time', label: 'Orario arrivo', type: 'time',
       value: prefill.arrivalTime || ''
     });
+    gVolo.appendChild(wFlightNum);
+    gVolo.appendChild(wAirline);
+    gVolo.appendChild(wDate);
+    gVolo.appendChild(wDepTime);
+    gVolo.appendChild(wArrTime);
+    scroll.appendChild(sVolo);
 
-    // Classe volo (CustomSelect, nessun <select> nativo)
+    // --- SEZIONE: Partenza ---
+    const { section: sDep, grid: gDep } = buildSection('Partenza');
+
+    const { wrapper: wDepCity, input: iDepCity } = buildEditField({
+      id: 'mbf-departure-city', label: 'Città / Aeroporto', required: true,
+      placeholder: 'es. Roma Fiumicino (FCO)', value: prefill.departureCity || (prefill.departure?.city || '')
+    });
+    const { wrapper: wDepCode, input: iDepCode } = buildEditField({
+      id: 'mbf-departure-code', label: 'IATA',
+      placeholder: 'es. FCO', value: prefill.departure?.code || ''
+    });
+    const { wrapper: wDepTerminal, input: iDepTerminal } = buildEditField({
+      id: 'mbf-departure-terminal', label: 'Terminal',
+      placeholder: 'es. T1', value: prefill.departure?.terminal || ''
+    });
+    gDep.appendChild(wDepCity);
+    gDep.appendChild(wDepCode);
+    gDep.appendChild(wDepTerminal);
+    scroll.appendChild(sDep);
+
+    // --- SEZIONE: Arrivo ---
+    const { section: sArr, grid: gArr } = buildSection('Arrivo');
+
+    const { wrapper: wArrCity, input: iArrCity } = buildEditField({
+      id: 'mbf-arrival-city', label: 'Città / Aeroporto', required: true,
+      placeholder: 'es. New York (JFK)', value: prefill.arrivalCity || (prefill.arrival?.city || '')
+    });
+    const { wrapper: wArrCode, input: iArrCode } = buildEditField({
+      id: 'mbf-arrival-code', label: 'IATA',
+      placeholder: 'es. JFK', value: prefill.arrival?.code || ''
+    });
+    const { wrapper: wArrTerminal, input: iArrTerminal } = buildEditField({
+      id: 'mbf-arrival-terminal', label: 'Terminal',
+      placeholder: 'es. T4', value: prefill.arrival?.terminal || ''
+    });
+    gArr.appendChild(wArrCity);
+    gArr.appendChild(wArrCode);
+    gArr.appendChild(wArrTerminal);
+    scroll.appendChild(sArr);
+
+    // --- SEZIONE: Prenotazione ---
+    const { section: sBook, grid: gBook } = buildSection('Prenotazione');
+
+    const { wrapper: wPnr, input: iPnr } = buildEditField({
+      id: 'mbf-pnr', label: 'Riferimento / PNR', placeholder: 'es. ABC123',
+      value: prefill.bookingReference || prefill.pnr || ''
+    });
+
+    // Classe volo (CustomSelect — no <select> nativo)
     const wClass = document.createElement('div');
-    wClass.className = 'form-group';
+    wClass.className = 'edit-booking-field';
     const lblClass = document.createElement('label');
     lblClass.textContent = 'Classe';
     wClass.appendChild(lblClass);
@@ -239,51 +570,42 @@ window.manualBookingForm = (() => {
       });
       wClass.appendChild(classSelect);
     } else {
-      // Fallback solo per ambienti test senza CustomSelect
       const inp = document.createElement('input');
       inp.type = 'text';
-      inp.className = 'form-input';
       inp.id = 'mbf-class';
       inp.placeholder = 'economy, business…';
       inp.value = prefill.class || '';
       wClass.appendChild(inp);
     }
 
-    scroll.appendChild(buildRow(wArrTime, wClass));
-
-    const { wrapper: wSeat, input: iSeat } = buildField({
+    const { wrapper: wSeat, input: iSeat } = buildEditField({
       id: 'mbf-seat', label: 'Posto', placeholder: 'es. 12A', value: prefill.seat || ''
     });
-    const { wrapper: wBaggage, input: iBaggage } = buildField({
+    const { wrapper: wBaggage, input: iBaggage } = buildEditField({
       id: 'mbf-baggage', label: 'Bagaglio', placeholder: 'es. 23kg', value: prefill.baggage || ''
     });
-    scroll.appendChild(buildRow(wSeat, wBaggage));
-
-    const { wrapper: wPnr, input: iPnr } = buildField({
-      id: 'mbf-pnr', label: 'PNR / Codice prenotazione', placeholder: 'es. ABC123',
-      value: prefill.bookingReference || prefill.pnr || ''
-    });
-    const { wrapper: wPrice, input: iPrice } = buildField({
+    const { wrapper: wPrice, input: iPrice } = buildEditField({
       id: 'mbf-price', label: 'Prezzo (€)', type: 'number', placeholder: '0.00',
       value: prefill.price || ''
     });
-    scroll.appendChild(buildRow(wPnr, wPrice));
-
-    // Passeggeri (testo libero)
-    const { wrapper: wPax, input: iPax } = buildField({
-      id: 'mbf-passengers', label: 'Passeggeri (nomi separati da virgola)',
-      placeholder: 'es. Mario Rossi, Anna Bianchi',
-      value: Array.isArray(prefill.passengers) ? prefill.passengers.map(p => p.name || p).join(', ') : (prefill.passengers || '')
-    });
-    scroll.appendChild(wPax);
+    gBook.appendChild(wPnr);
+    gBook.appendChild(wClass);
+    gBook.appendChild(wSeat);
+    gBook.appendChild(wBaggage);
+    gBook.appendChild(wPrice);
+    scroll.appendChild(sBook);
 
     // Upload documento
+    const docSection = document.createElement('div');
+    docSection.className = 'edit-booking-section';
+    docSection.style.marginTop = '16px';
     const { wrapper: wDoc, getFile } = buildDocumentUpload();
-    scroll.appendChild(wDoc);
+    docSection.appendChild(wDoc);
+    scroll.appendChild(docSection);
 
     form.appendChild(scroll);
 
-    // Pulsante Salva (gestito dal chiamante, qui solo creato)
+    // Pulsante Salva
     const saveBtn = document.createElement('button');
     saveBtn.className = 'btn btn-primary';
     saveBtn.id = 'manual-booking-save';
@@ -299,35 +621,33 @@ window.manualBookingForm = (() => {
       });
     });
 
-    // Restituisce valori del form
     const getValues = () => {
       const flightClass = classSelect ? window.CustomSelect.getValue(classSelect) : (form.querySelector('#mbf-class')?.value || '');
-      const paxRaw = iPax.value.trim();
-      const passengers = paxRaw
-        ? paxRaw.split(',').map(n => n.trim()).filter(Boolean).map(name => ({ name }))
-        : [];
 
       return {
         flightNumber: iFlightNum.value.trim(),
         airline: iAirline.value.trim(),
         date: iDate.value,
         departureTime: iDepTime.value,
-        departureCity: iDepCity.value.trim(),
-        arrivalCity: iArrCity.value.trim(),
         arrivalTime: iArrTime.value || undefined,
+        departure: {
+          city: iDepCity.value.trim(),
+          code: iDepCode.value.trim().toUpperCase() || undefined,
+          terminal: iDepTerminal.value.trim() || undefined,
+        },
+        arrival: {
+          city: iArrCity.value.trim(),
+          code: iArrCode.value.trim().toUpperCase() || undefined,
+          terminal: iArrTerminal.value.trim() || undefined,
+        },
         class: flightClass || undefined,
         seat: iSeat.value.trim() || undefined,
         baggage: iBaggage.value.trim() || undefined,
         bookingReference: iPnr.value.trim() || undefined,
         price: iPrice.value ? parseFloat(iPrice.value) : undefined,
-        passengers: passengers.length > 0 ? passengers : undefined,
       };
     };
 
-    /**
-     * Valida i campi obbligatori e mostra gli errori.
-     * @returns {boolean} true se tutto valido
-     */
     const validate = () => {
       let valid = true;
       const checks = [
@@ -373,94 +693,85 @@ window.manualBookingForm = (() => {
    */
   function buildHotelForm(prefill = {}) {
     const form = document.createElement('div');
-    form.className = 'manual-booking-form manual-booking-form--hotel';
+    form.className = 'manual-booking-form manual-booking-form--hotel edit-booking-form';
     form.dataset.bookingType = 'hotel';
-
-    // Intestazione
-    const heading = document.createElement('p');
-    heading.className = 'manual-form-heading';
-    heading.style.cssText = 'font-weight:var(--font-weight-semibold);margin-bottom:var(--spacing-4);color:var(--color-gray-700);';
-    heading.textContent = 'Inserisci i dettagli dell\'hotel';
-    form.appendChild(heading);
 
     // Scrollable body
     const scroll = document.createElement('div');
     scroll.style.cssText = 'overflow-y:auto;max-height:55vh;padding-right:4px;';
 
-    // --- Campi obbligatori ---
-    const { wrapper: wName, input: iName } = buildField({
-      id: 'mbf-hotel-name', label: 'Nome hotel', required: true,
+    // --- SEZIONE: Hotel ---
+    const { section: sHotel, grid: gHotel } = buildSection('Hotel');
+
+    const { wrapper: wName, input: iName } = buildEditField({
+      id: 'mbf-hotel-name', label: 'Nome hotel', required: true, fullWidth: true,
       placeholder: 'es. Hotel Excelsior', value: prefill.name || ''
     });
-    const { wrapper: wCity, input: iCity } = buildField({
-      id: 'mbf-hotel-city', label: 'Città', required: true,
-      placeholder: 'es. Roma', value: prefill.city || (prefill.address?.city || '')
-    });
-    scroll.appendChild(buildRow(wName, wCity));
-
-    const { wrapper: wCheckIn, input: iCheckIn } = buildField({
+    const { wrapper: wCheckIn, input: iCheckIn } = buildEditField({
       id: 'mbf-hotel-checkin', label: 'Data check-in', type: 'date', required: true,
       value: prefill.checkIn?.date || prefill.checkInDate || ''
     });
-    const { wrapper: wCheckOut, input: iCheckOut } = buildField({
+    const { wrapper: wCheckInTime, input: iCheckInTime } = buildEditField({
+      id: 'mbf-hotel-checkin-time', label: 'Check-in — Orario', type: 'time',
+      value: prefill.checkIn?.time || ''
+    });
+    const { wrapper: wCheckOut, input: iCheckOut } = buildEditField({
       id: 'mbf-hotel-checkout', label: 'Data check-out', type: 'date', required: true,
       value: prefill.checkOut?.date || prefill.checkOutDate || ''
     });
-    scroll.appendChild(buildRow(wCheckIn, wCheckOut));
+    const { wrapper: wCheckOutTime, input: iCheckOutTime } = buildEditField({
+      id: 'mbf-hotel-checkout-time', label: 'Check-out — Orario', type: 'time',
+      value: prefill.checkOut?.time || ''
+    });
 
     // Notti — campo read-only calcolato automaticamente
     const nightsWrapper = document.createElement('div');
-    nightsWrapper.className = 'form-group';
+    nightsWrapper.className = 'edit-booking-field';
     const nightsLbl = document.createElement('label');
     nightsLbl.textContent = 'Notti';
     nightsWrapper.appendChild(nightsLbl);
     const nightsInput = document.createElement('input');
     nightsInput.type = 'text';
     nightsInput.id = 'mbf-hotel-nights';
-    nightsInput.className = 'form-input';
     nightsInput.readOnly = true;
-    nightsInput.placeholder = '— calcolato automaticamente —';
+    nightsInput.placeholder = '— calcolato —';
     nightsWrapper.appendChild(nightsInput);
 
     const updateNights = () => {
       const n = calcNights(iCheckIn.value, iCheckOut.value);
       nightsInput.value = n !== null ? `${n} nott${n === 1 ? 'e' : 'i'}` : '';
     };
-
     iCheckIn.addEventListener('change', updateNights);
     iCheckOut.addEventListener('change', updateNights);
     updateNights();
 
-    // --- Campi opzionali ---
-    const { wrapper: wAddress, input: iAddress } = buildField({
-      id: 'mbf-hotel-address', label: 'Indirizzo',
-      placeholder: 'es. Via Roma 1', value: prefill.address?.fullAddress || prefill.address || ''
-    });
-    scroll.appendChild(buildRow(nightsWrapper, wAddress));
+    gHotel.appendChild(wName);
+    gHotel.appendChild(wCheckIn);
+    gHotel.appendChild(wCheckInTime);
+    gHotel.appendChild(wCheckOut);
+    gHotel.appendChild(wCheckOutTime);
+    gHotel.appendChild(nightsWrapper);
+    scroll.appendChild(sHotel);
 
-    const { wrapper: wRooms, input: iRooms } = buildField({
-      id: 'mbf-hotel-rooms', label: 'Numero camere', type: 'number',
-      placeholder: '1', value: prefill.rooms || ''
-    });
-    const { wrapper: wRoomType, input: iRoomType } = buildField({
+    // --- SEZIONE: Dettagli ---
+    const { section: sDetail, grid: gDetail } = buildSection('Dettagli');
+
+    const { wrapper: wRoomType, input: iRoomType } = buildEditField({
       id: 'mbf-hotel-room-type', label: 'Tipo camera',
       placeholder: 'es. Doppia, Suite', value: prefill.roomType || ''
     });
-    scroll.appendChild(buildRow(wRooms, wRoomType));
-
-    const { wrapper: wGuest, input: iGuest } = buildField({
+    const { wrapper: wGuest, input: iGuest } = buildEditField({
       id: 'mbf-hotel-guest', label: 'Nome ospite',
       placeholder: 'es. Mario Rossi', value: prefill.guestName || ''
     });
-    const { wrapper: wConfirm, input: iConfirm } = buildField({
-      id: 'mbf-hotel-confirmation', label: 'Numero conferma',
+    const { wrapper: wConfirm, input: iConfirm } = buildEditField({
+      id: 'mbf-hotel-confirmation', label: 'N. Conferma',
       placeholder: 'es. BK123456789', value: prefill.confirmationNumber || ''
     });
-    scroll.appendChild(buildRow(wGuest, wConfirm));
 
     // Colazione inclusa (CustomSelect — no <select> nativo)
     const wBreakfast = document.createElement('div');
-    wBreakfast.className = 'form-group';
+    wBreakfast.className = 'edit-booking-field';
     const lblBreakfast = document.createElement('label');
     lblBreakfast.textContent = 'Colazione inclusa';
     wBreakfast.appendChild(lblBreakfast);
@@ -478,27 +789,49 @@ window.manualBookingForm = (() => {
     } else {
       const inp = document.createElement('input');
       inp.type = 'text';
-      inp.className = 'form-input';
       inp.id = 'mbf-hotel-breakfast';
       inp.placeholder = 'Sì / No';
       wBreakfast.appendChild(inp);
     }
 
-    const { wrapper: wPrice, input: iPrice } = buildField({
+    gDetail.appendChild(wRoomType);
+    gDetail.appendChild(wGuest);
+    gDetail.appendChild(wConfirm);
+    gDetail.appendChild(wBreakfast);
+    scroll.appendChild(sDetail);
+
+    // --- SEZIONE: Indirizzo ---
+    const { section: sAddr, grid: gAddr } = buildSection('Indirizzo');
+
+    const { wrapper: wAddress, input: iAddress } = buildEditField({
+      id: 'mbf-hotel-address', label: 'Indirizzo completo', fullWidth: true,
+      placeholder: 'es. Via Roma 1, Roma', value: prefill.address?.fullAddress || (typeof prefill.address === 'string' ? prefill.address : '') || ''
+    });
+    gAddr.appendChild(wAddress);
+    scroll.appendChild(sAddr);
+
+    // --- SEZIONE: Note ---
+    const { section: sNote, grid: gNote } = buildSection('Note');
+
+    const { wrapper: wPrice, input: iPrice } = buildEditField({
       id: 'mbf-hotel-price', label: 'Prezzo (€)', type: 'number', placeholder: '0.00',
       value: prefill.price || ''
     });
-    scroll.appendChild(buildRow(wBreakfast, wPrice));
-
-    const { wrapper: wPolicy, input: iPolicy } = buildField({
+    const { wrapper: wPolicy, input: iPolicy } = buildEditField({
       id: 'mbf-hotel-cancellation', label: 'Cancellation policy',
       placeholder: 'es. Gratuita fino a 24h prima', value: prefill.cancellationPolicy || ''
     });
-    scroll.appendChild(wPolicy);
+    gNote.appendChild(wPrice);
+    gNote.appendChild(wPolicy);
+    scroll.appendChild(sNote);
 
     // Upload documento
+    const docSection = document.createElement('div');
+    docSection.className = 'edit-booking-section';
+    docSection.style.marginTop = '16px';
     const { wrapper: wDoc, getFile } = buildDocumentUpload();
-    scroll.appendChild(wDoc);
+    docSection.appendChild(wDoc);
+    scroll.appendChild(docSection);
 
     form.appendChild(scroll);
 
@@ -510,16 +843,10 @@ window.manualBookingForm = (() => {
     saveBtn.disabled = true;
 
     // Aggiornamento stato bottone
-    const requiredInputs = [iName, iCity, iCheckIn, iCheckOut];
+    const requiredInputs = [iName, iCheckIn, iCheckOut];
     requiredInputs.forEach(inp => {
-      inp.addEventListener('input', () => {
-        clearFieldError(inp);
-        updateSaveBtn(form, saveBtn);
-      });
-      inp.addEventListener('change', () => {
-        clearFieldError(inp);
-        updateSaveBtn(form, saveBtn);
-      });
+      inp.addEventListener('input', () => { clearFieldError(inp); updateSaveBtn(form, saveBtn); });
+      inp.addEventListener('change', () => { clearFieldError(inp); updateSaveBtn(form, saveBtn); });
     });
 
     const getValues = () => {
@@ -529,11 +856,9 @@ window.manualBookingForm = (() => {
 
       return {
         name: iName.value.trim(),
-        city: iCity.value.trim(),
-        checkIn: { date: iCheckIn.value },
-        checkOut: { date: iCheckOut.value },
-        address: iAddress.value.trim() ? { fullAddress: iAddress.value.trim(), city: iCity.value.trim() } : undefined,
-        rooms: iRooms.value ? parseInt(iRooms.value, 10) : undefined,
+        checkIn: { date: iCheckIn.value, time: iCheckInTime.value || undefined },
+        checkOut: { date: iCheckOut.value, time: iCheckOutTime.value || undefined },
+        address: iAddress.value.trim() ? { fullAddress: iAddress.value.trim() } : undefined,
         roomType: iRoomType.value.trim() || undefined,
         guestName: iGuest.value.trim() || undefined,
         confirmationNumber: iConfirm.value.trim() || undefined,
@@ -546,7 +871,6 @@ window.manualBookingForm = (() => {
     const validate = () => {
       let valid = true;
 
-      // Validazione check-out non antecedente check-in
       if (iCheckIn.value && iCheckOut.value) {
         const nights = calcNights(iCheckIn.value, iCheckOut.value);
         if (nights === null || nights <= 0) {
@@ -557,7 +881,6 @@ window.manualBookingForm = (() => {
 
       const checks = [
         { input: iName,     msg: 'Inserisci il nome dell\'hotel' },
-        { input: iCity,     msg: 'Inserisci la città' },
         { input: iCheckIn,  msg: 'Inserisci la data di check-in' },
         { input: iCheckOut, msg: 'Inserisci la data di check-out' },
       ];
@@ -582,95 +905,110 @@ window.manualBookingForm = (() => {
    */
   function buildTrainForm(prefill = {}) {
     const form = document.createElement('div');
-    form.className = 'manual-booking-form manual-booking-form--train';
+    form.className = 'manual-booking-form manual-booking-form--train edit-booking-form';
     form.dataset.bookingType = 'train';
-
-    // Intestazione
-    const heading = document.createElement('p');
-    heading.className = 'manual-form-heading';
-    heading.style.cssText = 'font-weight:var(--font-weight-semibold);margin-bottom:var(--spacing-4);color:var(--color-gray-700);';
-    heading.textContent = 'Inserisci i dettagli del treno';
-    form.appendChild(heading);
 
     // Scrollable body
     const scroll = document.createElement('div');
     scroll.style.cssText = 'overflow-y:auto;max-height:55vh;padding-right:4px;';
 
-    // --- Campi obbligatori ---
-    const { wrapper: wDepStation, input: iDepStation } = buildField({
-      id: 'mbf-train-departure-station', label: 'Stazione partenza', required: true,
-      placeholder: 'es. Roma Termini', value: prefill.departure?.station || prefill.departureStation || ''
-    });
-    const { wrapper: wDepCity, input: iDepCity } = buildField({
-      id: 'mbf-train-departure-city', label: 'Città partenza', required: true,
-      placeholder: 'es. Roma', value: prefill.departure?.city || prefill.departureCity || ''
-    });
-    scroll.appendChild(buildRow(wDepStation, wDepCity));
+    // --- SEZIONE: Treno ---
+    const { section: sTreno, grid: gTreno } = buildSection('Treno');
 
-    const { wrapper: wArrStation, input: iArrStation } = buildField({
-      id: 'mbf-train-arrival-station', label: 'Stazione arrivo', required: true,
-      placeholder: 'es. Milano Centrale', value: prefill.arrival?.station || prefill.arrivalStation || ''
-    });
-    const { wrapper: wArrCity, input: iArrCity } = buildField({
-      id: 'mbf-train-arrival-city', label: 'Città arrivo', required: true,
-      placeholder: 'es. Milano', value: prefill.arrival?.city || prefill.arrivalCity || ''
-    });
-    scroll.appendChild(buildRow(wArrStation, wArrCity));
-
-    const { wrapper: wDate, input: iDate } = buildField({
+    const { wrapper: wDate, input: iDate } = buildEditField({
       id: 'mbf-train-date', label: 'Data', type: 'date', required: true,
       value: prefill.date || ''
     });
-    const { wrapper: wDepTime, input: iDepTime } = buildField({
-      id: 'mbf-train-departure-time', label: 'Orario partenza', type: 'time', required: true,
-      value: prefill.departureTime || (prefill.departure?.time || '')
-    });
-    scroll.appendChild(buildRow(wDate, wDepTime));
-
-    const { wrapper: wTrainNum, input: iTrainNum } = buildField({
+    const { wrapper: wTrainNum, input: iTrainNum } = buildEditField({
       id: 'mbf-train-number', label: 'Numero treno', required: true,
       placeholder: 'es. FR 9619', value: prefill.trainNumber || ''
     });
-    const { wrapper: wOperator, input: iOperator } = buildField({
+    const { wrapper: wOperator, input: iOperator } = buildEditField({
       id: 'mbf-train-operator', label: 'Operatore', required: true,
       placeholder: 'es. Trenitalia', value: prefill.operator || ''
     });
-    scroll.appendChild(buildRow(wTrainNum, wOperator));
+    gTreno.appendChild(wDate);
+    gTreno.appendChild(wTrainNum);
+    gTreno.appendChild(wOperator);
+    scroll.appendChild(sTreno);
 
-    // --- Campi opzionali ---
-    const { wrapper: wArrTime, input: iArrTime } = buildField({
-      id: 'mbf-train-arrival-time', label: 'Orario arrivo', type: 'time',
+    // --- SEZIONE: Partenza ---
+    const { section: sDep, grid: gDep } = buildSection('Partenza');
+
+    const { wrapper: wDepStation, input: iDepStation } = buildEditField({
+      id: 'mbf-train-departure-station', label: 'Stazione', required: true,
+      placeholder: 'es. Roma Termini', value: prefill.departure?.station || prefill.departureStation || ''
+    });
+    const { wrapper: wDepCity, input: iDepCity } = buildEditField({
+      id: 'mbf-train-departure-city', label: 'Città', required: true,
+      placeholder: 'es. Roma', value: prefill.departure?.city || prefill.departureCity || ''
+    });
+    const { wrapper: wDepTime, input: iDepTime } = buildEditField({
+      id: 'mbf-train-departure-time', label: 'Orario', type: 'time', required: true,
+      value: prefill.departureTime || (prefill.departure?.time || '')
+    });
+    gDep.appendChild(wDepStation);
+    gDep.appendChild(wDepCity);
+    gDep.appendChild(wDepTime);
+    scroll.appendChild(sDep);
+
+    // --- SEZIONE: Arrivo ---
+    const { section: sArr, grid: gArr } = buildSection('Arrivo');
+
+    const { wrapper: wArrStation, input: iArrStation } = buildEditField({
+      id: 'mbf-train-arrival-station', label: 'Stazione', required: true,
+      placeholder: 'es. Milano Centrale', value: prefill.arrival?.station || prefill.arrivalStation || ''
+    });
+    const { wrapper: wArrCity, input: iArrCity } = buildEditField({
+      id: 'mbf-train-arrival-city', label: 'Città', required: true,
+      placeholder: 'es. Milano', value: prefill.arrival?.city || prefill.arrivalCity || ''
+    });
+    const { wrapper: wArrTime, input: iArrTime } = buildEditField({
+      id: 'mbf-train-arrival-time', label: 'Orario', type: 'time',
       value: prefill.arrivalTime || (prefill.arrival?.time || '')
     });
-    const { wrapper: wClass, input: iClass } = buildField({
+    gArr.appendChild(wArrStation);
+    gArr.appendChild(wArrCity);
+    gArr.appendChild(wArrTime);
+    scroll.appendChild(sArr);
+
+    // --- SEZIONE: Prenotazione ---
+    const { section: sBook, grid: gBook } = buildSection('Prenotazione');
+
+    const { wrapper: wPnr, input: iPnr } = buildEditField({
+      id: 'mbf-train-pnr', label: 'Riferimento / PNR',
+      placeholder: 'es. ABC123', value: prefill.bookingReference || prefill.pnr || ''
+    });
+    const { wrapper: wClass, input: iClass } = buildEditField({
       id: 'mbf-train-class', label: 'Classe',
       placeholder: 'es. 1ª, 2ª', value: prefill.class || ''
     });
-    scroll.appendChild(buildRow(wArrTime, wClass));
-
-    const { wrapper: wSeat, input: iSeat } = buildField({
+    const { wrapper: wSeat, input: iSeat } = buildEditField({
       id: 'mbf-train-seat', label: 'Posto',
       placeholder: 'es. 45', value: prefill.seat || ''
     });
-    const { wrapper: wCoach, input: iCoach } = buildField({
+    const { wrapper: wCoach, input: iCoach } = buildEditField({
       id: 'mbf-train-coach', label: 'Carrozza',
       placeholder: 'es. 3', value: prefill.coach || ''
     });
-    scroll.appendChild(buildRow(wSeat, wCoach));
-
-    const { wrapper: wPnr, input: iPnr } = buildField({
-      id: 'mbf-train-pnr', label: 'PNR / Codice prenotazione',
-      placeholder: 'es. ABC123', value: prefill.bookingReference || prefill.pnr || ''
-    });
-    const { wrapper: wPrice, input: iPrice } = buildField({
+    const { wrapper: wPrice, input: iPrice } = buildEditField({
       id: 'mbf-train-price', label: 'Prezzo (€)', type: 'number', placeholder: '0.00',
       value: prefill.price || ''
     });
-    scroll.appendChild(buildRow(wPnr, wPrice));
+    gBook.appendChild(wPnr);
+    gBook.appendChild(wClass);
+    gBook.appendChild(wSeat);
+    gBook.appendChild(wCoach);
+    gBook.appendChild(wPrice);
+    scroll.appendChild(sBook);
 
     // Upload documento
+    const docSection = document.createElement('div');
+    docSection.className = 'edit-booking-section';
+    docSection.style.marginTop = '16px';
     const { wrapper: wDoc, getFile } = buildDocumentUpload();
-    scroll.appendChild(wDoc);
+    docSection.appendChild(wDoc);
+    scroll.appendChild(docSection);
 
     form.appendChild(scroll);
 
@@ -684,10 +1022,7 @@ window.manualBookingForm = (() => {
     // Aggiornamento stato bottone
     const requiredInputs = [iDepStation, iDepCity, iArrStation, iArrCity, iDate, iDepTime, iTrainNum, iOperator];
     requiredInputs.forEach(inp => {
-      inp.addEventListener('input', () => {
-        clearFieldError(inp);
-        updateSaveBtn(form, saveBtn);
-      });
+      inp.addEventListener('input', () => { clearFieldError(inp); updateSaveBtn(form, saveBtn); });
     });
 
     const getValues = () => ({
@@ -744,77 +1079,95 @@ window.manualBookingForm = (() => {
    */
   function buildBusForm(prefill = {}) {
     const form = document.createElement('div');
-    form.className = 'manual-booking-form manual-booking-form--bus';
+    form.className = 'manual-booking-form manual-booking-form--bus edit-booking-form';
     form.dataset.bookingType = 'bus';
-
-    // Intestazione
-    const heading = document.createElement('p');
-    heading.className = 'manual-form-heading';
-    heading.style.cssText = 'font-weight:var(--font-weight-semibold);margin-bottom:var(--spacing-4);color:var(--color-gray-700);';
-    heading.textContent = 'Inserisci i dettagli del bus';
-    form.appendChild(heading);
 
     // Scrollable body
     const scroll = document.createElement('div');
     scroll.style.cssText = 'overflow-y:auto;max-height:55vh;padding-right:4px;';
 
-    // --- Campi obbligatori ---
-    const { wrapper: wDepCity, input: iDepCity } = buildField({
-      id: 'mbf-bus-departure-city', label: 'Città partenza', required: true,
-      placeholder: 'es. Roma', value: prefill.departureCity || (prefill.departure?.city || '')
-    });
-    const { wrapper: wArrCity, input: iArrCity } = buildField({
-      id: 'mbf-bus-arrival-city', label: 'Città arrivo', required: true,
-      placeholder: 'es. Napoli', value: prefill.arrivalCity || (prefill.arrival?.city || '')
-    });
-    scroll.appendChild(buildRow(wDepCity, wArrCity));
+    // --- SEZIONE: Bus ---
+    const { section: sBus, grid: gBus } = buildSection('Bus');
 
-    const { wrapper: wDate, input: iDate } = buildField({
+    const { wrapper: wDate, input: iDate } = buildEditField({
       id: 'mbf-bus-date', label: 'Data', type: 'date', required: true,
       value: prefill.date || ''
     });
-    const { wrapper: wDepTime, input: iDepTime } = buildField({
-      id: 'mbf-bus-departure-time', label: 'Orario partenza', type: 'time', required: true,
-      value: prefill.departureTime || (prefill.departure?.time || '')
-    });
-    scroll.appendChild(buildRow(wDate, wDepTime));
-
-    const { wrapper: wOperator, input: iOperator } = buildField({
+    const { wrapper: wOperator, input: iOperator } = buildEditField({
       id: 'mbf-bus-operator', label: 'Operatore', required: true,
       placeholder: 'es. FlixBus', value: prefill.operator || ''
     });
-    scroll.appendChild(wOperator);
-
-    // --- Campi opzionali ---
-    const { wrapper: wDepStation, input: iDepStation } = buildField({
-      id: 'mbf-bus-departure-station', label: 'Stazione/terminal partenza',
-      placeholder: 'es. Tiburtina', value: prefill.departureStation || (prefill.departure?.station || '')
-    });
-    const { wrapper: wArrStation, input: iArrStation } = buildField({
-      id: 'mbf-bus-arrival-station', label: 'Stazione/terminal arrivo',
-      placeholder: 'es. Metropark', value: prefill.arrivalStation || (prefill.arrival?.station || '')
-    });
-    scroll.appendChild(buildRow(wDepStation, wArrStation));
-
-    const { wrapper: wRoute, input: iRoute } = buildField({
-      id: 'mbf-bus-route', label: 'Numero rotta',
+    const { wrapper: wRoute, input: iRoute } = buildEditField({
+      id: 'mbf-bus-route', label: 'Linea / Rotta',
       placeholder: 'es. 001', value: prefill.routeNumber || ''
     });
-    const { wrapper: wSeat, input: iSeat } = buildField({
+    gBus.appendChild(wDate);
+    gBus.appendChild(wOperator);
+    gBus.appendChild(wRoute);
+    scroll.appendChild(sBus);
+
+    // --- SEZIONE: Partenza ---
+    const { section: sDep, grid: gDep } = buildSection('Partenza');
+
+    const { wrapper: wDepCity, input: iDepCity } = buildEditField({
+      id: 'mbf-bus-departure-city', label: 'Città', required: true,
+      placeholder: 'es. Roma', value: prefill.departureCity || (prefill.departure?.city || '')
+    });
+    const { wrapper: wDepStation, input: iDepStation } = buildEditField({
+      id: 'mbf-bus-departure-station', label: 'Stazione / Terminal',
+      placeholder: 'es. Tiburtina', value: prefill.departureStation || (prefill.departure?.station || '')
+    });
+    const { wrapper: wDepTime, input: iDepTime } = buildEditField({
+      id: 'mbf-bus-departure-time', label: 'Orario', type: 'time', required: true,
+      value: prefill.departureTime || (prefill.departure?.time || '')
+    });
+    gDep.appendChild(wDepCity);
+    gDep.appendChild(wDepStation);
+    gDep.appendChild(wDepTime);
+    scroll.appendChild(sDep);
+
+    // --- SEZIONE: Arrivo ---
+    const { section: sArr, grid: gArr } = buildSection('Arrivo');
+
+    const { wrapper: wArrCity, input: iArrCity } = buildEditField({
+      id: 'mbf-bus-arrival-city', label: 'Città', required: true,
+      placeholder: 'es. Napoli', value: prefill.arrivalCity || (prefill.arrival?.city || '')
+    });
+    const { wrapper: wArrStation, input: iArrStation } = buildEditField({
+      id: 'mbf-bus-arrival-station', label: 'Stazione / Terminal',
+      placeholder: 'es. Metropark', value: prefill.arrivalStation || (prefill.arrival?.station || '')
+    });
+    const { wrapper: wArrTime, input: iArrTime } = buildEditField({
+      id: 'mbf-bus-arrival-time', label: 'Orario', type: 'time',
+      value: prefill.arrival?.time || ''
+    });
+    gArr.appendChild(wArrCity);
+    gArr.appendChild(wArrStation);
+    gArr.appendChild(wArrTime);
+    scroll.appendChild(sArr);
+
+    // --- SEZIONE: Prenotazione ---
+    const { section: sBook, grid: gBook } = buildSection('Prenotazione');
+
+    const { wrapper: wSeat, input: iSeat } = buildEditField({
       id: 'mbf-bus-seat', label: 'Posto',
       placeholder: 'es. 12', value: prefill.seat || ''
     });
-    scroll.appendChild(buildRow(wRoute, wSeat));
-
-    const { wrapper: wPrice, input: iPrice } = buildField({
+    const { wrapper: wPrice, input: iPrice } = buildEditField({
       id: 'mbf-bus-price', label: 'Prezzo (€)', type: 'number', placeholder: '0.00',
       value: prefill.price || ''
     });
-    scroll.appendChild(wPrice);
+    gBook.appendChild(wSeat);
+    gBook.appendChild(wPrice);
+    scroll.appendChild(sBook);
 
     // Upload documento
+    const docSection = document.createElement('div');
+    docSection.className = 'edit-booking-section';
+    docSection.style.marginTop = '16px';
     const { wrapper: wDoc, getFile } = buildDocumentUpload();
-    scroll.appendChild(wDoc);
+    docSection.appendChild(wDoc);
+    scroll.appendChild(docSection);
 
     form.appendChild(scroll);
 
@@ -828,20 +1181,22 @@ window.manualBookingForm = (() => {
     // Aggiornamento stato bottone
     const requiredInputs = [iDepCity, iArrCity, iDate, iDepTime, iOperator];
     requiredInputs.forEach(inp => {
-      inp.addEventListener('input', () => {
-        clearFieldError(inp);
-        updateSaveBtn(form, saveBtn);
-      });
+      inp.addEventListener('input', () => { clearFieldError(inp); updateSaveBtn(form, saveBtn); });
     });
 
     const getValues = () => ({
-      departureCity: iDepCity.value.trim(),
-      arrivalCity: iArrCity.value.trim(),
+      departure: {
+        city: iDepCity.value.trim(),
+        station: iDepStation.value.trim() || undefined,
+        time: iDepTime.value || undefined,
+      },
+      arrival: {
+        city: iArrCity.value.trim(),
+        station: iArrStation.value.trim() || undefined,
+        time: iArrTime.value || undefined,
+      },
       date: iDate.value,
-      departureTime: iDepTime.value,
       operator: iOperator.value.trim(),
-      departureStation: iDepStation.value.trim() || undefined,
-      arrivalStation: iArrStation.value.trim() || undefined,
       routeNumber: iRoute.value.trim() || undefined,
       seat: iSeat.value.trim() || undefined,
       price: iPrice.value ? parseFloat(iPrice.value) : undefined,
@@ -891,124 +1246,138 @@ window.manualBookingForm = (() => {
    */
   function buildRentalForm(prefill = {}) {
     const form = document.createElement('div');
-    form.className = 'manual-booking-form manual-booking-form--rental';
+    form.className = 'manual-booking-form manual-booking-form--rental edit-booking-form';
     form.dataset.bookingType = 'rental';
-
-    // Intestazione
-    const heading = document.createElement('p');
-    heading.className = 'manual-form-heading';
-    heading.style.cssText = 'font-weight:var(--font-weight-semibold);margin-bottom:var(--spacing-4);color:var(--color-gray-700);';
-    heading.textContent = 'Inserisci i dettagli del noleggio auto';
-    form.appendChild(heading);
 
     // Scrollable body
     const scroll = document.createElement('div');
     scroll.style.cssText = 'overflow-y:auto;max-height:55vh;padding-right:4px;';
 
-    // --- Campi obbligatori ---
-    const { wrapper: wProvider, input: iProvider } = buildField({
+    // --- SEZIONE: Noleggio ---
+    const { section: sNol, grid: gNol } = buildSection('Noleggio');
+
+    const { wrapper: wProvider, input: iProvider } = buildEditField({
       id: 'mbf-rental-provider', label: 'Fornitore', required: true,
       placeholder: 'es. Hertz, Avis', value: prefill.provider || ''
     });
-    const { wrapper: wPickupCity, input: iPickupCity } = buildField({
-      id: 'mbf-rental-pickup-city', label: 'Città ritiro', required: true,
-      placeholder: 'es. Roma', value: prefill.pickupLocation?.city || prefill.pickupCity || ''
-    });
-    scroll.appendChild(buildRow(wProvider, wPickupCity));
-
-    const { wrapper: wPickupDate, input: iPickupDate } = buildField({
+    const { wrapper: wPickupDate, input: iPickupDate } = buildEditField({
       id: 'mbf-rental-date', label: 'Data ritiro', type: 'date', required: true,
       value: prefill.date || prefill.pickupDate || ''
     });
-    const { wrapper: wPickupTime, input: iPickupTime } = buildField({
-      id: 'mbf-rental-pickup-time', label: 'Ora ritiro', type: 'time', required: true,
-      value: prefill.pickupLocation?.time || prefill.pickupTime || ''
-    });
-    scroll.appendChild(buildRow(wPickupDate, wPickupTime));
-
-    const { wrapper: wDropoffDate, input: iDropoffDate } = buildField({
-      id: 'mbf-rental-end-date', label: 'Data restituzione', type: 'date', required: true,
+    const { wrapper: wDropoffDate, input: iDropoffDate } = buildEditField({
+      id: 'mbf-rental-end-date', label: 'Data riconsegna', type: 'date', required: true,
       value: prefill.endDate || prefill.dropoffDate || ''
     });
-    const { wrapper: wDropoffTime, input: iDropoffTime } = buildField({
-      id: 'mbf-rental-dropoff-time', label: 'Ora restituzione', type: 'time', required: true,
-      value: prefill.dropoffLocation?.time || prefill.dropoffTime || ''
-    });
-    scroll.appendChild(buildRow(wDropoffDate, wDropoffTime));
 
     // Giorni noleggio — campo read-only calcolato automaticamente
     const daysWrapper = document.createElement('div');
-    daysWrapper.className = 'form-group';
+    daysWrapper.className = 'edit-booking-field';
     const daysLbl = document.createElement('label');
     daysLbl.textContent = 'Giorni noleggio';
     daysWrapper.appendChild(daysLbl);
     const daysInput = document.createElement('input');
     daysInput.type = 'text';
     daysInput.id = 'mbf-rental-days';
-    daysInput.className = 'form-input';
     daysInput.readOnly = true;
-    daysInput.placeholder = '— calcolato automaticamente —';
+    daysInput.placeholder = '— calcolato —';
     daysWrapper.appendChild(daysInput);
 
     const updateDays = () => {
       const d = calcDays(iPickupDate.value, iDropoffDate.value);
       daysInput.value = d !== null ? `${d} giorn${d === 1 ? 'o' : 'i'}` : '';
     };
-
     iPickupDate.addEventListener('change', updateDays);
     iDropoffDate.addEventListener('change', updateDays);
     updateDays();
 
-    // --- Campi opzionali ---
-    const { wrapper: wPickupAddress, input: iPickupAddress } = buildField({
-      id: 'mbf-rental-pickup-address', label: 'Indirizzo ritiro',
+    gNol.appendChild(wProvider);
+    gNol.appendChild(wPickupDate);
+    gNol.appendChild(wDropoffDate);
+    gNol.appendChild(daysWrapper);
+    scroll.appendChild(sNol);
+
+    // --- SEZIONE: Ritiro ---
+    const { section: sPickup, grid: gPickup } = buildSection('Ritiro');
+
+    const { wrapper: wPickupCity, input: iPickupCity } = buildEditField({
+      id: 'mbf-rental-pickup-city', label: 'Città', required: true,
+      placeholder: 'es. Roma', value: prefill.pickupLocation?.city || prefill.pickupCity || ''
+    });
+    const { wrapper: wPickupTime, input: iPickupTime } = buildEditField({
+      id: 'mbf-rental-pickup-time', label: 'Orario', type: 'time', required: true,
+      value: prefill.pickupLocation?.time || prefill.pickupTime || ''
+    });
+    const { wrapper: wPickupAddress, input: iPickupAddress } = buildEditField({
+      id: 'mbf-rental-pickup-address', label: 'Indirizzo',
       placeholder: 'es. Via Roma 1', value: prefill.pickupLocation?.address || ''
     });
-    scroll.appendChild(buildRow(daysWrapper, wPickupAddress));
+    gPickup.appendChild(wPickupCity);
+    gPickup.appendChild(wPickupTime);
+    gPickup.appendChild(wPickupAddress);
+    scroll.appendChild(sPickup);
 
-    const { wrapper: wPickupAirport, input: iPickupAirport } = buildField({
-      id: 'mbf-rental-pickup-airport', label: 'Aeroporto ritiro',
-      placeholder: 'es. FCO', value: prefill.pickupLocation?.airport || ''
-    });
-    const { wrapper: wDropoffCity, input: iDropoffCity } = buildField({
-      id: 'mbf-rental-dropoff-city', label: 'Città restituzione',
+    // --- SEZIONE: Riconsegna ---
+    const { section: sDropoff, grid: gDropoff } = buildSection('Riconsegna');
+
+    const { wrapper: wDropoffCity, input: iDropoffCity } = buildEditField({
+      id: 'mbf-rental-dropoff-city', label: 'Città',
       placeholder: 'es. Milano', value: prefill.dropoffLocation?.city || ''
     });
-    scroll.appendChild(buildRow(wPickupAirport, wDropoffCity));
+    const { wrapper: wDropoffTime, input: iDropoffTime } = buildEditField({
+      id: 'mbf-rental-dropoff-time', label: 'Orario', type: 'time', required: true,
+      value: prefill.dropoffLocation?.time || prefill.dropoffTime || ''
+    });
+    const { wrapper: wDropoffAddress, input: iDropoffAddress } = buildEditField({
+      id: 'mbf-rental-dropoff-address', label: 'Indirizzo',
+      placeholder: 'es. Via Milano 1', value: prefill.dropoffLocation?.address || ''
+    });
+    gDropoff.appendChild(wDropoffCity);
+    gDropoff.appendChild(wDropoffTime);
+    gDropoff.appendChild(wDropoffAddress);
+    scroll.appendChild(sDropoff);
 
-    const { wrapper: wCategory, input: iCategory } = buildField({
+    // --- SEZIONE: Prenotazione / Veicolo ---
+    const { section: sBook, grid: gBook } = buildSection('Prenotazione');
+
+    const { wrapper: wConfirm, input: iConfirm } = buildEditField({
+      id: 'mbf-rental-confirmation', label: 'Riferimento / N. Conferma',
+      placeholder: 'es. HZ123456', value: prefill.confirmationNumber || ''
+    });
+    const { wrapper: wCategory, input: iCategory } = buildEditField({
       id: 'mbf-rental-category', label: 'Categoria veicolo',
       placeholder: 'es. Compatta, SUV', value: prefill.vehicleCategory || ''
     });
-    const { wrapper: wMake, input: iMake } = buildField({
+    const { wrapper: wMake, input: iMake } = buildEditField({
       id: 'mbf-rental-make', label: 'Marca',
       placeholder: 'es. Fiat', value: prefill.vehicleMake || ''
     });
-    scroll.appendChild(buildRow(wCategory, wMake));
-
-    const { wrapper: wModel, input: iModel } = buildField({
+    const { wrapper: wModel, input: iModel } = buildEditField({
       id: 'mbf-rental-model', label: 'Modello',
       placeholder: 'es. 500', value: prefill.vehicleModel || ''
     });
-    const { wrapper: wConfirm, input: iConfirm } = buildField({
-      id: 'mbf-rental-confirmation', label: 'Numero conferma',
-      placeholder: 'es. HZ123456', value: prefill.confirmationNumber || ''
-    });
-    scroll.appendChild(buildRow(wModel, wConfirm));
-
-    const { wrapper: wInsurance, input: iInsurance } = buildField({
+    const { wrapper: wInsurance, input: iInsurance } = buildEditField({
       id: 'mbf-rental-insurance', label: 'Assicurazione',
       placeholder: 'es. CDW, Full Coverage', value: prefill.insurance || ''
     });
-    const { wrapper: wPrice, input: iPrice } = buildField({
+    const { wrapper: wPrice, input: iPrice } = buildEditField({
       id: 'mbf-rental-price', label: 'Prezzo (€)', type: 'number', placeholder: '0.00',
       value: prefill.price || ''
     });
-    scroll.appendChild(buildRow(wInsurance, wPrice));
+    gBook.appendChild(wConfirm);
+    gBook.appendChild(wCategory);
+    gBook.appendChild(wMake);
+    gBook.appendChild(wModel);
+    gBook.appendChild(wInsurance);
+    gBook.appendChild(wPrice);
+    scroll.appendChild(sBook);
 
     // Upload documento
+    const docSection = document.createElement('div');
+    docSection.className = 'edit-booking-section';
+    docSection.style.marginTop = '16px';
     const { wrapper: wDoc, getFile } = buildDocumentUpload();
-    scroll.appendChild(wDoc);
+    docSection.appendChild(wDoc);
+    scroll.appendChild(docSection);
 
     form.appendChild(scroll);
 
@@ -1022,14 +1391,8 @@ window.manualBookingForm = (() => {
     // Aggiornamento stato bottone
     const requiredInputs = [iProvider, iPickupCity, iPickupDate, iPickupTime, iDropoffDate, iDropoffTime];
     requiredInputs.forEach(inp => {
-      inp.addEventListener('input', () => {
-        clearFieldError(inp);
-        updateSaveBtn(form, saveBtn);
-      });
-      inp.addEventListener('change', () => {
-        clearFieldError(inp);
-        updateSaveBtn(form, saveBtn);
-      });
+      inp.addEventListener('input', () => { clearFieldError(inp); updateSaveBtn(form, saveBtn); });
+      inp.addEventListener('change', () => { clearFieldError(inp); updateSaveBtn(form, saveBtn); });
     });
 
     const getValues = () => ({
@@ -1038,13 +1401,13 @@ window.manualBookingForm = (() => {
         city: iPickupCity.value.trim(),
         time: iPickupTime.value,
         address: iPickupAddress.value.trim() || undefined,
-        airport: iPickupAirport.value.trim() || undefined,
       },
       date: iPickupDate.value,
       endDate: iDropoffDate.value,
       dropoffLocation: {
         city: iDropoffCity.value.trim() || undefined,
         time: iDropoffTime.value,
+        address: iDropoffAddress.value.trim() || undefined,
       },
       vehicleCategory: iCategory.value.trim() || undefined,
       vehicleMake: iMake.value.trim() || undefined,
@@ -1057,11 +1420,10 @@ window.manualBookingForm = (() => {
     const validate = () => {
       let valid = true;
 
-      // Validazione data restituzione non antecedente ritiro
       if (iPickupDate.value && iDropoffDate.value) {
         const days = calcDays(iPickupDate.value, iDropoffDate.value);
         if (days === null || days <= 0) {
-          showFieldError(iDropoffDate, 'La data di restituzione deve essere successiva alla data di ritiro');
+          showFieldError(iDropoffDate, 'La data di riconsegna deve essere successiva alla data di ritiro');
           valid = false;
         }
       }
@@ -1071,8 +1433,8 @@ window.manualBookingForm = (() => {
         { input: iPickupCity,  msg: 'Inserisci la città di ritiro' },
         { input: iPickupDate,  msg: 'Inserisci la data di ritiro' },
         { input: iPickupTime,  msg: 'Inserisci l\'ora di ritiro' },
-        { input: iDropoffDate, msg: 'Inserisci la data di restituzione' },
-        { input: iDropoffTime, msg: 'Inserisci l\'ora di restituzione' },
+        { input: iDropoffDate, msg: 'Inserisci la data di riconsegna' },
+        { input: iDropoffTime, msg: 'Inserisci l\'ora di riconsegna' },
       ];
       checks.forEach(({ input, msg }) => {
         if (!input.value || input.value.trim() === '') {
@@ -1088,23 +1450,6 @@ window.manualBookingForm = (() => {
     return { form, getValues, validate, saveBtn, getFile };
   }
 
-  // Opzioni tipo passeggero per CustomSelect (traghetto)
-  const FERRY_PASSENGER_TYPE_OPTIONS = [
-    { value: '', label: '— Seleziona —' },
-    { value: 'adulto', label: 'Adulto' },
-    { value: 'bambino', label: 'Bambino' },
-    { value: 'ridotto', label: 'Ridotto/Senior' },
-  ];
-
-  // Opzioni tipo veicolo per CustomSelect (traghetto)
-  const FERRY_VEHICLE_TYPE_OPTIONS = [
-    { value: '', label: '— Nessun veicolo —' },
-    { value: 'auto', label: 'Automobile' },
-    { value: 'moto', label: 'Moto/Scooter' },
-    { value: 'camper', label: 'Camper/Furgone' },
-    { value: 'bici', label: 'Bicicletta' },
-  ];
-
   /**
    * Costruisce il form traghetto.
    * @param {Object} prefill - dati da pre-popolare
@@ -1112,269 +1457,262 @@ window.manualBookingForm = (() => {
    */
   function buildFerryForm(prefill = {}) {
     const form = document.createElement('div');
-    form.className = 'manual-booking-form manual-booking-form--ferry';
+    form.className = 'manual-booking-form manual-booking-form--ferry edit-booking-form';
     form.dataset.bookingType = 'ferry';
-
-    // Intestazione
-    const heading = document.createElement('p');
-    heading.className = 'manual-form-heading';
-    heading.style.cssText = 'font-weight:var(--font-weight-semibold);margin-bottom:var(--spacing-4);color:var(--color-gray-700);';
-    heading.textContent = 'Inserisci i dettagli del traghetto';
-    form.appendChild(heading);
 
     // Scrollable body
     const scroll = document.createElement('div');
     scroll.style.cssText = 'overflow-y:auto;max-height:55vh;padding-right:4px;';
 
-    // --- Campi obbligatori ---
-    const { wrapper: wOperator, input: iOperator } = buildField({
+    // --- SEZIONE: Traghetto ---
+    const { section: sTratta, grid: gTratta } = buildSection('Traghetto');
+
+    const { wrapper: wOperator, input: iOperator } = buildEditField({
       id: 'mbf-ferry-operator', label: 'Operatore', required: true,
       placeholder: 'es. Grimaldi, Tirrenia', value: prefill.operator || ''
     });
-    const { wrapper: wDate, input: iDate } = buildField({
-      id: 'mbf-ferry-date', label: 'Data', type: 'date', required: true,
+    const { wrapper: wDate, input: iDate } = buildEditField({
+      id: 'mbf-ferry-date', label: 'Data andata', type: 'date', required: true,
       value: prefill.date || ''
     });
-    scroll.appendChild(buildRow(wOperator, wDate));
-
-    const { wrapper: wDepPort, input: iDepPort } = buildField({
-      id: 'mbf-ferry-dep-port', label: 'Porto partenza', required: true,
-      placeholder: 'es. Porto di Civitavecchia', value: prefill.departure?.port || prefill.departurePort || ''
-    });
-    const { wrapper: wDepCity, input: iDepCity } = buildField({
-      id: 'mbf-ferry-dep-city', label: 'Città partenza', required: true,
-      placeholder: 'es. Civitavecchia', value: prefill.departure?.city || prefill.departureCity || ''
-    });
-    scroll.appendChild(buildRow(wDepPort, wDepCity));
-
-    const { wrapper: wArrPort, input: iArrPort } = buildField({
-      id: 'mbf-ferry-arr-port', label: 'Porto arrivo', required: true,
-      placeholder: 'es. Porto di Palermo', value: prefill.arrival?.port || prefill.arrivalPort || ''
-    });
-    const { wrapper: wArrCity, input: iArrCity } = buildField({
-      id: 'mbf-ferry-arr-city', label: 'Città arrivo', required: true,
-      placeholder: 'es. Palermo', value: prefill.arrival?.city || prefill.arrivalCity || ''
-    });
-    scroll.appendChild(buildRow(wArrPort, wArrCity));
-
-    const { wrapper: wDepTime, input: iDepTime } = buildField({
-      id: 'mbf-ferry-dep-time', label: 'Orario partenza', type: 'time', required: true,
-      value: prefill.departure?.time || prefill.departureTime || ''
-    });
-    const { wrapper: wArrTime, input: iArrTime } = buildField({
-      id: 'mbf-ferry-arr-time', label: 'Orario arrivo (opzionale)', type: 'time',
-      value: prefill.arrival?.time || prefill.arrivalTime || ''
-    });
-    scroll.appendChild(buildRow(wDepTime, wArrTime));
-
-    // --- Campi opzionali ---
-    const { wrapper: wShipName, input: iShipName } = buildField({
+    const { wrapper: wShipName, input: iShipName } = buildEditField({
       id: 'mbf-ferry-ship-name', label: 'Nome nave',
-      placeholder: 'es. Moby Wonder', value: prefill.shipName || ''
+      placeholder: 'es. Moby Wonder', value: prefill.shipName || prefill.ferryName || ''
     });
-    const { wrapper: wRoute, input: iRoute } = buildField({
+    const { wrapper: wRoute, input: iRoute } = buildEditField({
       id: 'mbf-ferry-route', label: 'Numero rotta',
       placeholder: 'es. GR201', value: prefill.routeNumber || ''
     });
-    scroll.appendChild(buildRow(wShipName, wRoute));
+    gTratta.appendChild(wOperator);
+    gTratta.appendChild(wDate);
+    gTratta.appendChild(wShipName);
+    gTratta.appendChild(wRoute);
+    scroll.appendChild(sTratta);
 
-    const { wrapper: wCabin, input: iCabin } = buildField({
-      id: 'mbf-ferry-cabin', label: 'Cabina',
-      placeholder: 'es. C12', value: prefill.cabin || ''
+    // --- SEZIONE: Partenza ---
+    const { section: sDep, grid: gDep } = buildSection('Partenza');
+
+    const { wrapper: wDepPort, input: iDepPort } = buildEditField({
+      id: 'mbf-ferry-dep-port', label: 'Porto', required: true,
+      placeholder: 'es. Porto di Civitavecchia', value: prefill.departure?.port || prefill.departurePort || ''
     });
-    const { wrapper: wDeck, input: iDeck } = buildField({
-      id: 'mbf-ferry-deck', label: 'Ponte',
-      placeholder: 'es. Ponte 5', value: prefill.deck || ''
+    const { wrapper: wDepCity, input: iDepCity } = buildEditField({
+      id: 'mbf-ferry-dep-city', label: 'Città', required: true,
+      placeholder: 'es. Civitavecchia', value: prefill.departure?.city || prefill.departureCity || ''
     });
-    scroll.appendChild(buildRow(wCabin, wDeck));
-
-    // Tipo passeggero (CustomSelect — no <select> nativo)
-    const wPaxType = document.createElement('div');
-    wPaxType.className = 'form-group';
-    const lblPaxType = document.createElement('label');
-    lblPaxType.textContent = 'Tipo passeggero';
-    wPaxType.appendChild(lblPaxType);
-    let paxTypeSelect = null;
-    if (window.CustomSelect) {
-      paxTypeSelect = window.CustomSelect.create({
-        options: FERRY_PASSENGER_TYPE_OPTIONS,
-        selected: prefill.passengerType || '',
-      });
-      wPaxType.appendChild(paxTypeSelect);
-    } else {
-      // Fallback solo per ambienti test senza CustomSelect
-      const inp = document.createElement('input');
-      inp.type = 'text';
-      inp.className = 'form-input';
-      inp.id = 'mbf-ferry-passenger-type';
-      inp.placeholder = 'adulto, bambino…';
-      inp.value = prefill.passengerType || '';
-      wPaxType.appendChild(inp);
-    }
-
-    // Passeggeri (nomi, testo libero)
-    const { wrapper: wPax, input: iPax } = buildField({
-      id: 'mbf-ferry-passengers', label: 'Passeggeri (nomi separati da virgola)',
-      placeholder: 'es. Mario Rossi, Anna Bianchi',
-      value: Array.isArray(prefill.passengers) ? prefill.passengers.map(p => p.name || p).join(', ') : (prefill.passengers || '')
+    const { wrapper: wDepTime, input: iDepTime } = buildEditField({
+      id: 'mbf-ferry-dep-time', label: 'Orario', type: 'time', required: true,
+      value: prefill.departure?.time || prefill.departureTime || ''
     });
-    scroll.appendChild(buildRow(wPaxType, wPax));
+    gDep.appendChild(wDepPort);
+    gDep.appendChild(wDepCity);
+    gDep.appendChild(wDepTime);
+    scroll.appendChild(sDep);
 
-    // Tipo veicolo a bordo (CustomSelect — no <select> nativo)
-    const wVehicleType = document.createElement('div');
-    wVehicleType.className = 'form-group';
-    const lblVehicleType = document.createElement('label');
-    lblVehicleType.textContent = 'Tipo veicolo a bordo';
-    wVehicleType.appendChild(lblVehicleType);
-    let vehicleTypeSelect = null;
-    if (window.CustomSelect) {
-      vehicleTypeSelect = window.CustomSelect.create({
-        options: FERRY_VEHICLE_TYPE_OPTIONS,
-        selected: prefill.vehicleType || '',
-      });
-      wVehicleType.appendChild(vehicleTypeSelect);
-    } else {
-      // Fallback solo per ambienti test senza CustomSelect
-      const inp = document.createElement('input');
-      inp.type = 'text';
-      inp.className = 'form-input';
-      inp.id = 'mbf-ferry-vehicle-type';
-      inp.placeholder = 'auto, moto, nessuno…';
-      inp.value = prefill.vehicleType || '';
-      wVehicleType.appendChild(inp);
-    }
+    // --- SEZIONE: Arrivo ---
+    const { section: sArr, grid: gArr } = buildSection('Arrivo');
 
-    const { wrapper: wPnr, input: iPnr } = buildField({
-      id: 'mbf-ferry-pnr', label: 'PNR / Codice prenotazione',
-      placeholder: 'es. GR12345', value: prefill.bookingReference || prefill.pnr || ''
+    const { wrapper: wArrPort, input: iArrPort } = buildEditField({
+      id: 'mbf-ferry-arr-port', label: 'Porto', required: true,
+      placeholder: 'es. Porto di Palermo', value: prefill.arrival?.port || prefill.arrivalPort || ''
     });
-    scroll.appendChild(buildRow(wVehicleType, wPnr));
-
-    const { wrapper: wPrice, input: iPrice } = buildField({
-      id: 'mbf-ferry-price', label: 'Prezzo (€)', type: 'number', placeholder: '0.00',
-      value: prefill.price || ''
+    const { wrapper: wArrCity, input: iArrCity } = buildEditField({
+      id: 'mbf-ferry-arr-city', label: 'Città', required: true,
+      placeholder: 'es. Palermo', value: prefill.arrival?.city || prefill.arrivalCity || ''
     });
-    scroll.appendChild(wPrice);
+    const { wrapper: wArrTime, input: iArrTime } = buildEditField({
+      id: 'mbf-ferry-arr-time', label: 'Orario (opzionale)', type: 'time',
+      value: prefill.arrival?.time || prefill.arrivalTime || ''
+    });
+    gArr.appendChild(wArrPort);
+    gArr.appendChild(wArrCity);
+    gArr.appendChild(wArrTime);
+    scroll.appendChild(sArr);
 
-    // --- Pulsante "Aggiungi ritorno" ---
+    // --- SEZIONE RITORNO: bottone + sezione espandibile ---
+    // Pulsante "Aggiungi ritorno"
+    const addReturnWrapper = document.createElement('div');
+    addReturnWrapper.className = 'edit-booking-section';
+    addReturnWrapper.style.marginTop = '16px';
+
     const addReturnBtn = document.createElement('button');
     addReturnBtn.type = 'button';
-    addReturnBtn.className = 'btn btn-outline';
-    addReturnBtn.style.cssText = 'display:flex;align-items:center;gap:6px;margin-top:var(--spacing-3);width:100%;justify-content:center;';
+    addReturnBtn.className = 'btn btn-outline ferry-add-return-btn';
+    addReturnBtn.style.cssText = 'display:flex;align-items:center;gap:6px;width:100%;justify-content:center;';
     addReturnBtn.innerHTML = `
       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 96 960 960" fill="currentColor" style="flex-shrink:0">
         <path d="M280 896 80 696l200-200 57 57-103 103h526v80H234l103 103-57 57Zm400-344-57-57 103-103H200v-80h526L623 209l57-57 200 200-200 200Z"/>
       </svg>
       <span data-i18n="ferry.add_return">Aggiungi ritorno</span>
     `;
+    addReturnWrapper.appendChild(addReturnBtn);
+    scroll.appendChild(addReturnWrapper);
 
-    // Sezione ritorno (inizialmente nascosta)
+    // Sezione ritorno (nascosta, stile identico al form di edit)
     const returnSection = document.createElement('div');
-    returnSection.style.cssText = 'display:none;margin-top:var(--spacing-4);';
-    returnSection.id = 'mbf-ferry-return-section';
+    returnSection.className = 'edit-booking-section';
+    returnSection.style.cssText = 'display:none;margin-top:16px;background:var(--color-blue-50,#eff6ff);border:1px solid var(--color-blue-200,#bfdbfe);border-radius:10px;padding:16px;';
 
-    // Header sezione ritorno con X
-    const returnHeader = document.createElement('div');
-    returnHeader.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--spacing-3);padding-bottom:var(--spacing-2);border-bottom:1px solid var(--color-gray-200);';
-
-    const returnTitle = document.createElement('span');
-    returnTitle.style.cssText = 'font-weight:var(--font-weight-semibold);color:var(--color-gray-700);font-size:var(--font-size-sm);';
-    returnTitle.setAttribute('data-i18n', 'ferry.return_trip');
-    returnTitle.textContent = 'Viaggio di ritorno';
-
+    const returnSectionHeader = document.createElement('div');
+    returnSectionHeader.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--color-blue-200,#bfdbfe);';
+    const returnSectionTitle = document.createElement('span');
+    returnSectionTitle.className = 'edit-booking-section-title';
+    returnSectionTitle.style.margin = '0';
+    returnSectionTitle.setAttribute('data-i18n', 'ferry.return_trip');
+    returnSectionTitle.textContent = 'Viaggio di ritorno';
     const removeReturnBtn = document.createElement('button');
     removeReturnBtn.type = 'button';
     removeReturnBtn.style.cssText = 'background:none;border:none;cursor:pointer;color:var(--color-gray-500);padding:2px;display:flex;align-items:center;';
     removeReturnBtn.setAttribute('aria-label', 'Rimuovi ritorno');
     removeReturnBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+    returnSectionHeader.appendChild(returnSectionTitle);
+    returnSectionHeader.appendChild(removeReturnBtn);
+    returnSection.appendChild(returnSectionHeader);
 
-    returnHeader.appendChild(returnTitle);
-    returnHeader.appendChild(removeReturnBtn);
-    returnSection.appendChild(returnHeader);
-
-    // Campi ritorno — rotta inversa pre-popolata, data vuota obbligatoria
-    const { wrapper: wReturnDate, input: iReturnDate } = buildField({
-      id: 'mbf-ferry-return-date', label: 'Data', type: 'date', required: false,
+    const returnGrid = document.createElement('div');
+    returnGrid.className = 'edit-booking-grid';
+    const { wrapper: wReturnDate, input: iReturnDate } = buildEditField({
+      id: 'mbf-ferry-return-date', label: 'Data', type: 'date',
       placeholder: '', value: ''
     });
-    // La data ritorno è required ma gestita separatamente dalla validate principale
     iReturnDate.dataset.returnRequired = '1';
+    returnGrid.appendChild(wReturnDate);
+    returnSection.appendChild(returnGrid);
 
-    const { wrapper: wReturnDepPort, input: iReturnDepPort } = buildField({
-      id: 'mbf-ferry-return-dep-port', label: 'Porto partenza', placeholder: 'es. Porto di Palermo',
-      value: iArrPort.value || ''
-    });
-    const { wrapper: wReturnDepCity, input: iReturnDepCity } = buildField({
-      id: 'mbf-ferry-return-dep-city', label: 'Città partenza', placeholder: 'es. Palermo',
-      value: iArrCity.value || ''
-    });
+    const returnDepTitle = document.createElement('div');
+    returnDepTitle.className = 'edit-booking-section-title';
+    returnDepTitle.style.cssText = 'font-size:var(--font-size-xs);margin-top:12px;';
+    returnDepTitle.textContent = 'Partenza';
+    returnSection.appendChild(returnDepTitle);
 
-    const { wrapper: wReturnArrPort, input: iReturnArrPort } = buildField({
-      id: 'mbf-ferry-return-arr-port', label: 'Porto arrivo', placeholder: 'es. Porto di Civitavecchia',
-      value: iDepPort.value || ''
+    const returnDepGrid = document.createElement('div');
+    returnDepGrid.className = 'edit-booking-grid';
+    const { wrapper: wReturnDepPort, input: iReturnDepPort } = buildEditField({
+      id: 'mbf-ferry-return-dep-port', label: 'Porto', placeholder: 'es. Porto di Palermo', value: ''
     });
-    const { wrapper: wReturnArrCity, input: iReturnArrCity } = buildField({
-      id: 'mbf-ferry-return-arr-city', label: 'Città arrivo', placeholder: 'es. Civitavecchia',
-      value: iDepCity.value || ''
+    const { wrapper: wReturnDepCity, input: iReturnDepCity } = buildEditField({
+      id: 'mbf-ferry-return-dep-city', label: 'Città', placeholder: 'es. Palermo', value: ''
     });
+    const { wrapper: wReturnDepTime, input: iReturnDepTime } = buildEditField({
+      id: 'mbf-ferry-return-dep-time', label: 'Orario (opzionale)', type: 'time', value: ''
+    });
+    returnDepGrid.appendChild(wReturnDepPort);
+    returnDepGrid.appendChild(wReturnDepCity);
+    returnDepGrid.appendChild(wReturnDepTime);
+    returnSection.appendChild(returnDepGrid);
 
-    const { wrapper: wReturnOperator, input: iReturnOperator } = buildField({
-      id: 'mbf-ferry-return-operator', label: 'Operatore', placeholder: 'es. Grimaldi, Tirrenia',
-      value: iOperator.value || ''
-    });
-    const { wrapper: wReturnShipName, input: iReturnShipName } = buildField({
-      id: 'mbf-ferry-return-ship-name', label: 'Nome nave', placeholder: 'es. Moby Wonder',
-      value: iShipName.value || ''
-    });
+    const returnArrTitle = document.createElement('div');
+    returnArrTitle.className = 'edit-booking-section-title';
+    returnArrTitle.style.cssText = 'font-size:var(--font-size-xs);margin-top:12px;';
+    returnArrTitle.textContent = 'Arrivo';
+    returnSection.appendChild(returnArrTitle);
 
-    const { wrapper: wReturnDepTime, input: iReturnDepTime } = buildField({
-      id: 'mbf-ferry-return-dep-time', label: 'Orario partenza (opzionale)', type: 'time', value: ''
+    const returnArrGrid = document.createElement('div');
+    returnArrGrid.className = 'edit-booking-grid';
+    const { wrapper: wReturnArrPort, input: iReturnArrPort } = buildEditField({
+      id: 'mbf-ferry-return-arr-port', label: 'Porto', placeholder: 'es. Porto di Civitavecchia', value: ''
     });
-    const { wrapper: wReturnArrTime, input: iReturnArrTime } = buildField({
-      id: 'mbf-ferry-return-arr-time', label: 'Orario arrivo (opzionale)', type: 'time', value: ''
+    const { wrapper: wReturnArrCity, input: iReturnArrCity } = buildEditField({
+      id: 'mbf-ferry-return-arr-city', label: 'Città', placeholder: 'es. Civitavecchia', value: ''
     });
+    const { wrapper: wReturnArrTime, input: iReturnArrTime } = buildEditField({
+      id: 'mbf-ferry-return-arr-time', label: 'Orario (opzionale)', type: 'time', value: ''
+    });
+    returnArrGrid.appendChild(wReturnArrPort);
+    returnArrGrid.appendChild(wReturnArrCity);
+    returnArrGrid.appendChild(wReturnArrTime);
+    returnSection.appendChild(returnArrGrid);
+    scroll.appendChild(returnSection);
 
-    returnSection.appendChild(wReturnDate);
-    returnSection.appendChild(buildRow(wReturnDepPort, wReturnDepCity));
-    returnSection.appendChild(buildRow(wReturnArrPort, wReturnArrCity));
-    returnSection.appendChild(buildRow(wReturnOperator, wReturnShipName));
-    returnSection.appendChild(buildRow(wReturnDepTime, wReturnArrTime));
+    // --- SEZIONE: Prenotazione ---
+    const { section: sBook, grid: gBook } = buildSection('Prenotazione');
+
+    const { wrapper: wPnr, input: iPnr } = buildEditField({
+      id: 'mbf-ferry-pnr', label: 'Riferimento / PNR',
+      placeholder: 'es. GR12345', value: prefill.bookingReference || prefill.pnr || ''
+    });
+    const { wrapper: wCabin, input: iCabin } = buildEditField({
+      id: 'mbf-ferry-cabin', label: 'Cabina',
+      placeholder: 'es. C12', value: prefill.cabin || ''
+    });
+    const { wrapper: wDeck, input: iDeck } = buildEditField({
+      id: 'mbf-ferry-deck', label: 'Ponte',
+      placeholder: 'es. Ponte 5', value: prefill.deck || ''
+    });
+    gBook.appendChild(wPnr);
+    gBook.appendChild(wCabin);
+    gBook.appendChild(wDeck);
+    scroll.appendChild(sBook);
+
+    // --- SEZIONE: Passeggeri (lista dinamica) ---
+    // Pre-popola: se arriva prefill.passengers come array usalo; se è testo libero, converti
+    const initialPassengers = Array.isArray(prefill.passengers)
+      ? prefill.passengers.map(p => typeof p === 'string' ? { name: p, type: '' } : { name: p.name || '', type: p.type || '' })
+      : [];
+
+    const FERRY_PAX_OPTIONS_FOR_FORM = [
+      { value: 'ADT', label: 'Adulto' },
+      { value: 'CHD', label: 'Bambino' },
+      { value: 'INF', label: 'Infante' },
+    ];
+    const { section: sPax, getPassengers } = buildPassengersSection(initialPassengers, FERRY_PAX_OPTIONS_FOR_FORM);
+    scroll.appendChild(sPax);
+
+    // --- SEZIONE: Veicoli (lista dinamica) ---
+    const initialVehicles = Array.isArray(prefill.vehicles)
+      ? prefill.vehicles.map(v => ({ type: v.type || '', plate: v.plate || '' }))
+      : [];
+
+    const FERRY_VEH_OPTIONS_FOR_FORM = [
+      { value: 'auto',    label: 'Auto' },
+      { value: 'moto',    label: 'Moto' },
+      { value: 'camper',  label: 'Camper' },
+      { value: 'furgone', label: 'Furgone' },
+    ];
+    const { section: sVeh, getVehicles } = buildVehiclesSection(initialVehicles, FERRY_VEH_OPTIONS_FOR_FORM);
+    scroll.appendChild(sVeh);
+
+    // --- SEZIONE: Note ---
+    const { section: sNote, grid: gNote } = buildSection('Note');
+
+    const { wrapper: wPrice, input: iPrice } = buildEditField({
+      id: 'mbf-ferry-price', label: 'Prezzo (€)', type: 'number', placeholder: '0.00',
+      value: prefill.price || ''
+    });
+    gNote.appendChild(wPrice);
+    scroll.appendChild(sNote);
 
     // Upload documento
     const { wrapper: wDoc, getFile } = buildDocumentUpload();
-    scroll.appendChild(wDoc);
-
-    // Pulsante "Aggiungi ritorno" — in fondo, dopo documento
-    addReturnBtn.style.marginTop = '24px';
-    scroll.appendChild(addReturnBtn);
-    scroll.appendChild(returnSection);
+    const docSection = document.createElement('div');
+    docSection.className = 'edit-booking-section';
+    docSection.style.marginTop = '16px';
+    docSection.appendChild(wDoc);
+    scroll.appendChild(docSection);
 
     form.appendChild(scroll);
 
     // Logica toggle sezione ritorno
     addReturnBtn.addEventListener('click', () => {
-      // Aggiorna pre-popolamento con i valori correnti al momento del click
       iReturnDepPort.value = iArrPort.value || '';
       iReturnDepCity.value = iArrCity.value || '';
       iReturnArrPort.value = iDepPort.value || '';
       iReturnArrCity.value = iDepCity.value || '';
-      iReturnOperator.value = iOperator.value || '';
-      iReturnShipName.value = iShipName.value || '';
 
-      addReturnBtn.style.display = 'none';
+      addReturnWrapper.style.display = 'none';
       returnSection.style.display = '';
     });
 
     removeReturnBtn.addEventListener('click', () => {
       returnSection.style.display = 'none';
-      addReturnBtn.style.display = '';
+      addReturnWrapper.style.display = '';
       // Reset campi ritorno
       iReturnDate.value = '';
       iReturnDepTime.value = '';
       iReturnArrTime.value = '';
     });
 
-    // Pulsante Salva (gestito dal chiamante, qui solo creato)
+    // Pulsante Salva
     const saveBtn = document.createElement('button');
     saveBtn.className = 'btn btn-primary';
     saveBtn.id = 'manual-booking-save';
@@ -1382,38 +1720,37 @@ window.manualBookingForm = (() => {
     saveBtn.disabled = true;
 
     // Collega aggiornamento stato save btn a ogni required input
-    form.querySelectorAll('[data-required]').forEach(input => {
-      input.addEventListener('input', () => updateSaveBtn(form, saveBtn));
-      input.addEventListener('change', () => updateSaveBtn(form, saveBtn));
+    [iOperator, iDate, iDepPort, iDepCity, iDepTime, iArrPort, iArrCity].forEach(inp => {
+      inp.addEventListener('input', () => updateSaveBtn(form, saveBtn));
+      inp.addEventListener('change', () => updateSaveBtn(form, saveBtn));
     });
 
-    const getValues = () => ({
-      operator: iOperator.value.trim(),
-      date: iDate.value,
-      departure: {
-        port: iDepPort.value.trim(),
-        city: iDepCity.value.trim(),
-        time: iDepTime.value,
-      },
-      arrival: {
-        port: iArrPort.value.trim(),
-        city: iArrCity.value.trim(),
-        time: iArrTime.value,
-      },
-      shipName: iShipName.value.trim() || undefined,
-      routeNumber: iRoute.value.trim() || undefined,
-      cabin: iCabin.value.trim() || undefined,
-      deck: iDeck.value.trim() || undefined,
-      passengerType: paxTypeSelect
-        ? window.CustomSelect.getValue(paxTypeSelect)
-        : (form.querySelector('#mbf-ferry-passenger-type')?.value || undefined),
-      passengers: iPax.value.trim() || undefined,
-      vehicleType: vehicleTypeSelect
-        ? window.CustomSelect.getValue(vehicleTypeSelect)
-        : (form.querySelector('#mbf-ferry-vehicle-type')?.value || undefined),
-      bookingReference: iPnr.value.trim() || undefined,
-      price: iPrice.value ? parseFloat(iPrice.value) : undefined,
-    });
+    const getValues = () => {
+      const passengers = getPassengers();
+      const vehicles = getVehicles();
+      return {
+        operator: iOperator.value.trim(),
+        date: iDate.value,
+        departure: {
+          port: iDepPort.value.trim(),
+          city: iDepCity.value.trim(),
+          time: iDepTime.value,
+        },
+        arrival: {
+          port: iArrPort.value.trim(),
+          city: iArrCity.value.trim(),
+          time: iArrTime.value || undefined,
+        },
+        ferryName: iShipName.value.trim() || undefined,
+        routeNumber: iRoute.value.trim() || undefined,
+        cabin: iCabin.value.trim() || undefined,
+        deck: iDeck.value.trim() || undefined,
+        bookingReference: iPnr.value.trim() || undefined,
+        passengers: passengers.length > 0 ? passengers : undefined,
+        vehicles: vehicles.length > 0 ? vehicles : undefined,
+        price: iPrice.value ? parseFloat(iPrice.value) : undefined,
+      };
+    };
 
     /**
      * Restituisce i valori del viaggio di ritorno se la sezione è visibile e la data è compilata.
@@ -1423,7 +1760,7 @@ window.manualBookingForm = (() => {
       if (returnSection.style.display === 'none') return null;
       if (!iReturnDate.value) return null;
       return {
-        operator: iReturnOperator.value.trim() || iOperator.value.trim(),
+        operator: iOperator.value.trim(),
         date: iReturnDate.value,
         departure: {
           port: iReturnDepPort.value.trim(),
@@ -1435,7 +1772,8 @@ window.manualBookingForm = (() => {
           city: iReturnArrCity.value.trim(),
           time: iReturnArrTime.value || undefined,
         },
-        shipName: iReturnShipName.value.trim() || undefined,
+        ferryName: iShipName.value.trim() || undefined,
+        _isReturn: true,
       };
     };
 

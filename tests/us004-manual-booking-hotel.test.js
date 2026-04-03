@@ -20,8 +20,8 @@ describe('Form hotel — campi obbligatori', () => {
     expect(formCode).toContain('mbf-hotel-name');
   });
 
-  test('campo città presente (mbf-hotel-city)', () => {
-    expect(formCode).toContain('mbf-hotel-city');
+  test('campo indirizzo completo presente (mbf-hotel-address)', () => {
+    expect(formCode).toContain('mbf-hotel-address');
   });
 
   test('campo data check-in presente (mbf-hotel-checkin)', () => {
@@ -32,11 +32,11 @@ describe('Form hotel — campi obbligatori', () => {
     expect(formCode).toContain('mbf-hotel-checkout');
   });
 
-  test('i 4 campi obbligatori hotel usano required: true', () => {
+  test('i campi obbligatori hotel usano required: true', () => {
     // Conta le occorrenze di required: true nel buildHotelForm
     const hotelFormSection = formCode.slice(formCode.indexOf('buildHotelForm'));
     const requiredCount = (hotelFormSection.match(/required: true/g) || []).length;
-    expect(requiredCount).toBeGreaterThanOrEqual(4);
+    expect(requiredCount).toBeGreaterThanOrEqual(3);
   });
 });
 
@@ -57,8 +57,8 @@ describe('Form hotel — campi opzionali', () => {
     expect(formCode).toContain('mbf-hotel-address');
   });
 
-  test('campo numero camere presente (mbf-hotel-rooms)', () => {
-    expect(formCode).toContain('mbf-hotel-rooms');
+  test('campo orario check-in presente (mbf-hotel-checkin-time)', () => {
+    expect(formCode).toContain('mbf-hotel-checkin-time');
   });
 
   test('campo tipo camera presente (mbf-hotel-room-type)', () => {

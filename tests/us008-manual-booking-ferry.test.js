@@ -81,8 +81,9 @@ describe('Form traghetto — campi opzionali', () => {
     expect(formCode).toContain('mbf-ferry-deck');
   });
 
-  test('campo passeggeri presente (mbf-ferry-passengers)', () => {
-    expect(formCode).toContain('mbf-ferry-passengers');
+  test('sezione passeggeri con lista dinamica presente', () => {
+    // La lista passeggeri è gestita da buildPassengersSection chiamata da buildFerryForm
+    expect(ferryFormSection).toContain('buildPassengersSection');
   });
 
   test('campo PNR presente (mbf-ferry-pnr)', () => {
@@ -99,12 +100,12 @@ describe('Form traghetto — campi opzionali', () => {
 // ===========================
 
 describe('Form traghetto — CustomSelect', () => {
-  test('CustomSelect usato per tipo passeggero', () => {
-    expect(ferryFormSection).toContain('FERRY_PASSENGER_TYPE_OPTIONS');
+  test('CustomSelect usato per tipo passeggero nella lista dinamica', () => {
+    expect(ferryFormSection).toContain('FERRY_PAX_OPTIONS_FOR_FORM');
   });
 
-  test('CustomSelect usato per tipo veicolo', () => {
-    expect(ferryFormSection).toContain('FERRY_VEHICLE_TYPE_OPTIONS');
+  test('CustomSelect usato per tipo veicolo nella lista dinamica', () => {
+    expect(ferryFormSection).toContain('FERRY_VEH_OPTIONS_FOR_FORM');
   });
 
   test('nessun createElement select nel form traghetto', () => {
@@ -112,11 +113,13 @@ describe('Form traghetto — CustomSelect', () => {
   });
 
   test('fallback input text per ambienti senza CustomSelect (tipo passeggero)', () => {
-    expect(ferryFormSection).toContain('mbf-ferry-passenger-type');
+    // Il fallback è gestito dentro buildPassengersSection tramite data-pax-field="type"
+    expect(ferryFormSection).toContain('buildPassengersSection');
   });
 
   test('fallback input text per ambienti senza CustomSelect (tipo veicolo)', () => {
-    expect(ferryFormSection).toContain('mbf-ferry-vehicle-type');
+    // Il fallback è gestito dentro buildVehiclesSection tramite data-veh-field="type"
+    expect(ferryFormSection).toContain('buildVehiclesSection');
   });
 });
 

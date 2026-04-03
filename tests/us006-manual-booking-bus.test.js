@@ -155,18 +155,20 @@ describe('Form bus — integrazione con open()', () => {
 // ===========================
 
 describe('Form bus — struttura dati getValues()', () => {
-  test('getValues restituisce departureCity e arrivalCity', () => {
-    expect(busFormSection).toContain('departureCity:');
-    expect(busFormSection).toContain('arrivalCity:');
+  test('getValues restituisce departure.city e arrival.city', () => {
+    expect(busFormSection).toContain('departure:');
+    expect(busFormSection).toContain('arrival:');
+    expect(busFormSection).toContain('city: iDepCity.value.trim()');
+    expect(busFormSection).toContain('city: iArrCity.value.trim()');
   });
 
   test('getValues restituisce operator', () => {
     expect(busFormSection).toContain('operator:');
   });
 
-  test('getValues restituisce date e departureTime', () => {
+  test('getValues restituisce date e orario partenza', () => {
     expect(busFormSection).toContain('date:');
-    expect(busFormSection).toContain('departureTime:');
+    expect(busFormSection).toContain('time: iDepTime.value');
   });
 
   test('add-booking type bus — submit valido chiama con type bus', () => {

@@ -61,8 +61,8 @@ describe('Form noleggio — campi opzionali', () => {
     expect(formCode).toContain('mbf-rental-pickup-address');
   });
 
-  test('campo aeroporto ritiro presente (mbf-rental-pickup-airport)', () => {
-    expect(formCode).toContain('mbf-rental-pickup-airport');
+  test('campo indirizzo riconsegna presente (mbf-rental-dropoff-address)', () => {
+    expect(formCode).toContain('mbf-rental-dropoff-address');
   });
 
   test('campo città restituzione presente (mbf-rental-dropoff-city)', () => {
@@ -138,13 +138,13 @@ describe('Form noleggio — validazione', () => {
     expect(rentalFormSection).toContain('ora di ritiro');
   });
 
-  test('errore data restituzione mancante', () => {
-    expect(rentalFormSection).toContain('Inserisci la data di restituzione');
+  test('errore data riconsegna mancante', () => {
+    expect(rentalFormSection).toContain('Inserisci la data di riconsegna');
   });
 
-  test('errore ora restituzione mancante', () => {
+  test('errore ora riconsegna mancante', () => {
     expect(rentalFormSection).toContain('Inserisci l');
-    expect(rentalFormSection).toContain('ora di restituzione');
+    expect(rentalFormSection).toContain('ora di riconsegna');
   });
 
   test('errore data restituzione antecedente a data ritiro', () => {

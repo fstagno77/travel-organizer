@@ -97,8 +97,8 @@ describe('Form volo — campi opzionali', () => {
     expect(formCode).toContain('mbf-price');
   });
 
-  test('passeggeri presente (mbf-passengers)', () => {
-    expect(formCode).toContain('mbf-passengers');
+  test('sezione prenotazione con PNR presente (mbf-pnr)', () => {
+    expect(formCode).toContain('mbf-pnr');
   });
 });
 
@@ -191,13 +191,13 @@ describe('Form volo — submit', () => {
     expect(formCode).toContain('tripId, type, manualData');
   });
 
-  test('getValues restituisce flightNumber, airline, date, departureTime, departureCity, arrivalCity', () => {
+  test('getValues restituisce flightNumber, airline, date, departureTime, departure.city, arrival.city', () => {
     expect(formCode).toContain('flightNumber: iFlightNum.value.trim()');
     expect(formCode).toContain('airline: iAirline.value.trim()');
     expect(formCode).toContain('date: iDate.value');
     expect(formCode).toContain('departureTime: iDepTime.value');
-    expect(formCode).toContain('departureCity: iDepCity.value.trim()');
-    expect(formCode).toContain('arrivalCity: iArrCity.value.trim()');
+    expect(formCode).toContain('city: iDepCity.value.trim()');
+    expect(formCode).toContain('city: iArrCity.value.trim()');
   });
 
   test('chiama onSaved() dopo salvataggio riuscito', () => {
