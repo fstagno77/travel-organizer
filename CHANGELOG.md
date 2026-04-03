@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.38.1 - 2026-04-03
+
+### Fix
+- **Tab Traghetti su smartphone**: il tap sul segmento "Traghetti" ora funziona correttamente su iOS Safari — aggiunto `pointer-events: none` sull'SVG inline per garantire la propagazione del touch event al bottone padre
+
 ## 0.38.0 - 2026-04-03
 
 ### Novità
