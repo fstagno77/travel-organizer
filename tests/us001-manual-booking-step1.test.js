@@ -64,19 +64,59 @@ describe('Step 1 — 6 card tipo prenotazione', () => {
 });
 
 // ===========================
-// Tests: click card → apre form manuale
+// Tests: bottone "Continua" disabilitato al render iniziale
 // ===========================
 
-describe('Click card → showManualBookingForm', () => {
+describe('Bottone Continua — stato iniziale disabilitato', () => {
+  test('il footer contiene un bottone con id add-booking-continue', () => {
+    expect(tripPageCode).toContain('add-booking-continue');
+  });
+
+  test('il bottone Continua è disabled al render iniziale', () => {
+    // Il bottone deve avere l'attributo disabled nel template HTML
+    const modalHtmlMatch = tripPageCode.match(/id="add-booking-continue"[^>]*/);
+    expect(modalHtmlMatch).not.toBeNull();
+    expect(modalHtmlMatch[0]).toContain('disabled');
+  });
+
+  test('la variabile _selectedBookingType è inizializzata a null', () => {
+    expect(tripPageCode).toContain('_selectedBookingType = null');
+  });
+});
+
+// ===========================
+// Tests: click card → selezione visiva + abilita Continua (no avanzamento auto)
+// ===========================
+
+describe('Click card → selezione visiva, niente avanzamento automatico', () => {
   test('bindBookingTypeCardEvents collega i click sulle card', () => {
     expect(tripPageCode).toContain('bindBookingTypeCardEvents');
   });
 
-  test('showManualBookingForm viene chiamata con il tipo prenotazione', () => {
-    expect(tripPageCode).toContain('showManualBookingForm');
+  test('click su card aggiunge classe booking-type-card--selected', () => {
+    expect(tripPageCode).toContain('booking-type-card--selected');
   });
 
-  test('click su card legge card.dataset.bookingType per passare il tipo', () => {
+  test('click su card imposta _selectedBookingType', () => {
+    expect(tripPageCode).toContain('_selectedBookingType = bookingType');
+  });
+
+  test('click su card abilita il bottone Continua', () => {
+    // Il bottone deve essere abilitato dopo la selezione card
+    expect(tripPageCode).toContain("continueBtn) continueBtn.disabled = false");
+  });
+
+  test('showManualBookingForm non viene chiamata direttamente al click card', () => {
+    // showManualBookingForm è chiamata solo dal listener di Continua
+    const bindCardFnStart = tripPageCode.indexOf('const bindBookingTypeCardEvents');
+    const bindCardFnEnd = tripPageCode.indexOf('\n    // Upload zone events');
+    const bindCardCode = bindCardFnStart > -1 && bindCardFnEnd > -1
+      ? tripPageCode.slice(bindCardFnStart, bindCardFnEnd)
+      : '';
+    expect(bindCardCode).not.toContain('showManualBookingForm(');
+  });
+
+  test('click su card legge card.dataset.bookingType', () => {
     expect(tripPageCode).toContain('card.dataset.bookingType');
   });
 
@@ -87,12 +127,28 @@ describe('Click card → showManualBookingForm', () => {
 });
 
 // ===========================
-// Tests: upload PDF senza card selezionata → SmartParse
+// Tests: upload PDF → abilita Continua (no avanzamento auto)
 // ===========================
 
-describe('Upload PDF → SmartParse', () => {
-  test('addFiles chiama parseBooking quando riceve file PDF', () => {
-    expect(tripPageCode).toContain('parseBooking()');
+describe('Upload PDF → abilita Continua, niente avanzamento automatico', () => {
+  test('addFiles NON chiama parseBooking() direttamente', () => {
+    // Isola la funzione addFiles
+    const addFilesFnStart = tripPageCode.indexOf('const addFiles = (fileListInput)');
+    const addFilesFnEnd = tripPageCode.indexOf('\n    /** Step 1: Upload and parse with SmartParse */');
+    const addFilesCode = addFilesFnStart > -1 && addFilesFnEnd > -1
+      ? tripPageCode.slice(addFilesFnStart, addFilesFnEnd)
+      : '';
+    expect(addFilesCode).not.toContain('parseBooking()');
+  });
+
+  test('addFiles abilita il bottone Continua dopo selezione file', () => {
+    const addFilesFnStart = tripPageCode.indexOf('const addFiles = (fileListInput)');
+    const addFilesFnEnd = tripPageCode.indexOf('\n    /** Step 1: Upload and parse with SmartParse */');
+    const addFilesCode = addFilesFnStart > -1 && addFilesFnEnd > -1
+      ? tripPageCode.slice(addFilesFnStart, addFilesFnEnd)
+      : '';
+    expect(addFilesCode).toContain('add-booking-continue');
+    expect(addFilesCode).toContain('disabled = false');
   });
 
   test('parseBooking chiama /.netlify/functions/parse-pdf', () => {
@@ -105,5 +161,31 @@ describe('Upload PDF → SmartParse', () => {
 
   test('bindUploadZoneEvents viene chiamata per collegare drag-drop e click', () => {
     expect(tripPageCode).toContain('bindUploadZoneEvents()');
+  });
+});
+
+// ===========================
+// Tests: bottone Continua → dispatcha azione corretta
+// ===========================
+
+describe('Bottone Continua — dispatcha azione corretta', () => {
+  test('il listener di Continua chiama parseBooking se files.length > 0', () => {
+    const continueBtnListenerStart = tripPageCode.indexOf("continueBtn?.addEventListener('click'");
+    const continueBtnListenerEnd = tripPageCode.indexOf('\n    // Modal events');
+    const continueBtnCode = continueBtnListenerStart > -1 && continueBtnListenerEnd > -1
+      ? tripPageCode.slice(continueBtnListenerStart, continueBtnListenerEnd)
+      : '';
+    expect(continueBtnCode).toContain('files.length > 0');
+    expect(continueBtnCode).toContain('parseBooking()');
+  });
+
+  test('il listener di Continua chiama showManualBookingForm se _selectedBookingType è impostato', () => {
+    const continueBtnListenerStart = tripPageCode.indexOf("continueBtn?.addEventListener('click'");
+    const continueBtnListenerEnd = tripPageCode.indexOf('\n    // Modal events');
+    const continueBtnCode = continueBtnListenerStart > -1 && continueBtnListenerEnd > -1
+      ? tripPageCode.slice(continueBtnListenerStart, continueBtnListenerEnd)
+      : '';
+    expect(continueBtnCode).toContain('_selectedBookingType');
+    expect(continueBtnCode).toContain('showManualBookingForm(_selectedBookingType)');
   });
 });

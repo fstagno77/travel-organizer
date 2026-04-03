@@ -1428,6 +1428,7 @@
           </div>
           <div class="modal-footer">
             <button class="btn btn-secondary" id="add-booking-cancel" data-i18n="modal.cancel">Cancel</button>
+            <button class="btn btn-primary" id="add-booking-continue" disabled data-i18n="common.continue">Continua</button>
           </div>
         </div>
       </div>
@@ -1447,6 +1448,7 @@
     let _editedFields = [];
     let phraseController = null;
     let originalBodyContent = null;
+    let _selectedBookingType = null;
 
     const closeModal = () => {
       modal.remove();
@@ -1461,7 +1463,16 @@
       }
       if (pdfFiles.length > 0) {
         files = pdfFiles;
-        parseBooking();
+        // Aggiorna UI upload zone per indicare file selezionato
+        const zone = document.getElementById('add-booking-upload-zone');
+        if (zone) {
+          const hintEl = zone.querySelector('.upload-zone-text');
+          if (hintEl) hintEl.textContent = pdfFiles[0].name;
+          zone.classList.add('has-file');
+        }
+        // Abilita bottone Continua
+        const continueBtn = document.getElementById('add-booking-continue');
+        if (continueBtn) continueBtn.disabled = false;
       }
     };
 
@@ -1941,7 +1952,23 @@
       grid.querySelectorAll('.booking-type-card').forEach(card => {
         card.addEventListener('click', () => {
           const bookingType = card.dataset.bookingType;
-          if (bookingType) showManualBookingForm(bookingType);
+          if (!bookingType) return;
+          // Selezione visiva card
+          grid.querySelectorAll('.booking-type-card').forEach(c => c.classList.remove('booking-type-card--selected'));
+          card.classList.add('booking-type-card--selected');
+          _selectedBookingType = bookingType;
+          // Se era stato selezionato un PDF, resetta la selezione PDF (si usa la card manuale)
+          files = [];
+          const zone = document.getElementById('add-booking-upload-zone');
+          if (zone) {
+            const hintEl = zone.querySelector('.upload-zone-text');
+            if (hintEl) hintEl.setAttribute('data-i18n', 'trip.uploadHint');
+            if (hintEl && window.i18n) hintEl.textContent = i18n.t('trip.uploadHint') || 'Drag PDFs here or click to select';
+            zone.classList.remove('has-file');
+          }
+          // Abilita bottone Continua
+          const continueBtn = document.getElementById('add-booking-continue');
+          if (continueBtn) continueBtn.disabled = false;
         });
       });
     };
@@ -1951,6 +1978,18 @@
 
     // Booking type card events
     bindBookingTypeCardEvents();
+
+    // Bottone Continua
+    const continueBtn = document.getElementById('add-booking-continue');
+    continueBtn?.addEventListener('click', () => {
+      if (files.length > 0) {
+        // Avanza con SmartParse PDF
+        parseBooking();
+      } else if (_selectedBookingType) {
+        // Avanza con form manuale per il tipo selezionato
+        showManualBookingForm(_selectedBookingType);
+      }
+    });
 
     // Modal events
     closeBtn.addEventListener('click', closeModal);
