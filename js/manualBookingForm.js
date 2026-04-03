@@ -595,6 +595,23 @@ window.manualBookingForm = (() => {
     gBook.appendChild(wPrice);
     scroll.appendChild(sBook);
 
+    // --- SEZIONE: Note ---
+    const { section: sNote } = buildSection('Note');
+    const flightNoteWrapper = document.createElement('div');
+    flightNoteWrapper.className = 'edit-booking-field full-width';
+    const flightNoteLbl = document.createElement('label');
+    flightNoteLbl.textContent = 'Note';
+    const flightNoteTextarea = document.createElement('textarea');
+    flightNoteTextarea.id = 'mbf-flight-notes';
+    flightNoteTextarea.placeholder = 'Aggiungi note...';
+    flightNoteTextarea.rows = 3;
+    flightNoteTextarea.style.width = '100%';
+    flightNoteTextarea.value = prefill.notes || '';
+    flightNoteWrapper.appendChild(flightNoteLbl);
+    flightNoteWrapper.appendChild(flightNoteTextarea);
+    sNote.appendChild(flightNoteWrapper);
+    scroll.appendChild(sNote);
+
     // Upload documento
     const docSection = document.createElement('div');
     docSection.className = 'edit-booking-section';
@@ -645,6 +662,7 @@ window.manualBookingForm = (() => {
         baggage: iBaggage.value.trim() || undefined,
         bookingReference: iPnr.value.trim() || undefined,
         price: iPrice.value ? parseFloat(iPrice.value) : undefined,
+        notes: flightNoteTextarea.value.trim() || undefined,
       };
     };
 
@@ -794,10 +812,20 @@ window.manualBookingForm = (() => {
       wBreakfast.appendChild(inp);
     }
 
+    const { wrapper: wPrice, input: iPrice } = buildEditField({
+      id: 'mbf-hotel-price', label: 'Prezzo (€)', type: 'number', placeholder: '0.00',
+      value: prefill.price || ''
+    });
+    const { wrapper: wPolicy, input: iPolicy } = buildEditField({
+      id: 'mbf-hotel-cancellation', label: 'Cancellation policy',
+      placeholder: 'es. Gratuita fino a 24h prima', value: prefill.cancellationPolicy || ''
+    });
     gDetail.appendChild(wRoomType);
     gDetail.appendChild(wGuest);
     gDetail.appendChild(wConfirm);
     gDetail.appendChild(wBreakfast);
+    gDetail.appendChild(wPrice);
+    gDetail.appendChild(wPolicy);
     scroll.appendChild(sDetail);
 
     // --- SEZIONE: Indirizzo ---
@@ -811,18 +839,20 @@ window.manualBookingForm = (() => {
     scroll.appendChild(sAddr);
 
     // --- SEZIONE: Note ---
-    const { section: sNote, grid: gNote } = buildSection('Note');
-
-    const { wrapper: wPrice, input: iPrice } = buildEditField({
-      id: 'mbf-hotel-price', label: 'Prezzo (€)', type: 'number', placeholder: '0.00',
-      value: prefill.price || ''
-    });
-    const { wrapper: wPolicy, input: iPolicy } = buildEditField({
-      id: 'mbf-hotel-cancellation', label: 'Cancellation policy',
-      placeholder: 'es. Gratuita fino a 24h prima', value: prefill.cancellationPolicy || ''
-    });
-    gNote.appendChild(wPrice);
-    gNote.appendChild(wPolicy);
+    const { section: sNote } = buildSection('Note');
+    const noteWrapper = document.createElement('div');
+    noteWrapper.className = 'edit-booking-field full-width';
+    const noteLbl = document.createElement('label');
+    noteLbl.textContent = 'Note';
+    const noteTextarea = document.createElement('textarea');
+    noteTextarea.id = 'mbf-hotel-notes';
+    noteTextarea.placeholder = 'Aggiungi note...';
+    noteTextarea.rows = 3;
+    noteTextarea.style.width = '100%';
+    noteTextarea.value = prefill.notes || '';
+    noteWrapper.appendChild(noteLbl);
+    noteWrapper.appendChild(noteTextarea);
+    sNote.appendChild(noteWrapper);
     scroll.appendChild(sNote);
 
     // Upload documento
@@ -865,6 +895,7 @@ window.manualBookingForm = (() => {
         breakfastIncluded: breakfastVal === 'yes' ? true : (breakfastVal === 'no' ? false : undefined),
         price: iPrice.value ? parseFloat(iPrice.value) : undefined,
         cancellationPolicy: iPolicy.value.trim() || undefined,
+        notes: noteTextarea.value.trim() || undefined,
       };
     };
 
@@ -1002,6 +1033,23 @@ window.manualBookingForm = (() => {
     gBook.appendChild(wPrice);
     scroll.appendChild(sBook);
 
+    // --- SEZIONE: Note ---
+    const { section: sNote } = buildSection('Note');
+    const trainNoteWrapper = document.createElement('div');
+    trainNoteWrapper.className = 'edit-booking-field full-width';
+    const trainNoteLbl = document.createElement('label');
+    trainNoteLbl.textContent = 'Note';
+    const trainNoteTextarea = document.createElement('textarea');
+    trainNoteTextarea.id = 'mbf-train-notes';
+    trainNoteTextarea.placeholder = 'Aggiungi note...';
+    trainNoteTextarea.rows = 3;
+    trainNoteTextarea.style.width = '100%';
+    trainNoteTextarea.value = prefill.notes || '';
+    trainNoteWrapper.appendChild(trainNoteLbl);
+    trainNoteWrapper.appendChild(trainNoteTextarea);
+    sNote.appendChild(trainNoteWrapper);
+    scroll.appendChild(sNote);
+
     // Upload documento
     const docSection = document.createElement('div');
     docSection.className = 'edit-booking-section';
@@ -1044,6 +1092,7 @@ window.manualBookingForm = (() => {
       coach: iCoach.value.trim() || undefined,
       bookingReference: iPnr.value.trim() || undefined,
       price: iPrice.value ? parseFloat(iPrice.value) : undefined,
+      notes: trainNoteTextarea.value.trim() || undefined,
     });
 
     const validate = () => {
@@ -1161,6 +1210,23 @@ window.manualBookingForm = (() => {
     gBook.appendChild(wPrice);
     scroll.appendChild(sBook);
 
+    // --- SEZIONE: Note ---
+    const { section: sNote } = buildSection('Note');
+    const busNoteWrapper = document.createElement('div');
+    busNoteWrapper.className = 'edit-booking-field full-width';
+    const busNoteLbl = document.createElement('label');
+    busNoteLbl.textContent = 'Note';
+    const busNoteTextarea = document.createElement('textarea');
+    busNoteTextarea.id = 'mbf-bus-notes';
+    busNoteTextarea.placeholder = 'Aggiungi note...';
+    busNoteTextarea.rows = 3;
+    busNoteTextarea.style.width = '100%';
+    busNoteTextarea.value = prefill.notes || '';
+    busNoteWrapper.appendChild(busNoteLbl);
+    busNoteWrapper.appendChild(busNoteTextarea);
+    sNote.appendChild(busNoteWrapper);
+    scroll.appendChild(sNote);
+
     // Upload documento
     const docSection = document.createElement('div');
     docSection.className = 'edit-booking-section';
@@ -1200,6 +1266,7 @@ window.manualBookingForm = (() => {
       routeNumber: iRoute.value.trim() || undefined,
       seat: iSeat.value.trim() || undefined,
       price: iPrice.value ? parseFloat(iPrice.value) : undefined,
+      notes: busNoteTextarea.value.trim() || undefined,
     });
 
     const validate = () => {
@@ -1371,6 +1438,23 @@ window.manualBookingForm = (() => {
     gBook.appendChild(wPrice);
     scroll.appendChild(sBook);
 
+    // --- SEZIONE: Note ---
+    const { section: sNote } = buildSection('Note');
+    const rentalNoteWrapper = document.createElement('div');
+    rentalNoteWrapper.className = 'edit-booking-field full-width';
+    const rentalNoteLbl = document.createElement('label');
+    rentalNoteLbl.textContent = 'Note';
+    const rentalNoteTextarea = document.createElement('textarea');
+    rentalNoteTextarea.id = 'mbf-rental-notes';
+    rentalNoteTextarea.placeholder = 'Aggiungi note...';
+    rentalNoteTextarea.rows = 3;
+    rentalNoteTextarea.style.width = '100%';
+    rentalNoteTextarea.value = prefill.notes || '';
+    rentalNoteWrapper.appendChild(rentalNoteLbl);
+    rentalNoteWrapper.appendChild(rentalNoteTextarea);
+    sNote.appendChild(rentalNoteWrapper);
+    scroll.appendChild(sNote);
+
     // Upload documento
     const docSection = document.createElement('div');
     docSection.className = 'edit-booking-section';
@@ -1415,6 +1499,7 @@ window.manualBookingForm = (() => {
       confirmationNumber: iConfirm.value.trim() || undefined,
       insurance: iInsurance.value.trim() || undefined,
       price: iPrice.value ? parseFloat(iPrice.value) : undefined,
+      notes: rentalNoteTextarea.value.trim() || undefined,
     });
 
     const validate = () => {
@@ -1639,9 +1724,14 @@ window.manualBookingForm = (() => {
       id: 'mbf-ferry-deck', label: 'Ponte',
       placeholder: 'es. Ponte 5', value: prefill.deck || ''
     });
+    const { wrapper: wPrice, input: iPrice } = buildEditField({
+      id: 'mbf-ferry-price', label: 'Prezzo (€)', type: 'number', placeholder: '0.00',
+      value: prefill.price || ''
+    });
     gBook.appendChild(wPnr);
     gBook.appendChild(wCabin);
     gBook.appendChild(wDeck);
+    gBook.appendChild(wPrice);
     scroll.appendChild(sBook);
 
     // --- SEZIONE: Passeggeri (lista dinamica) ---
@@ -1673,13 +1763,20 @@ window.manualBookingForm = (() => {
     scroll.appendChild(sVeh);
 
     // --- SEZIONE: Note ---
-    const { section: sNote, grid: gNote } = buildSection('Note');
-
-    const { wrapper: wPrice, input: iPrice } = buildEditField({
-      id: 'mbf-ferry-price', label: 'Prezzo (€)', type: 'number', placeholder: '0.00',
-      value: prefill.price || ''
-    });
-    gNote.appendChild(wPrice);
+    const { section: sNote } = buildSection('Note');
+    const ferryNoteWrapper = document.createElement('div');
+    ferryNoteWrapper.className = 'edit-booking-field full-width';
+    const ferryNoteLbl = document.createElement('label');
+    ferryNoteLbl.textContent = 'Note';
+    const ferryNoteTextarea = document.createElement('textarea');
+    ferryNoteTextarea.id = 'mbf-ferry-notes';
+    ferryNoteTextarea.placeholder = 'Aggiungi note...';
+    ferryNoteTextarea.rows = 3;
+    ferryNoteTextarea.style.width = '100%';
+    ferryNoteTextarea.value = prefill.notes || '';
+    ferryNoteWrapper.appendChild(ferryNoteLbl);
+    ferryNoteWrapper.appendChild(ferryNoteTextarea);
+    sNote.appendChild(ferryNoteWrapper);
     scroll.appendChild(sNote);
 
     // Upload documento
@@ -1749,6 +1846,7 @@ window.manualBookingForm = (() => {
         passengers: passengers.length > 0 ? passengers : undefined,
         vehicles: vehicles.length > 0 ? vehicles : undefined,
         price: iPrice.value ? parseFloat(iPrice.value) : undefined,
+        notes: ferryNoteTextarea.value.trim() || undefined,
       };
     };
 
