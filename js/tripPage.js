@@ -1117,7 +1117,7 @@
     tabs.forEach(tab => {
       tab.addEventListener('click', () => {
         const targetTab = tab.dataset.tab;
-        switchToTab(targetTab);
+        if (targetTab) switchToTab(targetTab);
       });
     });
   }

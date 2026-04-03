@@ -1874,6 +1874,10 @@
   color: var(--color-bus-600);
 }
 
+.trip-hero-tabs .segmented-control-btn[data-tab="ferries"].active {
+  color: var(--color-ferry-600);
+}
+
 .trip-hero-tabs .segmented-control-btn[data-tab="rentals"].active {
   color: var(--color-rental-600);
 }
@@ -3069,6 +3073,10 @@ input[type="time"].form-input {
   color: var(--color-bus-600);
 }
 
+.segmented-control-btn[data-tab="ferries"].active {
+  color: var(--color-ferry-600);
+}
+
 .segmented-control-btn[data-tab="rentals"].active {
   color: var(--color-rental-600);
 }
@@ -3083,6 +3091,7 @@ input[type="time"].form-input {
   width: 18px;
   height: 18px;
   flex-shrink: 0;
+  pointer-events: none;
 }
 
 /* ===== HOTEL CARD - Emerald Theme ===== */
