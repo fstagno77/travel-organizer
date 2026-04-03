@@ -10650,12 +10650,19 @@ body:has(#modal-page-slider.at-activity) .trip-fab {
   flex-shrink: 0;
 }
 
-.booking-type-card__icon svg,
-.booking-type-card__icon .material-symbols-outlined {
+.booking-type-card__icon svg {
   color: white;
   font-size: 18px;
   width: 18px;
   height: 18px;
+  flex-shrink: 0;
+}
+
+.booking-type-card__icon .material-symbols-outlined {
+  color: white;
+  font-size: 18px;
+  line-height: 1;
+  overflow: visible;
 }
 
 .booking-type-card__label {
