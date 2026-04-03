@@ -55,10 +55,11 @@ describe('getCategoryForEvent — ferry', () => {
     expect(cat.color).toBe('#0369a1');
   });
 
-  test('tipo ferry ha icona directions_boat', () => {
+  test('tipo ferry ha icona svg barca', () => {
     const cat = actCat.getCategoryForEvent({ type: 'ferry' });
-    // L'svg usa msIcon('directions_boat')
-    expect(cat.svg).toContain('directions_boat');
+    // L'svg usa SVG inline della barca (directions_boat non esiste in Material Symbols)
+    expect(cat.svg).toContain('<svg');
+    expect(cat.svg).toContain('viewBox');
   });
 
   test('tipo flight non restituisce traghetto', () => {

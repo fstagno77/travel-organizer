@@ -49,6 +49,15 @@
   --color-train-700: #c96b1a;
   --color-train-800: #a85614;
 
+  /* Colors - Ferry blue theme (base: #0369a1) */
+  --color-ferry-50: #f0f9ff;
+  --color-ferry-100: #e0f2fe;
+  --color-ferry-200: #bae6fd;
+  --color-ferry-300: #7dd3fc;
+  --color-ferry-600: #0369a1;
+  --color-ferry-700: #0284c7;
+  --color-ferry-800: #01579b;
+
   /* Colors - Bus violet theme (base: #8e44ad) */
   --color-bus-50: #f5eef8;
   --color-bus-100: #e8d5f0;

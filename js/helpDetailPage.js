@@ -121,6 +121,38 @@ const helpDetailPage = {
             result: 'Dopo l\'accesso vieni portato direttamente al viaggio condiviso, già nel ruolo (Viaggiatore o Ospite) che il Proprietario ti ha assegnato.',
             related: ['collaborazione'],
           },
+          {
+            id: 'prenotazione-senza-pdf',
+            title: 'Creare una prenotazione manualmente senza PDF',
+            intro: 'Non hai il PDF? Puoi creare qualsiasi tipo di prenotazione inserendo i dati a mano direttamente nell\'app.',
+            steps: [
+              { text: 'Apri il viaggio e clicca ⋮ → "Aggiungi prenotazione".' },
+              { text: 'Nel pannello, clicca "Inserisci manualmente" per passare al form manuale al posto del caricamento PDF.' },
+              { text: 'Scegli il tipo: volo, hotel, treno, bus, traghetto, noleggio auto.' },
+              { text: 'Compila i campi obbligatori (data, orari, luoghi) e quelli opzionali che hai a disposizione.' },
+              { text: 'Clicca "Salva" per aggiungere la prenotazione al viaggio.' },
+            ],
+            tips: [
+              { type: 'tip', text: 'Puoi sempre integrare o correggere i dati in un secondo momento cliccando l\'icona matita sulla card.' },
+              { type: 'info', text: 'Le prenotazioni manuali funzionano esattamente come quelle da PDF: appaiono nella timeline, nelle attività e aggiornano le date del viaggio.' },
+            ],
+            result: 'La prenotazione è aggiunta al viaggio ed è subito visibile nel tab corrispondente.',
+          },
+          {
+            id: 'prossimo-viaggio-home',
+            title: 'Anteprima del viaggio in partenza in homepage',
+            intro: 'Quando un viaggio sta per iniziare, Travel Flow lo mette in evidenza nella homepage con il primo evento programmato.',
+            steps: [
+              { text: 'Nei 3 giorni precedenti la partenza, il viaggio appare in una sezione dedicata "Prossimo Viaggio" sopra la griglia dei prossimi viaggi.' },
+              { text: 'La card mostra nome, date e il primo evento in programma (volo, traghetto, treno, check-in hotel…) con orario e operatore.' },
+              { text: 'Clicca sulla card per aprire direttamente l\'itinerario completo.' },
+            ],
+            tips: [
+              { type: 'tip', text: 'L\'anteprima compare automaticamente senza configurazioni: basta che il viaggio abbia almeno una prenotazione con data.' },
+              { type: 'info', text: 'Viene mostrato il primo evento cronologico del viaggio, qualunque sia il tipo (volo, hotel, traghetto, treno, attività).' },
+            ],
+            result: 'Hai sempre sott\'occhio cosa ti aspetta all\'inizio del viaggio, senza dover aprire l\'itinerario.',
+          },
         ],
       },
       en: {
@@ -232,6 +264,38 @@ const helpDetailPage = {
             ],
             result: 'After signing in you\'re taken directly to the shared trip, already in the role (Traveler or Guest) the Owner assigned you.',
             related: ['collaborazione'],
+          },
+          {
+            id: 'prenotazione-senza-pdf',
+            title: 'Creating a booking manually without a PDF',
+            intro: 'Don\'t have the PDF? You can create any type of booking by entering data directly in the app.',
+            steps: [
+              { text: 'Open the trip and click ⋮ → "Add booking".' },
+              { text: 'In the panel, click "Enter manually" to switch to the manual form instead of the PDF upload.' },
+              { text: 'Choose the type: flight, hotel, train, bus, ferry, car rental.' },
+              { text: 'Fill in the required fields (date, times, locations) and any optional ones you have.' },
+              { text: 'Click "Save" to add the booking to the trip.' },
+            ],
+            tips: [
+              { type: 'tip', text: 'You can always fill in or correct the data later by clicking the pencil icon on the card.' },
+              { type: 'info', text: 'Manual bookings work exactly like PDF ones: they appear in the timeline, activities, and update the trip dates.' },
+            ],
+            result: 'The booking is added to the trip and immediately visible in the corresponding tab.',
+          },
+          {
+            id: 'prossimo-viaggio-home',
+            title: 'Upcoming trip preview on the home screen',
+            intro: 'When a trip is about to start, Travel Flow highlights it on the home screen with the first scheduled event.',
+            steps: [
+              { text: 'In the 3 days before departure, the trip appears in a dedicated "Next Trip" section above the upcoming trips grid.' },
+              { text: 'The card shows the trip name, dates, and the first scheduled event (flight, ferry, train, hotel check-in…) with its time and operator.' },
+              { text: 'Click the card to open the full itinerary directly.' },
+            ],
+            tips: [
+              { type: 'tip', text: 'The preview appears automatically with no setup needed: the trip just needs at least one booking with a date.' },
+              { type: 'info', text: 'The first chronological event of the trip is shown, regardless of type (flight, hotel, ferry, train, activity).' },
+            ],
+            result: 'You always have at a glance what awaits you at the start of your trip, without opening the itinerary.',
           },
         ],
       },
@@ -680,16 +744,17 @@ const helpDetailPage = {
           {
             id: 'aggiungere-bus',
             title: 'Aggiungere un biglietto bus',
-            intro: 'Carica il PDF del biglietto autobus o pullman per includerlo nell\'itinerario.',
+            intro: 'Aggiungi un biglietto bus caricando il PDF oppure inserendo i dati manualmente — il PDF non è obbligatorio.',
             steps: [
               { text: 'Nel viaggio, clicca ⋮ e seleziona "Aggiungi prenotazione".' },
-              { text: 'Carica il PDF del biglietto bus.' },
-              { text: 'SmartParse estrae: operatore, stazioni/fermate, orari, passeggero e codice prenotazione.' },
+              { text: 'Con PDF: carica il file e SmartParse estrae automaticamente operatore, fermate, orari, passeggero e codice prenotazione.' },
+              { text: 'Senza PDF: clicca "Inserisci manualmente", scegli "Bus" e compila i campi che hai a disposizione.' },
             ],
             tips: [
               { type: 'info', text: 'I bus sono in beta. I provider più comuni (FlixBus, Itabus, Eurolines) sono supportati con i relativi template.' },
+              { type: 'tip', text: 'Se non hai il PDF puoi aggiungere il bus manualmente e allegare il documento in un secondo momento dalla card di modifica.' },
             ],
-            result: 'Il biglietto bus appare nella timeline Attività con orario e tappe corretti.',
+            result: 'Il biglietto bus appare nel tab Bus e nella timeline Attività con orario e tappe corretti.',
           },
           {
             id: 'leggere-card-bus',
@@ -741,16 +806,17 @@ const helpDetailPage = {
           {
             id: 'aggiungere-bus',
             title: 'Adding a bus ticket',
-            intro: 'Upload the bus or coach ticket PDF to include it in your itinerary.',
+            intro: 'Add a bus ticket by uploading a PDF or entering data manually — the PDF is not required.',
             steps: [
               { text: 'In the trip, click ⋮ and select "Add booking".' },
-              { text: 'Upload the bus ticket PDF.' },
-              { text: 'SmartParse extracts: operator, stations/stops, times, passenger and booking code.' },
+              { text: 'With PDF: upload the file and SmartParse automatically extracts operator, stops, times, passenger and booking code.' },
+              { text: 'Without PDF: click "Enter manually", choose "Bus" and fill in the fields you have.' },
             ],
             tips: [
               { type: 'info', text: 'Buses are in beta. The most common providers (FlixBus, Itabus, Eurolines) are supported with dedicated templates.' },
+              { type: 'tip', text: 'If you don\'t have the PDF you can add the bus manually and attach the document later from the edit card.' },
             ],
-            result: 'The bus ticket appears in the Activities timeline with correct times and stops.',
+            result: 'The bus ticket appears in the Bus tab and Activities timeline with correct times and stops.',
           },
           {
             id: 'leggere-card-bus',

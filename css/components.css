@@ -4188,6 +4188,370 @@ input[type="time"].form-input {
 }
 
 
+/* ===== FERRY CARD - Blue Theme ===== */
+.ferry-card {
+  background-color: var(--color-white);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  margin-bottom: var(--spacing-4);
+}
+
+.ferry-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-4);
+  background-color: var(--color-ferry-600);
+  color: var(--color-white);
+}
+
+.ferry-card.past .ferry-card-header {
+  background-color: var(--color-ferry-600);
+}
+
+.ferry-cta-outline {
+  border-color: var(--color-ferry-600) !important;
+  color: var(--color-ferry-600) !important;
+}
+
+.ferry-cta-outline:hover {
+  background-color: var(--color-ferry-50) !important;
+}
+
+.ferry-header-date {
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-lg);
+}
+
+.ferry-header-route {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  color: var(--color-white);
+  font-weight: var(--font-weight-medium);
+  padding: var(--spacing-2) var(--spacing-3);
+  background-color: rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+}
+
+.ferry-return-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-white);
+  background: rgba(255, 255, 255, 0.20);
+  border: 1px solid rgba(255, 255, 255, 0.40);
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+.ferry-card-body {
+  padding: var(--spacing-6);
+}
+
+.ferry-title-section {
+  margin-bottom: var(--spacing-2);
+}
+
+.ferry-title {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-gray-900);
+  margin: 0;
+  line-height: var(--line-height-tight);
+}
+
+.ferry-operator {
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-500);
+  margin-top: var(--spacing-1);
+  display: block;
+}
+
+.ferry-name {
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-400);
+  margin-top: 2px;
+  display: block;
+}
+
+.ferry-route {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-2);
+}
+
+.ferry-endpoint {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.ferry-endpoint:first-child {
+  text-align: left;
+}
+
+.ferry-endpoint:last-child {
+  text-align: right;
+}
+
+.ferry-time-lg {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-gray-900);
+  line-height: 1.2;
+}
+
+.ferry-port-name {
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-500);
+  margin-top: var(--spacing-1);
+  line-height: 1.3;
+}
+
+.ferry-arc {
+  flex: 0 0 160px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.ferry-arc-line {
+  position: relative;
+  width: 160px;
+}
+
+.ferry-arc-img {
+  width: 160px;
+  height: auto;
+  display: block;
+}
+
+.ferry-arc-vehicle {
+  position: absolute;
+  right: -4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-white);
+  border-radius: 50%;
+  box-shadow: 0 0 4px rgba(0,0,0,.15);
+}
+
+.ferry-duration {
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-500);
+  margin-top: 2px;
+}
+
+.ferry-toggle-details {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-2);
+  width: 100%;
+  padding: var(--spacing-3);
+  color: var(--color-ferry-600);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.ferry-toggle-details:hover span {
+  text-decoration: underline;
+}
+
+.ferry-toggle-details:hover {
+  background-color: transparent;
+}
+
+.ferry-toggle-details svg {
+  transition: transform var(--transition-fast);
+}
+
+.ferry-toggle-details.active svg {
+  transform: rotate(180deg);
+}
+
+.ferry-details {
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition: max-height 0.3s ease, opacity 0.25s ease, padding 0.3s ease;
+  padding: 0 var(--spacing-6);
+}
+
+.ferry-details.active {
+  max-height: 1200px;
+  opacity: 1;
+  padding: var(--spacing-6);
+  padding-top: var(--spacing-2);
+}
+
+.ferry-details-box {
+  background-color: var(--color-gray-50);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-5);
+  border: 1px solid var(--color-gray-200);
+  margin-bottom: var(--spacing-6);
+}
+
+.ferry-details-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-6);
+  margin-bottom: var(--spacing-6);
+}
+
+.ferry-details-grid:last-child {
+  margin-bottom: 0;
+}
+
+.ferry-detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.ferry-detail-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ferry-detail-value {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-gray-900);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+}
+
+.ferry-detail-value .btn-copy-value {
+  color: var(--color-gray-400);
+}
+
+.ferry-detail-value .btn-copy-value:hover {
+  color: var(--color-ferry-600);
+}
+
+.ferry-price-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--color-ferry-50);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-5);
+  border: 1px solid var(--color-ferry-200);
+  margin-bottom: var(--spacing-6);
+}
+
+.ferry-price-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-ferry-700);
+  font-weight: var(--font-weight-medium);
+}
+
+.ferry-price-amount {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-ferry-800);
+}
+
+.ferry-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-3);
+  align-items: stretch;
+}
+
+.ferry-actions .ferry-btn {
+  margin-top: 0;
+  width: auto;
+}
+
+.ferry-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-3);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border: 1px solid transparent;
+}
+
+.ferry-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.ferry-btn--primary {
+  background-color: var(--color-ferry-600);
+  color: var(--color-white);
+}
+
+.ferry-btn--primary:hover {
+  background-color: var(--color-ferry-700);
+}
+
+.ferry-btn--outline {
+  background-color: transparent;
+  border-color: var(--color-ferry-300);
+  color: var(--color-ferry-600);
+}
+
+.ferry-btn--outline:hover {
+  background-color: var(--color-ferry-50);
+}
+
+.ferry-btn--danger {
+  background-color: transparent;
+  border-color: var(--color-danger, #dc2626);
+  color: var(--color-danger, #dc2626);
+}
+
+.ferry-btn--danger:hover {
+  background-color: var(--color-danger, #dc2626);
+  color: var(--color-white);
+}
+
+@media (max-width: 575px) {
+  .ferry-card-body {
+    padding: var(--spacing-4);
+  }
+
+  .ferry-details.active {
+    padding: var(--spacing-4);
+  }
+
+  .ferry-arc {
+    min-width: 60px;
+  }
+
+  .ferry-details-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ferry-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+
 /* ===== RENTAL CARD - Teal Theme ===== */
 .rental-card {
   background-color: var(--color-white);
@@ -5444,6 +5808,14 @@ input[type="time"].form-input {
   background: linear-gradient(135deg, #e8d5f0, #d0aae0);
 }
 
+.activity-card[data-category="traghetto"] {
+  background: linear-gradient(135deg, #eff6ff, #dbeafe);
+  border-color: #bfdbfe;
+}
+.activity-card[data-category="traghetto"]:hover {
+  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+}
+
 .activity-card[data-category="luogo"] {
   background: linear-gradient(135deg, #ecfeff, #ecfeff);
   border-color: #a5f3fc;
@@ -5834,6 +6206,7 @@ input[type="time"].form-input {
 .activity-indicator-attraction { background-color: rgb(236 72 153); }
 .activity-indicator-train { background-color: #e67e22; }
 .activity-indicator-bus { background-color: #8e44ad; }
+.activity-indicator-ferry { background-color: #0369a1; }
 .activity-indicator-rental { background-color: var(--color-rental-600); }
 .activity-indicator-place { background-color: rgb(6 182 212); }
 
@@ -7300,6 +7673,7 @@ body:has(> .modal-overlay.active) .trip-hero-tabs {
   align-items: flex-end;
   gap: var(--spacing-2);
   margin-bottom: var(--spacing-2);
+  padding: 8px 8px 8px 0;
 }
 
 .edit-booking-passenger-row .edit-booking-field,
@@ -7328,16 +7702,15 @@ body:has(> .modal-overlay.active) .trip-hero-tabs {
   height: 28px;
   margin-bottom: 4px;
   background: none;
-  border: 1px solid var(--color-gray-200);
+  border: none;
   border-radius: var(--radius-md);
   color: var(--color-gray-400);
   cursor: pointer;
-  transition: color var(--transition-fast), border-color var(--transition-fast);
+  transition: color var(--transition-fast);
 }
 
 .edit-booking-remove-row:hover {
   color: var(--color-error, #ef4444);
-  border-color: var(--color-error, #ef4444);
 }
 
 .edit-booking-add-row {
@@ -10205,4 +10578,81 @@ body:has(#modal-page-slider.at-activity) .trip-fab {
   .invite-toast--visible {
     transform: translateY(0);
   }
+}
+
+/* ─── Modal wide variant (720px) ─── */
+.modal--wide {
+  max-width: 720px;
+}
+
+/* ─── Booking type cards — step 1 "Aggiungi prenotazione" ─── */
+.booking-type-section {
+  margin-top: var(--spacing-4);
+}
+
+.booking-type-section-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-500);
+  text-align: center;
+  margin-bottom: var(--spacing-3);
+}
+
+.booking-type-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-3);
+}
+
+.booking-type-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-3) var(--spacing-2);
+  border: 1.5px solid var(--color-gray-200);
+  border-radius: var(--radius-md);
+  background: var(--color-white);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: center;
+}
+
+.booking-type-card:hover {
+  border-color: var(--booking-card-color, var(--color-primary));
+  background: var(--booking-card-hover-bg, var(--color-primary-light));
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.booking-type-card__icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--booking-card-gradient);
+  color: white;
+  flex-shrink: 0;
+}
+
+.booking-type-card__icon svg,
+.booking-type-card__icon .material-symbols-outlined {
+  color: white;
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}
+
+.booking-type-card__label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-gray-700);
+  line-height: 1.2;
+}
+}
+
+/* Ferry doc action buttons hover */
+.ferry-doc-action-btn:hover {
+  background: var(--color-gray-100, #f3f4f6) !important;
 }

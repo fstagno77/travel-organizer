@@ -70,6 +70,10 @@ const tripCardUtils = (function() {
 
   /**
    * Render di una singola trip card
+   * @param {object} trip
+   * @param {string} lang
+   * @param {boolean} isPast
+   * @param {number} index
    */
   function renderTripCard(trip, lang, isPast, index) {
     const title = trip.title[lang] || trip.title.en || trip.title.it;

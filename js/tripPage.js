@@ -294,7 +294,7 @@
     hotels:     { icon: 'bed',             i18nKey: 'trip.hotels',     fallback: 'Hotel' },
     trains:     { icon: 'train',           i18nKey: 'trip.trains',     fallback: 'Treni', beta: true },
     buses:      { icon: 'directions_bus',  i18nKey: 'trip.buses',      fallback: 'Bus', beta: true },
-    ferries:    { icon: 'directions_boat', i18nKey: 'trip.ferries',    fallback: 'Traghetti', beta: true },
+    ferries:    { iconSvg: `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M20 21c-1.39 0-2.78-.47-4-1.32-2.44 1.71-5.56 1.71-8 0C6.78 20.53 5.39 21 4 21H2v2h2c1.39 0 2.78-.47 4-1.32 2.44 1.71 5.56 1.71 8 0 1.22.85 2.61 1.32 4 1.32h2v-2h-2zM3.95 19H4c1.6 0 3.02-.88 4-2 .98 1.12 2.4 2 4 2s3.02-.88 4-2c.98 1.12 2.4 2 4 2h.05l1.89-6.68c.08-.26.06-.54-.06-.78s-.34-.42-.6-.5L19 10.62V6c0-1.1-.9-2-2-2h-3V1H10v3H7c-1.1 0-2 .9-2 2v4.62l-2.29.68c-.26.08-.48.26-.6.5s-.14.52-.06.78L3.95 19zM7 6h10v3.97L12 8 7 9.97V6z"/></svg>`, i18nKey: 'trip.ferries', fallback: 'Traghetti', beta: true },
     rentals:    { iconSvg: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.8L18 11l-2-4H8L6 11l-2.5.2C2.7 11.3 2 12.1 2 13v3c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>`, i18nKey: 'trip.rentals', fallback: 'Auto' },
   };
 
@@ -367,7 +367,7 @@
           <div class="trip-empty-state-actions">
             <button class="btn btn-primary" id="empty-trip-upload">
               ${uploadBtnSvg}
-              <span data-i18n="trip.uploadBooking">Carica prenotazione</span>
+              <span data-i18n="trip.uploadBooking">Aggiungi prenotazione</span>
             </button>
             <button class="btn btn-outline" id="empty-trip-activity">
               ${eventBtnSvg}
@@ -481,7 +481,7 @@
           <button class="fab-bottom-sheet-option" data-action="upload">
             <span class="fab-bottom-sheet-option-icon fab-bottom-sheet-option-icon--upload">${uploadSvg}</span>
             <div class="fab-bottom-sheet-option-text">
-              <span class="fab-bottom-sheet-option-title" data-i18n="trip.uploadBooking">Carica prenotazione</span>
+              <span class="fab-bottom-sheet-option-title" data-i18n="trip.uploadBooking">Aggiungi prenotazione</span>
               <span class="fab-bottom-sheet-option-desc" data-i18n="trip.uploadBookingDesc">PDF di volo, hotel, treno o bus</span>
             </div>
           </button>
@@ -1363,9 +1363,33 @@
     if (type === 'flight') titleKey = 'trip.addFlightTitle';
     else if (type === 'hotel') titleKey = 'trip.addHotelTitle';
 
+    // Definizione tipi prenotazione per le card step 1
+    const bookingTypes = [
+      { type: 'flight',  labelIt: 'Volo',         gradient: 'linear-gradient(135deg, #3b82f6, #4f46e5)', color: '#2563eb', hoverBg: '#eff6ff',
+        icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg>` },
+      { type: 'hotel',   labelIt: 'Hotel',         gradient: 'linear-gradient(135deg, #34d399, #14b8a6)', color: '#10b981', hoverBg: '#ecfdf5',
+        icon: `<span class="material-symbols-outlined" style="font-size:18px;line-height:1">bed</span>` },
+      { type: 'train',   labelIt: 'Treno',         gradient: 'linear-gradient(135deg, #f5a54d, #e67e22)', color: '#e67e22', hoverBg: '#fef6ee',
+        icon: `<span class="material-symbols-outlined" style="font-size:18px;line-height:1">train</span>` },
+      { type: 'bus',     labelIt: 'Bus',           gradient: 'linear-gradient(135deg, #b87fd1, #8e44ad)', color: '#8e44ad', hoverBg: '#f5eef8',
+        icon: `<span class="material-symbols-outlined" style="font-size:18px;line-height:1">directions_bus</span>` },
+      { type: 'rental',  labelIt: 'Noleggio',      gradient: 'linear-gradient(135deg, #0ea5e9, #0891b2)', color: '#0891b2', hoverBg: '#f0f9ff',
+        icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.8L18 11l-2-4H8L6 11l-2.5.2C2.7 11.3 2 12.1 2 13v3c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>` },
+      { type: 'ferry',   labelIt: 'Traghetto',     gradient: 'linear-gradient(135deg, #38bdf8, #0369a1)', color: '#0369a1', hoverBg: '#f0f9ff',
+        icon: `<span class="material-symbols-outlined" style="font-size:18px;line-height:1">directions_boat</span>` },
+    ];
+
+    const bookingCardsHTML = bookingTypes.map(bt => `
+      <button class="booking-type-card" data-booking-type="${bt.type}"
+        style="--booking-card-color:${bt.color};--booking-card-hover-bg:${bt.hoverBg};--booking-card-gradient:${bt.gradient}">
+        <div class="booking-type-card__icon">${bt.icon}</div>
+        <span class="booking-type-card__label">${bt.labelIt}</span>
+      </button>
+    `).join('');
+
     const modalHTML = `
       <div class="modal-overlay" id="add-booking-modal">
-        <div class="modal">
+        <div class="modal modal--wide">
           <div class="modal-header">
             <h2 data-i18n="${titleKey}">Add booking</h2>
             <button class="modal-close" id="add-booking-close">
@@ -1385,6 +1409,12 @@
               </svg>
               <div class="upload-zone-text" data-i18n="trip.uploadHint">Drag PDFs here or click to select</div>
               <div class="upload-zone-hint">PDF</div>
+            </div>
+            <div class="booking-type-section">
+              <p class="booking-type-section-label">oppure crea manualmente</p>
+              <div class="booking-type-grid" id="add-booking-type-grid">
+                ${bookingCardsHTML}
+              </div>
             </div>
           </div>
           <div class="modal-footer">
@@ -1466,6 +1496,15 @@
         }
 
         if (!response.ok || !result.success) {
+          // US-009: Se SmartParse non ha trovato dati viaggio → fallback a creazione manuale
+          const noTravelData = result.error && (
+            result.error.includes('travel data') || result.error.includes('extract')
+          );
+          if (noTravelData) {
+            phraseController.stop();
+            showSmartParseFallback(modalBody, modalFooter, originalBodyContent, null, _uploadedPdfs);
+            return;
+          }
           throw Object.assign(
             new Error(result.error || 'Failed to parse PDFs'),
             { errorCode: result.errorCode }
@@ -1474,6 +1513,17 @@
 
         phraseController.stop();
         _parsedResults = result.parsedResults;
+
+        // US-009: Controlla se tipo documento non riconosciuto o dati parziali
+        const hasKnownType = _parsedResults.some(pr => pr.detectedDocType);
+        const dataKeys = ['flights', 'hotels', 'trains', 'buses', 'rentals', 'ferries'];
+        const hasData = _parsedResults.some(pr => pr.result && dataKeys.some(k => (pr.result[k]?.length || 0) > 0));
+
+        if (!hasData) {
+          const partialResult = hasKnownType ? _parsedResults.find(pr => pr.detectedDocType) : null;
+          showSmartParseFallback(modalBody, modalFooter, originalBodyContent, partialResult, _uploadedPdfs);
+          return;
+        }
 
         const modalHeader = modal.querySelector('.modal-header h2');
 
@@ -1778,8 +1828,120 @@
       });
     };
 
+    /** Apre il form manuale per il tipo prenotazione selezionato */
+    const showManualBookingForm = (bookingType) => {
+      // US-003+ implementerà i form specifici per ogni tipo.
+      // Qui registriamo il tipo selezionato e deleghiamo a window.manualBookingForm se disponibile.
+      if (window.manualBookingForm && typeof window.manualBookingForm.open === 'function') {
+        window.manualBookingForm.open(bookingType, modal, tripId, {
+          onSaved: () => {
+            closeModal();
+            loadTripData(tripId);
+          }
+        });
+        return;
+      }
+      // Placeholder: form non ancora implementato
+      const modalBody = modal.querySelector('.modal-body');
+      const modalFooter = modal.querySelector('.modal-footer');
+      originalBodyContent = modalBody.innerHTML;
+      modalBody.innerHTML = `
+        <div class="processing-state" data-manual-form="${bookingType}">
+          <p style="color:var(--color-gray-500);text-align:center;">
+            Form manuale per <strong>${bookingType}</strong> — disponibile a breve.
+          </p>
+        </div>
+      `;
+      modalFooter.innerHTML = `
+        <button class="btn btn-secondary" id="add-booking-back">Indietro</button>
+      `;
+      document.getElementById('add-booking-back')?.addEventListener('click', () => {
+        modalBody.innerHTML = originalBodyContent;
+        modalFooter.innerHTML = `<button class="btn btn-secondary" id="add-booking-cancel" data-i18n="modal.cancel">Annulla</button>`;
+        document.getElementById('add-booking-cancel')?.addEventListener('click', closeModal);
+        bindUploadZoneEvents();
+        bindBookingTypeCardEvents();
+        i18n.apply(modal);
+      });
+    };
+
+    /**
+     * US-009: Mostra step 1 con messaggio fallback SmartParse.
+     * Usato quando il documento non è riconosciuto o i dati estratti sono parziali.
+     * @param {HTMLElement} modalBody
+     * @param {HTMLElement} modalFooter
+     * @param {string} originalBodyContent
+     * @param {Object|null} partialResult - parsedResult con detectedDocType impostato ma dati incompleti
+     * @param {Array|null} uploadedPdfs - PDF già caricati in storage
+     */
+    const showSmartParseFallback = (modalBody, modalFooter, originalBodyContent, partialResult, uploadedPdfs) => {
+      // Ripristina step 1
+      modalBody.innerHTML = originalBodyContent;
+      modalFooter.style.display = '';
+      i18n.apply(modalBody);
+      bindUploadZoneEvents();
+
+      // Inserisce messaggio fallback sopra le card tipo
+      const bookingTypeSection = modalBody.querySelector('.booking-type-section');
+      if (bookingTypeSection) {
+        const msg = document.createElement('p');
+        msg.className = 'smartparse-fallback-message';
+        msg.textContent = 'Documento non riconosciuto automaticamente. Seleziona il tipo di prenotazione per continuare.';
+        bookingTypeSection.insertBefore(msg, bookingTypeSection.firstChild);
+      }
+
+      // Se tipo parziale rilevato → pre-seleziona card e apre form pre-popolato
+      if (partialResult?.detectedDocType) {
+        const typeMap = { car_rental: 'rental' };
+        const bookingType = typeMap[partialResult.detectedDocType] || partialResult.detectedDocType;
+
+        // Estrai dati parziali per prefill
+        const r = partialResult.result || {};
+        const collectionKey = partialResult.detectedDocType === 'car_rental' ? 'rentals' : `${partialResult.detectedDocType}s`;
+        const items = r[collectionKey] || [];
+        const prefillData = items[0] || {};
+
+        // Storagepath PDF già caricato come documento allegato
+        const prefillDocStoragePath = uploadedPdfs?.[0]?.storagePath || null;
+
+        // Pre-seleziona card visivamente
+        const grid = modalBody.querySelector('#add-booking-type-grid');
+        if (grid) {
+          const card = grid.querySelector(`[data-booking-type="${bookingType}"]`);
+          if (card) card.classList.add('booking-type-card--selected');
+        }
+
+        // Apri form manuale con prefill
+        if (window.manualBookingForm && typeof window.manualBookingForm.open === 'function') {
+          window.manualBookingForm.open(bookingType, modal, tripId, {
+            onSaved: () => {
+              closeModal();
+              loadTripData(tripId);
+            },
+            prefill: prefillData,
+            prefillDocStoragePath
+          });
+        }
+      }
+    };
+
+    /** Collega i click sulle card tipo prenotazione */
+    const bindBookingTypeCardEvents = () => {
+      const grid = document.getElementById('add-booking-type-grid');
+      if (!grid) return;
+      grid.querySelectorAll('.booking-type-card').forEach(card => {
+        card.addEventListener('click', () => {
+          const bookingType = card.dataset.bookingType;
+          if (bookingType) showManualBookingForm(bookingType);
+        });
+      });
+    };
+
     // Upload zone events
     bindUploadZoneEvents();
+
+    // Booking type card events
+    bindBookingTypeCardEvents();
 
     // Modal events
     closeBtn.addEventListener('click', closeModal);
@@ -2734,14 +2896,16 @@
     if (!alreadyOpen) slider._savedScrollTop = savedScrollTop;
 
     const currentTab = document.querySelector('.segmented-control-btn.active')?.dataset.tab || 'flights';
-    const typeMap = { flights: 'flight', hotels: 'hotel', trains: 'train', buses: 'bus', rentals: 'rental' };
+    const typeMap = { flights: 'flight', hotels: 'hotel', trains: 'train', buses: 'bus', rentals: 'rental', ferries: 'ferry' };
     const type = typeMap[currentTab] || 'flight';
     const itemsMap = {
       flight: currentTripData?.flights || [],
       hotel: currentTripData?.hotels || [],
       train: currentTripData?.trains || [],
       bus: currentTripData?.buses || [],
-      rental: currentTripData?.rentals || []
+      rental: currentTripData?.rentals || [],
+      // I ferry di ritorno (_isReturn) non appaiono come voci separate nel manage panel
+      ferry: (currentTripData?.ferries || []).filter(f => !f._isReturn)
     };
     const items = itemsMap[type] || [];
 
@@ -2853,6 +3017,27 @@
                 <div class="manage-booking-flights">${rentalLines}</div>
               </span>
             </div>`;
+        } else if (type === 'ferry') {
+          const ferryLines = groupItems.map(f => {
+            const dep = f.departure?.port || f.departure?.city || '';
+            const arr = f.arrival?.port || f.arrival?.city || '';
+            const date = f.date || '';
+            const time = f.departure?.time || '';
+            return `<div class="manage-booking-flight-row">
+              ${f.operator ? `<span class="manage-booking-flight-num">${esc(f.operator)}</span>` : ''}
+              <span>${esc(dep)} → ${esc(arr)}</span>
+              ${date ? `<span class="manage-booking-flight-date">${date}${time ? ' ' + time : ''}</span>` : ''}
+            </div>`;
+          }).join('');
+
+          const passengerName = groupItems[0]?.passengers?.[0]?.name || '';
+          listHTML += `
+            <div class="manage-booking-item" data-value="${itemIds}" data-type="${type}" data-mode="booking" data-ref="${esc(ref)}">
+              <span class="manage-booking-item-label">
+                <span><strong>${esc(ref)}</strong>${passengerName ? ` &middot; ${esc(passengerName)}` : ''}</span>
+                <div class="manage-booking-flights">${ferryLines}</div>
+              </span>
+            </div>`;
         } else {
           // Treni e bus
           const lines = groupItems.map(item => {
@@ -2900,9 +3085,13 @@
     `;
 
     // Backdrop cliccabile per chiudere il pannello cliccando fuori
+    // Rimuovi eventuali backdrop esistenti prima di crearne uno nuovo
+    document.querySelectorAll('.panel-backdrop').forEach(b => b.remove());
     const backdrop = document.createElement('div');
     backdrop.className = 'panel-backdrop';
-    document.body.appendChild(backdrop);
+    // Appendiamo al slider (dentro .page-wrapper con isolation:isolate) invece che al body,
+    // così il backdrop e il panel competono nello stesso stacking context e z-index 111 < 120
+    slider.appendChild(backdrop);
 
     requestAnimationFrame(() => {
       slider.classList.add('at-activity');
@@ -2971,9 +3160,15 @@
       const ids = selected.dataset.value.split(',');
       const selectedType = selected.dataset.type;
       const passengerName = selected.dataset.passenger;
-      const allItems = selectedType === 'flight'
-        ? (currentTripData?.flights || [])
-        : (currentTripData?.hotels || []);
+      const allItemsMap = {
+        flight: currentTripData?.flights || [],
+        hotel: currentTripData?.hotels || [],
+        train: currentTripData?.trains || [],
+        bus: currentTripData?.buses || [],
+        rental: currentTripData?.rentals || [],
+        ferry: currentTripData?.ferries || []
+      };
+      const allItems = allItemsMap[selectedType] || [];
       const selectedItems = allItems.filter(it => ids.includes(it.id));
 
       if (selectedItems.length === 0) return;
@@ -2988,7 +3183,12 @@
         const itemLabel = selectedType === 'flight'
           ? `${item.flightNumber || ''} ${item.departure?.code || ''} → ${item.arrival?.code || ''}`
           : (item.name || 'Hotel');
-        const form = ({ flight: window.tripFlights, hotel: window.tripHotels, train: window.tripTrains, bus: window.tripBuses }[selectedType] || window.tripFlights).buildFullEditForm(item);
+        const returnFerry = selectedType === 'ferry' && item.returnFerryId
+          ? (currentTripData?.ferries || []).find(f => f.id === item.returnFerryId)
+          : null;
+        const form = selectedType === 'ferry'
+          ? window.tripFerries.buildFullEditForm(item, returnFerry)
+          : ({ flight: window.tripFlights, hotel: window.tripHotels, train: window.tripTrains, bus: window.tripBuses, rental: window.tripRentals }[selectedType] || window.tripFlights).buildFullEditForm(item);
         formHTML = `
           <div class="manage-edit-item" data-item-id="${item.id}">
             <div class="manage-edit-item-header">${esc(itemLabel)}</div>
@@ -3033,6 +3233,11 @@
             window.AirportAutocomplete.init(panelBody);
           }
         });
+      }
+
+      // Ferry form listeners (custom selects, return toggle, doc handlers)
+      if (selectedType === 'ferry' && window.tripFerries?.attachFormListeners) {
+        window.tripFerries.attachFormListeners(panelBody);
       }
 
       // Add-field mechanism
@@ -3085,7 +3290,7 @@
 
         try {
           if (selectedItems.length === 1) {
-            const updates = ({ flight: window.tripFlights, hotel: window.tripHotels, train: window.tripTrains, bus: window.tripBuses }[selectedType] || window.tripFlights).collectFullUpdates(panelBody);
+            const updates = ({ flight: window.tripFlights, hotel: window.tripHotels, train: window.tripTrains, bus: window.tripBuses, rental: window.tripRentals, ferry: window.tripFerries }[selectedType] || window.tripFlights).collectFullUpdates(panelBody);
 
             const response = await utils.authFetch('/.netlify/functions/edit-booking', {
               method: 'POST',
@@ -3097,7 +3302,7 @@
             const itemSections = panelBody.querySelectorAll('.manage-edit-item');
             for (const section of itemSections) {
               const itemId = section.dataset.itemId;
-              const updates = ({ flight: window.tripFlights, hotel: window.tripHotels, train: window.tripTrains, bus: window.tripBuses }[selectedType] || window.tripFlights).collectFullUpdates(section);
+              const updates = ({ flight: window.tripFlights, hotel: window.tripHotels, train: window.tripTrains, bus: window.tripBuses, rental: window.tripRentals, ferry: window.tripFerries }[selectedType] || window.tripFlights).collectFullUpdates(section);
 
               const response = await utils.authFetch('/.netlify/functions/edit-booking', {
                 method: 'POST',
@@ -3256,6 +3461,15 @@
       return;
     }
 
+    // Se è un ferry di ritorno, apri il pannello del parent (andata)
+    if (type === 'ferry' && item._isReturn && item.parentFerryId) {
+      const parentFerry = (currentTripData?.ferries || []).find(f => f.id === item.parentFerryId);
+      if (parentFerry) {
+        showEditBookingPanel('ferry', parentFerry, tripId);
+        return;
+      }
+    }
+
     showEditBookingPanel(type, item, tripId);
   }
 
@@ -3272,13 +3486,19 @@
     const savedScrollTop = alreadyOpen ? (slider._savedScrollTop || 0) : mainPage.scrollTop;
     if (!alreadyOpen) slider._savedScrollTop = savedScrollTop;
 
+    // Se è un ferry con ritorno collegato, costruisci il form combinato
+    let returnFerry = null;
+    if (type === 'ferry' && item.returnFerryId) {
+      returnFerry = (currentTripData?.ferries || []).find(f => f.id === item.returnFerryId) || null;
+    }
+
     const formBuilders = {
       flight: window.tripFlights.buildEditForm,
       hotel: window.tripHotels.buildEditForm,
       train: window.tripTrains.buildEditForm,
       bus: window.tripBuses.buildEditForm,
       rental: window.tripRentals.buildEditForm,
-      ferry: window.tripFerries.buildEditForm
+      ferry: (f) => window.tripFerries.buildEditForm(f, returnFerry)
     };
     const formHTML = (formBuilders[type] || formBuilders.flight)(item);
 
@@ -3302,9 +3522,13 @@
     `;
 
     // Backdrop cliccabile per chiudere il pannello cliccando fuori
+    // Rimuovi eventuali backdrop esistenti prima di crearne uno nuovo
+    document.querySelectorAll('.panel-backdrop').forEach(b => b.remove());
     const backdrop = document.createElement('div');
     backdrop.className = 'panel-backdrop';
-    document.body.appendChild(backdrop);
+    // Appendiamo al slider (dentro .page-wrapper con isolation:isolate) invece che al body,
+    // così il backdrop e il panel competono nello stesso stacking context e z-index 111 < 120
+    slider.appendChild(backdrop);
 
     requestAnimationFrame(() => {
       slider.classList.add('at-activity');
@@ -3349,7 +3573,70 @@
       }, { once: false });
     };
 
-    backdrop.addEventListener('click', () => closePanel());
+    // SafeClose — protezione chiusura con dirty state (locale a showEditBookingPanel)
+    // Snapshot generico: raccoglie tutti i campi data-field presenti nel panelBody
+    const captureBookingSnapshot = () => {
+      const snap = {};
+      panelBody.querySelectorAll('input[data-field], select[data-field], textarea[data-field]').forEach(el => {
+        snap[el.dataset.field] = el.value;
+      });
+      return snap;
+    };
+
+    const isBookingFormDirty = (snapshot) => {
+      const current = captureBookingSnapshot();
+      return Object.keys(snapshot).some(k => snapshot[k] !== current[k]) ||
+             Object.keys(current).some(k => !(k in snapshot));
+    };
+
+    const showBookingSafeCloseInterrupt = () => {
+      return new Promise(resolve => {
+        const existing = activityPage.querySelector('.safe-close-interrupt');
+        if (existing) { resolve(false); return; }
+
+        const interrupt = document.createElement('div');
+        interrupt.className = 'safe-close-interrupt';
+        interrupt.innerHTML = `
+          <div class="safe-close-content">
+            <p class="safe-close-message">${i18n.t('activity.unsavedChanges') || 'Hai modifiche non salvate. Vuoi uscire comunque?'}</p>
+            <div class="safe-close-actions">
+              <button class="btn btn-primary btn-sm" id="booking-safe-close-stay">${i18n.t('activity.keepEditing') || 'Continua a modificare'}</button>
+              <button class="btn btn-outline btn-sm" id="booking-safe-close-discard">${i18n.t('activity.discardExit') || 'Scarta modifiche'}</button>
+            </div>
+          </div>
+        `;
+        activityPage.appendChild(interrupt);
+
+        requestAnimationFrame(() => interrupt.classList.add('active'));
+
+        const cleanup = (result) => {
+          interrupt.classList.remove('active');
+          interrupt.addEventListener('transitionend', () => interrupt.remove(), { once: true });
+          setTimeout(() => { if (interrupt.parentNode) interrupt.remove(); }, 300);
+          resolve(result);
+        };
+
+        document.getElementById('booking-safe-close-stay').addEventListener('click', () => cleanup(false));
+        document.getElementById('booking-safe-close-discard').addEventListener('click', () => cleanup(true));
+      });
+    };
+
+    // requestClose: chiude con dirty check; closePanel chiude direttamente (es. dopo save)
+    let bookingFormSnapshot = null;
+    // Snapshot catturato dopo un tick per dare tempo ai form di inizializzarsi
+    setTimeout(() => { bookingFormSnapshot = captureBookingSnapshot(); }, 50);
+
+    const requestClose = () => {
+      if (bookingFormSnapshot && isBookingFormDirty(bookingFormSnapshot)) {
+        showBookingSafeCloseInterrupt().then(shouldExit => {
+          if (shouldExit) closePanel();
+        });
+      } else {
+        closePanel();
+      }
+    };
+
+    backdrop.addEventListener('click', () => requestClose());
 
     const performSave = async () => {
       // Validate required fields and patterns
@@ -3393,6 +3680,25 @@
         };
         const updates = (updateCollectors[type] || updateCollectors.flight)(panelBody);
 
+        // Ferry document upload: if a new PDF was selected, encode as base64 and include
+        if (type === 'ferry' && updates.documentUrl === undefined) {
+          const docInput = panelBody.querySelector('[data-doc-input]');
+          if (docInput && docInput.files && docInput.files[0]) {
+            const file = docInput.files[0];
+            try {
+              const base64 = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+              });
+              updates.documentUrl = base64;
+            } catch {
+              // Non critico — continua senza documento
+            }
+          }
+        }
+
         const response = await utils.authFetch('/.netlify/functions/edit-booking', {
           method: 'POST',
           body: JSON.stringify({ tripId, type, itemId: item.id, updates })
@@ -3400,6 +3706,81 @@
 
         if (!response.ok) {
           throw new Error('Failed to save');
+        }
+
+        // Ferry: gestione ritorno
+        if (type === 'ferry') {
+          // Caso A: pannello combinato con ritorno già collegato → aggiorna il ritorno
+          const returnFerryIdEl = panelBody.querySelector('[data-return-ferry-id]');
+          if (returnFerryIdEl) {
+            const returnFerryId = returnFerryIdEl.dataset.returnFerryId;
+            const returnUpdates = window.tripFerries.collectReturnUpdates
+              ? window.tripFerries.collectReturnUpdates(panelBody)
+              : null;
+            if (returnUpdates && returnFerryId) {
+              // Propaga i campi condivisi aggiornati anche al ritorno
+              const sharedFields = {};
+              if (updates.operator !== undefined) sharedFields.operator = updates.operator;
+              if (updates.ferryName !== undefined) sharedFields.ferryName = updates.ferryName;
+              if (updates.bookingReference !== undefined) sharedFields.bookingReference = updates.bookingReference;
+              if (updates.ticketNumber !== undefined) sharedFields.ticketNumber = updates.ticketNumber;
+              if (updates.passengers !== undefined) sharedFields.passengers = updates.passengers;
+              if (updates.vehicles !== undefined) sharedFields.vehicles = updates.vehicles;
+              if (updates.documentUrl !== undefined) sharedFields.documentUrl = updates.documentUrl;
+              if (updates.pdfPath !== undefined) sharedFields.pdfPath = updates.pdfPath;
+              const returnSaveBody = {
+                tripId, type: 'ferry', itemId: returnFerryId,
+                updates: { ...returnUpdates, ...sharedFields }
+              };
+              const returnRes = await utils.authFetch('/.netlify/functions/edit-booking', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(returnSaveBody)
+              });
+              if (!returnRes.ok) {
+                const errBody = await returnRes.json().catch(() => ({}));
+                utils.showToast(errBody.error || 'Errore salvataggio ritorno', 'error');
+              }
+            }
+          } else {
+            // Caso B: form singolo con sezione ritorno non ancora salvata → crea nuova prenotazione ritorno
+            const returnData = window.tripFerries.collectReturnValues
+              ? window.tripFerries.collectReturnValues(panelBody)
+              : null;
+            if (returnData) {
+              // Eredita dal ferry originale: prenotazione, passeggeri, veicoli (stesso biglietto)
+              returnData._isReturn = true;
+              returnData.parentFerryId = item.id;
+              if (updates.bookingReference || item.bookingReference) returnData.bookingReference = updates.bookingReference || item.bookingReference;
+              if (updates.ticketNumber || item.ticketNumber) returnData.ticketNumber = updates.ticketNumber || item.ticketNumber;
+              if (updates.passengers || item.passengers?.length) returnData.passengers = updates.passengers || item.passengers;
+              if (updates.vehicles || item.vehicles?.length) returnData.vehicles = updates.vehicles || item.vehicles;
+              if (updates.pdfPath || item.pdfPath) returnData.pdfPath = updates.pdfPath || item.pdfPath;
+              const returnPayload = { action: 'manual-booking', tripId, type: 'ferry', manualData: returnData };
+              const returnRes = await utils.authFetch('/.netlify/functions/add-booking', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(returnPayload),
+              });
+              if (returnRes.ok) {
+                const returnJson = await returnRes.json().catch(() => ({}));
+                if (returnJson.newBookingId) {
+                  // Aggiorna il ferry parent con il link al ritorno
+                  await utils.authFetch('/.netlify/functions/edit-booking', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      tripId, type: 'ferry', itemId: item.id,
+                      updates: { returnFerryId: returnJson.newBookingId }
+                    })
+                  });
+                }
+              } else {
+                const errBody = await returnRes.json().catch(() => ({}));
+                utils.showToast(errBody.error || 'Errore salvataggio ritorno', 'error');
+              }
+            }
+          }
         }
 
         const activeTab = document.querySelector('.segmented-control-btn.active')?.dataset.tab;
@@ -3416,8 +3797,8 @@
       }
     };
 
-    document.getElementById('edit-panel-close').addEventListener('click', () => closePanel());
-    document.getElementById('edit-panel-cancel').addEventListener('click', () => closePanel());
+    document.getElementById('edit-panel-close').addEventListener('click', () => requestClose());
+    document.getElementById('edit-panel-cancel').addEventListener('click', () => requestClose());
     saveBtn.addEventListener('click', performSave);
   }
 
@@ -3462,11 +3843,31 @@
         const date = utils.formatFlightDate(rental.date, lang);
         itemDescription = `${esc(rental.provider || 'Noleggio')} - ${esc(rental.pickupLocation?.city || '')} → ${esc(rental.dropoffLocation?.city || '')} (${date})`;
       }
+    } else if (type === 'ferry') {
+      const ferry = currentTripData?.ferries?.find(f => f.id === itemId);
+      if (ferry) {
+        const date = utils.formatFlightDate(ferry.date, lang);
+        const dep = ferry.departure?.port || ferry.departure?.city || '';
+        const arr = ferry.arrival?.port || ferry.arrival?.city || '';
+        itemDescription = `${esc(dep)} → ${esc(arr)} (${date})`;
+
+        // Se questo ferry ha un ritorno collegato, mostra dialog personalizzato
+        if (ferry.returnFerryId) {
+          showFerryDeleteWithReturnDialog(ferry, tripId);
+          return;
+        }
+
+        // Se è un ferry di ritorno, elimina solo il ritorno e aggiorna il parent
+        if (ferry._isReturn && ferry.parentFerryId) {
+          showFerryReturnOnlyDeleteDialog(ferry, tripId);
+          return;
+        }
+      }
     }
 
-    const titleKeyMap = { flight: 'flight.deleteTitle', hotel: 'hotel.deleteTitle', train: 'train.deleteTitle', bus: 'bus.deleteTitle', rental: 'flight.deleteTitle' };
-    const confirmKeyMap = { flight: 'flight.deleteConfirm', hotel: 'hotel.deleteConfirm', train: 'train.deleteConfirm', bus: 'bus.deleteConfirm', rental: 'flight.deleteConfirm' };
-    const deleteKeyMap = { flight: 'flight.delete', hotel: 'hotel.delete', train: 'train.delete', bus: 'bus.delete', rental: 'flight.delete' };
+    const titleKeyMap = { flight: 'flight.deleteTitle', hotel: 'hotel.deleteTitle', train: 'train.deleteTitle', bus: 'bus.deleteTitle', rental: 'flight.deleteTitle', ferry: 'flight.deleteTitle' };
+    const confirmKeyMap = { flight: 'flight.deleteConfirm', hotel: 'hotel.deleteConfirm', train: 'train.deleteConfirm', bus: 'bus.deleteConfirm', rental: 'flight.deleteConfirm', ferry: 'flight.deleteConfirm' };
+    const deleteKeyMap = { flight: 'flight.delete', hotel: 'hotel.delete', train: 'train.delete', bus: 'bus.delete', rental: 'flight.delete', ferry: 'flight.delete' };
     const titleKey = titleKeyMap[type] || 'flight.deleteTitle';
     const confirmKey = confirmKeyMap[type] || 'flight.deleteConfirm';
     const deleteKey = deleteKeyMap[type] || 'flight.delete';
@@ -3597,6 +3998,155 @@
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
     i18n.apply(modal);
+  }
+
+  /**
+   * Mostra dialog per eliminare un ferry con ritorno collegato.
+   * Opzioni: "Solo andata" (elimina andata, rimuove returnFerryId dal figlio) o "Entrambi".
+   */
+  function showFerryDeleteWithReturnDialog(ferry, tripId) {
+    const existing = document.getElementById('ferry-delete-return-modal');
+    if (existing) existing.remove();
+
+    const modalHTML = `
+      <div class="modal-overlay" id="ferry-delete-return-modal">
+        <div class="modal">
+          <div class="modal-header">
+            <h2>Elimina traghetto</h2>
+            <button class="modal-close" id="ferry-del-ret-close">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <p>Questo traghetto ha un viaggio di ritorno collegato. Cosa vuoi eliminare?</p>
+          </div>
+          <div class="modal-footer" style="flex-direction:column;gap:8px">
+            <button class="btn btn-danger" id="ferry-del-ret-both">Elimina entrambi (andata e ritorno)</button>
+            <button class="btn btn-outline" id="ferry-del-ret-outbound">Elimina solo l'andata</button>
+            <button class="btn btn-secondary" id="ferry-del-ret-cancel">Annulla</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    const modal = document.getElementById('ferry-delete-return-modal');
+    const closeModal = () => { modal.remove(); document.body.style.overflow = ''; };
+
+    const doDelete = async (deleteReturnToo) => {
+      const btnBoth = document.getElementById('ferry-del-ret-both');
+      const btnOut = document.getElementById('ferry-del-ret-outbound');
+      if (btnBoth) btnBoth.disabled = true;
+      if (btnOut) btnOut.disabled = true;
+
+      try {
+        if (deleteReturnToo && ferry.returnFerryId) {
+          await utils.authFetch('/.netlify/functions/delete-booking', {
+            method: 'POST',
+            body: JSON.stringify({ tripId: currentTripData.id, type: 'ferry', itemId: ferry.returnFerryId })
+          });
+          currentTripData.ferries = (currentTripData.ferries || []).filter(f => f.id !== ferry.returnFerryId);
+        } else if (!deleteReturnToo && ferry.returnFerryId) {
+          // Rimuovi il link parentFerryId dal ritorno prima di eliminare l'andata
+          await utils.authFetch('/.netlify/functions/edit-booking', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tripId: currentTripData.id, type: 'ferry', itemId: ferry.returnFerryId, updates: { parentFerryId: '', _isReturn: false } })
+          });
+        }
+
+        await utils.authFetch('/.netlify/functions/delete-booking', {
+          method: 'POST',
+          body: JSON.stringify({ tripId: currentTripData.id, type: 'ferry', itemId: ferry.id })
+        });
+        currentTripData.ferries = (currentTripData.ferries || []).filter(f => f.id !== ferry.id);
+
+        closeModal();
+        rerenderCurrentTab();
+        utils.showToast('Traghetto eliminato', 'success');
+      } catch (err) {
+        console.error('Error deleting ferry:', err);
+        utils.showToast('Errore durante l\'eliminazione', 'error');
+        closeModal();
+      }
+    };
+
+    document.getElementById('ferry-del-ret-both').addEventListener('click', () => doDelete(true));
+    document.getElementById('ferry-del-ret-outbound').addEventListener('click', () => doDelete(false));
+    document.getElementById('ferry-del-ret-cancel').addEventListener('click', closeModal);
+    document.getElementById('ferry-del-ret-close').addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+
+  /**
+   * Mostra dialog per eliminare solo il ferry di ritorno (card ritorno).
+   * Rimuove `returnFerryId` dal parent e cancella il ritorno.
+   */
+  function showFerryReturnOnlyDeleteDialog(ferry, tripId) {
+    const existing = document.getElementById('ferry-delete-return-only-modal');
+    if (existing) existing.remove();
+
+    const modalHTML = `
+      <div class="modal-overlay" id="ferry-delete-return-only-modal">
+        <div class="modal">
+          <div class="modal-header">
+            <h2>Elimina ritorno</h2>
+            <button class="modal-close" id="ferry-del-ret-only-close">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <p>Vuoi eliminare il viaggio di ritorno? L'andata rimarrà invariata.</p>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" id="ferry-del-ret-only-cancel">Annulla</button>
+            <button class="btn btn-danger" id="ferry-del-ret-only-confirm">Elimina ritorno</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    const modal = document.getElementById('ferry-delete-return-only-modal');
+    const closeModal = () => { modal.remove(); document.body.style.overflow = ''; };
+
+    document.getElementById('ferry-del-ret-only-confirm').addEventListener('click', async () => {
+      const confirmBtn = document.getElementById('ferry-del-ret-only-confirm');
+      confirmBtn.disabled = true;
+      confirmBtn.innerHTML = '<span class="spinner spinner-sm"></span>';
+      try {
+        // Rimuovi returnFerryId dal parent
+        if (ferry.parentFerryId) {
+          await utils.authFetch('/.netlify/functions/edit-booking', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tripId: currentTripData.id, type: 'ferry', itemId: ferry.parentFerryId, updates: { returnFerryId: '' } })
+          });
+          const parent = (currentTripData.ferries || []).find(f => f.id === ferry.parentFerryId);
+          if (parent) delete parent.returnFerryId;
+        }
+
+        await utils.authFetch('/.netlify/functions/delete-booking', {
+          method: 'POST',
+          body: JSON.stringify({ tripId: currentTripData.id, type: 'ferry', itemId: ferry.id })
+        });
+        currentTripData.ferries = (currentTripData.ferries || []).filter(f => f.id !== ferry.id);
+
+        closeModal();
+        rerenderCurrentTab();
+        utils.showToast('Ritorno eliminato', 'success');
+      } catch (err) {
+        console.error('Error deleting return ferry:', err);
+        utils.showToast('Errore durante l\'eliminazione', 'error');
+        closeModal();
+      }
+    });
+
+    document.getElementById('ferry-del-ret-only-cancel').addEventListener('click', closeModal);
+    document.getElementById('ferry-del-ret-only-close').addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
   }
 
   // ===========================

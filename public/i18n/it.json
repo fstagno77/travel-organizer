@@ -44,7 +44,8 @@
     "dayProgress": "Giorno {current} di {total}",
     "nextEvent": "Prossimo",
     "tomorrow": "Domani",
-    "inDays": "Tra {n} giorni"
+    "inDays": "Tra {n} giorni",
+    "upcomingFeatured": "Prossimo Viaggio"
   },
   "trip": {
     "new": "Nuovo Viaggio",
@@ -86,7 +87,7 @@
     "deleteError": "Errore durante l'eliminazione",
     "addBooking": "Aggiungi prenotazione",
     "addBookingTitle": "Aggiungi prenotazione",
-    "uploadBooking": "Carica prenotazione",
+    "uploadBooking": "Aggiungi prenotazione",
     "uploadBookingDesc": "PDF di volo, hotel, treno o bus",
     "addActivity": "Aggiungi attività",
     "addActivityDesc": "Escursione, ristorante, visita...",
@@ -392,7 +393,9 @@
     "arrivalTime": "Orario arrivo",
     "duration": "Durata traversata",
     "currency": "Valuta",
-    "amount": "Importo"
+    "amount": "Importo",
+    "add_return": "Aggiungi ritorno",
+    "return_trip": "Viaggio di ritorno"
   },
   "changelog": {
     "title": "Changelog",

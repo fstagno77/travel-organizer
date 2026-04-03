@@ -318,6 +318,112 @@ exports.handler = async (event, context) => {
       return { statusCode: 200, headers, body: JSON.stringify({ success: true, pdfPath }) };
     }
 
+    // ══════════════════════════════════════════════════════════════
+    // AZIONE: Creazione prenotazione manuale (senza parsing PDF)
+    // ══════════════════════════════════════════════════════════════
+    if (body.action === 'manual-booking') {
+      const { type, manualData, tripId: manualTripId, documentUrl } = body;
+
+      if (!manualTripId) {
+        return { statusCode: 400, headers, body: JSON.stringify({ success: false, error: 'tripId è obbligatorio' }) };
+      }
+      if (!type) {
+        return { statusCode: 400, headers, body: JSON.stringify({ success: false, error: 'type è obbligatorio' }) };
+      }
+      if (!manualData || typeof manualData !== 'object') {
+        return { statusCode: 400, headers, body: JSON.stringify({ success: false, error: 'manualData è obbligatorio' }) };
+      }
+
+      const REQUIRED_BY_TYPE = {
+        flight: ['date', 'departureCity', 'arrivalCity', 'departureTime', 'flightNumber', 'airline'],
+        hotel: ['name', 'city', 'checkIn.date', 'checkOut.date'],
+        train: ['departure.station', 'departure.city', 'arrival.station', 'arrival.city', 'date', 'departureTime', 'trainNumber', 'operator'],
+        bus: ['departure.city', 'arrival.city', 'date', 'departureTime', 'operator'],
+        rental: ['provider', 'pickupLocation.city', 'date', 'pickupLocation.time', 'endDate', 'dropoffLocation.time'],
+        ferry: ['departure.port', 'departure.city', 'arrival.port', 'arrival.city', 'date']
+      };
+
+      const COLLECTION_BY_TYPE = {
+        flight: 'flights',
+        hotel: 'hotels',
+        train: 'trains',
+        bus: 'buses',
+        rental: 'rentals',
+        ferry: 'ferries'
+      };
+
+      const requiredFields = REQUIRED_BY_TYPE[type];
+      if (!requiredFields) {
+        return { statusCode: 400, headers, body: JSON.stringify({ success: false, error: `Tipo non supportato: ${type}` }) };
+      }
+
+      // Valida campi obbligatori (supporta dot notation per campi annidati)
+      function getNestedVal(obj, path) {
+        return path.split('.').reduce((cur, key) => cur?.[key], obj);
+      }
+
+      for (const field of requiredFields) {
+        const val = getNestedVal(manualData, field);
+        if (val === undefined || val === null || val === '') {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ success: false, error: `Campo obbligatorio mancante: ${field}`, missingField: field })
+          };
+        }
+      }
+
+      // Recupera il viaggio
+      const { data: manualTripRecord, error: manualFetchError } = await supabase
+        .from('trips')
+        .select('*')
+        .eq('id', manualTripId)
+        .single();
+
+      if (manualFetchError || !manualTripRecord) {
+        return { statusCode: 404, headers, body: JSON.stringify({ success: false, error: 'Viaggio non trovato' }) };
+      }
+
+      const manualTripData = manualTripRecord.data;
+      const collection = COLLECTION_BY_TYPE[type];
+      const existing = manualTripData[collection] || [];
+      const newId = `${type}-${existing.length + 1}`;
+
+      const newBooking = {
+        ...manualData,
+        id: newId,
+        source: documentUrl || 'manual',
+        _manualCreation: true
+      };
+
+      manualTripData[collection] = [...existing, newBooking];
+
+      // Aggiorna date viaggio
+      updateTripDates(manualTripData);
+
+      const { error: manualDbError } = await serviceClient
+        .from('trips')
+        .update({ data: manualTripData, updated_at: new Date().toISOString() })
+        .eq('id', manualTripId);
+
+      if (manualDbError) {
+        return { statusCode: 500, headers, body: JSON.stringify({ success: false, error: 'Errore salvataggio database' }) };
+      }
+
+      await notifyCollaborators(manualTripId, user.id, 'booking_added', 'Ha aggiunto una prenotazione', 'Added a booking');
+
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          success: true,
+          tripData: manualTripData,
+          added: { [collection]: 1 },
+          newBookingId: newId
+        })
+      };
+    }
+
     const { pdfs, tripId, parsedData, feedback, skipDateUpdate, editedFields, confirmedUpdates, pendingNew } = body;
 
     if (!pdfs || pdfs.length === 0) {

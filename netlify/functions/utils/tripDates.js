@@ -44,6 +44,12 @@ function updateTripDates(tripData) {
     });
   }
 
+  if (tripData.ferries) {
+    tripData.ferries.forEach(f => {
+      if (f.date) dates.push(new Date(f.date));
+    });
+  }
+
   if (dates.length > 0) {
     dates.sort((a, b) => a - b);
     tripData.startDate = dates[0].toISOString().split('T')[0];

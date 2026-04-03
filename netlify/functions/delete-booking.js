@@ -44,11 +44,11 @@ exports.handler = async (event, context) => {
       };
     }
 
-    if (!type || !['flight', 'hotel', 'train', 'bus', 'rental'].includes(type)) {
+    if (!type || !['flight', 'hotel', 'train', 'bus', 'rental', 'ferry'].includes(type)) {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ success: false, error: 'Type must be "flight", "hotel", "train", "bus" or "rental"' })
+        body: JSON.stringify({ success: false, error: 'Type must be "flight", "hotel", "train", "bus", "rental" or "ferry"' })
       };
     }
 
@@ -151,6 +151,29 @@ exports.handler = async (event, context) => {
         };
       }
       tripData.rentals = tripData.rentals.filter(r => r.id !== itemId);
+    } else if (type === 'ferry') {
+      const ferryToDelete = (tripData.ferries || []).find(f => f.id === itemId);
+      if (!ferryToDelete) {
+        return {
+          statusCode: 404,
+          headers,
+          body: JSON.stringify({ success: false, error: 'Ferry not found' })
+        };
+      }
+      if (ferryToDelete.pdfPath) {
+        await deletePdf(ferryToDelete.pdfPath);
+      }
+      tripData.ferries = tripData.ferries.filter(f => f.id !== itemId);
+      // Se aveva un ritorno collegato, rimuovi il link dal ritorno
+      if (ferryToDelete.returnFerryId) {
+        const returnFerry = (tripData.ferries || []).find(f => f.id === ferryToDelete.returnFerryId);
+        if (returnFerry) delete returnFerry.parentFerryId;
+      }
+      // Se era un ritorno, rimuovi returnFerryId dal parent
+      if (ferryToDelete.parentFerryId) {
+        const parentFerry = (tripData.ferries || []).find(f => f.id === ferryToDelete.parentFerryId);
+        if (parentFerry) delete parentFerry.returnFerryId;
+      }
     }
 
     // Update trip dates based on remaining bookings

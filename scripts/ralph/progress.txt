@@ -1,120 +1,158 @@
-## 2026-04-01 - US-007
-- Aggiunta chiave `trip.ferries` nella sezione "trip" di it.json (valore: "Traghetti") e en.json (valore: "Ferries")
-- Aggiunta sezione `ferry` in it.json e en.json con tutte le chiavi richieste: operator, departure_port, arrival_port, cabin, deck, vehicle, booking_reference, ferry_name + chiavi accessorie
-- Aggiunto anche `trip.noFerries` / `trip.noFerriesText` per stato vuoto del tab (coerente con noTrains/noBuses)
-- Parità chiavi garantita: tutte le chiavi ferry in IT hanno corrispondente in EN e viceversa
-- Creato tests/us007-ferry-i18n.test.js con 40 test (tutti passanti)
-- **Files cambiati:** public/i18n/it.json, public/i18n/en.json, tests/us007-ferry-i18n.test.js (nuovo)
-- **Learnings per iterazioni future:**
-  - Le chiavi del tab bar (trip.trains, trip.buses, trip.ferries) vivono nella sezione "trip" dei file i18n
-  - Le chiavi specifiche del tipo di trasporto vivono in una sezione dedicata ("train", "bus", "ferry") a livello root
-  - Per un nuovo tipo di trasporto: aggiungere `trip.xxx` nella sezione trip, `trip.noXxx` e `trip.noXxxText` per lo stato vuoto, e una sezione `xxx` root con tutte le chiavi campo
+## 2026-04-02 - US-009
+- Aggiunto showSmartParseFallback() in tripPage.js dentro showAddBookingModal()
+- Modifica parseBooking(): intercetta errore 400 "no travel data" → mostra step 1 con messaggio fallback
+- Modifica parseBooking(): controlla hasKnownType e hasData dopo SmartParse — se !hasData chiama showSmartParseFallback
+- showSmartParseFallback ripristina step 1, inserisce messaggio "Documento non riconosciuto automaticamente", pre-seleziona card e apre form manuale pre-popolato se detectedDocType è impostato
+- Supporto prefillDocStoragePath in manualBookingForm.js: open() + saveManualBooking() usano il percorso storage del PDF già caricato come documentUrl
+- 19 test in tests/us009-smartparse-fallback.test.js — tutti passano
+- Fix test us008 per adattarsi alla nuova firma saveManualBooking() con parametro opzionale
+- Files changed: js/tripPage.js, js/manualBookingForm.js, tests/us009-smartparse-fallback.test.js, tests/us008-manual-booking-ferry.test.js
+- **Learnings for future iterations:**
+  - La detection del fallback avviene in 2 punti: errore 400 (no travel data) e dopo _parsedResults set (hasData check)
+  - La collection per car_rental è "rentals", non "car_rentals" — mappatura in typeMap + collectionKey
+  - Per aggiungere parametri opzionali a funzioni usate nei test: aggiorna anche i test che verificano la firma con toContain parziale (senza parentesi chiusa)
 ---
 
-## 2026-04-01 - US-006
-- Aggiunta categoria 'traghetti' in CATEGORIES di js/helpPage.js: id:'traghetti', colore:#0369a1, gradient lineare, icona SVG ferry, titleIt:'Traghetti e Navi', titleEn:'Ferries & Ships'
-- Aggiunta sezione 'traghetti' in CONTENT di js/helpDetailPage.js con 4 articoli IT+EN: (1) caricare-ricevuta-traghetto, (2) smartparse-beta-traghetti, (3) veicoli-a-bordo, (4) compagnia-non-riconosciuta
-- Ogni articolo ha id, title, intro, steps (array non vuoto), opzionalmente tips e result
-- Creato tests/us006-ferry-help.test.js con 22 test (tutti passanti)
-- **Files cambiati:** js/helpPage.js, js/helpDetailPage.js, tests/us006-ferry-help.test.js (nuovo)
-- **Learnings per iterazioni future:**
-  - helpPage.js e helpDetailPage.js sono object literal con `window.helpPage` / `window.helpDetailPage` — caricabili con `new Function('window', 'document', code)(win, doc)`
-  - Le categorie help e le categorie activityCategories devono avere lo stesso colore (#0369a1 per ferry)
-  - Per aggiungere una nuova categoria help: 1) CATEGORIES in helpPage.js, 2) CONTENT in helpDetailPage.js (sezione 'id': { it: {...}, en: {...} })
-  - Ogni articolo helpDetailPage ha: id, title, intro, steps[], opzionalmente tips[], result, related[]
----
-
-## 2026-04-01 - US-005
-- Aggiunto supporto ferry in js/parsePreview.js: raccolta allFerries nel loop iniziale, segmenti ferry in _segments, pannelli ferry con rotta porto→porto, tabelle passeggeri e veicoli
-- Campo cabin/deck mostrato solo se non null (condizione `if (f.cabin != null)`)
-- Sezione veicoli a bordo mostrata solo se `f.vehicles?.length > 0`
-- Condizione passenger section aggiornata: `allFerries.length === 0` aggiunto
-- Creato tests/us005-ferry-preview.test.js con 14 test (tutti passanti)
-- **Files cambiati:** js/parsePreview.js, tests/us005-ferry-preview.test.js (nuovo)
-- **Learnings per iterazioni future:**
-  - parsePreview.js NON è un IIFE: è un oggetto letterale `const parsePreview = {...}` con `window.parsePreview = parsePreview` alla fine — va caricato con `new Function('document', 'window', code)` passando entrambi
-  - Il mock di `document.createElement` per `_esc`: il setter di `textContent` deve aggiornare la stessa variabile che restituisce `innerHTML` — per dati senza HTML speciali sono equivalenti
-  - Per aggiungere un nuovo tipo in parsePreview: 1) allXxx array, 2) segmento in _segments con icon, 3) pannello HTML nel loop, 4) aggiornare la condizione del passenger panel
+## 2026-04-02 - US-008
+- Creato buildFerryForm(prefill) in js/manualBookingForm.js con 7 campi obbligatori + 9 opzionali
+- Campi obbligatori: operatore, porto partenza, città partenza, porto arrivo, città arrivo, data, orario partenza
+- CustomSelect per tipo passeggero (FERRY_PASSENGER_TYPE_OPTIONS) e tipo veicolo (FERRY_VEHICLE_TYPE_OPTIONS) — nessun <select> nativo
+- Fallback input text per ambienti senza CustomSelect (test environment)
+- getValues() restituisce struttura con departure.{port,city,time} e arrival.{port,city,time}
+- Branch `type === 'ferry'` aggiunto in open() di manualBookingForm.js
+- 39 test in tests/us008-manual-booking-ferry.test.js — tutti passano
+- Files changed: js/manualBookingForm.js, tests/us008-manual-booking-ferry.test.js (nuovo)
+- **Learnings for future iterations:**
+  - Per US-009 (fallback SmartParse): il punto di intercettazione è nel frontend dopo la risposta del parser — leggere smartParser.js e tripCreator.js per capire quando viene gestita la risposta
+  - Le costanti di opzioni (FERRY_PASSENGER_TYPE_OPTIONS, FERRY_VEHICLE_TYPE_OPTIONS) vanno dichiarate subito prima della funzione che le usa
+  - Il pattern per isolare la sezione ferry nei test: `formCode.slice(formCode.indexOf('function buildFerryForm'), formCode.indexOf('function restoreModal'))`
 ---
 
 ## Codebase Patterns
-- Frontend JS usa IIFE con `window.xxx` exports — per testare in Jest, usa `new Function('window', ...)` con globals simulati
-- `activityCategories.js` è caricabile in Jest Node (nessuna dipendenza DOM nel corpo principale)
-- `tripPage.js` è async IIFE troppo complesso per caricare in Jest — testa la logica pura inline nel test o verifica via `fs.readFileSync` + `code.includes(...)`
-- Per aggiungere un nuovo tipo di trasporto: 1) CATEGORIES in activityCategories.js, 2) getCategoryForEvent/eventToCategoryKey, 3) CATEGORY_KEYWORDS, 4) TAB_CONFIG + getVisibleTabs in tripPage.js, 5) tabRendered reset (3 posti), 6) renderTab handler, 7) container event delegation
-- Il tab bar usa `segmented-label` CSS class per tabs con label lunga (trains, buses, ferries, rentals)
-- `auth-reload-loop.test.js` ha un bug pre-esistente (sessionStorage non definito in Node.js) — non è rotto da noi
-- `smartParser.js` usa `BETA_DOC_TYPES` per i tipi supportati in beta (incluso ferry) e `LIVE_DOC_TYPES` per prod — ferry va solo in BETA
-- I nuovi tipi in smartParser: aggiungere SCHEMA, case in getSchemaForDocType, in BETA_DOC_TYPES, nel BETA_SYSTEM_PROMPT, in sanitizeResult per le date
-- `getSchema(docType)` esporta lo schema come oggetto parsato (JSON.parse del SCHEMA string)
-- `detectDocType(text)` è una funzione keyword-based esportata per pre-screening testo prima di Claude
-- Per nuovi tab di trasporto: creare `js/tripXxx.js` con `window.tripXxx = { render, renderFerries (alias), renderDetails, buildEditForm, collectUpdates, buildFullEditForm, collectFullUpdates, _items }`, aggiungere import in `js/entries/trip.js` e `js/entries/share-entry.js`, aggiornare `handleToggleDetails` in tripPage.js (indexAttrMap, itemsMap, renderFnMap)
-- mockUtils per i test IIFE dei moduli di trasporto richiede: `escapeHtml`, `formatFlightDate`, `formatDuration`
-- `parsePreview.js` richiede sia `document` che `window` nel mock per i test: `new Function('document', 'window', code)` — il mock di `document.createElement` deve avere textContent setter che aggiorna anche innerHTML
+- tripPage.js usa IIFE `(async function() { ... })()` — i test si basano su code analysis (grep sul sorgente), non su esecuzione DOM
+- La modale "Aggiungi prenotazione" è costruita dinamicamente in `showAddBookingModal` con template literal; i test verificano i pattern nel sorgente
+- Classi CSS modifier per modal: `.modal--wide` sovrascrive `max-width`, pattern uguale a `.modal--share` e `.modal--pending-booking`
+- Per delegare ad un modulo futuro, usare `window.nomModulo.nomeMetodo` con guard `if (window.nomModulo && typeof window.nomModulo.open === 'function')`
+- I test Us-xxx usano code analysis con `fs.readFileSync` + `toContain` per verificare struttura HTML generata dinamicamente
+- us005-ferry-preview.test.js ha una failure pre-esistente ("Veicoli a bordo") non correlata a US-001
+- I test backend (netlify/functions) usano jest.mock su auth, storage, pdfProcessor, tripDates, deduplication, notificationHelper — pattern già consolidato in manage-activity.test.js e delete-passenger.test.js
+- delete-passenger.test.js ha failure pre-esistenti (getServiceClient not a function) — non correlate a questo PRD
+- Il nuovo branch `action='manual-booking'` va inserito in add-booking.js PRIMA della destructuring `const { pdfs, tripId, ... }` (riga ~321) ma DOPO il branch upload-passenger-pdf
+- Campi obbligatori nei required fields per tipo: flight=['date','departureCity','arrivalCity','departureTime','flightNumber','airline'], hotel=['name','city','checkIn.date','checkOut.date']
+- manualBookingForm.js pattern: buildFlightForm() restituisce { form, getValues, validate, saveBtn, getFile } — lo stesso pattern va usato per US-004+ (hotel, train, bus, rental, ferry)
+- Per ogni tipo di form manuale: aggiungere un branch `if (type === 'X') { formModule = buildXForm(prefill); }` nella funzione `open()` di manualBookingForm.js
+- I campi con id `mbf-{campo}` usano `data-required` dataset per il controllo updateSaveBtn — tutti i required devono avere `required: true` in buildField()
+- Messaggi di errore con apostrofo nel codice sorgente usano `\'` (es. `dell\'hotel`) — nei test usare `.toContain("dell")` e `.toContain("hotel")` separati, oppure la stringa senza apostrofo
+- I form con date relative (check-in/out, ritiro/restituzione) devono calcolare giorni/notti in read-only con `addEventListener('change', ...)` su entrambi i campi data
 
 # Ralph Progress Log
-Started: Wed Apr  1 09:50:41 CEST 2026
+Started: Thu Apr  2 12:25:58 CEST 2026
 ---
 
-## 2026-04-01 - US-001
-- Implementata categoria visiva 'traghetto' in activityCategories.js (colore #0369a1, icona directions_boat, gradient blu)
-- getCategoryForEvent e eventToCategoryKey gestiscono type:'ferry' → CATEGORIES.traghetto
-- CATEGORY_KEYWORDS.ferry con 8 keyword (ferry, traghetto, nave, traversata, imbarco, porto, imbarcazione, motonave)
-- Tab 'ferries' aggiunto a TAB_CONFIG in tripPage.js (icon:'directions_boat', i18nKey:'trip.ferries', beta:true)
-- getVisibleTabs() aggiornato per includere 'ferries' condizionalmente
-- getVisibleTabs esposta via window.tripPage per testabilità futura
-- Container event delegation per ferriesContainer aggiunto
-- tabRendered reset aggiornato in tutti e 3 i posti
-- Creato tests/us001-ferry-categories.test.js con 16 test (tutti passanti)
-- **Files cambiati:** js/activityCategories.js, js/tripPage.js, tests/us001-ferry-categories.test.js
-- **Learnings per iterazioni future:**
-  - Il pattern "loadIIFE con new Function" funziona per activityCategories.js ma non per tripPage.js (troppo complesso)
-  - Per testare logica di tripPage.js: usare `fs.readFileSync + code.includes()` per verificare presenza del codice, o definire la funzione inline nel test come spec
-  - Quando si aggiunge un nuovo tab, ricordare: TAB_CONFIG, getVisibleTabs, tabRendered (×3), renderTab, event delegation, segmented-label condition
+## 2026-04-02 - US-001
+- Implementata la griglia 6 card tipo prenotazione nella modale "Aggiungi prenotazione"
+- La modale è allargata a 720px tramite classe `modal--wide`
+- Aggiunta funzione `showManualBookingForm(type)` con delega a `window.manualBookingForm.open` (per US-003+)
+- Aggiunta funzione `bindBookingTypeCardEvents()` per collegare click sulle card
+- Card usano colori/icone/gradienti da `activityCategories.js` (coerenza visiva)
+- Upload PDF senza card selezionata mantiene comportamento SmartParse invariato
+- Files changed: `js/tripPage.js`, `css/components.css`, `tests/us001-manual-booking-step1.test.js`
+- **Learnings for future iterations:**
+  - `bookingTypes` array è definito inline in `showAddBookingModal` — US-003+ può aggiungere dati in questo array
+  - I test verificano il codice sorgente (code analysis), non l'esecuzione DOM — approccio già consolidato nel progetto
+  - Il punto di estensione per i form manuali è `window.manualBookingForm.open(type, modal, tripId, { onSaved })`
+  - La griglia CSS usa `grid-template-columns: repeat(3, 1fr)` — 3 card per riga, 2 righe per 6 tipi
+  - CSS custom properties `--booking-card-color`, `--booking-card-hover-bg`, `--booking-card-gradient` sono impostati inline sulle card
 ---
 
-## 2026-04-01 - US-002
-- Aggiunto FERRY_SCHEMA in smartParser.js con struttura: ferries[{date, operator, ferryName, routeNumber, departure:{port,city,time}, arrival:{port,city,time}, duration, cabin, deck, passengers, vehicles, bookingReference, ticketNumber, price}], passenger:{name}
-- Aggiunte keyword ferry in FERRY_KEYWORDS: ferry, traghetto, nave, traversata, imbarco, porto, imbarcazione, motonave, Grimaldi, Tirrenia, ANEK, Blue Star, Minoan, GNV, Corsica Ferries, Brittany Ferries, Stena Line
-- Creata funzione detectDocType(text) esportata per rilevamento keyword-based
-- Creata funzione getSchema(docType) esportata (ritorna oggetto JSON.parse dello schema)
-- 'ferry' aggiunto a BETA_DOC_TYPES
-- BETA_SYSTEM_PROMPT aggiornato: _docType include 'ferry', sezione mandatory fields ferry aggiunta, FERRY_SCHEMA aggiunto in fondo
-- parseWithClaude usa betaMode ? BETA_DOC_TYPES : LIVE_DOC_TYPES per validTypes
-- sanitizeResult aggiornato per sanitizzare date dei ferry
-- Log Claude aggiornato per mostrare contatore ferries
-- Creato tests/us002-ferry-smartparser.test.js con 27 test (tutti passanti)
-- **Files cambiati:** netlify/functions/utils/smartParser.js, tests/us002-ferry-smartparser.test.js
-- **Learnings per iterazioni future:**
-  - smartParser.js: per ogni nuovo tipo → SCHEMA, getSchemaForDocType case, BETA_DOC_TYPES, BETA_SYSTEM_PROMPT (docType detection + mandatory fields + schema), sanitizeResult
-  - Le BETA_SYSTEM_PROMPT modifiche si fanno via `.replace()` chain già esistente — estendere il blocco mandatory fields con un nuovo "### For FERRIES:" prima di "## IMPORTANT OPTIONAL FIELDS"
-  - I test di smartParser.js si scrivono con require diretto (non IIFE), poiché le functions Node.js usano CommonJS module.exports
+## 2026-04-02 - US-002
+- Aggiunto branch `action='manual-booking'` in `netlify/functions/add-booking.js`
+- Validazione campi obbligatori per tutti i 6 tipi (flight, hotel, train, bus, rental, ferry) con supporto dot notation per campi annidati (es. `checkIn.date`)
+- Il dato viene salvato nella collection corretta (flights/hotels/trains/etc.) con id assegnato automaticamente (`{type}-{n}`)
+- documentUrl opzionale salvato nel campo `source` del booking
+- 9 test creati in `tests/us002-manual-booking-backend.test.js`
+- Files changed: `netlify/functions/add-booking.js`, `tests/us002-manual-booking-backend.test.js`
+- **Learnings for future iterations:**
+  - Il handler add-booking.js verifica `body.action` prima di tutto — aggiungere nuovi branch prima della destructuring `const { pdfs, tripId, ... }`
+  - I required fields usano dot notation per campi annidati: `checkIn.date`, `departure.city` ecc. — `getNestedVal()` helper risolve la path
+  - Per i test backend: mockare `getServiceClient` nella stessa mock di `utils/auth` (viene importato da lì)
+  - Il pattern action-based è consolidato: aggiungere `if (body.action === '...')` in cima all'handler
 ---
 
-## 2026-04-01 - US-003
-- Creato js/tripFerries.js seguendo esattamente il pattern di tripTrains.js e tripBuses.js
-- Espone window.tripFerries con: render, renderFerries (alias), renderDetails, buildEditForm, collectUpdates, buildFullEditForm, collectFullUpdates, _ferries
-- Gestisce campi ferry-specifici: departure.port/arrival.port, ferryName, cabin/deck (opzionali), passengers array, vehicles array
-- Aggiornato handleToggleDetails in tripPage.js: aggiunto 'ferry' in indexAttrMap, itemsMap, renderFnMap
-- Import aggiunto in js/entries/trip.js e js/entries/share-entry.js (dopo tripBuses.js)
-- Creato tests/us003-ferry-rendering.test.js con 21 test (tutti passanti)
-- **Files cambiati:** js/tripFerries.js (nuovo), js/entries/trip.js, js/entries/share-entry.js, js/tripPage.js, tests/us003-ferry-rendering.test.js
-- **Learnings per iterazioni future:**
-  - Il booking reference è nei dettagli (lazy loaded), non nella card principale — testare via renderDetails
-  - Il campo `departure.port` è diverso da `departure.station` (trains/buses) — usare `.port` per ferry
-  - `window.tripFerries._ferries` viene popolato da renderFerries — serve per handleToggleDetails
+## 2026-04-02 - US-003
+- Creato js/manualBookingForm.js con window.manualBookingForm.open(type, modal, tripId, { onSaved })
+- Implementato buildFlightForm(prefill) con 6 campi obbligatori + 6 opzionali + CustomSelect per classe
+- Validazione inline (showFieldError/clearFieldError), bottone Salva disabilitato fino a required compilati
+- Upload documento opzionale con drag-drop (buildDocumentUpload)
+- saveManualBooking() chiama add-booking con action='manual-booking'
+- Aggiunto import in js/entries/trip.js (prima di tripPage.js per disponibilità window.manualBookingForm)
+- 32 test in tests/us003-manual-booking-flight.test.js — tutti passano
+- Files changed: js/manualBookingForm.js (nuovo), js/entries/trip.js, tests/us003-manual-booking-flight.test.js (nuovo)
+- **Learnings for future iterations:**
+  - buildFlightForm() restituisce { form, getValues, validate, saveBtn, getFile } — replicare pattern per US-004+
+  - Per aggiungere tipo: aggiungere `if (type === 'X') { formModule = buildXForm(prefill); }` in open()
+  - id campi: prefisso `mbf-` + nome campo (es. mbf-hotel-name, mbf-hotel-city, ecc.)
+  - buildRow() affianca due form-group con display:flex — utile per tutti i form
+  - Il form viene inserito nel modal-body; footer viene svuotato e popolato con Indietro + Salva
 ---
 
-## 2026-04-01 - US-004
-- Aggiunto loop su `tripData.ferries || []` in `buildDayEvents()` di `js/tripActivities.js`
-- Ogni ferry genera un evento `{ date: ferry.date, time: ferry.departure?.time || null, type: 'ferry', data: ferry }`
-- Ferry senza `date` skippato con `continue` (nessun crash)
-- 'ferry' aggiunto a `typePriority` con priorità 1.5 (stesso livello di train/bus)
-- `buildDayEvents` esposta via `window.tripActivities.buildDayEvents` per testabilità
-- Creato `tests/us004-ferry-activities.test.js` con 14 test (tutti passanti)
-- **Files cambiati:** js/tripActivities.js, tests/us004-ferry-activities.test.js
-- **Learnings per iterazioni future:**
-  - `buildDayEvents` era funzione interna IIFE — per testarla bisogna esporla via `window.tripActivities`
-  - Il pattern per aggiungere eventi in buildDayEvents: `const items = tripData.xxx || []; for (const item of items) { if (!item.date) continue; events.push({...}); }`
-  - `auth-reload-loop.test.js` ha un bug pre-esistente (sessionStorage non definito in Node.js) — non è rotto da noi, exit code 1 atteso
+## 2026-04-02 - US-004
+- Creato buildHotelForm(prefill) in js/manualBookingForm.js con 4 campi obbligatori + 9 opzionali
+- Campo notti calcolato automaticamente (read-only) da check-in/check-out con calcNights()
+- Colazione inclusa usa CustomSelect (no <select> nativo), con fallback input text in env test
+- Validazione inline: errore specifico se check-out antecedente check-in
+- Upload documento opzionale (riuso buildDocumentUpload)
+- Branch `type === 'hotel'` aggiunto in open() di manualBookingForm.js
+- Fix catch block in open(): restore del testo originale del save button con saveBtnOriginalText
+- 29 test in tests/us004-manual-booking-hotel.test.js — tutti passano
+- Files changed: js/manualBookingForm.js, tests/us004-manual-booking-hotel.test.js (nuovo)
+- **Learnings for future iterations:**
+  - Per i form con date relative (hotel, noleggio): aggiungere funzione helper `calcXxx()` per il calcolo read-only e agganciarla su `addEventListener('change', ...)` su entrambi i campi data
+  - Messaggi errore con apostrofo vanno testati con toContain() su substring senza apostrofo
+  - Il catch block di open() ora usa `saveBtnOriginalText` per restaurare il testo del bottone — non modificarlo per i prossimi tipi
+  - buildHotelForm restituisce { form, getValues, validate, saveBtn, getFile } — pattern identico a buildFlightForm
+---
+
+## 2026-04-02 - US-005
+- Creato buildTrainForm(prefill) in js/manualBookingForm.js con 8 campi obbligatori + 6 opzionali
+- Campi obbligatori: stazione partenza, città partenza, stazione arrivo, città arrivo, data, orario partenza, numero treno, operatore
+- getValues() restituisce struttura con departure.{station,city,time} e arrival.{station,city,time}
+- Branch `type === 'train'` aggiunto in open() di manualBookingForm.js
+- 33 test in tests/us005-manual-booking-train.test.js — tutti passano
+- Files changed: js/manualBookingForm.js, tests/us005-manual-booking-train.test.js (nuovo)
+- **Learnings for future iterations:**
+  - buildTrainForm usa la stessa struttura { form, getValues, validate, saveBtn, getFile } — consolidato per tutti i form
+  - Per bus (US-006): campi obbligatori sono città (non stazioni) — la stazione è opzionale
+  - Il form treno non ha CustomSelect (classe è testo libero) — non ogni form necessita CustomSelect
+  - I test usano `formCode.slice(formCode.indexOf('function buildTrainForm'), formCode.indexOf('function restoreModal'))` per isolare la sezione del form
+---
+
+## 2026-04-02 - US-006
+- Creato buildBusForm(prefill) in js/manualBookingForm.js con 5 campi obbligatori + 5 opzionali
+- Campi obbligatori: città partenza, città arrivo, data, orario partenza, operatore
+- Campi opzionali: stazione/terminal partenza, stazione/terminal arrivo, numero rotta, posto, prezzo
+- getValues() restituisce struttura piatta (departureCity, arrivalCity) — no oggetti nested come treno
+- Branch `type === 'bus'` aggiunto in open() di manualBookingForm.js
+- 26 test in tests/us006-manual-booking-bus.test.js — tutti passano
+- Files changed: js/manualBookingForm.js, tests/us006-manual-booking-bus.test.js (nuovo)
+- **Learnings for future iterations:**
+  - Bus usa struttura dati piatta (no departure/arrival objects) — diverso da treno che usa oggetti nested
+  - Per ferry (US-008): usare CustomSelect per tipo passeggero e tipo veicolo (nota PRD)
+  - Il pattern per isolare la sezione bus nei test: `formCode.slice(formCode.indexOf('function buildBusForm'), formCode.indexOf('function restoreModal'))`
+---
+
+## 2026-04-02 - US-007
+- Creato buildRentalForm(prefill) in js/manualBookingForm.js con 6 campi obbligatori + 9 opzionali
+- Campi obbligatori: fornitore, città ritiro, data ritiro, ora ritiro, data restituzione, ora restituzione
+- Giorni noleggio calcolati automaticamente (read-only) tramite calcDays() — pattern analogo a calcNights()
+- getValues() restituisce struttura con pickupLocation.{city,time,address,airport} e dropoffLocation.{city,time}
+- Validazione: data restituzione antecedente ritiro mostra errore inline
+- Branch `type === 'rental'` aggiunto in open() di manualBookingForm.js
+- 38 test in tests/us007-manual-booking-rental.test.js — tutti passano
+- Files changed: js/manualBookingForm.js, tests/us007-manual-booking-rental.test.js (nuovo)
+- **Learnings for future iterations:**
+  - Per noleggio: `date` = data ritiro, `endDate` = data restituzione — coerente con required fields di US-002
+  - Il pattern per isolare la sezione rental nei test: `formCode.slice(formCode.indexOf('function buildRentalForm'), formCode.indexOf('function restoreModal'))`
+  - calcDays() funziona identicamente a calcNights() — entrambe restituiscono null per date uguali o invertite
+  - Per ferry (US-008): usare CustomSelect per tipo passeggero e tipo veicolo; il form ferry deve avere 7 campi obbligatori
 ---

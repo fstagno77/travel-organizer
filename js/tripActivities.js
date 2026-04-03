@@ -175,6 +175,13 @@
       ];
       return parts.some(p => p && p.toLowerCase().includes(q));
     }
+    if (event.type === 'ferry') {
+      const parts = [
+        d.departure?.port, d.departure?.city, d.arrival?.port, d.arrival?.city,
+        d.operator, d.ferryNumber
+      ];
+      return parts.some(p => p && p.toLowerCase().includes(q));
+    }
     if (event.type.startsWith('rental-')) {
       const parts = [d.provider, d.pickupLocation?.city, d.dropoffLocation?.city, d.bookingReference, d.driverName];
       return parts.some(p => p && p.toLowerCase().includes(q));
@@ -340,6 +347,13 @@
           text = `Bus da <strong>${esc(dep)}</strong> → <strong>${esc(dest)}</strong>${op}`;
           tab = 'buses';
           itemId = event.data.id;
+        } else if (event.type === 'ferry') {
+          const dep = event.data.departure?.port || event.data.departure?.city || '';
+          const dest = event.data.arrival?.port || event.data.arrival?.city || '';
+          const op = event.data.operator ? ` (${esc(event.data.operator)})` : '';
+          text = `Traghetto da <strong>${esc(dep)}</strong> → <strong>${esc(dest)}</strong>${op}`;
+          tab = 'ferries';
+          itemId = event.data.id;
         } else if (event.type === 'rental-pickup') {
           const city = event.data.pickupLocation?.city || '';
           text = `<strong>${esc(event.data.provider || 'Noleggio')}</strong> - Ritiro${city ? ` a ${esc(city)}` : ''}`;
@@ -366,7 +380,7 @@
           timeLabel += ' → ' + event.data.arrivalTime;
           if (event.data.arrivalNextDay) timeLabel += ' +1';
         }
-        if (timeLabel && (event.type === 'train' || event.type === 'bus') && event.data.arrival?.time) {
+        if (timeLabel && (event.type === 'train' || event.type === 'bus' || event.type === 'ferry') && event.data.arrival?.time) {
           timeLabel += ' → ' + event.data.arrival.time;
         }
         if (timeLabel && event.type === 'activity' && event.data.endTime) {
@@ -537,6 +551,7 @@
     if (event.type.startsWith('hotel-')) return renderHotelCard(event);
     if (event.type === 'train') return renderTransportCard(event, 'train', 'trains');
     if (event.type === 'bus') return renderTransportCard(event, 'bus', 'buses');
+    if (event.type === 'ferry') return renderTransportCard(event, 'ferry', 'ferries');
     if (event.type.startsWith('rental-')) return renderRentalCard(event);
     if (event.type === 'activity') return renderCustomActivityCard(event);
     return '';
@@ -578,12 +593,12 @@
 
   function renderTransportCard(event, type, tab) {
     const d = event.data;
-    const category = type === 'train' ? cats().CATEGORIES.treno : cats().CATEGORIES.bus;
-    const catKey = type === 'train' ? 'treno' : 'bus';
-    const depCity = d.departure?.city || d.departure?.station || '';
-    const depStation = d.departure?.station || '';
-    const arrCity = d.arrival?.city || d.arrival?.station || '';
-    const arrStation = d.arrival?.station || '';
+    const category = type === 'train' ? cats().CATEGORIES.treno : type === 'ferry' ? cats().CATEGORIES.traghetto : cats().CATEGORIES.bus;
+    const catKey = type === 'train' ? 'treno' : type === 'ferry' ? 'traghetto' : 'bus';
+    const depCity = d.departure?.city || d.departure?.station || d.departure?.port || '';
+    const depStation = d.departure?.station || d.departure?.port || '';
+    const arrCity = d.arrival?.city || d.arrival?.station || d.arrival?.port || '';
+    const arrStation = d.arrival?.station || d.arrival?.port || '';
     const fullNum = d.trainNumber || d.routeNumber || '';
     const depTime = d.departure?.time || '';
 
@@ -669,6 +684,7 @@
     attrazione: 'activity-indicator-attraction',
     treno: 'activity-indicator-train',
     bus: 'activity-indicator-bus',
+    traghetto: 'activity-indicator-ferry',
     noleggio: 'activity-indicator-rental',
     luogo: 'activity-indicator-place'
   };
@@ -692,6 +708,9 @@
     } else if (event.type === 'bus') {
       const arr = event.data.arrival?.station || event.data.arrival?.city || '';
       label = `Bus per ${arr}`;
+    } else if (event.type === 'ferry') {
+      const arr = event.data.arrival?.port || event.data.arrival?.city || '';
+      label = `Traghetto per ${arr}`;
     } else if (event.type === 'rental-pickup') {
       label = `${event.data.provider || 'Noleggio'} - Ritiro`;
     } else if (event.type === 'rental-dropoff') {
@@ -714,7 +733,7 @@
     const linkClass = isCustom ? 'activity-item-link--custom' : 'activity-item-link';
     const dataAttrs = isCustom
       ? `data-activity-id="${event.data.id}"`
-      : `data-tab="${{'flight':'flights','hotel':'hotels','train':'trains','bus':'buses','rental-pickup':'rentals','rental-active':'rentals','rental-dropoff':'rentals'}[event.type] || 'flights'}" data-item-id="${event.data.id}"`;
+      : `data-tab="${{'flight':'flights','hotel':'hotels','train':'trains','bus':'buses','ferry':'ferries','rental-pickup':'rentals','rental-active':'rentals','rental-dropoff':'rentals'}[event.type] || 'flights'}" data-item-id="${event.data.id}"`;
 
     return `
       <a class="calendar-activity-item ${linkClass}" href="#" ${dataAttrs}>

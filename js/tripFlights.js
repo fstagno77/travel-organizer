@@ -138,10 +138,10 @@
             <div class="flight-route">
               <div class="flight-endpoint">
                 <div class="flight-airport-code-lg">${esc(depCode)}</div>
-                <div class="flight-time-sm">
+                ${flight.departureTime ? `<div class="flight-time-sm">
                   <span class="material-icons-outlined flight-time-icon-sm">flight_takeoff</span>
                   ${esc(flight.departureTime)}
-                </div>
+                </div>` : ''}
                 ${flight.departure?.terminal ? `<div class="flight-terminal">Terminal ${esc(flight.departure.terminal)}</div>` : ''}
               </div>
 
@@ -159,10 +159,10 @@
 
               <div class="flight-endpoint">
                 <div class="flight-airport-code-lg">${esc(arrCode)}</div>
-                <div class="flight-time-sm">
+                ${flight.arrivalTime ? `<div class="flight-time-sm">
                   ${esc(flight.arrivalTime)}${flight.arrivalNextDay ? ' <span class="flight-next-day">+1</span>' : ''}
                   <span class="material-icons-outlined flight-time-icon-sm">flight_land</span>
-                </div>
+                </div>` : ''}
                 ${flight.arrival?.terminal ? `<div class="flight-terminal">Terminal ${esc(flight.arrival.terminal)}</div>` : ''}
               </div>
             </div>

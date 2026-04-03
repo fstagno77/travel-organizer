@@ -98,7 +98,7 @@
 
             <div class="bus-route">
               <div class="bus-endpoint">
-                <div class="bus-time-lg">${esc(bus.departure?.time || '')}</div>
+                ${bus.departure?.time ? `<div class="bus-time-lg">${esc(bus.departure.time)}</div>` : ''}
                 <div class="bus-station-name">${esc(depStation)}</div>
               </div>
 
@@ -115,7 +115,7 @@
               </div>
 
               <div class="bus-endpoint">
-                <div class="bus-time-lg">${esc(bus.arrival?.time || '')}</div>
+                ${bus.arrival?.time ? `<div class="bus-time-lg">${esc(bus.arrival.time)}</div>` : ''}
                 <div class="bus-station-name">${esc(arrStation)}</div>
               </div>
             </div>

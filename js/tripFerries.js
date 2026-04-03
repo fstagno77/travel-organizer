@@ -63,10 +63,11 @@
 
     const lang = i18n.getLang();
 
+    const today = new Date().toISOString().split('T')[0];
     const sortedFerries = [...ferries].sort((a, b) => {
-      const aPast = isFerryPast(a);
-      const bPast = isFerryPast(b);
-      if (aPast !== bPast) return aPast ? 1 : -1;
+      const aStrictPast = a.date < today;
+      const bStrictPast = b.date < today;
+      if (aStrictPast !== bStrictPast) return aStrictPast ? 1 : -1;
       return new Date(a.date) - new Date(b.date);
     });
 
@@ -87,6 +88,7 @@
         <div class="ferry-card${isPast ? ' past' : ''}" data-id="${ferry.id}">
           <div class="ferry-card-header">
             <span class="ferry-header-date">${esc(formattedDate)}</span>
+            ${ferry._isReturn ? `<span class="ferry-return-badge">Ritorno</span>` : ''}
             ${ferry.routeNumber ? `<span class="ferry-header-route">${esc(ferry.routeNumber)}</span>` : ''}
           </div>
 
@@ -99,7 +101,7 @@
 
             <div class="ferry-route">
               <div class="ferry-endpoint">
-                <div class="ferry-time-lg">${esc(ferry.departure?.time || '')}</div>
+                <div class="ferry-time-lg">${esc(ferry.departure?.time || '--:--')}</div>
                 <div class="ferry-port-name">${esc(depPort)}</div>
               </div>
 
@@ -116,7 +118,7 @@
               </div>
 
               <div class="ferry-endpoint">
-                <div class="ferry-time-lg">${esc(ferry.arrival?.time || '')}</div>
+                <div class="ferry-time-lg">${esc(ferry.arrival?.time || '--:--')}</div>
                 <div class="ferry-port-name">${esc(arrPort)}</div>
               </div>
             </div>
@@ -242,8 +244,8 @@
       ` : ''}
 
       <div class="ferry-actions">
-        ${ferry.pdfPath ? `
-        <button class="ferry-btn ferry-btn--primary btn-download-pdf" data-pdf-path="${ferry.pdfPath}">
+        ${(ferry.pdfPath || ferry.documentUrl) ? `
+        <button class="ferry-btn ferry-btn--primary btn-download-pdf" data-pdf-path="${escAttr(ferry.pdfPath || ferry.documentUrl)}">
           ${downloadIcon}
           <span>Prenotazione</span>
         </button>
@@ -339,7 +341,7 @@
     `;
   }
 
-  function buildFerryEditForm(ferry) {
+  function buildFerryEditForm(ferry, returnFerry) {
     // Normalise passengers (may be array or single object)
     const passengers = ferry.passengers?.length
       ? ferry.passengers
@@ -349,13 +351,128 @@
     const passengerRowsHtml = passengers.map((p, idx) => buildPassengerRow(p, idx)).join('');
     const vehicleRowsHtml = vehicles.map((v, idx) => buildVehicleRow(v, idx)).join('');
 
+    // Sezione ritorno: se returnFerry è presente, mostra form combinato già popolato
+    const returnSection = returnFerry ? `
+        <!-- Sezione RITORNO — già collegata -->
+        <input type="hidden" data-return-ferry-id="${escAttr(returnFerry.id)}">
+        <div class="edit-booking-section" style="margin-top:16px;background:var(--color-blue-50,#eff6ff);border:1px solid var(--color-blue-200,#bfdbfe);border-radius:10px;padding:16px;" data-return-section>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--color-blue-200,#bfdbfe);">
+            <span class="edit-booking-section-title" style="margin:0;">Ritorno</span>
+          </div>
+          <div class="edit-booking-grid">
+            <div class="edit-booking-field">
+              <label>Data <span style="color:var(--color-danger,#e53e3e)">*</span></label>
+              <input type="date" data-return-field="date" value="${escAttr(returnFerry.date)}" required>
+            </div>
+          </div>
+          <div class="edit-booking-section-title" style="font-size:var(--font-size-xs);margin-top:12px;">Partenza</div>
+          <div class="edit-booking-grid">
+            <div class="edit-booking-field">
+              <label>Porto</label>
+              <input type="text" data-return-field="departure.port" value="${escAttr(returnFerry.departure?.port)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>Città</label>
+              <input type="text" data-return-field="departure.city" value="${escAttr(returnFerry.departure?.city)}">
+            </div>
+            <div class="edit-booking-field full-width">
+              <label>Orario</label>
+              <input type="time" data-return-field="departure.time" value="${escAttr(returnFerry.departure?.time)}">
+            </div>
+          </div>
+          <div class="edit-booking-section-title" style="font-size:var(--font-size-xs);margin-top:12px;">Arrivo</div>
+          <div class="edit-booking-grid">
+            <div class="edit-booking-field">
+              <label>Porto</label>
+              <input type="text" data-return-field="arrival.port" value="${escAttr(returnFerry.arrival?.port)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>Città</label>
+              <input type="text" data-return-field="arrival.city" value="${escAttr(returnFerry.arrival?.city)}">
+            </div>
+            <div class="edit-booking-field full-width">
+              <label>Orario</label>
+              <input type="time" data-return-field="arrival.time" value="${escAttr(returnFerry.arrival?.time)}">
+            </div>
+          </div>
+        </div>
+    ` : `
+        <!-- Pulsante Aggiungi ritorno -->
+        <div class="edit-booking-section" style="margin-top:16px">
+          <button type="button" class="btn btn-outline ferry-add-return-btn"
+            style="display:flex;align-items:center;gap:6px;width:100%;justify-content:center;"
+            data-add-return>
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 96 960 960" fill="currentColor" style="flex-shrink:0">
+              <path d="M280 896 80 696l200-200 57 57-103 103h526v80H234l103 103-57 57Zm400-344-57-57 103-103H200v-80h526L623 209l57-57 200 200-200 200Z"/>
+            </svg>
+            <span data-i18n="ferry.add_return">Aggiungi ritorno</span>
+          </button>
+        </div>
+
+        <!-- Sezione ritorno (nascosta di default) -->
+        <div class="edit-booking-section" style="display:none;margin-top:16px;background:var(--color-blue-50,#eff6ff);border:1px solid var(--color-blue-200,#bfdbfe);border-radius:10px;padding:16px;" data-return-section>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--color-blue-200,#bfdbfe);">
+            <span class="edit-booking-section-title" style="margin:0;" data-i18n="ferry.return_trip">Viaggio di ritorno</span>
+            <button type="button" class="ferry-remove-return-btn"
+              style="background:none;border:none;cursor:pointer;color:var(--color-gray-500);padding:2px;display:flex;align-items:center;"
+              aria-label="Rimuovi ritorno" data-remove-return>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div class="edit-booking-grid">
+            <div class="edit-booking-field">
+              <label>Data <span style="color:var(--color-danger,#e53e3e)">*</span></label>
+              <input type="date" data-return-field="date" value="">
+            </div>
+            <div class="edit-booking-field">
+              <label>Operatore</label>
+              <input type="text" data-return-field="operator" value="${escAttr(ferry.operator)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>Nome nave</label>
+              <input type="text" data-return-field="ferryName" value="${escAttr(ferry.ferryName)}">
+            </div>
+          </div>
+          <div class="edit-booking-section-title" style="font-size:var(--font-size-xs);margin-top:12px;">Partenza</div>
+          <div class="edit-booking-grid">
+            <div class="edit-booking-field">
+              <label>Porto</label>
+              <input type="text" data-return-field="departure.port" value="${escAttr(ferry.arrival?.port)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>Città</label>
+              <input type="text" data-return-field="departure.city" value="${escAttr(ferry.arrival?.city)}">
+            </div>
+            <div class="edit-booking-field full-width">
+              <label>Orario</label>
+              <input type="time" data-return-field="departure.time" value="">
+            </div>
+          </div>
+          <div class="edit-booking-section-title" style="font-size:var(--font-size-xs);margin-top:12px;">Arrivo</div>
+          <div class="edit-booking-grid">
+            <div class="edit-booking-field">
+              <label>Porto</label>
+              <input type="text" data-return-field="arrival.port" value="${escAttr(ferry.departure?.port)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>Città</label>
+              <input type="text" data-return-field="arrival.city" value="${escAttr(ferry.departure?.city)}">
+            </div>
+            <div class="edit-booking-field full-width">
+              <label>Orario</label>
+              <input type="time" data-return-field="arrival.time" value="">
+            </div>
+          </div>
+        </div>
+    `;
+
     return `
       <div class="edit-booking-form">
         <div class="edit-booking-section">
           <div class="edit-booking-section-title">Traghetto</div>
           <div class="edit-booking-grid">
             <div class="edit-booking-field">
-              <label>Data</label>
+              <label>Data andata</label>
               <input type="date" data-field="date" value="${escAttr(ferry.date)}" required>
             </div>
             <div class="edit-booking-field">
@@ -373,7 +490,7 @@
           </div>
         </div>
         <div class="edit-booking-section">
-          <div class="edit-booking-section-title">Partenza</div>
+          <div class="edit-booking-section-title">${returnFerry ? 'Andata — Partenza' : 'Partenza'}</div>
           <div class="edit-booking-grid">
             <div class="edit-booking-field">
               <label>Porto</label>
@@ -390,7 +507,7 @@
           </div>
         </div>
         <div class="edit-booking-section">
-          <div class="edit-booking-section-title">Arrivo</div>
+          <div class="edit-booking-section-title">${returnFerry ? 'Andata — Arrivo' : 'Arrivo'}</div>
           <div class="edit-booking-grid">
             <div class="edit-booking-field">
               <label>Porto</label>
@@ -406,7 +523,9 @@
             </div>
           </div>
         </div>
-        <div class="edit-booking-section">
+        ${returnSection}
+
+        <div class="edit-booking-section" style="margin-top:16px">
           <div class="edit-booking-section-title">Prenotazione</div>
           <div class="edit-booking-grid">
             <div class="edit-booking-field">
@@ -423,8 +542,8 @@
             </div>
           </div>
         </div>
-        <div class="edit-booking-section">
-          <div class="edit-booking-section-title" style="display:flex;justify-content:space-between;align-items:center">
+        <div class="edit-booking-section" style="margin-top:16px">
+          <div class="edit-booking-section-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
             <span>Passeggeri</span>
             <button type="button" class="edit-booking-add-row" data-add-passenger style="margin:0">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -435,8 +554,8 @@
             ${passengerRowsHtml}
           </div>
         </div>
-        <div class="edit-booking-section">
-          <div class="edit-booking-section-title" style="display:flex;justify-content:space-between;align-items:center">
+        <div class="edit-booking-section" style="margin-top:16px">
+          <div class="edit-booking-section-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
             <span>Veicoli a bordo</span>
             <button type="button" class="edit-booking-add-row" data-add-vehicle style="margin:0">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -447,6 +566,33 @@
             ${vehicleRowsHtml}
           </div>
         </div>
+        <div class="edit-booking-section" style="margin-top:24px" data-doc-section>
+          <div class="edit-booking-section-title">Documento</div>
+          ${(ferry.pdfPath || ferry.documentUrl) ? `
+            <div class="ferry-doc-existing" data-existing-doc>
+              <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--color-gray-200);border-radius:8px;background:var(--color-gray-50,#f9fafb)">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" stroke-width="1.5" style="flex-shrink:0"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                <span style="font-size:var(--font-size-sm);color:var(--color-gray-700);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(ferry.pdfPath || ferry.documentUrl || '').split('/').pop().replace(/\.[^.]+$/, '') || 'documento.pdf'}</span>
+                <a href="${escAttr(ferry.pdfPath || ferry.documentUrl)}" target="_blank" rel="noopener" title="Apri" class="ferry-doc-action-btn" style="display:flex;align-items:center;color:var(--color-primary);flex-shrink:0;padding:4px;border-radius:4px;transition:background .15s">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                </a>
+                <button type="button" class="ferry-doc-remove-btn ferry-doc-action-btn" title="Rimuovi" style="display:flex;align-items:center;background:none;border:none;cursor:pointer;color:var(--color-danger,#e53e3e);padding:4px;border-radius:4px;flex-shrink:0;transition:background .15s">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                </button>
+              </div>
+            </div>
+          ` : ''}
+          <div class="ferry-doc-upload" data-doc-upload ${(ferry.pdfPath || ferry.documentUrl) ? 'style="display:none"' : ''}>
+            <label class="file-upload-zone" data-doc-drop-zone style="cursor:pointer">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+              <span class="file-upload-zone-text">Carica PDF</span>
+              <span class="file-upload-zone-hint">PDF — max 10 MB</span>
+              <input type="file" accept="application/pdf" data-doc-input style="display:none">
+            </label>
+            <div class="ferry-doc-selected" data-doc-selected style="display:none"></div>
+          </div>
+        </div>
+
       </div>
     `;
   }
@@ -504,6 +650,116 @@
         row.querySelector('input').focus();
       });
     }
+
+    // Add return trip toggle
+    const addReturnBtn = formEl.querySelector('[data-add-return]');
+    const returnSection = formEl.querySelector('[data-return-section]');
+    const removeReturnBtn = formEl.querySelector('[data-remove-return]');
+
+    if (addReturnBtn && returnSection) {
+      addReturnBtn.addEventListener('click', () => {
+        addReturnBtn.closest('.edit-booking-section').style.display = 'none';
+        returnSection.style.display = '';
+        if (window.i18n) window.i18n.apply(returnSection);
+      });
+    }
+    if (removeReturnBtn && returnSection && addReturnBtn) {
+      removeReturnBtn.addEventListener('click', () => {
+        returnSection.style.display = 'none';
+        addReturnBtn.closest('.edit-booking-section').style.display = '';
+        // Reset campi ritorno
+        returnSection.querySelectorAll('input[data-return-field]').forEach(inp => {
+          if (inp.type === 'date' || inp.type === 'time') inp.value = '';
+        });
+      });
+    }
+
+    // Document section
+    const docSection = formEl.querySelector('[data-doc-section]');
+    if (docSection) {
+      const existingDocEl = docSection.querySelector('[data-existing-doc]');
+      const uploadArea = docSection.querySelector('[data-doc-upload]');
+      const docInput = docSection.querySelector('[data-doc-input]');
+      const docSelected = docSection.querySelector('[data-doc-selected]');
+      const dropZone = docSection.querySelector('[data-doc-drop-zone]');
+
+      // Show selected file name
+      const showSelectedFile = (file) => {
+        if (!file || !docSelected) return;
+        docSelected.innerHTML = `
+          <div class="file-preview-item" style="justify-content:space-between;margin-top:8px">
+            <span style="font-size:var(--font-size-sm);color:var(--color-gray-700)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+              ${utils.escapeHtml(file.name)}
+            </span>
+            <button type="button" class="ferry-doc-deselect-btn" style="font-size:var(--font-size-sm);color:var(--color-danger,#e53e3e);background:none;border:none;cursor:pointer;padding:0">✕</button>
+          </div>`;
+        docSelected.style.display = '';
+        docSelected.querySelector('.ferry-doc-deselect-btn').addEventListener('click', () => {
+          if (docInput) docInput.value = '';
+          docSelected.innerHTML = '';
+          docSelected.style.display = 'none';
+        });
+      };
+
+      // File input change
+      if (docInput) {
+        docInput.addEventListener('change', () => {
+          if (docInput.files[0]) {
+            // If user selects a new file, clear any removal sentinel
+            const existingSentinel = formEl.querySelector('[data-doc-remove]');
+            if (existingSentinel) existingSentinel.dataset.docRemove = '0';
+            showSelectedFile(docInput.files[0]);
+          }
+        });
+      }
+
+      // Drag & drop
+      if (dropZone) {
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', (e) => {
+          e.preventDefault();
+          dropZone.classList.remove('dragover');
+          const file = e.dataTransfer.files[0];
+          if (file && file.type === 'application/pdf') {
+            if (docInput) {
+              const dt = new DataTransfer();
+              dt.items.add(file);
+              docInput.files = dt.files;
+            }
+            showSelectedFile(file);
+          }
+        });
+      }
+
+      // Remove existing document
+      const removeBtn = existingDocEl ? existingDocEl.querySelector('.ferry-doc-remove-btn') : null;
+      if (removeBtn) {
+        removeBtn.addEventListener('click', () => {
+          // Mark as removed: hidden input with null sentinel
+          const sentinel = formEl.querySelector('[data-doc-remove]') || (() => {
+            const inp = document.createElement('input');
+            inp.type = 'hidden';
+            inp.dataset.docRemove = '1';
+            formEl.appendChild(inp);
+            return inp;
+          })();
+          sentinel.dataset.docRemove = '1';
+          if (existingDocEl) existingDocEl.style.display = 'none';
+          if (uploadArea) uploadArea.style.display = '';
+        });
+      }
+
+      // Replace existing document — show upload zone, keep existing visible until new file chosen
+      const replaceBtn = existingDocEl ? existingDocEl.querySelector('.ferry-doc-replace-btn') : null;
+      if (replaceBtn) {
+        replaceBtn.addEventListener('click', () => {
+          if (uploadArea) uploadArea.style.display = '';
+          if (existingDocEl) existingDocEl.style.display = 'none';
+        });
+      }
+    }
   }
 
   function collectFerryUpdates(formView) {
@@ -523,6 +779,13 @@
         updates[field] = val;
       }
     });
+
+    // Document removal sentinel — if present and set, signal null to backend
+    const removeSentinel = formView.querySelector('[data-doc-remove]');
+    if (removeSentinel && removeSentinel.dataset.docRemove === '1') {
+      updates.documentUrl = null;
+      updates.pdfPath = null;
+    }
 
     // Passengers
     const passengerRows = formView.querySelectorAll('.edit-booking-passenger-row');
@@ -553,6 +816,74 @@
     return updates;
   }
 
+  /**
+   * Raccoglie gli aggiornamenti per il ferry di ritorno già collegato (pannello combinato).
+   * Legge i campi data-return-field visibili — usato quando data-return-ferry-id è presente.
+   * @param {HTMLElement} formView
+   * @returns {Object|null}
+   */
+  function collectReturnUpdates(formView) {
+    const returnSection = formView.querySelector('[data-return-section]');
+    if (!returnSection) return null;
+
+    const get = (field) => {
+      const el = returnSection.querySelector(`[data-return-field="${field}"]`);
+      return el ? el.value.trim() : '';
+    };
+
+    const date = get('date');
+    if (!date) return null;
+
+    return {
+      date,
+      departure: {
+        port: get('departure.port') || undefined,
+        city: get('departure.city') || undefined,
+        time: get('departure.time') || undefined,
+      },
+      arrival: {
+        port: get('arrival.port') || undefined,
+        city: get('arrival.city') || undefined,
+        time: get('arrival.time') || undefined,
+      },
+    };
+  }
+
+  /**
+   * Raccoglie i dati della sezione "Viaggio di ritorno" dal pannello di modifica.
+   * Restituisce null se la sezione non è visibile o la data non è compilata.
+   * @param {HTMLElement} formView
+   * @returns {Object|null}
+   */
+  function collectReturnValues(formView) {
+    const returnSection = formView.querySelector('[data-return-section]');
+    if (!returnSection || returnSection.style.display === 'none') return null;
+
+    const dateEl = returnSection.querySelector('[data-return-field="date"]');
+    if (!dateEl || !dateEl.value) return null;
+
+    const get = (field) => {
+      const el = returnSection.querySelector(`[data-return-field="${field}"]`);
+      return el ? el.value.trim() : '';
+    };
+
+    return {
+      date: dateEl.value,
+      operator: get('operator') || undefined,
+      ferryName: get('ferryName') || undefined,
+      departure: {
+        port: get('departure.port') || undefined,
+        city: get('departure.city') || undefined,
+        time: get('departure.time') || undefined,
+      },
+      arrival: {
+        port: get('arrival.port') || undefined,
+        city: get('arrival.city') || undefined,
+        time: get('arrival.time') || undefined,
+      },
+    };
+  }
+
   window.tripFerries = {
     render: renderFerries,
     renderFerries: renderFerries,
@@ -560,6 +891,8 @@
     buildEditForm: buildFerryEditForm,
     attachFormListeners: attachFerryFormListeners,
     collectUpdates: collectFerryUpdates,
+    collectReturnValues: collectReturnValues,
+    collectReturnUpdates: collectReturnUpdates,
     buildFullEditForm: buildFerryEditForm,
     collectFullUpdates: collectFerryUpdates
   };

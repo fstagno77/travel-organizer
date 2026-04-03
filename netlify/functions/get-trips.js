@@ -153,13 +153,37 @@ exports.handler = async (event, context) => {
         color: '#0066cc',
         flights: row.data.flights || [],
         hotels: row.data.hotels || [],
+        trains: row.data.trains || [],
+        buses: row.data.buses || [],
+        rentals: row.data.rentals || [],
+        ferries: row.data.ferries || [],
+        activities: row.data.activities || []
+      }));
+
+    // Upcoming trips: starting from tomorrow up to today+3 days
+    const in3Days = new Date(new Date(today).setDate(new Date(today).getDate() + 3)).toISOString().split('T')[0];
+    const upcomingTrips = data
+      .filter(row => {
+        const start = row.data.startDate;
+        return start && start > today && start <= in3Days;
+      })
+      .map(row => ({
+        id: row.data.id,
+        title: row.data.title,
+        color: '#0066cc',
+        flights: row.data.flights || [],
+        hotels: row.data.hotels || [],
+        trains: row.data.trains || [],
+        buses: row.data.buses || [],
+        rentals: row.data.rentals || [],
+        ferries: row.data.ferries || [],
         activities: row.data.activities || []
       }));
 
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ success: true, trips, todayTrips })
+      body: JSON.stringify({ success: true, trips, todayTrips, upcomingTrips })
     };
 
   } catch (error) {

@@ -44,7 +44,8 @@
     "dayProgress": "Day {current} of {total}",
     "nextEvent": "Next",
     "tomorrow": "Tomorrow",
-    "inDays": "In {n} days"
+    "inDays": "In {n} days",
+    "upcomingFeatured": "Next Trip"
   },
   "trip": {
     "new": "New Trip",
@@ -86,7 +87,7 @@
     "deleteError": "Error deleting trip",
     "addBooking": "Add booking",
     "addBookingTitle": "Add booking",
-    "uploadBooking": "Upload booking",
+    "uploadBooking": "Add booking",
     "uploadBookingDesc": "Flight, hotel, train or bus PDF",
     "addActivity": "Add activity",
     "addActivityDesc": "Excursion, restaurant, visit...",
@@ -392,7 +393,9 @@
     "arrivalTime": "Arrival time",
     "duration": "Crossing duration",
     "currency": "Currency",
-    "amount": "Amount"
+    "amount": "Amount",
+    "add_return": "Add return trip",
+    "return_trip": "Return trip"
   },
   "changelog": {
     "title": "Changelog",
