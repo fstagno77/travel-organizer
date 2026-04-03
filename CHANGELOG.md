@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.38.0 - 2026-04-03
+
+### Novità
+- **Creazione manuale prenotazione**: è ora possibile aggiungere manualmente voli, hotel, treni, bus, auto a noleggio e traghetti senza importare un PDF — tramite form guidato con step tipo/viaggio e campi specifici per categoria
+- Fallback SmartParse: se il parsing automatico fallisce, l'utente viene indirizzato al form manuale
+- Protezione unsaved changes: conferma prima di uscire dal form con dati non salvati
+
 ## 0.35.0 - 2026-03-24
 
 ### Fix
