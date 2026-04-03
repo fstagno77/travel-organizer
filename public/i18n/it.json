@@ -56,6 +56,8 @@
     "uploadHintMobile": "Tocca per selezionare un PDF",
     "quickUploadHint": "Trascina qui un PDF per aggiungere una prenotazione",
     "quickUploadHintMobile": "Tocca per aggiungere una prenotazione",
+    "addBookingUploadHint": "Trascina qui il PDF della tua prenotazione",
+    "addBookingUploadHintType": "Volo, hotel, treno, traghetto, bus o noleggio",
     "processing": "Elaborazione in corso...",
     "success": "Viaggio creato con successo!",
     "error": "Errore durante l'elaborazione",

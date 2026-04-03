@@ -56,6 +56,8 @@
     "uploadHintMobile": "Tap to select a PDF",
     "quickUploadHint": "Drop a PDF here to add a booking",
     "quickUploadHintMobile": "Tap to add a booking",
+    "addBookingUploadHint": "Drag your booking PDF here",
+    "addBookingUploadHintType": "Flight, hotel, train, ferry, bus or rental",
     "processing": "Processing...",
     "success": "Trip created successfully!",
     "error": "Error processing files",

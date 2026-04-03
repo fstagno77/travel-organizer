@@ -1416,8 +1416,8 @@
                 <polyline points="17 8 12 3 7 8"></polyline>
                 <line x1="12" y1="3" x2="12" y2="15"></line>
               </svg>
-              <div class="upload-zone-text" data-i18n="trip.uploadHint">Drag PDFs here or click to select</div>
-              <div class="upload-zone-hint">PDF</div>
+              <div class="upload-zone-text" data-i18n="trip.addBookingUploadHint">Trascina qui il PDF della tua prenotazione</div>
+              <div class="upload-zone-hint" data-i18n="trip.addBookingUploadHintType">Volo, hotel, treno, traghetto, bus o noleggio</div>
             </div>
             <div class="booking-type-section">
               <p class="booking-type-section-label">oppure crea manualmente</p>
@@ -1962,8 +1962,8 @@
           const zone = document.getElementById('add-booking-upload-zone');
           if (zone) {
             const hintEl = zone.querySelector('.upload-zone-text');
-            if (hintEl) hintEl.setAttribute('data-i18n', 'trip.uploadHint');
-            if (hintEl && window.i18n) hintEl.textContent = i18n.t('trip.uploadHint') || 'Drag PDFs here or click to select';
+            if (hintEl) hintEl.setAttribute('data-i18n', 'trip.addBookingUploadHint');
+            if (hintEl && window.i18n) hintEl.textContent = i18n.t('trip.addBookingUploadHint') || 'Drag your booking PDF here';
             zone.classList.remove('has-file');
           }
           // Abilita bottone Continua
