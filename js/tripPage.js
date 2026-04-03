@@ -1385,7 +1385,7 @@
       { type: 'rental',  labelIt: 'Noleggio',      gradient: 'linear-gradient(135deg, #0ea5e9, #0891b2)', color: '#0891b2', hoverBg: '#f0f9ff',
         icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.8L18 11l-2-4H8L6 11l-2.5.2C2.7 11.3 2 12.1 2 13v3c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>` },
       { type: 'ferry',   labelIt: 'Traghetto',     gradient: 'linear-gradient(135deg, #38bdf8, #0369a1)', color: '#0369a1', hoverBg: '#f0f9ff',
-        icon: `<span class="material-symbols-outlined" style="font-size:18px;line-height:1">directions_boat</span>` },
+        icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 21c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2s2.5 2 5 2c1.3 0 1.9-.5 2.5-1"/><path d="M19.38 20A11.6 11.6 0 0 0 21 14l-9-4-9 4c0 2.9.94 5.34 2.81 7.76"/><path d="M19 13V7a1 1 0 0 0-1-1H6a1 1 0 0 0-1 1v6"/><path d="M12 10v4"/><path d="M12 3v4"/></svg>` },
     ];
 
     const bookingCardsHTML = bookingTypes.map(bt => `
