@@ -7650,6 +7650,30 @@ body:has(> .modal-overlay.active) .trip-hero-tabs {
   min-width: 0;
 }
 
+/* Rimuovi frecce spinner dai campi numerici */
+.edit-booking-field input[type="number"]::-webkit-outer-spin-button,
+.edit-booking-field input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.edit-booking-field input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Wrapper campo prezzo + selector valuta */
+.mbf-price-row {
+  display: flex;
+  gap: var(--spacing-2);
+  align-items: flex-end;
+}
+.mbf-price-row .mbf-price-input-wrap {
+  flex: 1;
+}
+.mbf-price-row .mbf-currency-wrap {
+  width: 90px;
+  flex-shrink: 0;
+}
+
 .edit-booking-field input:focus {
   outline: none;
   border-color: var(--color-primary);

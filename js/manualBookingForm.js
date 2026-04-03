@@ -15,6 +15,20 @@ window.manualBookingForm = (() => {
     { value: 'first', label: 'First' },
   ];
 
+  // Valute principali per il selector prezzo
+  const CURRENCY_OPTIONS = [
+    { value: 'EUR', label: 'EUR €' },
+    { value: 'USD', label: 'USD $' },
+    { value: 'GBP', label: 'GBP £' },
+    { value: 'CHF', label: 'CHF Fr' },
+    { value: 'JPY', label: 'JPY ¥' },
+    { value: 'CAD', label: 'CAD $' },
+    { value: 'AUD', label: 'AUD $' },
+    { value: 'SEK', label: 'SEK kr' },
+    { value: 'NOK', label: 'NOK kr' },
+    { value: 'DKK', label: 'DKK kr' },
+  ];
+
   /**
    * Mostra un errore inline sotto un campo.
    * @param {HTMLElement} input
@@ -149,6 +163,77 @@ window.manualBookingForm = (() => {
     wrapper.appendChild(input);
 
     return { wrapper, input };
+  }
+
+  /**
+   * Costruisce un campo Prezzo affiancato al selector Valuta.
+   * Restituisce { wrapper, input (campo numerico), getCurrency() }.
+   * @param {Object} opts
+   * @param {string} opts.id - id dell'input numerico
+   * @param {string} [opts.priceValue=''] - valore iniziale del prezzo
+   * @param {string} [opts.currencyValue='EUR'] - valuta iniziale
+   * @returns {{ wrapper: HTMLElement, input: HTMLInputElement, getCurrency: function }}
+   */
+  function buildPriceField({ id, priceValue = '', currencyValue = 'EUR' } = {}) {
+    // Wrapper esterno in stile edit-booking-field (mantiene label + contenuto)
+    const wrapper = document.createElement('div');
+    wrapper.className = 'edit-booking-field';
+
+    const lbl = document.createElement('label');
+    lbl.htmlFor = id;
+    lbl.textContent = 'Prezzo';
+    wrapper.appendChild(lbl);
+
+    // Riga orizzontale: input numerico + CustomSelect valuta
+    const row = document.createElement('div');
+    row.className = 'mbf-price-row';
+
+    const inputWrap = document.createElement('div');
+    inputWrap.className = 'mbf-price-input-wrap';
+
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.id = id;
+    input.placeholder = '0.00';
+    input.min = '0';
+    input.step = 'any';
+    if (priceValue) input.value = priceValue;
+    inputWrap.appendChild(input);
+    row.appendChild(inputWrap);
+
+    const currencyWrap = document.createElement('div');
+    currencyWrap.className = 'mbf-currency-wrap edit-booking-field';
+    currencyWrap.style.gap = '0';
+
+    let currencySelect = null;
+    if (window.CustomSelect) {
+      currencySelect = window.CustomSelect.create({
+        options: CURRENCY_OPTIONS,
+        selected: currencyValue || 'EUR',
+        className: 'cs-currency',
+      });
+      currencyWrap.appendChild(currencySelect);
+    } else {
+      // Fallback: non usare <select> nativo — input testo
+      const fallbackInput = document.createElement('input');
+      fallbackInput.type = 'text';
+      fallbackInput.value = currencyValue || 'EUR';
+      fallbackInput.placeholder = 'EUR';
+      fallbackInput.maxLength = 3;
+      currencyWrap.appendChild(fallbackInput);
+      currencySelect = fallbackInput;
+    }
+    row.appendChild(currencyWrap);
+    wrapper.appendChild(row);
+
+    const getCurrency = () => {
+      if (window.CustomSelect && currencySelect && currencySelect.classList?.contains('cs-wrapper')) {
+        return window.CustomSelect.getValue(currencySelect) || 'EUR';
+      }
+      return currencySelect?.value?.trim().toUpperCase() || 'EUR';
+    };
+
+    return { wrapper, input, getCurrency };
   }
 
   /**
@@ -584,9 +669,8 @@ window.manualBookingForm = (() => {
     const { wrapper: wBaggage, input: iBaggage } = buildEditField({
       id: 'mbf-baggage', label: 'Bagaglio', placeholder: 'es. 23kg', value: prefill.baggage || ''
     });
-    const { wrapper: wPrice, input: iPrice } = buildEditField({
-      id: 'mbf-price', label: 'Prezzo (€)', type: 'number', placeholder: '0.00',
-      value: prefill.price || ''
+    const { wrapper: wPrice, input: iPrice, getCurrency: getFlightCurrency } = buildPriceField({
+      id: 'mbf-price', priceValue: prefill.price || '', currencyValue: prefill.currency || 'EUR'
     });
     gBook.appendChild(wPnr);
     gBook.appendChild(wClass);
@@ -658,6 +742,7 @@ window.manualBookingForm = (() => {
         baggage: iBaggage.value.trim() || undefined,
         bookingReference: iPnr.value.trim() || undefined,
         price: iPrice.value ? parseFloat(iPrice.value) : undefined,
+        currency: getFlightCurrency(),
         notes: flightNoteTextarea.value.trim() || undefined,
       };
     };
@@ -808,9 +893,8 @@ window.manualBookingForm = (() => {
       wBreakfast.appendChild(inp);
     }
 
-    const { wrapper: wPrice, input: iPrice } = buildEditField({
-      id: 'mbf-hotel-price', label: 'Prezzo (€)', type: 'number', placeholder: '0.00',
-      value: prefill.price || ''
+    const { wrapper: wPrice, input: iPrice, getCurrency: getHotelCurrency } = buildPriceField({
+      id: 'mbf-hotel-price', priceValue: prefill.price || '', currencyValue: prefill.currency || 'EUR'
     });
     const { wrapper: wPolicy, input: iPolicy } = buildEditField({
       id: 'mbf-hotel-cancellation', label: 'Cancellation policy',
@@ -886,6 +970,7 @@ window.manualBookingForm = (() => {
         confirmationNumber: iConfirm.value.trim() || undefined,
         breakfastIncluded: breakfastVal === 'yes' ? true : (breakfastVal === 'no' ? false : undefined),
         price: iPrice.value ? parseFloat(iPrice.value) : undefined,
+        currency: getHotelCurrency(),
         cancellationPolicy: iPolicy.value.trim() || undefined,
         notes: noteTextarea.value.trim() || undefined,
       };
@@ -1014,9 +1099,8 @@ window.manualBookingForm = (() => {
       id: 'mbf-train-coach', label: 'Carrozza',
       placeholder: 'es. 3', value: prefill.coach || ''
     });
-    const { wrapper: wPrice, input: iPrice } = buildEditField({
-      id: 'mbf-train-price', label: 'Prezzo (€)', type: 'number', placeholder: '0.00',
-      value: prefill.price || ''
+    const { wrapper: wPrice, input: iPrice, getCurrency: getTrainCurrency } = buildPriceField({
+      id: 'mbf-train-price', priceValue: prefill.price || '', currencyValue: prefill.currency || 'EUR'
     });
     gBook.appendChild(wPnr);
     gBook.appendChild(wClass);
@@ -1080,6 +1164,7 @@ window.manualBookingForm = (() => {
       coach: iCoach.value.trim() || undefined,
       bookingReference: iPnr.value.trim() || undefined,
       price: iPrice.value ? parseFloat(iPrice.value) : undefined,
+      currency: getTrainCurrency(),
       notes: trainNoteTextarea.value.trim() || undefined,
     });
 
@@ -1190,9 +1275,8 @@ window.manualBookingForm = (() => {
       id: 'mbf-bus-seat', label: 'Posto',
       placeholder: 'es. 12', value: prefill.seat || ''
     });
-    const { wrapper: wPrice, input: iPrice } = buildEditField({
-      id: 'mbf-bus-price', label: 'Prezzo (€)', type: 'number', placeholder: '0.00',
-      value: prefill.price || ''
+    const { wrapper: wPrice, input: iPrice, getCurrency: getBusCurrency } = buildPriceField({
+      id: 'mbf-bus-price', priceValue: prefill.price || '', currencyValue: prefill.currency || 'EUR'
     });
     gBook.appendChild(wSeat);
     gBook.appendChild(wPrice);
@@ -1250,6 +1334,7 @@ window.manualBookingForm = (() => {
       routeNumber: iRoute.value.trim() || undefined,
       seat: iSeat.value.trim() || undefined,
       price: iPrice.value ? parseFloat(iPrice.value) : undefined,
+      currency: getBusCurrency(),
       notes: busNoteTextarea.value.trim() || undefined,
     });
 
@@ -1410,9 +1495,8 @@ window.manualBookingForm = (() => {
       id: 'mbf-rental-insurance', label: 'Assicurazione',
       placeholder: 'es. CDW, Full Coverage', value: prefill.insurance || ''
     });
-    const { wrapper: wPrice, input: iPrice } = buildEditField({
-      id: 'mbf-rental-price', label: 'Prezzo (€)', type: 'number', placeholder: '0.00',
-      value: prefill.price || ''
+    const { wrapper: wPrice, input: iPrice, getCurrency: getRentalCurrency } = buildPriceField({
+      id: 'mbf-rental-price', priceValue: prefill.price || '', currencyValue: prefill.currency || 'EUR'
     });
     gBook.appendChild(wConfirm);
     gBook.appendChild(wCategory);
@@ -1479,6 +1563,7 @@ window.manualBookingForm = (() => {
       confirmationNumber: iConfirm.value.trim() || undefined,
       insurance: iInsurance.value.trim() || undefined,
       price: iPrice.value ? parseFloat(iPrice.value) : undefined,
+      currency: getRentalCurrency(),
       notes: rentalNoteTextarea.value.trim() || undefined,
     });
 
@@ -1704,9 +1789,8 @@ window.manualBookingForm = (() => {
       id: 'mbf-ferry-deck', label: 'Ponte',
       placeholder: 'es. Ponte 5', value: prefill.deck || ''
     });
-    const { wrapper: wPrice, input: iPrice } = buildEditField({
-      id: 'mbf-ferry-price', label: 'Prezzo (€)', type: 'number', placeholder: '0.00',
-      value: prefill.price || ''
+    const { wrapper: wPrice, input: iPrice, getCurrency: getFerryCurrency } = buildPriceField({
+      id: 'mbf-ferry-price', priceValue: prefill.price || '', currencyValue: prefill.currency || 'EUR'
     });
     gBook.appendChild(wPnr);
     gBook.appendChild(wCabin);
@@ -1822,6 +1906,7 @@ window.manualBookingForm = (() => {
         passengers: passengers.length > 0 ? passengers : undefined,
         vehicles: vehicles.length > 0 ? vehicles : undefined,
         price: iPrice.value ? parseFloat(iPrice.value) : undefined,
+        currency: getFerryCurrency(),
         notes: ferryNoteTextarea.value.trim() || undefined,
       };
     };
