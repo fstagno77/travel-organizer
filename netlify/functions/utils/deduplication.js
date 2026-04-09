@@ -227,14 +227,35 @@ function deduplicateFlights(newFlights, existingFlights = []) {
 
     // SECONDARY MATCH: bookingRef only — used when the new document (e.g. email
     // confirmation) is missing flightNumber or date but shares a booking reference
-    // with an existing flight. In this case we enrich the existing record instead
-    // of creating a duplicate.
+    // with an existing flight.
+    // IMPORTANT: if the existing flight has different date/times (rescheduled flight),
+    // this is an UPDATE, not a silent merge. We check for changes first.
     let isSecondaryMatch = false;
     if (!existingFlight && bookingRef && (!flightNum || !flightDate)) {
-      existingFlight = existingFlights.find(f =>
-        f.bookingReference?.toLowerCase()?.trim() === bookingRef
+      const bookingRefCandidate = existingFlights.find(f =>
+        f.bookingReference?.toLowerCase()?.trim() === bookingRef &&
+        !updatedExistingIds.has(f.id)
       );
-      if (existingFlight) isSecondaryMatch = true;
+      if (bookingRefCandidate) {
+        // If there are meaningful changes, treat as update rather than silent merge
+        const changesForSecondary = diffFields(bookingRefCandidate, newFlight, FLIGHT_COMPARE_FIELDS);
+        if (changesForSecondary.length > 0) {
+          updatedExistingIds.add(bookingRefCandidate.id);
+          updatedFlights.push({
+            type: 'flight',
+            existingId: bookingRefCandidate.id,
+            existing: bookingRefCandidate,
+            incoming: newFlight,
+            changes: changesForSecondary,
+            pdfIndex: newFlight._pdfIndex
+          });
+          console.log(`Detected update (bookingRef-only) for flight: ${bookingRef} (existing: ${bookingRefCandidate.date} → new: ${flightDate})`);
+          continue;
+        }
+        // No meaningful changes → enrich silently
+        existingFlight = bookingRefCandidate;
+        isSecondaryMatch = true;
+      }
     }
 
     if (existingFlight) {
@@ -268,12 +289,25 @@ function deduplicateFlights(newFlights, existingFlights = []) {
 
     } else {
       // SOFT MATCH contro esistenti: bookingRef + flightNumber (senza data) → potenziale update
-      if (existingFlights.length > 0 && bookingRef && flightNum) {
-        const softMatch = existingFlights.find(f =>
-          f.bookingReference?.toLowerCase()?.trim() === bookingRef &&
-          f.flightNumber?.toLowerCase()?.trim()    === flightNum &&
-          !updatedExistingIds.has(f.id) // non segnalare lo stesso volo due volte
-        );
+      // Fallback: bookingRef-only se flightNum non è disponibile nel nuovo documento
+      if (existingFlights.length > 0 && bookingRef) {
+        let softMatch = null;
+        if (flightNum) {
+          // Caso normale: bookingRef + flightNum corrispondono (data diversa)
+          softMatch = existingFlights.find(f =>
+            f.bookingReference?.toLowerCase()?.trim() === bookingRef &&
+            f.flightNumber?.toLowerCase()?.trim()    === flightNum &&
+            !updatedExistingIds.has(f.id)
+          );
+        }
+        if (!softMatch) {
+          // Fallback: solo bookingRef — copre il caso in cui flightNumber non sia
+          // estratto dal PDF riprogrammato ma il volo sia chiaramente lo stesso
+          softMatch = existingFlights.find(f =>
+            f.bookingReference?.toLowerCase()?.trim() === bookingRef &&
+            !updatedExistingIds.has(f.id)
+          );
+        }
         if (softMatch) {
           const changes = diffFields(softMatch, newFlight, FLIGHT_COMPARE_FIELDS);
           if (changes.length > 0) {
@@ -286,7 +320,7 @@ function deduplicateFlights(newFlights, existingFlights = []) {
               changes,
               pdfIndex: newFlight._pdfIndex
             });
-            console.log(`Detected update for flight: ${flightNum} (existing: ${softMatch.date} → new: ${flightDate})`);
+            console.log(`Detected update for flight: ${flightNum || bookingRef} (existing: ${softMatch.date} → new: ${flightDate})`);
             continue;
           }
         }

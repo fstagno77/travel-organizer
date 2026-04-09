@@ -450,11 +450,15 @@ updatePreview.detectUpdates = function(parsedResults, tripData) {
   const newHotels = [];
   const newTrains = [];
   const newBuses = [];
+  const newFerries = [];
+  const newRentals = [];
 
   const existingFlights = tripData.flights || [];
   const existingHotels = tripData.hotels || [];
   const existingTrains = tripData.trains || [];
   const existingBuses = tripData.buses || [];
+  const existingFerries = tripData.ferries || [];
+  const existingRentals = tripData.rentals || [];
 
   const norm = s => s?.toLowerCase()?.trim() || '';
 
@@ -481,11 +485,21 @@ updatePreview.detectUpdates = function(parsedResults, tripData) {
         }
 
         // Soft match: bookingRef + flightNumber senza data
-        if (bookingRef && flightNum) {
-          const softMatch = existingFlights.find(f =>
-            norm(f.bookingReference) === bookingRef &&
-            norm(f.flightNumber) === flightNum
-          );
+        // Fallback: bookingRef-only se flightNumber non è estratto dal PDF
+        if (bookingRef) {
+          let softMatch = null;
+          if (flightNum) {
+            softMatch = existingFlights.find(f =>
+              norm(f.bookingReference) === bookingRef &&
+              norm(f.flightNumber) === flightNum
+            );
+          }
+          if (!softMatch) {
+            // bookingRef-only: copre voli riprogrammati in cui flightNumber manca
+            softMatch = existingFlights.find(f =>
+              norm(f.bookingReference) === bookingRef
+            );
+          }
           if (softMatch) {
             const changes = this._diffBooking(softMatch, flight, 'flight');
             if (changes.length > 0) {
@@ -623,6 +637,97 @@ updatePreview.detectUpdates = function(parsedResults, tripData) {
         newBuses.push(bus);
       }
     }
+
+    // ── Ferry ──
+    if (pr.result.ferries) {
+      for (const ferry of pr.result.ferries) {
+        const bookingRef = norm(ferry.bookingReference);
+        const depPort = norm(ferry.departure?.port || ferry.departure?.city);
+        const arrPort = norm(ferry.arrival?.port || ferry.arrival?.city);
+        const ferryDate = ferry.date;
+
+        // Match esatto: bookingRef + date
+        if (bookingRef && ferryDate) {
+          const exactMatch = existingFerries.find(f =>
+            norm(f.bookingReference) === bookingRef && f.date === ferryDate
+          );
+          if (exactMatch) continue;
+        } else if (depPort && arrPort && ferryDate) {
+          const exactMatch = existingFerries.find(f =>
+            norm(f.departure?.port || f.departure?.city) === depPort &&
+            norm(f.arrival?.port || f.arrival?.city) === arrPort &&
+            f.date === ferryDate
+          );
+          if (exactMatch) continue;
+        }
+
+        // Soft match: bookingRef con data diversa
+        if (bookingRef) {
+          const softMatch = existingFerries.find(f =>
+            norm(f.bookingReference) === bookingRef && f.date !== ferryDate
+          );
+          if (softMatch) {
+            const changes = this._diffBooking(softMatch, ferry, 'ferry');
+            if (changes.length > 0) {
+              updates.push({
+                type: 'ferry',
+                existingId: softMatch.id,
+                existing: softMatch,
+                incoming: ferry,
+                changes,
+                pdfIndex: prIdx
+              });
+              continue;
+            }
+          }
+        }
+        newFerries.push(ferry);
+      }
+    }
+
+    // ── Rental ──
+    if (pr.result.rentals) {
+      for (const rental of pr.result.rentals) {
+        const bookingRef = norm(rental.bookingReference || rental.confirmationNumber);
+        const provider = norm(rental.provider);
+        const rentalDate = rental.date;
+
+        // Match esatto: bookingRef + date
+        if (bookingRef && rentalDate) {
+          const exactMatch = existingRentals.find(r =>
+            norm(r.bookingReference || r.confirmationNumber) === bookingRef && r.date === rentalDate
+          );
+          if (exactMatch) continue;
+        } else if (provider && rentalDate) {
+          const exactMatch = existingRentals.find(r =>
+            norm(r.provider) === provider && r.date === rentalDate
+          );
+          if (exactMatch) continue;
+        }
+
+        // Soft match: bookingRef con data diversa
+        if (bookingRef) {
+          const softMatch = existingRentals.find(r =>
+            norm(r.bookingReference || r.confirmationNumber) === bookingRef && r.date !== rentalDate
+          );
+          if (softMatch) {
+            const changes = this._diffBooking(softMatch, rental, 'rental');
+            if (changes.length > 0) {
+              updates.push({
+                type: 'rental',
+                existingId: softMatch.id,
+                existing: softMatch,
+                incoming: rental,
+                changes,
+                pdfIndex: prIdx
+              });
+              continue;
+            }
+          }
+        }
+        newRentals.push(rental);
+      }
+    }
   }
 
   const pendingNew = {};
@@ -630,6 +735,8 @@ updatePreview.detectUpdates = function(parsedResults, tripData) {
   if (newHotels.length) pendingNew.hotels = newHotels;
   if (newTrains.length) pendingNew.trains = newTrains;
   if (newBuses.length) pendingNew.buses = newBuses;
+  if (newFerries.length) pendingNew.ferries = newFerries;
+  if (newRentals.length) pendingNew.rentals = newRentals;
 
   return {
     hasUpdates: updates.length > 0,
@@ -679,6 +786,22 @@ updatePreview._diffBooking = function(existing, incoming, type) {
       { path: 'departure.station', label: 'Fermata partenza' },
       { path: 'arrival.station', label: 'Fermata arrivo' },
       { path: 'seat', label: 'Posto' },
+    ],
+    ferry: [
+      { path: 'date', label: 'Data' },
+      { path: 'departure.time', label: 'Ora partenza' },
+      { path: 'arrival.time', label: 'Ora arrivo' },
+      { path: 'departure.port', label: 'Porto partenza' },
+      { path: 'arrival.port', label: 'Porto arrivo' },
+      { path: 'cabin', label: 'Cabina' },
+    ],
+    rental: [
+      { path: 'date', label: 'Data ritiro' },
+      { path: 'endDate', label: 'Data riconsegna' },
+      { path: 'pickupLocation.city', label: 'Città ritiro' },
+      { path: 'pickupLocation.time', label: 'Ora ritiro' },
+      { path: 'dropoffLocation.city', label: 'Città riconsegna' },
+      { path: 'vehicle.category', label: 'Categoria veicolo' },
     ]
   };
 
