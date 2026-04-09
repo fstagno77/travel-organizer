@@ -595,6 +595,10 @@ const navigation = {
         await Promise.all([
           import('./tripFlights.js'),
           import('./tripHotels.js'),
+          import('./tripTrains.js'),
+          import('./tripBuses.js'),
+          import('./tripFerries.js'),
+          import('./tripRentals.js'),
           import('./airportAutocomplete.js'),
           import('./tripActivities.js'),
         ]);

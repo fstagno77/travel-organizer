@@ -3099,6 +3099,18 @@ input[type="time"].form-input {
   pointer-events: none;
 }
 
+/* Stesso fix iOS Safari per i bottoni "Mostra Dettagli" nelle card prenotazione.
+   Senza pointer-events: none sui figli SVG, il touch event viene assorbito dal
+   <polyline>/<path> e non bubbling correttamente al bottone su iOS Safari. */
+.flight-toggle-details svg *,
+.hotel-toggle-details svg *,
+.train-toggle-details svg *,
+.bus-toggle-details svg *,
+.ferry-toggle-details svg *,
+.rental-toggle-details svg * {
+  pointer-events: none;
+}
+
 /* ===== HOTEL CARD - Emerald Theme ===== */
 .hotel-card {
   background-color: var(--color-white);
