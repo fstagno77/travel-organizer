@@ -7750,6 +7750,32 @@ body:has(> .modal-overlay.active) .trip-hero-tabs {
   padding: 8px 8px 8px 0;
 }
 
+/* Hotel room rows: column layout to accommodate inner grid */
+.edit-booking-passenger-row[data-room-index] {
+  flex-direction: column;
+  align-items: stretch;
+  padding: 10px 12px;
+  background: var(--color-gray-50, #f9fafb);
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-md);
+  gap: var(--spacing-2);
+}
+
+.edit-booking-passenger-row[data-room-index] + .edit-booking-passenger-row[data-room-index] {
+  margin-top: var(--spacing-2);
+}
+
+/* Hotel guest rows: horizontal layout like ferry passengers */
+.edit-booking-passenger-row[data-guest-index] {
+  align-items: flex-end;
+  gap: var(--spacing-2);
+}
+
+.edit-booking-passenger-row[data-guest-index] .edit-booking-grid {
+  flex: 1;
+  margin-bottom: 0;
+}
+
 .edit-booking-passenger-row .edit-booking-field,
 .edit-booking-vehicle-row .edit-booking-field {
   margin-bottom: 0;

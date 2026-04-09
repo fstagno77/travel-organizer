@@ -3288,6 +3288,11 @@
         window.tripFerries.attachFormListeners(panelBody);
       }
 
+      // Hotel form listeners (dynamic rooms and guests CustomSelect)
+      if (selectedType === 'hotel' && window.tripHotels?.attachFormListeners) {
+        window.tripHotels.attachFormListeners(panelBody);
+      }
+
       // Add-field mechanism
       if (window.AddFieldHelper) {
         panelBody.querySelectorAll('.manage-edit-item').forEach(item => {
@@ -3600,6 +3605,12 @@
       }
       if (window.tripFerries && window.tripFerries.attachFormListeners) {
         window.tripFerries.attachFormListeners(panelBody);
+      }
+    }
+
+    if (type === 'hotel') {
+      if (window.tripHotels && window.tripHotels.attachFormListeners) {
+        window.tripHotels.attachFormListeners(panelBody);
       }
     }
 

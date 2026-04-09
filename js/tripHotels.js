@@ -316,334 +316,427 @@
     `;
   }
 
+  // ─── Options for dynamic CustomSelect fields ────────────────────────────────
+
+  const CURRENCY_OPTIONS = [
+    { value: 'EUR', label: 'EUR €' },
+    { value: 'USD', label: 'USD $' },
+    { value: 'GBP', label: 'GBP £' },
+    { value: 'CHF', label: 'CHF Fr' },
+    { value: 'JPY', label: 'JPY ¥' },
+    { value: 'CAD', label: 'CAD $' },
+    { value: 'AUD', label: 'AUD $' },
+    { value: 'SEK', label: 'SEK kr' },
+    { value: 'NOK', label: 'NOK kr' },
+    { value: 'DKK', label: 'DKK kr' },
+  ];
+
+  const ROOM_TYPE_OPTIONS = [
+    { value: '', label: '— Tipo stanza —' },
+    { value: 'standard', label: 'Standard' },
+    { value: 'superior', label: 'Superior' },
+    { value: 'deluxe', label: 'Deluxe' },
+    { value: 'suite', label: 'Suite' },
+    { value: 'junior_suite', label: 'Junior Suite' },
+    { value: 'family', label: 'Family' },
+    { value: 'altro', label: 'Altro' },
+  ];
+
+  const BED_TYPE_OPTIONS = [
+    { value: '', label: '— Tipo letto —' },
+    { value: 'singolo', label: 'Singolo' },
+    { value: 'matrimoniale', label: 'Matrimoniale' },
+    { value: 'doppio', label: 'Doppio (2 letti singoli)' },
+    { value: 'twin', label: 'Twin' },
+    { value: 'king', label: 'King' },
+    { value: 'altro', label: 'Altro' },
+  ];
+
+  const MEAL_PLAN_OPTIONS = [
+    { value: '', label: '— Regime —' },
+    { value: 'solo_pernottamento', label: 'Solo pernottamento' },
+    { value: 'solo_colazione', label: 'Solo colazione' },
+    { value: 'mezza_pensione', label: 'Mezza pensione' },
+    { value: 'pensione_completa', label: 'Pensione completa' },
+    { value: 'all_inclusive', label: 'All-inclusive' },
+  ];
+
+  const BOOKING_CHANNEL_OPTIONS = [
+    { value: '', label: '— Canale —' },
+    { value: 'booking', label: 'Booking.com' },
+    { value: 'expedia', label: 'Expedia' },
+    { value: 'hotels', label: 'Hotels.com' },
+    { value: 'airbnb', label: 'Airbnb' },
+    { value: 'diretto', label: 'Diretto' },
+    { value: 'altro', label: 'Altro' },
+  ];
+
+  const BOOKING_STATUS_OPTIONS = [
+    { value: '', label: '— Stato —' },
+    { value: 'confermato', label: 'Confermato' },
+    { value: 'in_attesa', label: 'In attesa' },
+    { value: 'cancellato', label: 'Cancellato' },
+  ];
+
+  // ─── Dynamic row builders ────────────────────────────────────────────────────
+
+  function buildRoomRow(room, idx) {
+    const roomTypeCs = `<div data-cs-room-type="${escAttr(room.type || '')}" data-room-index="${idx}"></div>`;
+    const bedTypeCs = `<div data-cs-bed-type="${escAttr(room.bedType || '')}" data-room-index="${idx}"></div>`;
+    const mealPlanCs = `<div data-cs-meal-plan="${escAttr(room.mealPlan || '')}" data-room-index="${idx}"></div>`;
+
+    return `
+      <div class="edit-booking-passenger-row" data-room-index="${idx}">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <span style="font-size:var(--font-size-xs);font-weight:600;color:var(--color-gray-500);text-transform:uppercase;letter-spacing:.04em">Camera ${idx + 1}</span>
+          <button type="button" class="edit-booking-remove-row" title="Rimuovi stanza">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="edit-booking-grid">
+          <div class="edit-booking-field">
+            <label>Tipo stanza</label>
+            ${roomTypeCs}
+          </div>
+          <div class="edit-booking-field">
+            <label>Tipo letto</label>
+            ${bedTypeCs}
+          </div>
+          <div class="edit-booking-field">
+            <label>Regime</label>
+            ${mealPlanCs}
+          </div>
+          <div class="edit-booking-field">
+            <label>N. stanza</label>
+            <input type="text" data-room-field="roomNumber" data-room-index="${idx}" value="${escAttr(room.roomNumber)}">
+          </div>
+          <div class="edit-booking-field">
+            <label>Piano</label>
+            <input type="text" data-room-field="floor" data-room-index="${idx}" value="${escAttr(room.floor)}">
+          </div>
+          <div class="edit-booking-field edit-booking-field--checkbox" style="align-self:flex-end">
+            <label>
+              <input type="checkbox" data-room-field="breakfastIncluded" data-room-index="${idx}" ${room.breakfastIncluded ? 'checked' : ''}>
+              Colazione inclusa
+            </label>
+          </div>
+          <div class="edit-booking-field full-width">
+            <label>Note stanza</label>
+            <input type="text" data-room-field="notes" data-room-index="${idx}" value="${escAttr(room.notes)}">
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function buildGuestRow(guest, idx) {
+    return `
+      <div class="edit-booking-passenger-row" data-guest-index="${idx}">
+        <div class="edit-booking-grid" style="flex:1">
+          <div class="edit-booking-field">
+            <label>Nome</label>
+            <input type="text" data-guest-field="firstName" data-guest-index="${idx}" value="${escAttr(guest.firstName || guest.name)}">
+          </div>
+          <div class="edit-booking-field">
+            <label>Cognome</label>
+            <input type="text" data-guest-field="lastName" data-guest-index="${idx}" value="${escAttr(guest.lastName)}">
+          </div>
+        </div>
+        <button type="button" class="edit-booking-remove-row" title="Rimuovi ospite" style="align-self:flex-end;margin-bottom:4px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    `;
+  }
+
+  // ─── CustomSelect upgrade helpers ────────────────────────────────────────────
+
+  function upgradeHotelCustomSelects(container) {
+    container.querySelectorAll('[data-cs-room-type]').forEach(ph => {
+      const cs = window.CustomSelect.create({
+        options: ROOM_TYPE_OPTIONS,
+        selected: ph.dataset.csRoomType || '',
+        className: 'cs-room-type',
+        dataAttrs: { roomField: 'type', roomIndex: ph.dataset.roomIndex || '' }
+      });
+      ph.replaceWith(cs);
+    });
+    container.querySelectorAll('[data-cs-bed-type]').forEach(ph => {
+      const cs = window.CustomSelect.create({
+        options: BED_TYPE_OPTIONS,
+        selected: ph.dataset.csBedType || '',
+        className: 'cs-bed-type',
+        dataAttrs: { roomField: 'bedType', roomIndex: ph.dataset.roomIndex || '' }
+      });
+      ph.replaceWith(cs);
+    });
+    container.querySelectorAll('[data-cs-meal-plan]').forEach(ph => {
+      const cs = window.CustomSelect.create({
+        options: MEAL_PLAN_OPTIONS,
+        selected: ph.dataset.csMealPlan || '',
+        className: 'cs-meal-plan',
+        dataAttrs: { roomField: 'mealPlan', roomIndex: ph.dataset.roomIndex || '' }
+      });
+      ph.replaceWith(cs);
+    });
+    container.querySelectorAll('[data-cs-channel]').forEach(ph => {
+      const cs = window.CustomSelect.create({
+        options: BOOKING_CHANNEL_OPTIONS,
+        selected: ph.dataset.csChannel || '',
+        className: 'cs-channel',
+        dataAttrs: { field: 'bookingChannel' }
+      });
+      ph.replaceWith(cs);
+    });
+    container.querySelectorAll('[data-cs-status]').forEach(ph => {
+      const cs = window.CustomSelect.create({
+        options: BOOKING_STATUS_OPTIONS,
+        selected: ph.dataset.csStatus || '',
+        className: 'cs-status',
+        dataAttrs: { field: 'status' }
+      });
+      ph.replaceWith(cs);
+    });
+    container.querySelectorAll('[data-cs-currency]').forEach(ph => {
+      const cs = window.CustomSelect.create({
+        options: CURRENCY_OPTIONS,
+        selected: ph.dataset.csCurrency || 'EUR',
+        className: 'cs-currency',
+        dataAttrs: { field: 'price.total.currency' }
+      });
+      ph.replaceWith(cs);
+    });
+  }
+
+  // ─── Shared form body (used by both edit and full-edit) ──────────────────────
+
   /**
-   * Build hotel edit form HTML
+   * Build the shared inner sections for hotel edit forms.
+   * @param {Object} hotel  — existing hotel data (may have rooms/guests arrays)
+   * @param {boolean} full  — if true, renders address detail sub-fields too
+   */
+  function buildHotelFormSections(hotel, full) {
+    // Normalize rooms array: prefer hotel.rooms as Array, else build one from legacy fields
+    let rooms = [];
+    if (Array.isArray(hotel.rooms) && hotel.rooms.length && typeof hotel.rooms[0] === 'object') {
+      rooms = hotel.rooms;
+    } else {
+      // Legacy: scalar rooms count → one pre-filled room from legacy fields
+      const lang = i18n.getLang();
+      let legacyType = '';
+      if (hotel.roomTypes && Array.isArray(hotel.roomTypes)) {
+        legacyType = hotel.roomTypes.map(rt => rt[lang] || rt.en || rt).join(', ');
+      } else if (hotel.roomType && typeof hotel.roomType === 'object') {
+        legacyType = hotel.roomType[lang] || hotel.roomType.en || '';
+      } else if (hotel.roomType) {
+        legacyType = hotel.roomType;
+      }
+      rooms = [{
+        type: legacyType,
+        bedType: hotel.bedTypes || '',
+        mealPlan: hotel.breakfast?.type || '',
+        breakfastIncluded: hotel.breakfast?.included || false,
+        roomNumber: '',
+        floor: '',
+        notes: ''
+      }];
+    }
+
+    // Normalize guests: prefer hotel.guestList as Array
+    let guestList = [];
+    if (Array.isArray(hotel.guestList) && hotel.guestList.length) {
+      guestList = hotel.guestList;
+    } else if (hotel.guestName) {
+      // Legacy: single guestName string
+      const parts = hotel.guestName.trim().split(/\s+/);
+      guestList = [{ firstName: parts[0] || '', lastName: parts.slice(1).join(' ') || '' }];
+    }
+
+    const roomRowsHtml = rooms.map((r, i) => buildRoomRow(r, i)).join('');
+    const guestRowsHtml = guestList.map((g, i) => buildGuestRow(g, i)).join('');
+
+    const currentCurrency = hotel.price?.total?.currency || 'EUR';
+
+    return `
+      <!-- Sezione 1: Struttura ricettiva -->
+      <div class="edit-booking-section">
+        <div class="edit-booking-section-title">Struttura ricettiva</div>
+        <div class="edit-booking-grid">
+          <div class="edit-booking-field full-width">
+            <label>Nome hotel <span style="color:var(--color-danger,#e53e3e)">*</span></label>
+            <input type="text" data-field="name" value="${escAttr(hotel.name)}" required>
+          </div>
+          <div class="edit-booking-field full-width">
+            <label>Indirizzo</label>
+            <input type="text" data-field="address.fullAddress" value="${escAttr(hotel.address?.fullAddress)}">
+          </div>
+          ${full ? `
+          <div class="edit-booking-field">
+            <label>Via</label>
+            <input type="text" data-field="address.street" value="${escAttr(hotel.address?.street)}">
+          </div>
+          <div class="edit-booking-field">
+            <label>Città</label>
+            <input type="text" data-field="address.city" value="${escAttr(hotel.address?.city)}">
+          </div>
+          <div class="edit-booking-field">
+            <label>CAP</label>
+            <input type="text" data-field="address.postalCode" value="${escAttr(hotel.address?.postalCode)}">
+          </div>
+          <div class="edit-booking-field">
+            <label>Paese</label>
+            <input type="text" data-field="address.country" value="${escAttr(hotel.address?.country)}">
+          </div>
+          ` : ''}
+          <div class="edit-booking-field">
+            <label>Stelle (1–5)</label>
+            <input type="number" data-field="stars" value="${escAttr(hotel.stars)}" min="1" max="5" step="1">
+          </div>
+          <div class="edit-booking-field">
+            <label>Telefono</label>
+            <input type="tel" data-field="phone" value="${escAttr(hotel.phone)}">
+          </div>
+          <div class="edit-booking-field">
+            <label>Sito web</label>
+            <input type="url" data-field="website" value="${escAttr(hotel.website)}" placeholder="https://...">
+          </div>
+        </div>
+      </div>
+
+      <!-- Sezione 2: Prenotazione -->
+      <div class="edit-booking-section">
+        <div class="edit-booking-section-title">Prenotazione</div>
+        <div class="edit-booking-grid">
+          <div class="edit-booking-field">
+            <label>N. conferma</label>
+            <input type="text" data-field="confirmationNumber" value="${escAttr(hotel.confirmationNumber)}">
+          </div>
+          <div class="edit-booking-field">
+            <label>Canale</label>
+            <div data-cs-channel="${escAttr(hotel.bookingChannel || '')}"></div>
+          </div>
+          <div class="edit-booking-field">
+            <label>Stato</label>
+            <div data-cs-status="${escAttr(hotel.status || '')}"></div>
+          </div>
+          ${full ? `
+          <div class="edit-booking-field">
+            <label>PIN / codice accesso</label>
+            <input type="text" data-field="pinCode" value="${escAttr(hotel.pinCode)}">
+          </div>
+          ` : ''}
+          <div class="edit-booking-field full-width">
+            <label>Note prenotazione</label>
+            <input type="text" data-field="bookingNotes" value="${escAttr(hotel.bookingNotes)}">
+          </div>
+        </div>
+      </div>
+
+      <!-- Sezione 3: Soggiorno -->
+      <div class="edit-booking-section">
+        <div class="edit-booking-section-title">Soggiorno</div>
+        <div class="edit-booking-grid">
+          <div class="edit-booking-field">
+            <label>Check-in <span style="color:var(--color-danger,#e53e3e)">*</span></label>
+            <input type="date" data-field="checkIn.date" value="${escAttr(hotel.checkIn?.date)}" required>
+          </div>
+          <div class="edit-booking-field">
+            <label>Ora check-in</label>
+            <input type="time" data-field="checkIn.time" value="${escAttr(hotel.checkIn?.time)}">
+          </div>
+          <div class="edit-booking-field">
+            <label>Check-out <span style="color:var(--color-danger,#e53e3e)">*</span></label>
+            <input type="date" data-field="checkOut.date" value="${escAttr(hotel.checkOut?.date)}" required>
+          </div>
+          <div class="edit-booking-field">
+            <label>Ora check-out</label>
+            <input type="time" data-field="checkOut.time" value="${escAttr(hotel.checkOut?.time)}">
+          </div>
+          <div class="edit-booking-field">
+            <label>Notti</label>
+            <input type="number" data-field="nights" value="${escAttr(hotel.nights)}" min="1" step="1">
+          </div>
+        </div>
+      </div>
+
+      <!-- Sezione 4: Stanze (lista dinamica) -->
+      <div class="edit-booking-section">
+        <div class="edit-booking-section-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span>Stanze</span>
+          <button type="button" class="edit-booking-add-row" data-add-room style="margin:0">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Aggiungi stanza
+          </button>
+        </div>
+        <div class="edit-booking-passengers-list" data-rooms>
+          ${roomRowsHtml}
+        </div>
+      </div>
+
+      <!-- Sezione 5: Ospiti (lista dinamica globale) -->
+      <div class="edit-booking-section">
+        <div class="edit-booking-section-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span>Ospiti</span>
+          <button type="button" class="edit-booking-add-row" data-add-guest style="margin:0">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Aggiungi ospite
+          </button>
+        </div>
+        <div class="edit-booking-passengers-list" data-guests>
+          ${guestRowsHtml}
+        </div>
+      </div>
+
+      <!-- Sezione 6: Prezzo -->
+      <div class="edit-booking-section">
+        <div class="edit-booking-section-title">Prezzo</div>
+        <div class="edit-booking-grid">
+          <div class="edit-booking-field">
+            <label>Valuta</label>
+            <div data-cs-currency="${escAttr(currentCurrency)}"></div>
+          </div>
+          <div class="edit-booking-field">
+            <label>Totale</label>
+            <input type="number" data-field="price.total.value" value="${escAttr(hotel.price?.total?.value)}" min="0" step="0.01">
+          </div>
+          <div class="edit-booking-field">
+            <label>Acconto versato</label>
+            <input type="number" data-field="price.deposit" value="${escAttr(hotel.price?.deposit)}" min="0" step="0.01">
+          </div>
+          <div class="edit-booking-field">
+            <label>Saldo da pagare</label>
+            <input type="number" data-field="price.balance" value="${escAttr(hotel.price?.balance)}" min="0" step="0.01">
+          </div>
+          <div class="edit-booking-field full-width">
+            <label>Policy cancellazione</label>
+            <input type="text" data-field="cancellation.policy" value="${escAttr(hotel.cancellation?.policy || hotel.cancellation?.freeCancellationUntil)}">
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Build hotel edit form HTML (quick panel — from card "Modifica" button)
    */
   function buildHotelEditForm(hotel) {
-    // Resolve roomType to a simple string for editing
-    const lang = i18n.getLang();
-    let roomTypeVal = '';
-    if (hotel.roomTypes && Array.isArray(hotel.roomTypes)) {
-      roomTypeVal = hotel.roomTypes.map(rt => rt[lang] || rt.en || rt).join(', ');
-    } else if (hotel.roomType && typeof hotel.roomType === 'object') {
-      roomTypeVal = hotel.roomType[lang] || hotel.roomType.en || '';
-    } else if (hotel.roomType) {
-      roomTypeVal = hotel.roomType;
-    }
-
     return `
       <div class="edit-booking-form">
-        <div class="edit-booking-section">
-          <div class="edit-booking-section-title">
-            ${i18n.t('hotel.hotelInfo') || 'Hotel'}
-          </div>
-          <div class="edit-booking-grid">
-            <div class="edit-booking-field full-width">
-              <label>${i18n.t('hotel.hotelInfo') || 'Nome'}</label>
-              <input type="text" data-field="name" value="${escAttr(hotel.name)}" required>
-            </div>
-            <div class="edit-booking-field">
-              <label>${i18n.t('hotel.checkIn') || 'Check-in'}</label>
-              <input type="date" data-field="checkIn.date" value="${escAttr(hotel.checkIn?.date)}" required>
-            </div>
-            <div class="edit-booking-field">
-              <label>${i18n.t('hotel.checkIn') || 'Check-in'} - ${i18n.t('common.from') || 'Orario'}</label>
-              <input type="time" data-field="checkIn.time" value="${escAttr(hotel.checkIn?.time)}">
-            </div>
-            <div class="edit-booking-field">
-              <label>${i18n.t('hotel.checkOut') || 'Check-out'}</label>
-              <input type="date" data-field="checkOut.date" value="${escAttr(hotel.checkOut?.date)}" required>
-            </div>
-            <div class="edit-booking-field">
-              <label>${i18n.t('hotel.checkOut') || 'Check-out'} - ${i18n.t('common.until') || 'Orario'}</label>
-              <input type="time" data-field="checkOut.time" value="${escAttr(hotel.checkOut?.time)}">
-            </div>
-          </div>
-        </div>
-
-        <div class="edit-booking-section">
-          <div class="edit-booking-section-title">
-            ${i18n.t('hotel.detailsInfo') || 'Dettagli'}
-          </div>
-          <div class="edit-booking-grid">
-            <div class="edit-booking-field">
-              <label>${i18n.t('hotel.roomType') || 'Tipo camera'}</label>
-              <input type="text" data-field="roomType" value="${escAttr(roomTypeVal)}">
-            </div>
-            <div class="edit-booking-field">
-              <label>${i18n.t('hotel.guestName') || 'Nome ospite'}</label>
-              <input type="text" data-field="guestName" value="${escAttr(hotel.guestName)}">
-            </div>
-            <div class="edit-booking-field">
-              <label>${i18n.t('hotel.phone') || 'Telefono'}</label>
-              <input type="tel" data-field="phone" value="${escAttr(hotel.phone)}">
-            </div>
-            <div class="edit-booking-field">
-              <label>${i18n.t('hotel.confirmation') || 'N. Conferma'}</label>
-              <input type="text" data-field="confirmationNumber" value="${escAttr(hotel.confirmationNumber)}">
-            </div>
-          </div>
-        </div>
-
-        <div class="edit-booking-section">
-          <div class="edit-booking-section-title">
-            ${i18n.t('hotel.addressInfo') || 'Indirizzo'}
-          </div>
-          <div class="edit-booking-grid">
-            <div class="edit-booking-field full-width">
-              <label>${i18n.t('hotel.fullAddress') || 'Indirizzo completo'}</label>
-              <input type="text" data-field="address.fullAddress" value="${escAttr(hotel.address?.fullAddress)}">
-            </div>
-          </div>
-        </div>
-
-        <div class="edit-booking-section">
-          <div class="edit-booking-section-title">
-            ${i18n.t('hotel.priceInfo') || 'Prezzo'}
-          </div>
-          <div class="edit-booking-grid">
-            <div class="edit-booking-field">
-              <label>${i18n.t('hotel.currency') || 'Valuta'}</label>
-              <input type="text" data-field="price.total.currency" value="${escAttr(hotel.price?.total?.currency)}" maxlength="3" placeholder="es. EUR" style="text-transform:uppercase">
-            </div>
-            <div class="edit-booking-field">
-              <label>${i18n.t('hotel.amount') || 'Importo'}</label>
-              <input type="number" data-field="price.total.value" value="${escAttr(hotel.price?.total?.value)}" min="0" step="0.01">
-            </div>
-          </div>
-        </div>
+        ${buildHotelFormSections(hotel, false)}
       </div>
     `;
   }
 
   /**
-   * Collect hotel form values into an updates object
+   * Collect hotel form values — shared logic for both edit and full-edit.
+   * Handles: flat data-field inputs, checkboxes, CustomSelect for channel/status/currency,
+   * dynamic rooms array, dynamic guests array.
    */
-  function collectHotelUpdates(formView) {
+  function collectHotelFormUpdates(formView) {
     const updates = {};
-    formView.querySelectorAll('input[data-field]').forEach(input => {
-      const field = input.dataset.field;
-      const val = input.value.trim();
 
-      if (field.startsWith('checkIn.')) {
-        const prop = field.split('.')[1];
-        if (!updates.checkIn) updates.checkIn = {};
-        updates.checkIn[prop] = val;
-      } else if (field.startsWith('checkOut.')) {
-        const prop = field.split('.')[1];
-        if (!updates.checkOut) updates.checkOut = {};
-        updates.checkOut[prop] = val;
-      } else if (field.startsWith('address.')) {
-        const prop = field.split('.')[1];
-        if (!updates.address) updates.address = {};
-        updates.address[prop] = val;
-      } else if (field.startsWith('price.total.')) {
-        const prop = field.split('.')[2];
-        if (!updates.price) updates.price = {};
-        if (!updates.price.total) updates.price.total = {};
-        updates.price.total[prop] = val;
-      } else {
-        updates[field] = val;
-      }
-    });
-    return updates;
-  }
-
-  /**
-   * Build full edit form with ALL hotel fields (for manage booking panel)
-   */
-  function buildFullHotelEditForm(hotel) {
-    const lang = i18n.getLang();
-    let roomTypeVal = '';
-    if (hotel.roomTypes && Array.isArray(hotel.roomTypes)) {
-      roomTypeVal = hotel.roomTypes.map(rt => rt[lang] || rt.en || rt).join(', ');
-    } else if (hotel.roomType && typeof hotel.roomType === 'object') {
-      roomTypeVal = hotel.roomType[lang] || hotel.roomType.en || '';
-    } else if (hotel.roomType) {
-      roomTypeVal = hotel.roomType;
-    }
-
-    return `
-      <div class="edit-booking-form">
-        <div class="edit-booking-section">
-          <div class="edit-booking-section-title">
-            ${i18n.t('hotel.hotelInfo') || 'Hotel'}
-          </div>
-          <div class="edit-booking-grid">
-            <div class="edit-booking-field full-width">
-              <label>${i18n.t('hotel.hotelInfo') || 'Nome'}</label>
-              <input type="text" data-field="name" value="${escAttr(hotel.name)}" required>
-            </div>
-            <div class="edit-booking-field">
-              <label>${i18n.t('hotel.checkIn') || 'Check-in'}</label>
-              <input type="date" data-field="checkIn.date" value="${escAttr(hotel.checkIn?.date)}" required>
-            </div>
-            <div class="edit-booking-field">
-              <label>${i18n.t('hotel.checkIn') || 'Check-in'} - ${i18n.t('common.from') || 'Orario'}</label>
-              <input type="time" data-field="checkIn.time" value="${escAttr(hotel.checkIn?.time)}">
-            </div>
-            <div class="edit-booking-field">
-              <label>${i18n.t('hotel.checkOut') || 'Check-out'}</label>
-              <input type="date" data-field="checkOut.date" value="${escAttr(hotel.checkOut?.date)}" required>
-            </div>
-            <div class="edit-booking-field">
-              <label>${i18n.t('hotel.checkOut') || 'Check-out'} - ${i18n.t('common.until') || 'Orario'}</label>
-              <input type="time" data-field="checkOut.time" value="${escAttr(hotel.checkOut?.time)}">
-            </div>
-          </div>
-        </div>
-
-        <div class="edit-booking-section">
-          <div class="edit-booking-section-title">
-            ${i18n.t('hotel.detailsInfo') || 'Dettagli'}
-          </div>
-          <div class="edit-booking-grid">
-            <div class="edit-booking-field">
-              <label>${i18n.t('hotel.roomType') || 'Tipo camera'}</label>
-              <input type="text" data-field="roomType" value="${escAttr(roomTypeVal)}">
-            </div>
-            <div class="edit-booking-field">
-              <label>${i18n.t('hotel.bedTypes') || 'Tipo letto'}</label>
-              <input type="text" data-field="bedTypes" value="${escAttr(hotel.bedTypes)}">
-            </div>
-            <div class="edit-booking-field">
-              <label>${i18n.t('hotel.guestName') || 'Nome ospite'}</label>
-              <input type="text" data-field="guestName" value="${escAttr(hotel.guestName)}">
-            </div>
-            <div class="edit-booking-field">
-              <label>${i18n.t('hotel.phone') || 'Telefono'}</label>
-              <input type="tel" data-field="phone" value="${escAttr(hotel.phone)}">
-            </div>
-            <div class="edit-booking-field">
-              <label>${i18n.t('hotel.confirmation') || 'N. Conferma'}</label>
-              <input type="text" data-field="confirmationNumber" value="${escAttr(hotel.confirmationNumber)}">
-            </div>
-            <div class="edit-booking-field">
-              <label>${i18n.t('hotel.pinCode') || 'PIN'}</label>
-              <input type="text" data-field="pinCode" value="${escAttr(hotel.pinCode)}">
-            </div>
-            <div class="edit-booking-field">
-              <label>${i18n.t('hotel.rooms') || 'Camere'}</label>
-              <input type="number" data-field="rooms" value="${escAttr(hotel.rooms)}" min="1" step="1">
-            </div>
-            <div class="edit-booking-field">
-              <label>${i18n.t('hotel.nights') || 'Notti'}</label>
-              <input type="number" data-field="nights" value="${escAttr(hotel.nights)}" min="1" step="1">
-            </div>
-          </div>
-        </div>
-
-        <div class="edit-booking-section">
-          <div class="edit-booking-section-title">
-            ${i18n.t('hotel.guestsInfo') || 'Ospiti'}
-          </div>
-          <div class="edit-booking-grid">
-            <div class="edit-booking-field">
-              <label>${i18n.t('hotel.adults') || 'Adulti'}</label>
-              <input type="number" data-field="guests.adults" value="${escAttr(hotel.guests?.adults)}" min="0" step="1">
-            </div>
-            <div class="edit-booking-field">
-              <label>${i18n.t('hotel.children') || 'Bambini'}</label>
-              <input type="number" data-field="guests.childrenCount" value="${escAttr(hotel.guests?.children?.length || 0)}" min="0" step="1">
-            </div>
-          </div>
-        </div>
-
-        <div class="edit-booking-section">
-          <div class="edit-booking-section-title">
-            ${i18n.t('hotel.breakfastInfo') || 'Colazione'}
-          </div>
-          <div class="edit-booking-grid">
-            <div class="edit-booking-field edit-booking-field--checkbox">
-              <label>
-                <input type="checkbox" data-field="breakfast.included" ${hotel.breakfast?.included ? 'checked' : ''}>
-                ${i18n.t('hotel.breakfastIncluded') || 'Colazione inclusa'}
-              </label>
-            </div>
-            <div class="edit-booking-field">
-              <label>${i18n.t('hotel.breakfastType') || 'Tipo colazione'}</label>
-              <input type="text" data-field="breakfast.type" value="${escAttr(hotel.breakfast?.type)}">
-            </div>
-          </div>
-        </div>
-
-        <div class="edit-booking-section">
-          <div class="edit-booking-section-title">
-            ${i18n.t('hotel.addressInfo') || 'Indirizzo'}
-          </div>
-          <div class="edit-booking-grid">
-            <div class="edit-booking-field full-width">
-              <label>${i18n.t('hotel.fullAddress') || 'Indirizzo completo'}</label>
-              <input type="text" data-field="address.fullAddress" value="${escAttr(hotel.address?.fullAddress)}">
-            </div>
-            <div class="edit-booking-field">
-              <label>${i18n.t('hotel.street') || 'Via'}</label>
-              <input type="text" data-field="address.street" value="${escAttr(hotel.address?.street)}">
-            </div>
-            <div class="edit-booking-field">
-              <label>${i18n.t('hotel.city') || 'Città'}</label>
-              <input type="text" data-field="address.city" value="${escAttr(hotel.address?.city)}">
-            </div>
-            <div class="edit-booking-field">
-              <label>${i18n.t('hotel.postalCode') || 'CAP'}</label>
-              <input type="text" data-field="address.postalCode" value="${escAttr(hotel.address?.postalCode)}">
-            </div>
-            <div class="edit-booking-field">
-              <label>${i18n.t('hotel.country') || 'Paese'}</label>
-              <input type="text" data-field="address.country" value="${escAttr(hotel.address?.country)}">
-            </div>
-          </div>
-        </div>
-
-        <div class="edit-booking-section">
-          <div class="edit-booking-section-title">
-            ${i18n.t('hotel.priceInfo') || 'Prezzo'}
-          </div>
-          <div class="edit-booking-grid">
-            <div class="edit-booking-field">
-              <label>${i18n.t('hotel.currency') || 'Valuta'}</label>
-              <input type="text" data-field="price.total.currency" value="${escAttr(hotel.price?.total?.currency)}" maxlength="3" placeholder="es. EUR" style="text-transform:uppercase">
-            </div>
-            <div class="edit-booking-field">
-              <label>${i18n.t('hotel.totalAmount') || 'Totale'}</label>
-              <input type="number" data-field="price.total.value" value="${escAttr(hotel.price?.total?.value)}" min="0" step="0.01">
-            </div>
-            <div class="edit-booking-field">
-              <label>${i18n.t('hotel.roomPrice') || 'Camera'}</label>
-              <input type="number" data-field="price.room.value" value="${escAttr(hotel.price?.room?.value)}" min="0" step="0.01">
-            </div>
-            <div class="edit-booking-field">
-              <label>${i18n.t('hotel.taxAmount') || 'Tasse'}</label>
-              <input type="number" data-field="price.tax.value" value="${escAttr(hotel.price?.tax?.value)}" min="0" step="0.01">
-            </div>
-          </div>
-        </div>
-
-        <div class="edit-booking-section">
-          <div class="edit-booking-section-title">
-            ${i18n.t('hotel.paymentInfo') || 'Pagamento'}
-          </div>
-          <div class="edit-booking-grid">
-            <div class="edit-booking-field">
-              <label>${i18n.t('hotel.paymentMethod') || 'Metodo'}</label>
-              <input type="text" data-field="payment.method" value="${escAttr(hotel.payment?.method)}">
-            </div>
-            <div class="edit-booking-field">
-              <label>${i18n.t('hotel.cancellation') || 'Cancellazione gratuita entro'}</label>
-              <input type="datetime-local" data-field="cancellation.freeCancellationUntil" value="${escAttr(hotel.cancellation?.freeCancellationUntil?.replace('Z', ''))}">
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
-  /**
-   * Collect full hotel form values (handles checkboxes and nested fields)
-   */
-  function collectFullHotelUpdates(formView) {
-    const updates = {};
-    formView.querySelectorAll('input[data-field]').forEach(input => {
+    // Standard input/textarea with data-field
+    formView.querySelectorAll('input[data-field], textarea[data-field]').forEach(input => {
       const field = input.dataset.field;
       const val = input.type === 'checkbox' ? input.checked : input.value.trim();
 
@@ -664,37 +757,171 @@
         if (!updates.price) updates.price = {};
         if (!updates.price.total) updates.price.total = {};
         updates.price.total[prop] = val;
-      } else if (field.startsWith('price.room.')) {
-        const prop = field.split('.')[2];
+      } else if (field === 'price.deposit') {
         if (!updates.price) updates.price = {};
-        if (!updates.price.room) updates.price.room = {};
-        updates.price.room[prop] = val;
-      } else if (field.startsWith('price.tax.')) {
-        const prop = field.split('.')[2];
+        updates.price.deposit = val;
+      } else if (field === 'price.balance') {
         if (!updates.price) updates.price = {};
-        if (!updates.price.tax) updates.price.tax = {};
-        updates.price.tax[prop] = val;
-      } else if (field.startsWith('breakfast.')) {
-        const prop = field.split('.')[1];
-        if (!updates.breakfast) updates.breakfast = {};
-        updates.breakfast[prop] = val;
-      } else if (field.startsWith('payment.')) {
-        const prop = field.split('.')[1];
-        if (!updates.payment) updates.payment = {};
-        updates.payment[prop] = val;
+        updates.price.balance = val;
       } else if (field.startsWith('cancellation.')) {
         const prop = field.split('.')[1];
         if (!updates.cancellation) updates.cancellation = {};
         updates.cancellation[prop] = val;
-      } else if (field.startsWith('guests.')) {
-        const prop = field.split('.')[1];
-        if (!updates.guests) updates.guests = {};
-        updates.guests[prop] = val;
       } else {
         updates[field] = val;
       }
     });
+
+    // CustomSelect: channel
+    const channelCs = formView.querySelector('.cs-channel');
+    if (channelCs && window.CustomSelect) {
+      updates.bookingChannel = window.CustomSelect.getValue(channelCs);
+    }
+
+    // CustomSelect: status
+    const statusCs = formView.querySelector('.cs-status');
+    if (statusCs && window.CustomSelect) {
+      updates.status = window.CustomSelect.getValue(statusCs);
+    }
+
+    // CustomSelect: currency
+    const currencyCs = formView.querySelector('.cs-currency');
+    if (currencyCs && window.CustomSelect) {
+      if (!updates.price) updates.price = {};
+      if (!updates.price.total) updates.price.total = {};
+      updates.price.total.currency = window.CustomSelect.getValue(currencyCs);
+    }
+
+    // Dynamic rooms
+    const roomRows = formView.querySelectorAll('[data-room-index]');
+    // Collect only the top-level rows (the .edit-booking-passenger-row, not nested children)
+    const roomIndexes = new Set();
+    formView.querySelectorAll('.edit-booking-passenger-row[data-room-index]').forEach(row => {
+      roomIndexes.add(row.dataset.roomIndex);
+    });
+    if (roomIndexes.size > 0) {
+      updates.rooms = Array.from(roomIndexes).map(idx => {
+        const row = formView.querySelector(`.edit-booking-passenger-row[data-room-index="${idx}"]`);
+        if (!row) return null;
+
+        const getInput = (field) => {
+          const el = row.querySelector(`[data-room-field="${field}"]`);
+          if (!el) return '';
+          if (el.type === 'checkbox') return el.checked;
+          return el.value.trim();
+        };
+
+        const roomTypeCs = row.querySelector('.cs-room-type');
+        const bedTypeCs = row.querySelector('.cs-bed-type');
+        const mealPlanCs = row.querySelector('.cs-meal-plan');
+
+        return {
+          type: roomTypeCs && window.CustomSelect ? window.CustomSelect.getValue(roomTypeCs) : getInput('type'),
+          bedType: bedTypeCs && window.CustomSelect ? window.CustomSelect.getValue(bedTypeCs) : getInput('bedType'),
+          mealPlan: mealPlanCs && window.CustomSelect ? window.CustomSelect.getValue(mealPlanCs) : getInput('mealPlan'),
+          roomNumber: getInput('roomNumber'),
+          floor: getInput('floor'),
+          breakfastIncluded: getInput('breakfastIncluded'),
+          notes: getInput('notes'),
+        };
+      }).filter(Boolean);
+    }
+
+    // Dynamic guests
+    const guestIndexes = new Set();
+    formView.querySelectorAll('.edit-booking-passenger-row[data-guest-index]').forEach(row => {
+      guestIndexes.add(row.dataset.guestIndex);
+    });
+    if (guestIndexes.size > 0) {
+      updates.guestList = Array.from(guestIndexes).map(idx => {
+        const row = formView.querySelector(`.edit-booking-passenger-row[data-guest-index="${idx}"]`);
+        if (!row) return null;
+        const firstNameEl = row.querySelector('[data-guest-field="firstName"]');
+        const lastNameEl = row.querySelector('[data-guest-field="lastName"]');
+        return {
+          firstName: firstNameEl ? firstNameEl.value.trim() : '',
+          lastName: lastNameEl ? lastNameEl.value.trim() : '',
+        };
+      }).filter(g => g && (g.firstName || g.lastName));
+    }
+
     return updates;
+  }
+
+  /**
+   * Collect updates from quick edit form (backward-compatible alias)
+   */
+  function collectHotelUpdates(formView) {
+    return collectHotelFormUpdates(formView);
+  }
+
+  /**
+   * Build full edit form with ALL hotel fields (for manage booking panel)
+   */
+  function buildFullHotelEditForm(hotel) {
+    return `
+      <div class="edit-booking-form">
+        ${buildHotelFormSections(hotel, true)}
+      </div>
+    `;
+  }
+
+  /**
+   * Collect full hotel form values (alias — same logic as quick form)
+   */
+  function collectFullHotelUpdates(formView) {
+    return collectHotelFormUpdates(formView);
+  }
+
+  /**
+   * Attach dynamic add/remove behaviour for hotel rooms and guests.
+   * Must be called after the form HTML is inserted into the DOM.
+   * @param {HTMLElement} formEl
+   */
+  function attachHotelFormListeners(formEl) {
+    // Upgrade placeholder divs → CustomSelect for all existing rows
+    upgradeHotelCustomSelects(formEl);
+
+    function attachRemoveListeners(list, rowClass) {
+      list.querySelectorAll('.edit-booking-remove-row').forEach(btn => {
+        const fresh = btn.cloneNode(true);
+        btn.replaceWith(fresh);
+        fresh.addEventListener('click', () => fresh.closest('.' + rowClass).remove());
+      });
+    }
+
+    // ── Rooms ─────────────────────────────────────────────────────────────────
+    const addRoomBtn = formEl.querySelector('[data-add-room]');
+    const roomList = formEl.querySelector('[data-rooms]');
+    if (addRoomBtn && roomList) {
+      attachRemoveListeners(roomList, 'edit-booking-passenger-row');
+      addRoomBtn.addEventListener('click', () => {
+        const idx = roomList.querySelectorAll('.edit-booking-passenger-row[data-room-index]').length;
+        const tmp = document.createElement('div');
+        tmp.innerHTML = buildRoomRow({}, idx);
+        const row = tmp.firstElementChild;
+        upgradeHotelCustomSelects(row);
+        roomList.appendChild(row);
+        row.querySelector('.edit-booking-remove-row').addEventListener('click', () => row.remove());
+        row.querySelector('input')?.focus();
+      });
+    }
+
+    // ── Guests ────────────────────────────────────────────────────────────────
+    const addGuestBtn = formEl.querySelector('[data-add-guest]');
+    const guestList = formEl.querySelector('[data-guests]');
+    if (addGuestBtn && guestList) {
+      attachRemoveListeners(guestList, 'edit-booking-passenger-row');
+      addGuestBtn.addEventListener('click', () => {
+        const idx = guestList.querySelectorAll('.edit-booking-passenger-row[data-guest-index]').length;
+        const tmp = document.createElement('div');
+        tmp.innerHTML = buildGuestRow({}, idx);
+        const row = tmp.firstElementChild;
+        guestList.appendChild(row);
+        row.querySelector('.edit-booking-remove-row').addEventListener('click', () => row.remove());
+        row.querySelector('input')?.focus();
+      });
+    }
   }
 
   window.tripHotels = {
@@ -703,6 +930,7 @@
     buildEditForm: buildHotelEditForm,
     collectUpdates: collectHotelUpdates,
     buildFullEditForm: buildFullHotelEditForm,
-    collectFullUpdates: collectFullHotelUpdates
+    collectFullUpdates: collectFullHotelUpdates,
+    attachFormListeners: attachHotelFormListeners
   };
 })();
