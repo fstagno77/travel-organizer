@@ -449,6 +449,13 @@
     "welcomeText": "Accedi per gestire i tuoi viaggi",
     "notLoggedIn": "Non hai effettuato l'accesso"
   },
+  "login": {
+    "tagline": "Organizza i tuoi viaggi in un unico posto",
+    "subtitle": "Gestisci tutti i tuoi itinerari di viaggio, dalle attività agli alloggi. Tutto organizzato, tutto sotto controllo.",
+    "statTrips": "Viaggi Totali",
+    "statDays": "Giorni di Viaggio",
+    "statActivities": "Attività Totali"
+  },
   "profile": {
     "title": "Profilo",
     "settings": "Impostazioni",

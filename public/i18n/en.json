@@ -449,6 +449,13 @@
     "welcomeText": "Login to manage your trips",
     "notLoggedIn": "Not logged in"
   },
+  "login": {
+    "tagline": "Organise your trips in one place",
+    "subtitle": "Manage all your travel itineraries, from activities to accommodation. Everything organised, everything under control.",
+    "statTrips": "Total Trips",
+    "statDays": "Travel Days",
+    "statActivities": "Total Activities"
+  },
   "profile": {
     "title": "Profile",
     "settings": "Settings",
