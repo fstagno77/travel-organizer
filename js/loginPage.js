@@ -103,21 +103,25 @@
 
     try {
       await auth.sendOtp(email);
-      currentEmail = email;
-      // Show code input form
-      otpEmailForm.style.display = 'none';
-      loginDivider.style.display = 'none';
-      googleBtn.style.display = 'none';
-      otpCodeForm.style.display = 'block';
-      otpSentTo.textContent = (i18n.t('auth.codeSentTo') || 'Codice inviato a') + ' ' + email;
-      otpCode.focus();
     } catch (error) {
       console.error('OTP send error:', error);
-      otpSendBtn.disabled = false;
-      otpSendBtn.querySelector('span').textContent = i18n.t('auth.sendCode') || 'Invia codice';
-      otpError.textContent = error?.message || 'Errore nell\'invio del codice. Riprova.';
-      otpError.style.display = 'block';
+      // Dev bypass: su localhost mostra comunque il form codice anche se sendOtp fallisce
+      if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        otpSendBtn.disabled = false;
+        otpSendBtn.querySelector('span').textContent = i18n.t('auth.sendCode') || 'Invia codice';
+        otpError.textContent = error?.message || 'Errore nell\'invio del codice. Riprova.';
+        otpError.style.display = 'block';
+        return;
+      }
     }
+    currentEmail = email;
+    // Show code input form
+    otpEmailForm.style.display = 'none';
+    loginDivider.style.display = 'none';
+    googleBtn.style.display = 'none';
+    otpCodeForm.style.display = 'block';
+    otpSentTo.textContent = (i18n.t('auth.codeSentTo') || 'Codice inviato a') + ' ' + email;
+    otpCode.focus();
   });
 
   // Allow Enter key in email input
