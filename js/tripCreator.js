@@ -191,10 +191,15 @@ const tripCreator = {
         </div>
       </div>
 
-      <div class="draft-create-row">
-        <button type="button" class="btn-link draft-create-link" id="trip-create-draft-btn">
-          <span data-i18n="draft.createWithoutDates">${esc(t('draft.createWithoutDates', 'Crea senza date'))}</span>
-        </button>
+      <div class="draft-toggle-row" id="draft-toggle-row">
+        <label class="draft-toggle-label" for="draft-mode-toggle">
+          <span class="draft-toggle-text">${esc(t('draft.toggleLabel', 'Salva come bozza'))}</span>
+          <span class="draft-toggle-hint">${esc(t('draft.toggleHint', 'Senza date — potrai completarla in seguito'))}</span>
+        </label>
+        <div class="toggle-switch">
+          <input type="checkbox" id="draft-mode-toggle" class="toggle-input">
+          <span class="toggle-slider"></span>
+        </div>
       </div>
 
       <div class="manual-trip-divider">
@@ -312,11 +317,61 @@ const tripCreator = {
     // Pre-load cities database
     this.getCitiesDatabase();
 
-    // Pulsante "Crea senza date" — crea bozza e redirect
-    const draftBtn = document.getElementById('trip-create-draft-btn');
-    if (draftBtn) {
-      draftBtn.addEventListener('click', () => this.submitDraft());
+    // Toggle "Salva come bozza"
+    const draftToggle = document.getElementById('draft-mode-toggle');
+    if (draftToggle) {
+      draftToggle.addEventListener('change', () => this._applyDraftToggle());
     }
+  },
+
+  /**
+   * Applica la logica del toggle "Salva come bozza":
+   * - ON  → nasconde date/città/upload, rimuove required dalle date, bottone = "Crea bozza"
+   * - OFF → mostra tutto, ripristina required, bottone = "Crea Viaggio"
+   */
+  _applyDraftToggle() {
+    const toggle = document.getElementById('draft-mode-toggle');
+    const isDraft = toggle?.checked || false;
+    const t = (k, fb) => i18n.t(k) || fb;
+
+    // Wrapper date (la form-row che contiene start e end)
+    const datesRow = document.getElementById('manual-start-date')?.closest('.form-row');
+    // Wrapper città
+    const cityGroup = document.getElementById('manual-city-input')?.closest('.form-group');
+    // Upload zone + divider
+    const uploadZone = document.getElementById('upload-zone');
+    const fileList = document.getElementById('file-list');
+    const divider = document.querySelector('.manual-trip-divider');
+
+    if (isDraft) {
+      if (datesRow) datesRow.style.display = 'none';
+      if (cityGroup) cityGroup.style.display = 'none';
+      if (uploadZone) uploadZone.style.display = 'none';
+      if (fileList) fileList.style.display = 'none';
+      if (divider) divider.style.display = 'none';
+      // Rimuovi required dai campi data (nessun attributo required nativo,
+      // ma aggiorniamo la validazione in updateSubmitButton tramite flag)
+      const startInput = document.getElementById('manual-start-date');
+      const endInput = document.getElementById('manual-end-date');
+      if (startInput) startInput.removeAttribute('required');
+      if (endInput) endInput.removeAttribute('required');
+    } else {
+      if (datesRow) datesRow.style.display = '';
+      if (cityGroup) cityGroup.style.display = '';
+      if (uploadZone) uploadZone.style.display = '';
+      if (fileList) fileList.style.display = '';
+      if (divider) divider.style.display = '';
+    }
+
+    // Aggiorna testo bottone submit
+    const submitBtn = document.getElementById('modal-submit');
+    if (submitBtn) {
+      submitBtn.textContent = isDraft
+        ? t('draft.createBtn', 'Crea bozza')
+        : t('modal.create', 'Crea Viaggio');
+    }
+
+    this.updateSubmitButton();
   },
 
   /**
@@ -574,8 +629,17 @@ const tripCreator = {
     const btn = document.getElementById('modal-submit');
     const hasFiles = this.files.length > 0;
     const m = this.manualData;
-    const hasManual = m && m.name.trim().length > 0 && m.startDate && m.endDate && m.endDate >= m.startDate;
-    btn.disabled = !hasFiles && !hasManual;
+    const isDraft = document.getElementById('draft-mode-toggle')?.checked || false;
+
+    let enabled;
+    if (isDraft) {
+      // In modalità bozza basta il nome (o anche vuoto — verrà usato default)
+      enabled = true;
+    } else {
+      const hasManual = m && m.name.trim().length > 0 && m.startDate && m.endDate && m.endDate >= m.startDate;
+      enabled = hasFiles || hasManual;
+    }
+    btn.disabled = !enabled;
   },
 
   /**
@@ -591,6 +655,10 @@ const tripCreator = {
    * Step 1: Upload PDFs and parse with SmartParse (no save yet), or create manual trip
    */
   async submit() {
+    // Se il toggle bozza è attivo, delega direttamente a submitDraft
+    const isDraft = document.getElementById('draft-mode-toggle')?.checked || false;
+    if (isDraft) return this.submitDraft();
+
     const hasFiles = this.files.length > 0;
     const m = this.manualData;
     const hasManual = m && m.name.trim().length > 0 && m.startDate && m.endDate;
@@ -693,19 +761,31 @@ const tripCreator = {
   },
 
   /**
-   * Apri modale in modalità diretta per creazione bozza
+   * Apri modale in modalità diretta per creazione bozza (legacy — mantenuto per retrocompatibilità)
+   * Usa openAsDraft per il nuovo comportamento con toggle.
    */
   openDraft() {
+    this.openAsDraft();
+  },
+
+  /**
+   * Apri il modal con il toggle "Salva come bozza" già attivo.
+   * Chiamato da draftsPage.js e da openDraft().
+   */
+  openAsDraft() {
     this.reset();
     const modal = document.getElementById('trip-modal');
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
     i18n.apply(modal);
-    // Scorri al pulsante "Crea senza date" per renderlo visibile
+    // Attiva il toggle subito dopo il render
     setTimeout(() => {
-      const btn = document.getElementById('trip-create-draft-btn');
-      if (btn) btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, 100);
+      const toggle = document.getElementById('draft-mode-toggle');
+      if (toggle && !toggle.checked) {
+        toggle.checked = true;
+        this._applyDraftToggle();
+      }
+    }, 0);
   },
 
   /**

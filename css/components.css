@@ -10978,26 +10978,28 @@ body:has(#modal-page-slider.at-activity) .trip-fab {
   min-width: 200px;
 }
 
-/* Link "Crea senza date" nel form tripCreator */
-.draft-create-row {
+/* Draft toggle nel form nuovo viaggio */
+.draft-toggle-row {
   display: flex;
-  justify-content: center;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--color-border);
   margin-top: 8px;
-  margin-bottom: 4px;
 }
-
-.draft-create-link {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-  text-decoration: underline;
-  padding: 4px 8px;
-  border-radius: 4px;
-  transition: color 0.15s;
+.draft-toggle-label { display: flex; flex-direction: column; gap: 2px; cursor: pointer; }
+.draft-toggle-text { font-size: var(--font-size-sm); font-weight: 500; color: var(--color-text-primary); }
+.draft-toggle-hint { font-size: 11px; color: var(--color-text-secondary); }
+.toggle-switch { position: relative; display: inline-block; width: 40px; height: 22px; flex-shrink: 0; }
+.toggle-input { opacity: 0; width: 0; height: 0; position: absolute; }
+.toggle-slider {
+  position: absolute; inset: 0; background: var(--color-border);
+  border-radius: 22px; cursor: pointer; transition: background 0.2s;
 }
-
-.draft-create-link:hover {
-  color: var(--color-primary, #3b82f6);
+.toggle-slider::before {
+  content: ''; position: absolute; width: 16px; height: 16px;
+  left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: transform 0.2s;
 }
+.toggle-input:checked + .toggle-slider { background: var(--color-primary, #3b82f6); }
+.toggle-input:checked + .toggle-slider::before { transform: translateX(18px); }

@@ -732,7 +732,9 @@
     "badge": "Draft",
     "empty": "No drafts yet.",
     "emptyCta": "Create your first draft",
-    "createWithoutDates": "Create without dates",
+    "toggleLabel": "Save as draft",
+    "toggleHint": "No dates — you can complete it later",
+    "createBtn": "Create draft",
     "confirmed": "Trip confirmed!",
     "deleteConfirm": "Delete this draft?",
     "pageTitle": "In progress"

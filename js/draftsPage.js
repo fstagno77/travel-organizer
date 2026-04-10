@@ -150,13 +150,13 @@ const draftsPage = (function() {
         </div>
       `;
 
-      // CTA apre il form di creazione bozza
+      // CTA apre il modal TripCreator in modalità draft (toggle pre-attivato)
       const ctaBtn = container.querySelector('#drafts-create-cta');
       if (ctaBtn) {
         ctaBtn.addEventListener('click', () => {
-          if (typeof window.tripCreator !== 'undefined' && window.tripCreator.openDraft) {
-            window.tripCreator.openDraft();
-          } else if (typeof window.tripCreator !== 'undefined' && window.tripCreator.open) {
+          if (window.tripCreator && typeof window.tripCreator.openAsDraft === 'function') {
+            window.tripCreator.openAsDraft();
+          } else if (window.tripCreator && typeof window.tripCreator.open === 'function') {
             window.tripCreator.open();
           }
         });

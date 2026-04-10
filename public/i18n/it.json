@@ -732,7 +732,9 @@
     "badge": "Bozza",
     "empty": "Nessuna bozza ancora.",
     "emptyCta": "Crea la tua prima bozza",
-    "createWithoutDates": "Crea senza date",
+    "toggleLabel": "Salva come bozza",
+    "toggleHint": "Senza date — potrai completarla in seguito",
+    "createBtn": "Crea bozza",
     "confirmed": "Viaggio confermato!",
     "deleteConfirm": "Eliminare questa bozza?",
     "pageTitle": "In preparazione"
