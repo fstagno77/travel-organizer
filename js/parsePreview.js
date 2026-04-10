@@ -202,14 +202,37 @@ const parsePreview = {
 
     allHotels.forEach((h, i) => {
       const segIdx = allFlights.length + i;
-      // Use the new structured form sections (same as manual booking and edit panel)
+      // Read-only summary fields
+      const checkInDate = this._fmtDate(typeof h.checkIn === 'object' ? h.checkIn?.date : h.checkIn);
+      const checkOutDate = this._fmtDate(typeof h.checkOut === 'object' ? h.checkOut?.date : h.checkOut);
+      const nights = h.nights != null ? String(h.nights) : null;
+      const rooms = h.rooms != null ? String(h.rooms) : null;
+      const priceDisplay = this._resolvePrice(h.price);
+      const confirmDisplay = h.confirmationNumber || h.bookingReference || null;
+
+      // Form sections (hidden until user clicks "Modifica")
       const formSectionsHtml = (window.tripHotels && window.tripHotels.buildFormSections)
         ? window.tripHotels.buildFormSections(h, true)
         : ''; // fallback: empty — tripHotels must be loaded first
 
       html += `<div class="parse-panel${segIdx === 0 ? ' active' : ''}" data-panel="${segIdx}">`;
       html += `<div class="parse-hotel-card parse-hotel-card--form" data-type="hotel" data-index="${i}">`;
+      // ── Read-only summary ──
+      html += `<div class="parse-hotel-readonly">`;
+      html += `<div class="parse-detail-grid">`;
+      html += h.name ? `<div class="parse-field"><div class="parse-field-label">Hotel</div><div class="parse-field-value">${this._esc(h.name)}</div></div>` : '';
+      html += checkInDate ? `<div class="parse-field"><div class="parse-field-label">Check-in</div><div class="parse-field-value">${this._esc(checkInDate)}</div></div>` : '';
+      html += checkOutDate ? `<div class="parse-field"><div class="parse-field-label">Check-out</div><div class="parse-field-value">${this._esc(checkOutDate)}</div></div>` : '';
+      html += nights ? `<div class="parse-field"><div class="parse-field-label">Notti</div><div class="parse-field-value">${this._esc(nights)}</div></div>` : '';
+      html += rooms ? `<div class="parse-field"><div class="parse-field-label">Stanze</div><div class="parse-field-value">${this._esc(rooms)}</div></div>` : '';
+      html += priceDisplay ? `<div class="parse-field"><div class="parse-field-label">Prezzo totale</div><div class="parse-field-value">${this._esc(priceDisplay)}</div></div>` : '';
+      html += confirmDisplay ? `<div class="parse-field"><div class="parse-field-label">Conferma</div><div class="parse-field-value">${this._esc(confirmDisplay)}</div></div>` : '';
+      html += `</div>`;
+      html += `</div>`;
+      // ── Edit form (hidden by default) ──
+      html += `<div class="parse-hotel-form-wrapper" style="display:none">`;
       html += `<div class="edit-booking-form parse-hotel-form-sections">${formSectionsHtml}</div>`;
+      html += `</div>`;
       html += `</div>`;
       html += `</div>`;
     });
@@ -259,14 +282,41 @@ const parsePreview = {
 
     allBuses.forEach((b, i) => {
       const segIdx = allFlights.length + allHotels.length + allTrains.length + i;
-      // Use the new structured form sections (same as manual booking and edit panel)
+      // Read-only summary fields
+      const busDepStation = b.departure?.station || b.departure?.city || null;
+      const busArrStation = b.arrival?.station || b.arrival?.city || null;
+      const busDate = this._fmtDate(b.date);
+      const busDepTime = b.departure?.time || b.departureTime || null;
+      const busArrTime = b.arrival?.time || b.arrivalTime || null;
+      const busPnr = b.bookingReference || b.pnr || null;
+      const busPriceDisplay = this._resolvePrice(b.price);
+
+      // Form sections (hidden until user clicks "Modifica")
       const formSectionsHtml = (window.tripBuses && window.tripBuses.buildFormSections)
         ? window.tripBuses.buildFormSections(b, true)
         : ''; // fallback: empty — tripBuses must be loaded first
 
       html += `<div class="parse-panel${segIdx === 0 ? ' active' : ''}" data-panel="${segIdx}">`;
       html += `<div class="parse-bus-card parse-bus-card--form" data-type="bus" data-index="${i}">`;
+      // ── Read-only summary ──
+      html += `<div class="parse-bus-readonly">`;
+      html += `<div class="parse-detail-grid">`;
+      html += b.operator ? `<div class="parse-field"><div class="parse-field-label">Operatore</div><div class="parse-field-value">${this._esc(b.operator)}</div></div>` : '';
+      if (busDepStation || busArrStation) {
+        const tratta = [busDepStation, busArrStation].filter(Boolean).join(' → ');
+        html += `<div class="parse-field"><div class="parse-field-label">Tratta</div><div class="parse-field-value">${this._esc(tratta)}</div></div>`;
+      }
+      html += busDate ? `<div class="parse-field"><div class="parse-field-label">Data</div><div class="parse-field-value">${this._esc(busDate)}</div></div>` : '';
+      html += busDepTime ? `<div class="parse-field"><div class="parse-field-label">Ora partenza</div><div class="parse-field-value">${this._esc(busDepTime)}</div></div>` : '';
+      html += busArrTime ? `<div class="parse-field"><div class="parse-field-label">Ora arrivo</div><div class="parse-field-value">${this._esc(busArrTime)}</div></div>` : '';
+      html += busPnr ? `<div class="parse-field"><div class="parse-field-label">PNR</div><div class="parse-field-value">${this._esc(busPnr)}</div></div>` : '';
+      html += busPriceDisplay ? `<div class="parse-field"><div class="parse-field-label">Prezzo</div><div class="parse-field-value">${this._esc(busPriceDisplay)}</div></div>` : '';
+      html += `</div>`;
+      html += `</div>`;
+      // ── Edit form (hidden by default) ──
+      html += `<div class="parse-bus-form-wrapper" style="display:none">`;
       html += `<div class="edit-booking-form parse-bus-form-sections">${formSectionsHtml}</div>`;
+      html += `</div>`;
       html += `</div>`;
       html += `</div>`;
     });
@@ -535,8 +585,10 @@ const parsePreview = {
     if (this._editing) {
       editBtn.textContent = 'Fine modifica';
       preview.classList.add('parse-editing');
-      // Convert field values to inputs
+      // Convert field values to inputs — skip hotel/bus cards (handled by their own enter method)
       container.querySelectorAll('.parse-field-value').forEach(el => {
+        if (el.closest('.parse-hotel-card--form')) return;
+        if (el.closest('.parse-bus-card--form')) return;
         const currentText = el.textContent;
         const fieldKey = el.dataset.field || '';
         const inputType = el.dataset.inputType || 'text';
@@ -568,6 +620,9 @@ const parsePreview = {
       }
       // Enable ferry passengers/vehicles edit mode
       this._enterFerryEditMode(container);
+      // Enter hotel/bus edit mode: hide readonly summary, show form
+      container.querySelectorAll('.parse-hotel-card--form').forEach(card => this._enterHotelEditMode(card));
+      container.querySelectorAll('.parse-bus-card--form').forEach(card => this._enterBusEditMode(card));
       // Show and init add-field triggers
       this._initAddFieldTriggers(container);
     } else {
@@ -576,14 +631,16 @@ const parsePreview = {
       container.querySelectorAll('.parse-add-field-inline-picker').forEach(d => { d.style.display = 'none'; });
       // Exit ferry passengers/vehicles edit mode
       this._exitFerryEditMode(container);
+      // Exit hotel/bus edit mode: collect values, update readonly summary, hide form
+      container.querySelectorAll('.parse-hotel-card--form').forEach(card => this._exitHotelEditMode(card));
+      container.querySelectorAll('.parse-bus-card--form').forEach(card => this._exitBusEditMode(card));
       this._applyEdits(container);
       editBtn.textContent = 'Modifica';
       preview.classList.remove('parse-editing');
-      // Convert inputs back to display elements (skip added-field inputs — they stay as field-value)
-      // Also skip inputs inside hotel form sections (parse-hotel-card--form) — they are always form inputs
+      // Convert inputs back to display elements — skip hotel/bus cards (handled above)
       container.querySelectorAll('.parse-field-input').forEach(input => {
-        // Skip inputs that live inside the new hotel form sections
         if (input.closest('.parse-hotel-card--form')) return;
+        if (input.closest('.parse-bus-card--form')) return;
 
         const fieldKey = input.dataset.field || '';
         const div = document.createElement('div');
@@ -603,6 +660,91 @@ const parsePreview = {
         input.replaceWith(div);
       });
     }
+  },
+
+  _enterHotelEditMode(card) {
+    const readonly = card.querySelector('.parse-hotel-readonly');
+    const formWrapper = card.querySelector('.parse-hotel-form-wrapper');
+    if (readonly) readonly.style.display = 'none';
+    if (formWrapper) formWrapper.style.display = '';
+  },
+
+  _exitHotelEditMode(card) {
+    const readonly = card.querySelector('.parse-hotel-readonly');
+    const formWrapper = card.querySelector('.parse-hotel-form-wrapper');
+    if (!readonly || !formWrapper) return;
+
+    // Collect updated values from form and refresh the readonly summary
+    if (window.tripHotels && window.tripHotels.collectFormUpdates) {
+      const updates = window.tripHotels.collectFormUpdates(card);
+      const fields = readonly.querySelectorAll('.parse-field');
+      const _setText = (label, value) => {
+        if (!value) return;
+        fields.forEach(f => {
+          const lbl = f.querySelector('.parse-field-label');
+          const val = f.querySelector('.parse-field-value');
+          if (lbl && val && lbl.textContent === label) val.textContent = value;
+        });
+      };
+      if (updates.name) _setText('Hotel', updates.name);
+      const checkInDate = this._fmtDate(typeof updates.checkIn === 'object' ? updates.checkIn?.date : updates.checkIn);
+      if (checkInDate) _setText('Check-in', checkInDate);
+      const checkOutDate = this._fmtDate(typeof updates.checkOut === 'object' ? updates.checkOut?.date : updates.checkOut);
+      if (checkOutDate) _setText('Check-out', checkOutDate);
+      if (updates.nights != null) _setText('Notti', String(updates.nights));
+      if (updates.rooms != null) _setText('Stanze', String(updates.rooms));
+      const priceDisplay = this._resolvePrice(updates.price);
+      if (priceDisplay) _setText('Prezzo totale', priceDisplay);
+      const confirm = updates.confirmationNumber || updates.bookingReference;
+      if (confirm) _setText('Conferma', confirm);
+    }
+
+    formWrapper.style.display = 'none';
+    readonly.style.display = '';
+  },
+
+  _enterBusEditMode(card) {
+    const readonly = card.querySelector('.parse-bus-readonly');
+    const formWrapper = card.querySelector('.parse-bus-form-wrapper');
+    if (readonly) readonly.style.display = 'none';
+    if (formWrapper) formWrapper.style.display = '';
+  },
+
+  _exitBusEditMode(card) {
+    const readonly = card.querySelector('.parse-bus-readonly');
+    const formWrapper = card.querySelector('.parse-bus-form-wrapper');
+    if (!readonly || !formWrapper) return;
+
+    // Collect updated values from form and refresh the readonly summary
+    if (window.tripBuses && window.tripBuses.collectFormUpdates) {
+      const updates = window.tripBuses.collectFormUpdates(card);
+      const fields = readonly.querySelectorAll('.parse-field');
+      const _setText = (label, value) => {
+        if (!value) return;
+        fields.forEach(f => {
+          const lbl = f.querySelector('.parse-field-label');
+          const val = f.querySelector('.parse-field-value');
+          if (lbl && val && lbl.textContent === label) val.textContent = value;
+        });
+      };
+      if (updates.operator) _setText('Operatore', updates.operator);
+      const dep = updates.departure?.station || updates.departure?.city;
+      const arr = updates.arrival?.station || updates.arrival?.city;
+      if (dep || arr) _setText('Tratta', [dep, arr].filter(Boolean).join(' → '));
+      const busDate = this._fmtDate(updates.date);
+      if (busDate) _setText('Data', busDate);
+      const depTime = updates.departure?.time || updates.departureTime;
+      if (depTime) _setText('Ora partenza', depTime);
+      const arrTime = updates.arrival?.time || updates.arrivalTime;
+      if (arrTime) _setText('Ora arrivo', arrTime);
+      const pnr = updates.bookingReference || updates.pnr;
+      if (pnr) _setText('PNR', pnr);
+      const priceDisplay = this._resolvePrice(updates.price);
+      if (priceDisplay) _setText('Prezzo', priceDisplay);
+    }
+
+    formWrapper.style.display = 'none';
+    readonly.style.display = '';
   },
 
   _enterFerryEditMode(container) {
