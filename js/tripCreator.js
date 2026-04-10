@@ -191,15 +191,15 @@ const tripCreator = {
         </div>
       </div>
 
-      <div class="draft-toggle-row" id="draft-toggle-row">
-        <label class="draft-toggle-label" for="draft-mode-toggle">
+      <div class="draft-toggle-row" id="draft-toggle-row" style="display: flex;">
+        <div class="draft-toggle-label">
           <span class="draft-toggle-text">${esc(t('draft.toggleLabel', 'Salva come bozza'))}</span>
           <span class="draft-toggle-hint">${esc(t('draft.toggleHint', 'Senza date — potrai completarla in seguito'))}</span>
-        </label>
-        <div class="toggle-switch">
+        </div>
+        <label class="toggle-switch" for="draft-mode-toggle">
           <input type="checkbox" id="draft-mode-toggle" class="toggle-input">
           <span class="toggle-slider"></span>
-        </div>
+        </label>
       </div>
 
       <div class="manual-trip-divider">
