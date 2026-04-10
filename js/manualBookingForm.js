@@ -1983,9 +1983,9 @@ window.manualBookingForm = (() => {
     if (modalFooter) modalFooter.innerHTML = origFooter;
     // Ri-applica i18n
     if (window.i18n) i18n.apply(modal);
-    // Ri-collega gli eventi della modale originale
-    if (window.tripPage && typeof window.tripPage._rebindAddBookingModal === 'function') {
-      window.tripPage._rebindAddBookingModal(modal);
+    // Ri-collega gli eventi della modale originale tramite callback iniettato al momento dell'apertura
+    if (typeof modal._rebindStep1 === 'function') {
+      modal._rebindStep1();
     }
   }
 

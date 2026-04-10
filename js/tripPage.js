@@ -20,6 +20,10 @@
   let tabRendered = { activities: false, flights: false, hotels: false, trains: false, buses: false, ferries: false, rentals: false };
   let visibleTabs = []; // tab attualmente visibili (calcolati dinamicamente)
 
+  // AbortController per cleanup listener globali che si accumulano tra i reload del trip
+  let _menuAbort = null;
+  let _fabKeyAbort = null;
+
   // ===========================
   // Shared API exposed to modules
   // ===========================
@@ -458,6 +462,10 @@
     const existingSheet = document.getElementById('fab-bottom-sheet');
     if (existingSheet) existingSheet.remove();
 
+    // Cancella il listener keydown del FAB precedente (si accumula ad ogni renderFab)
+    if (_fabKeyAbort) _fabKeyAbort.abort();
+    _fabKeyAbort = new AbortController();
+
     // FAB
     const fab = document.createElement('button');
     fab.className = 'trip-fab';
@@ -535,7 +543,7 @@
         toggleSheet(false);
       }
     };
-    document.addEventListener('keydown', escHandler);
+    document.addEventListener('keydown', escHandler, { signal: _fabKeyAbort.signal });
   }
 
   function triggerFabUpload() {
@@ -1309,6 +1317,11 @@
    * @param {string} tripId
    */
   function initMenu(tripId) {
+    // Cancella listener globali del menu precedente (si accumulerebbero ad ogni renderTrip)
+    if (_menuAbort) _menuAbort.abort();
+    _menuAbort = new AbortController();
+    const menuSignal = _menuAbort.signal;
+
     const menuBtn = document.getElementById('content-menu-btn');
     const dropdown = document.getElementById('content-dropdown');
 
@@ -1345,7 +1358,7 @@
 
     document.addEventListener('click', () => {
       dropdown?.classList.remove('active');
-    });
+    }, { signal: menuSignal });
   }
 
   // ===========================
@@ -1824,28 +1837,34 @@
       });
     };
 
-    /** Bind upload zone drag/drop/click events */
+    /** Bind upload zone drag/drop/click events — usa AbortController per evitare listener duplicati */
+    let _uploadZoneAbort = null;
     const bindUploadZoneEvents = () => {
+      // Cancella listener precedenti prima di aggiungerne di nuovi
+      if (_uploadZoneAbort) _uploadZoneAbort.abort();
+      _uploadZoneAbort = new AbortController();
+      const signal = _uploadZoneAbort.signal;
+
       const zone = document.getElementById('add-booking-upload-zone');
       const input = document.getElementById('add-booking-file-input');
       if (!zone || !input) return;
-      zone.addEventListener('click', () => input.click());
+      zone.addEventListener('click', () => input.click(), { signal });
       input.addEventListener('change', (e) => {
         addFiles(e.target.files);
         input.value = '';
-      });
+      }, { signal });
       zone.addEventListener('dragover', (e) => {
         e.preventDefault();
         zone.classList.add('dragover');
-      });
+      }, { signal });
       zone.addEventListener('dragleave', () => {
         zone.classList.remove('dragover');
-      });
+      }, { signal });
       zone.addEventListener('drop', (e) => {
         e.preventDefault();
         zone.classList.remove('dragover');
         addFiles(e.dataTransfer.files);
-      });
+      }, { signal });
     };
 
     /** Apre il form manuale per il tipo prenotazione selezionato */
@@ -1853,6 +1872,15 @@
       // US-003+ implementerà i form specifici per ogni tipo.
       // Qui registriamo il tipo selezionato e deleghiamo a window.manualBookingForm se disponibile.
       if (window.manualBookingForm && typeof window.manualBookingForm.open === 'function') {
+        // Inietta callback di rebind sull'elemento modale — usato da manualBookingForm.restoreModal
+        // per ricollegare i listener di upload zone e card tipo dopo "Indietro"
+        modal._rebindStep1 = () => {
+          bindUploadZoneEvents();
+          bindBookingTypeCardEvents();
+          // Ricollegare il bottone Annulla nel footer ripristinato
+          const cancelBtn2 = document.getElementById('add-booking-cancel');
+          if (cancelBtn2) cancelBtn2.addEventListener('click', closeModal);
+        };
         window.manualBookingForm.open(bookingType, modal, tripId, {
           onSaved: () => {
             closeModal();
@@ -1946,7 +1974,12 @@
     };
 
     /** Collega i click sulle card tipo prenotazione */
+    let _cardEventsAbort = null;
     const bindBookingTypeCardEvents = () => {
+      if (_cardEventsAbort) _cardEventsAbort.abort();
+      _cardEventsAbort = new AbortController();
+      const signal = _cardEventsAbort.signal;
+
       const grid = document.getElementById('add-booking-type-grid');
       if (!grid) return;
       grid.querySelectorAll('.booking-type-card').forEach(card => {
@@ -1969,7 +2002,7 @@
           // Abilita bottone Continua
           const continueBtn = document.getElementById('add-booking-continue');
           if (continueBtn) continueBtn.disabled = false;
-        });
+        }, { signal });
       });
     };
 
