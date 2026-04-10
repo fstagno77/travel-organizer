@@ -58,10 +58,12 @@ const draftsPage = (function() {
    * @returns {Promise<Array>}
    */
   async function fetchDrafts() {
-    const user = window.supabase?.auth ? (await window.supabase.auth.getUser()).data?.user : null;
+    const supabaseClient = window.auth?.supabase;
+    if (!supabaseClient) return [];
+    const user = (await supabaseClient.auth.getUser()).data?.user;
     if (!user) return [];
 
-    const { data, error } = await window.supabase
+    const { data, error } = await supabaseClient
       .from('trips')
       .select('*')
       .eq('user_id', user.id)
