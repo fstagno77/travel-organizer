@@ -21,6 +21,7 @@ export default defineConfig({
         admin: resolve(__dirname, 'admin.html'),
         notifications: resolve(__dirname, 'notifications.html'),
         'past-trips': resolve(__dirname, 'past-trips.html'),
+        drafts: resolve(__dirname, 'drafts.html'),
         help: resolve(__dirname, 'help.html'),
         'help-detail': resolve(__dirname, 'help-detail.html'),
       },

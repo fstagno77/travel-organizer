@@ -29,6 +29,7 @@ const pastTripsPage = (function() {
       }
 
       const pastTrips = result.trips
+        .filter(t => t.status !== 'draft')
         .filter(t => tripCardUtils.isTripPast(t))
         .sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
 

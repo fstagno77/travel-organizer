@@ -60,7 +60,7 @@ const navigation = {
    */
   isPageWithFab() {
     const path = window.location.pathname;
-    return this.isHomePage() || path.includes('past-trips.html');
+    return this.isHomePage() || path.includes('past-trips.html') || path.includes('drafts.html');
   },
 
   /**
@@ -175,12 +175,14 @@ const navigation = {
 
     const isHome = activePath.endsWith('/') || activePath.endsWith('index.html');
     const isPast = activePath.includes('past-trips.html');
+    const isDrafts = activePath.includes('drafts.html');
     const isProfile = activePath.includes('profile.html');
     const isNotifications = activePath.includes('notifications.html');
     const isHelp = activePath.includes('/help');
 
     // Icone SVG
     const toggleExpandSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>`;
+    const draftsSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
     const closeSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
     const plusCircleSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>`;
     const planeSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.4-.1.9.3 1.1l4.8 3.2-2.1 2.1-2.4-.6c-.4-.1-.8 0-1 .3l-.2.3c-.2.3-.1.7.1 1l2.2 2.2 2.2 2.2c.3.3.7.3 1 .1l.3-.2c.3-.2.4-.6.3-1l-.6-2.4 2.1-2.1 3.2 4.8c.2.4.7.5 1.1.3l.5-.3c.4-.2.6-.6.5-1.1z"/></svg>`;
@@ -212,6 +214,11 @@ const navigation = {
           <a href="/past-trips.html" class="sidebar-link${isPast ? ' sidebar-link--active' : ''}" data-tooltip="Viaggi passati">
             ${clockSvg}
             <span data-i18n="nav.pastTrips">Viaggi passati</span>
+          </a>
+          <a href="/drafts.html" class="sidebar-link${isDrafts ? ' sidebar-link--active' : ''}" data-tooltip="In preparazione">
+            ${draftsSvg}
+            <span data-i18n="nav.drafts">In preparazione</span>
+            <span class="sidebar-draft-badge" id="sidebar-draft-count"></span>
           </a>
           <div class="sidebar-separator"></div>
           <a href="/profile.html" class="sidebar-link${isProfile ? ' sidebar-link--active' : ''}" data-tooltip="Impostazioni">
@@ -254,6 +261,37 @@ const navigation = {
       sessionStorage.setItem('sidebar-cache-v', '4');
       sessionStorage.setItem('sidebar-cache', sidebarHtml);
     } catch (e) { /* sessionStorage pieno, ignora */ }
+
+    // Aggiorna badge bozze dopo il render
+    this.updateDraftBadge();
+  },
+
+  /**
+   * Aggiorna il badge conteggio bozze in sidebar.
+   * Mostra il numero se ci sono bozze, '+' se non ce ne sono (invito a creare).
+   */
+  async updateDraftBadge() {
+    const badgeEl = document.getElementById('sidebar-draft-count');
+    if (!badgeEl) return;
+
+    try {
+      const user = window.supabase?.auth ? (await window.supabase.auth.getUser()).data?.user : null;
+      if (!user) return;
+
+      const { count, error } = await window.supabase
+        .from('trips')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('status', 'draft')
+        .is('deleted_at', null);
+
+      if (error) return;
+
+      badgeEl.textContent = (count && count > 0) ? String(count) : '+';
+      badgeEl.style.display = '';
+    } catch (e) {
+      // Ignora errori di rete o auth
+    }
   },
 
   /**
@@ -394,7 +432,7 @@ const navigation = {
    */
   initSpaNavigation(closeSidebar) {
     // Pagine standard supportate dalla navigazione SPA
-    const spaPages = ['/', '/index.html', '/past-trips.html', '/notifications.html', '/profile.html'];
+    const spaPages = ['/', '/index.html', '/past-trips.html', '/drafts.html', '/notifications.html', '/profile.html'];
 
     // Mappa pagina → funzione init (async: dynamic import se il modulo non è caricato)
     const pageInitMap = {
@@ -415,6 +453,10 @@ const navigation = {
         if (!window.shareModal) await import('./shareModal.js');
         if (!window.pastTripsPage) await import('./pastTripsPage.js');
         window.pastTripsPage?.init();
+      },
+      '/drafts.html': async () => {
+        if (!window.draftsPage) await import('./draftsPage.js');
+        window.draftsPage?.init();
       },
       '/notifications.html': async () => {
         if (!window.notificationsPage) await import('./notifications.js');

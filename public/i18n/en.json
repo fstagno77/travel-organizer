@@ -6,6 +6,7 @@
     "home": "Home",
     "upcomingTrips": "Upcoming trips",
     "pastTrips": "Past trips",
+    "drafts": "In progress",
     "profile": "Profile",
     "settings": "Settings",
     "admin": "Admin",
@@ -724,5 +725,16 @@
     "backToHelp": "Back to Help",
     "otherTopics": "Other topics",
     "tocToggle": "Article index"
+  },
+  "draft": {
+    "banner": "This trip is a draft — add destination and dates to confirm it",
+    "complete": "Complete trip",
+    "badge": "Draft",
+    "empty": "No drafts yet.",
+    "emptyCta": "Create your first draft",
+    "createWithoutDates": "Create without dates",
+    "confirmed": "Trip confirmed!",
+    "deleteConfirm": "Delete this draft?",
+    "pageTitle": "In progress"
   }
 }

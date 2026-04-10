@@ -287,8 +287,174 @@
     }
     hero.classList.remove('is-loading');
 
+    // Banner bozza — se il viaggio è in stato 'draft', mostra avviso prominente
+    if (tripData.status === 'draft') {
+      renderDraftBanner(tripData);
+    } else {
+      // Rimuovi banner se presente (es. dopo conferma)
+      const existing = document.getElementById('draft-banner');
+      if (existing) existing.remove();
+    }
+
     // Render content
     renderTripContent(document.getElementById('trip-content'), tripData);
+  }
+
+  /**
+   * Render banner bozza in cima al contenuto della pagina
+   * @param {Object} tripData
+   */
+  function renderDraftBanner(tripData) {
+    const t = (k, fb) => i18n.t(k) || fb;
+    const isOwner = currentUserRole === 'proprietario';
+
+    // Rimuovi banner precedente se esiste
+    const existing = document.getElementById('draft-banner');
+    if (existing) existing.remove();
+
+    const bannerHtml = `
+      <div class="draft-banner" id="draft-banner">
+        <span class="draft-banner__text" data-i18n="draft.banner">
+          ${t('draft.banner', 'Questo viaggio è in bozza — aggiungi destinazione e date per confermarlo')}
+        </span>
+        ${isOwner ? `
+          <button class="btn btn-primary btn-sm" id="draft-complete-btn" data-i18n="draft.complete">
+            ${t('draft.complete', 'Completa viaggio')}
+          </button>
+        ` : ''}
+      </div>
+    `;
+
+    // Inserisce il banner prima del contenuto principale
+    const tripContent = document.getElementById('trip-content');
+    if (tripContent) {
+      tripContent.insertAdjacentHTML('beforebegin', bannerHtml);
+    }
+
+    // Bind CTA "Completa viaggio" (solo proprietario)
+    if (isOwner) {
+      const completeBtn = document.getElementById('draft-complete-btn');
+      if (completeBtn) {
+        completeBtn.addEventListener('click', () => openCompleteModal(tripData));
+      }
+    }
+  }
+
+  /**
+   * Apre mini-form inline per completare la bozza (destinazione + date)
+   * @param {Object} tripData
+   */
+  function openCompleteModal(tripData) {
+    const t = (k, fb) => i18n.t(k) || fb;
+    const lang = i18n.getLang();
+
+    // Rimuovi modal precedente se esiste
+    const existing = document.getElementById('draft-complete-modal');
+    if (existing) existing.remove();
+
+    const modalHtml = `
+      <div class="modal-overlay active" id="draft-complete-modal">
+        <div class="modal">
+          <div class="modal-header">
+            <h2>${t('draft.complete', 'Completa viaggio')}</h2>
+            <button class="modal-close" id="draft-complete-close">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label class="form-label">${t('trip.manualCities', 'Destinazione')} *</label>
+              <input type="text" class="form-input" id="draft-destination-input"
+                     placeholder="${lang === 'it' ? 'Es. Parigi, Tokyo...' : 'e.g. Paris, Tokyo...'}"
+                     autocomplete="off" required>
+            </div>
+            <div class="form-row">
+              <div class="form-group form-group-half">
+                <label class="form-label">${t('trip.manualStartDate', 'Data inizio')} *</label>
+                <input type="date" class="form-input" id="draft-start-date-input" required>
+              </div>
+              <div class="form-group form-group-half">
+                <label class="form-label">${t('trip.manualEndDate', 'Data fine')}</label>
+                <input type="date" class="form-input" id="draft-end-date-input">
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" id="draft-complete-cancel">${t('modal.cancel', 'Annulla')}</button>
+            <button class="btn btn-primary" id="draft-complete-submit">${t('common.confirm', 'Conferma')}</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    document.body.style.overflow = 'hidden';
+    i18n.apply(document.getElementById('draft-complete-modal'));
+
+    const closeModal = () => {
+      const modal = document.getElementById('draft-complete-modal');
+      if (modal) modal.remove();
+      document.body.style.overflow = '';
+    };
+
+    document.getElementById('draft-complete-close').addEventListener('click', closeModal);
+    document.getElementById('draft-complete-cancel').addEventListener('click', closeModal);
+    document.getElementById('draft-complete-modal').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('draft-complete-modal')) closeModal();
+    });
+
+    document.getElementById('draft-complete-submit').addEventListener('click', async () => {
+      const destinationInput = document.getElementById('draft-destination-input');
+      const startDateInput = document.getElementById('draft-start-date-input');
+      const endDateInput = document.getElementById('draft-end-date-input');
+
+      const destination = destinationInput.value.trim();
+      const startDate = startDateInput.value;
+      const endDate = endDateInput.value || null;
+
+      if (!destination) {
+        destinationInput.focus();
+        return;
+      }
+      if (!startDate) {
+        startDateInput.focus();
+        return;
+      }
+
+      const submitBtn = document.getElementById('draft-complete-submit');
+      submitBtn.disabled = true;
+
+      try {
+        const { error } = await window.supabase
+          .from('trips')
+          .update({
+            destination: destination,
+            start_date: startDate,
+            end_date: endDate,
+            status: 'active',
+          })
+          .eq('id', tripData.id);
+
+        if (error) throw error;
+
+        closeModal();
+        utils.showToast(t('draft.confirmed', 'Viaggio confermato!'), 'success');
+
+        // Rimuovi banner
+        const banner = document.getElementById('draft-banner');
+        if (banner) banner.remove();
+
+        // Aggiorna dati in memoria e ricarica
+        await loadTripFromUrl();
+      } catch (err) {
+        console.error('[tripPage] completeTrip error:', err);
+        utils.showToast(i18n.t('common.error') || 'Errore', 'error');
+        submitBtn.disabled = false;
+      }
+    });
   }
 
   // Configurazione icone e label per ciascun tab
@@ -1398,18 +1564,23 @@
       ferry:   `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 21c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2s2.5 2 5 2c1.3 0 1.9-.5 2.5-1"/><path d="M19.38 20A11.6 11.6 0 0 0 21 14l-9-4-9 4c0 2.9.94 5.34 2.81 7.76"/><path d="M19 13V7a1 1 0 0 0-1-1H6a1 1 0 0 0-1 1v6"/><path d="M12 10v4"/><path d="M12 3v4"/></svg>`,
       rental:  `<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>`,
     };
+    const COLORS = {
+      flight: '#2563eb', hotel: '#10b981', train: '#e67e22',
+      bus: '#8e44ad', ferry: '#0369a1', rental: '#0891b2',
+    };
 
+    let color = '';
     if (mixed) {
       label = 'Aggiungi prenotazione';
       iconHtml = ''; // nessuna icona per mix di tipi
-    } else if (hasFlights)  { label = 'Volo';     iconHtml = ICONS.flight;  }
-    else if (hasHotels)     { label = 'Hotel';    iconHtml = ICONS.hotel;   }
-    else if (hasTrains)     { label = 'Treno';    iconHtml = ICONS.train;   }
-    else if (hasBuses)      { label = 'Bus';      iconHtml = ICONS.bus;     }
-    else if (hasFerries)    { label = 'Traghetto'; iconHtml = ICONS.ferry;  }
-    else if (hasRentals)    { label = 'Noleggio'; iconHtml = ICONS.rental;  }
+    } else if (hasFlights)  { label = 'Volo';      iconHtml = ICONS.flight;  color = COLORS.flight;  }
+    else if (hasHotels)     { label = 'Hotel';     iconHtml = ICONS.hotel;   color = COLORS.hotel;   }
+    else if (hasTrains)     { label = 'Treno';     iconHtml = ICONS.train;   color = COLORS.train;   }
+    else if (hasBuses)      { label = 'Bus';       iconHtml = ICONS.bus;     color = COLORS.bus;     }
+    else if (hasFerries)    { label = 'Traghetto'; iconHtml = ICONS.ferry;   color = COLORS.ferry;   }
+    else if (hasRentals)    { label = 'Noleggio';  iconHtml = ICONS.rental;  color = COLORS.rental;  }
 
-    return { iconHtml, label };
+    return { iconHtml, label, color };
   }
 
   /**
@@ -1419,11 +1590,32 @@
    */
   function _applyPreviewHeader(headerEl, results) {
     if (!headerEl) return;
-    const { iconHtml, label } = _getPreviewHeaderContent(results);
+    const { iconHtml, label, color } = _getPreviewHeaderContent(results);
     if (iconHtml) {
-      headerEl.innerHTML = `<span class="modal-header-icon" style="display:inline-flex;align-items:center;margin-right:8px;vertical-align:middle;color:var(--text-primary)">${iconHtml}</span>${label}`;
+      headerEl.innerHTML = `<span class="modal-header-icon" style="display:inline-flex;align-items:center;margin-right:8px;vertical-align:middle;color:${color || 'var(--color-text-primary)'}">${iconHtml}</span>${label}`;
     } else {
       headerEl.textContent = label;
+    }
+  }
+
+  /**
+   * Apply booking type icon + colored label to modal header h2 (manual creation flow).
+   * @param {HTMLElement} headerEl - the h2 element
+   * @param {string} type - 'flight'|'hotel'|'train'|'bus'|'ferry'|'rental'
+   */
+  function _applyManualBookingTypeHeader(headerEl, type) {
+    if (!headerEl) return;
+    const META = {
+      flight:  { icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5Z"/></svg>`, color: '#2563eb', label: 'Volo' },
+      hotel:   { icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 13c1.66 0 3-1.34 3-3S8.66 7 7 7s-3 1.34-3 3 1.34 3 3 3zm12-6h-8v7H3V5H1v15h2v-3h18v3h2v-9c0-2.21-1.79-4-4-4z"/></svg>`, color: '#10b981', label: 'Hotel' },
+      train:   { icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c-4 0-8 .5-8 4v9.5C4 17.43 5.57 19 7.5 19L6 20.5v.5h12v-.5L16.5 19c1.93 0 3.5-1.57 3.5-3.5V6c0-3.5-3.58-4-8-4zM7.5 17c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm3.5-7H6V6h5v4zm5.5 7c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM18 10h-5V6h5v4z"/></svg>`, color: '#e67e22', label: 'Treno' },
+      bus:     { icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4 16c0 .88.39 1.67 1 2.22V20c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h8v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10m3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17m9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5M18 11H6V6h12v5Z"/></svg>`, color: '#8e44ad', label: 'Bus' },
+      ferry:   { icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 21c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2s2.5 2 5 2c1.3 0 1.9-.5 2.5-1"/><path d="M19.38 20A11.6 11.6 0 0 0 21 14l-9-4-9 4c0 2.9.94 5.34 2.81 7.76"/><path d="M19 13V7a1 1 0 0 0-1-1H6a1 1 0 0 0-1 1v6"/><path d="M12 10v4"/><path d="M12 3v4"/></svg>`, color: '#0369a1', label: 'Traghetto' },
+      rental:  { icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>`, color: '#0891b2', label: 'Noleggio' },
+    };
+    const meta = META[type];
+    if (meta) {
+      headerEl.innerHTML = `<span class="modal-header-icon" style="display:inline-flex;align-items:center;margin-right:8px;vertical-align:middle;color:${meta.color}">${meta.icon}</span>${meta.label}`;
     }
   }
 
@@ -1446,7 +1638,7 @@
     // Definizione tipi prenotazione per le card step 1
     const bookingTypes = [
       { type: 'flight',  labelIt: 'Volo',         gradient: 'linear-gradient(135deg, #3b82f6, #4f46e5)', color: '#2563eb', hoverBg: '#eff6ff',
-        icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg>` },
+        icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="28" height="28"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>` },
       { type: 'hotel',   labelIt: 'Hotel',         gradient: 'linear-gradient(135deg, #34d399, #14b8a6)', color: '#10b981', hoverBg: '#ecfdf5',
         icon: `<span class="material-symbols-outlined" style="font-size:18px;line-height:1">bed</span>` },
       { type: 'train',   labelIt: 'Treno',         gradient: 'linear-gradient(135deg, #f5a54d, #e67e22)', color: '#e67e22', hoverBg: '#fef6ee',
@@ -1931,6 +2123,10 @@
 
     /** Apre il form manuale per il tipo prenotazione selezionato */
     const showManualBookingForm = (bookingType) => {
+      // Aggiorna header modale con icona colorata del tipo selezionato
+      const headerH2 = modal.querySelector('.modal-header h2');
+      _applyManualBookingTypeHeader(headerH2, bookingType);
+
       // US-003+ implementerà i form specifici per ogni tipo.
       // Qui registriamo il tipo selezionato e deleghiamo a window.manualBookingForm se disponibile.
       if (window.manualBookingForm && typeof window.manualBookingForm.open === 'function') {
@@ -1939,6 +2135,9 @@
         modal._rebindStep1 = () => {
           bindUploadZoneEvents();
           bindBookingTypeCardEvents();
+          // Ripristina header a titolo generico
+          const headerH2back = modal.querySelector('.modal-header h2');
+          if (headerH2back) headerH2back.textContent = 'Aggiungi prenotazione';
           // Ricollegare il bottone Annulla nel footer ripristinato
           const cancelBtn2 = document.getElementById('add-booking-cancel');
           if (cancelBtn2) cancelBtn2.addEventListener('click', closeModal);
@@ -1988,6 +2187,9 @@
       // Ripristina step 1
       modalBody.innerHTML = originalBodyContent;
       modalFooter.style.display = '';
+      // Ripristina header a titolo generico
+      const headerH2fallback = modal.querySelector('.modal-header h2');
+      if (headerH2fallback) headerH2fallback.textContent = 'Aggiungi prenotazione';
       i18n.apply(modalBody);
       bindUploadZoneEvents();
 

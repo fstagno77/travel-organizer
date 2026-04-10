@@ -191,6 +191,12 @@ const tripCreator = {
         </div>
       </div>
 
+      <div class="draft-create-row">
+        <button type="button" class="btn-link draft-create-link" id="trip-create-draft-btn">
+          <span data-i18n="draft.createWithoutDates">${esc(t('draft.createWithoutDates', 'Crea senza date'))}</span>
+        </button>
+      </div>
+
       <div class="manual-trip-divider">
         <span class="manual-trip-divider-line"></span>
         <span class="manual-trip-divider-text">${esc(t('trip.orUploadPdf', 'or add a booking document'))}</span>
@@ -305,6 +311,12 @@ const tripCreator = {
 
     // Pre-load cities database
     this.getCitiesDatabase();
+
+    // Pulsante "Crea senza date" — crea bozza e redirect
+    const draftBtn = document.getElementById('trip-create-draft-btn');
+    if (draftBtn) {
+      draftBtn.addEventListener('click', () => this.submitDraft());
+    }
   },
 
   /**
@@ -674,6 +686,67 @@ const tripCreator = {
       }
     } catch (error) {
       console.error('Error creating manual trip:', error);
+      this.stopLoadingPhrases();
+      this.state = 'error';
+      this.renderErrorState(error.message);
+    }
+  },
+
+  /**
+   * Apri modale in modalità diretta per creazione bozza
+   */
+  openDraft() {
+    this.reset();
+    const modal = document.getElementById('trip-modal');
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    i18n.apply(modal);
+    // Scorri al pulsante "Crea senza date" per renderlo visibile
+    setTimeout(() => {
+      const btn = document.getElementById('trip-create-draft-btn');
+      if (btn) btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+  },
+
+  /**
+   * Crea un viaggio bozza (status='draft') senza date né destinazione obbligatorie.
+   * Dopo la creazione, redirect a trip.html?id=<newId>.
+   */
+  async submitDraft() {
+    this.state = 'saving';
+    this.renderProcessingState();
+    this.showFooter(false);
+
+    const t = (k, fb) => i18n.t(k) || fb;
+    const nameInput = document.getElementById('manual-trip-name');
+    const titleValue = nameInput?.value?.trim() || '';
+
+    try {
+      const response = await utils.authFetch('/.netlify/functions/create-trip', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: titleValue || (i18n.getLang() === 'it' ? 'Nuovo viaggio' : 'New trip'),
+          status: 'draft',
+          cities: [],
+        })
+      });
+
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to create draft');
+      }
+
+      this.stopLoadingPhrases();
+      const tripData = result.tripData;
+
+      // Chiudi modale e redirect alla pagina del viaggio bozza
+      const modal = document.getElementById('trip-modal');
+      if (modal) modal.classList.remove('active');
+      document.body.style.overflow = '';
+
+      window.location.href = `trip.html?id=${tripData.id}`;
+    } catch (error) {
+      console.error('[tripCreator] submitDraft error:', error);
       this.stopLoadingPhrases();
       this.state = 'error';
       this.renderErrorState(error.message);

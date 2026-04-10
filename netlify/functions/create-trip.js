@@ -28,7 +28,8 @@ exports.handler = async (event, context) => {
   const { user, supabase } = authResult;
 
   try {
-    const { name, startDate, endDate, cities } = JSON.parse(event.body);
+    const { name, startDate, endDate, cities, status } = JSON.parse(event.body);
+    const isDraft = status === 'draft';
 
     // Validate required fields
     if (!name || !name.trim()) {
@@ -39,26 +40,27 @@ exports.handler = async (event, context) => {
       };
     }
 
-    if (!startDate || !endDate) {
-      return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({ success: false, error: 'Start date and end date are required' })
-      };
+    if (!isDraft) {
+      if (!startDate || !endDate) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ success: false, error: 'Start date and end date are required' })
+        };
+      }
+      if (endDate < startDate) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ success: false, error: 'End date must be after start date' })
+        };
+      }
     }
 
-    if (endDate < startDate) {
-      return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({ success: false, error: 'End date must be after start date' })
-      };
-    }
-
-    // Generate trip ID (same pattern as process-pdf.js)
-    const date = new Date(startDate + 'T00:00:00');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
+    // Generate trip ID — bozze usano timestamp invece della data di partenza
+    const idBase = startDate ? new Date(startDate + 'T00:00:00') : new Date();
+    const month = String(idBase.getMonth() + 1).padStart(2, '0');
+    const year = idBase.getFullYear();
     const slug = (cities?.[0]?.name || name.trim())
       .toLowerCase().replace(/[^a-z0-9]+/g, '-').substring(0, 20);
     const uniqueSuffix = Math.random().toString(36).substring(2, 8);
@@ -71,8 +73,8 @@ exports.handler = async (event, context) => {
       id: tripId,
       title: { it: trimmedName, en: trimmedName },
       destination,
-      startDate,
-      endDate,
+      startDate: startDate || null,
+      endDate: endDate || null,
       route: '',
       passenger: { name: '', type: 'ADT' },
       flights: [],
@@ -89,6 +91,7 @@ exports.handler = async (event, context) => {
         id: tripId,
         data: tripData,
         user_id: user.id,
+        status: isDraft ? 'draft' : 'active',
         updated_at: new Date().toISOString()
       });
 

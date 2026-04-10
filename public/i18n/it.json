@@ -6,6 +6,7 @@
     "home": "Home",
     "upcomingTrips": "Prossimi viaggi",
     "pastTrips": "Viaggi passati",
+    "drafts": "In preparazione",
     "profile": "Profilo",
     "settings": "Impostazioni",
     "admin": "Admin",
@@ -724,5 +725,16 @@
     "backToHelp": "Torna all'Aiuto",
     "otherTopics": "Altri argomenti",
     "tocToggle": "Indice articoli"
+  },
+  "draft": {
+    "banner": "Questo viaggio è in bozza — aggiungi destinazione e date per confermarlo",
+    "complete": "Completa viaggio",
+    "badge": "Bozza",
+    "empty": "Nessuna bozza ancora.",
+    "emptyCta": "Crea la tua prima bozza",
+    "createWithoutDates": "Crea senza date",
+    "confirmed": "Viaggio confermato!",
+    "deleteConfirm": "Eliminare questa bozza?",
+    "pageTitle": "In preparazione"
   }
 }

@@ -1234,6 +1234,11 @@ const homePage = (function() {
    * @param {Array} upcomingTripsData - Trips starting within 3 days with full booking data
    */
   function renderTrips(container, trips, todayTrips, upcomingTripsData) {
+    // Filtra le bozze (status='draft') — non devono comparire in "Prossimi viaggi"
+    trips = (trips || []).filter(t => t.status !== 'draft');
+    todayTrips = (todayTrips || []).filter(t => t.status !== 'draft');
+    upcomingTripsData = (upcomingTripsData || []).filter(t => t.status !== 'draft');
+
     // Hide old today section (replaced by In Corso)
     const todaySection = document.querySelector('.today-section');
     if (todaySection) todaySection.style.display = 'none';

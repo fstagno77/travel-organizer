@@ -554,6 +554,107 @@ window.manualBookingForm = (() => {
    * @param {Object} prefill - dati da pre-popolare (es. da SmartParse parziale)
    * @returns {{ form: HTMLElement, getValues: function, saveBtn: HTMLButtonElement }}
    */
+  /**
+   * Costruisce il blocco campi di una singola tratta volo.
+   * @param {string} idPrefix - prefisso id per evitare collisioni (es. 'mbf-leg-0')
+   * @param {Object} prefill - dati da pre-popolare
+   * @returns {{ container: HTMLElement, getValues: function, getRequiredInputs: function }}
+   */
+  function buildFlightLeg(idPrefix, prefill = {}) {
+    const container = document.createElement('div');
+    container.className = 'flight-leg-fields';
+
+    // Sezione Volo
+    const { section: sVolo, grid: gVolo } = buildSection('Volo');
+    const { wrapper: wFlightNum, input: iFlightNum } = buildEditField({
+      id: `${idPrefix}-number`, label: 'Codice volo',
+      placeholder: 'es. AZ0610', value: prefill.flightNumber || ''
+    });
+    const { wrapper: wAirline, input: iAirline } = buildEditField({
+      id: `${idPrefix}-airline`, label: 'Compagnia aerea',
+      placeholder: 'es. ITA Airways', value: prefill.airline || ''
+    });
+    const { wrapper: wDate, input: iDate } = buildEditField({
+      id: `${idPrefix}-date`, label: 'Data', type: 'date', required: true,
+      value: prefill.date || ''
+    });
+    const { wrapper: wDepTime, input: iDepTime } = buildEditField({
+      id: `${idPrefix}-dep-time`, label: 'Orario partenza', type: 'time',
+      value: prefill.departureTime || ''
+    });
+    const { wrapper: wArrTime, input: iArrTime } = buildEditField({
+      id: `${idPrefix}-arr-time`, label: 'Orario arrivo', type: 'time',
+      value: prefill.arrivalTime || ''
+    });
+    gVolo.appendChild(wFlightNum);
+    gVolo.appendChild(wAirline);
+    gVolo.appendChild(wDate);
+    gVolo.appendChild(wDepTime);
+    gVolo.appendChild(wArrTime);
+    container.appendChild(sVolo);
+
+    // Sezione Partenza
+    const { section: sDep, grid: gDep } = buildSection('Partenza');
+    const { wrapper: wDepCity, input: iDepCity } = buildEditField({
+      id: `${idPrefix}-dep-city`, label: 'Città / Aeroporto', required: true,
+      placeholder: 'es. Roma Fiumicino (FCO)', value: prefill.departureCity || (prefill.departure?.city || '')
+    });
+    const { wrapper: wDepCode, input: iDepCode } = buildEditField({
+      id: `${idPrefix}-dep-code`, label: 'IATA',
+      placeholder: 'es. FCO', value: prefill.departure?.code || ''
+    });
+    const { wrapper: wDepTerminal, input: iDepTerminal } = buildEditField({
+      id: `${idPrefix}-dep-terminal`, label: 'Terminal',
+      placeholder: 'es. T1', value: prefill.departure?.terminal || ''
+    });
+    gDep.appendChild(wDepCity);
+    gDep.appendChild(wDepCode);
+    gDep.appendChild(wDepTerminal);
+    container.appendChild(sDep);
+
+    // Sezione Arrivo
+    const { section: sArr, grid: gArr } = buildSection('Arrivo');
+    const { wrapper: wArrCity, input: iArrCity } = buildEditField({
+      id: `${idPrefix}-arr-city`, label: 'Città / Aeroporto', required: true,
+      placeholder: 'es. New York (JFK)', value: prefill.arrivalCity || (prefill.arrival?.city || '')
+    });
+    const { wrapper: wArrCode, input: iArrCode } = buildEditField({
+      id: `${idPrefix}-arr-code`, label: 'IATA',
+      placeholder: 'es. JFK', value: prefill.arrival?.code || ''
+    });
+    const { wrapper: wArrTerminal, input: iArrTerminal } = buildEditField({
+      id: `${idPrefix}-arr-terminal`, label: 'Terminal',
+      placeholder: 'es. T4', value: prefill.arrival?.terminal || ''
+    });
+    gArr.appendChild(wArrCity);
+    gArr.appendChild(wArrCode);
+    gArr.appendChild(wArrTerminal);
+    container.appendChild(sArr);
+
+    const getValues = () => ({
+      flightNumber: iFlightNum.value.trim() || undefined,
+      airline: iAirline.value.trim() || undefined,
+      date: iDate.value || undefined,
+      departureTime: iDepTime.value || undefined,
+      arrivalTime: iArrTime.value || undefined,
+      departure: {
+        city: iDepCity.value.trim(),
+        code: iDepCode.value.trim().toUpperCase() || undefined,
+        terminal: iDepTerminal.value.trim() || undefined,
+      },
+      arrival: {
+        city: iArrCity.value.trim(),
+        code: iArrCode.value.trim().toUpperCase() || undefined,
+        terminal: iArrTerminal.value.trim() || undefined,
+      },
+    });
+
+    // Required: date, departureCity, arrivalCity
+    const getRequiredInputs = () => [iDate, iDepCity, iArrCity];
+
+    return { container, getValues, getRequiredInputs };
+  }
+
   function buildFlightForm(prefill = {}) {
     const form = document.createElement('div');
     form.className = 'manual-booking-form manual-booking-form--flight edit-booking-form';
@@ -563,9 +664,37 @@ window.manualBookingForm = (() => {
     const scroll = document.createElement('div');
     scroll.style.cssText = 'overflow-y:auto;max-height:55vh;padding-right:4px;';
 
-    // --- SEZIONE: Volo ---
-    const { section: sVolo, grid: gVolo } = buildSection('Volo');
+    // ---- PILL SELECTOR: tipo di volo ----
+    let currentFlightType = 'one_way';
 
+    const pillSelector = document.createElement('div');
+    pillSelector.className = 'flight-type-selector';
+    const PILL_ICONS = {
+      one_way:    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>',
+      round_trip: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="8" x2="19" y2="8"/><polyline points="14 3 19 8 14 13"/><line x1="19" y1="16" x2="5" y2="16"/><polyline points="10 11 5 16 10 21"/></svg>',
+      multi_leg:  '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 8 9 12 5 16"/><line x1="9" y1="12" x2="15" y2="12"/><polyline points="15 8 19 12 15 16"/></svg>',
+    };
+    const pills = [
+      { value: 'one_way',    label: 'Solo andata' },
+      { value: 'round_trip', label: 'Andata e ritorno' },
+      { value: 'multi_leg',  label: 'Multitratta' },
+    ];
+    const pillEls = {};
+    pills.forEach(p => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'flight-type-pill' + (p.value === 'one_way' ? ' flight-type-pill--active' : '');
+      btn.innerHTML = PILL_ICONS[p.value] + '<span>' + p.label + '</span>';
+      btn.dataset.flightType = p.value;
+      pillEls[p.value] = btn;
+      pillSelector.appendChild(btn);
+    });
+    scroll.appendChild(pillSelector);
+
+    // ---- AREA: one_way ----
+    const oneWayArea = document.createElement('div');
+
+    const { section: sVolo, grid: gVolo } = buildSection('Volo');
     const { wrapper: wFlightNum, input: iFlightNum } = buildEditField({
       id: 'mbf-flight-number', label: 'Codice volo', required: true,
       placeholder: 'es. AZ0610', value: prefill.flightNumber || ''
@@ -591,11 +720,9 @@ window.manualBookingForm = (() => {
     gVolo.appendChild(wDate);
     gVolo.appendChild(wDepTime);
     gVolo.appendChild(wArrTime);
-    scroll.appendChild(sVolo);
+    oneWayArea.appendChild(sVolo);
 
-    // --- SEZIONE: Partenza ---
     const { section: sDep, grid: gDep } = buildSection('Partenza');
-
     const { wrapper: wDepCity, input: iDepCity } = buildEditField({
       id: 'mbf-departure-city', label: 'Città / Aeroporto', required: true,
       placeholder: 'es. Roma Fiumicino (FCO)', value: prefill.departureCity || (prefill.departure?.city || '')
@@ -611,11 +738,9 @@ window.manualBookingForm = (() => {
     gDep.appendChild(wDepCity);
     gDep.appendChild(wDepCode);
     gDep.appendChild(wDepTerminal);
-    scroll.appendChild(sDep);
+    oneWayArea.appendChild(sDep);
 
-    // --- SEZIONE: Arrivo ---
     const { section: sArr, grid: gArr } = buildSection('Arrivo');
-
     const { wrapper: wArrCity, input: iArrCity } = buildEditField({
       id: 'mbf-arrival-city', label: 'Città / Aeroporto', required: true,
       placeholder: 'es. New York (JFK)', value: prefill.arrivalCity || (prefill.arrival?.city || '')
@@ -631,9 +756,117 @@ window.manualBookingForm = (() => {
     gArr.appendChild(wArrCity);
     gArr.appendChild(wArrCode);
     gArr.appendChild(wArrTerminal);
-    scroll.appendChild(sArr);
+    oneWayArea.appendChild(sArr);
+    scroll.appendChild(oneWayArea);
 
-    // --- SEZIONE: Prenotazione ---
+    // ---- AREA: round_trip ----
+    const roundTripArea = document.createElement('div');
+    roundTripArea.style.display = 'none';
+
+    // Tratta 1 — Andata
+    const rtHeader1 = document.createElement('div');
+    rtHeader1.className = 'flight-leg-header flight-leg-header--outbound';
+    rtHeader1.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg> Tratta 1 — Andata';
+    roundTripArea.appendChild(rtHeader1);
+    const leg1RT = buildFlightLeg('mbf-rt-leg1', {});
+    roundTripArea.appendChild(leg1RT.container);
+
+    // Tratta 2 — Ritorno
+    const rtHeader2 = document.createElement('div');
+    rtHeader2.className = 'flight-leg-header flight-leg-header--return';
+    rtHeader2.style.marginTop = '16px';
+    rtHeader2.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="16" height="16" style="transform:rotate(180deg)"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg> Tratta 2 — Ritorno';
+    roundTripArea.appendChild(rtHeader2);
+    const leg2RT = buildFlightLeg('mbf-rt-leg2', {});
+    roundTripArea.appendChild(leg2RT.container);
+    scroll.appendChild(roundTripArea);
+
+    // ---- AREA: multi_leg ----
+    const multiLegArea = document.createElement('div');
+    multiLegArea.style.display = 'none';
+
+    // Array dinamico di tratte multi
+    const multiLegs = [];
+
+    /**
+     * Aggiunge una tratta al multiLegArea.
+     * @param {number} index - indice 0-based
+     */
+    const addMultiLeg = (index) => {
+      const legWrapper = document.createElement('div');
+      legWrapper.className = 'flight-multi-leg-wrapper';
+      legWrapper.dataset.legIndex = String(index);
+
+      const mlHeader = document.createElement('div');
+      mlHeader.className = 'flight-leg-header flight-leg-header--multi';
+      if (index > 0) mlHeader.style.marginTop = '16px';
+      mlHeader.textContent = `Tratta ${index + 1}`;
+
+      if (index >= 1) {
+        // Bottone rimozione (dalla tratta 2 in poi)
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'flight-leg-remove';
+        removeBtn.title = 'Rimuovi tratta';
+        removeBtn.textContent = '×';
+        removeBtn.addEventListener('click', () => {
+          const idx = parseInt(legWrapper.dataset.legIndex, 10);
+          multiLegs.splice(idx, 1);
+          legWrapper.remove();
+          // Rinumera header e dataset
+          multiLegArea.querySelectorAll('.flight-multi-leg-wrapper').forEach((el, i) => {
+            el.dataset.legIndex = String(i);
+            const hdr = el.querySelector('.flight-leg-header');
+            if (hdr) {
+              // Preserva il bottone rimozione se presente
+              const rmBtn = hdr.querySelector('.flight-leg-remove');
+              hdr.textContent = `Tratta ${i + 1}`;
+              if (rmBtn && i >= 1) hdr.appendChild(rmBtn);
+            }
+          });
+          updateSaveBtn(form, saveBtn);
+        });
+        mlHeader.appendChild(removeBtn);
+      }
+
+      const legModule = buildFlightLeg(`mbf-ml-leg${index}`, {});
+      legWrapper.appendChild(mlHeader);
+      legWrapper.appendChild(legModule.container);
+
+      // Inserisci prima del bottone "+ Aggiungi tratta" (se presente)
+      const addLegBtn = multiLegArea.querySelector('.add-leg-btn');
+      if (addLegBtn) {
+        multiLegArea.insertBefore(legWrapper, addLegBtn);
+      } else {
+        multiLegArea.appendChild(legWrapper);
+      }
+
+      multiLegs.push(legModule);
+
+      // Collega required inputs al save btn
+      legModule.getRequiredInputs().forEach(inp => {
+        inp.addEventListener('input', () => updateSaveBtn(form, saveBtn));
+      });
+    };
+
+    // 2 tratte iniziali
+    addMultiLeg(0);
+    addMultiLeg(1);
+
+    // Bottone "+ Aggiungi tratta"
+    const addLegBtn = document.createElement('button');
+    addLegBtn.type = 'button';
+    addLegBtn.className = 'add-leg-btn';
+    addLegBtn.textContent = '+ Aggiungi tratta';
+    addLegBtn.addEventListener('click', () => {
+      if (multiLegs.length >= 6) return;
+      addMultiLeg(multiLegs.length);
+      if (multiLegs.length >= 6) addLegBtn.disabled = true;
+    });
+    multiLegArea.appendChild(addLegBtn);
+    scroll.appendChild(multiLegArea);
+
+    // ---- SEZIONE CONDIVISA: Prenotazione ----
     const { section: sBook, grid: gBook } = buildSection('Prenotazione');
 
     const { wrapper: wPnr, input: iPnr } = buildEditField({
@@ -679,7 +912,7 @@ window.manualBookingForm = (() => {
     gBook.appendChild(wPrice);
     scroll.appendChild(sBook);
 
-    // --- SEZIONE: Note ---
+    // ---- SEZIONE CONDIVISA: Note ----
     const { section: sNote } = buildSection('Note');
     const flightNoteWrapper = document.createElement('div');
     flightNoteWrapper.className = 'edit-booking-field full-width';
@@ -702,41 +935,50 @@ window.manualBookingForm = (() => {
 
     form.appendChild(scroll);
 
-    // Pulsante Salva
+    // ---- PULSANTE SALVA ----
     const saveBtn = document.createElement('button');
     saveBtn.className = 'btn btn-primary';
     saveBtn.id = 'manual-booking-save';
     saveBtn.textContent = 'Salva volo';
     saveBtn.disabled = true;
 
-    // Aggiornamento stato bottone al cambio dei required
-    const requiredInputs = [iFlightNum, iAirline, iDate, iDepTime, iDepCity, iArrCity];
-    requiredInputs.forEach(inp => {
+    // ---- LOGICA PILL SELECTOR ----
+    const switchFlightType = (type) => {
+      currentFlightType = type;
+      // Aggiorna pill attivo
+      Object.values(pillEls).forEach(el => el.classList.remove('flight-type-pill--active'));
+      pillEls[type].classList.add('flight-type-pill--active');
+      // Mostra/nascondi aree
+      oneWayArea.style.display    = type === 'one_way'    ? '' : 'none';
+      roundTripArea.style.display = type === 'round_trip' ? '' : 'none';
+      multiLegArea.style.display  = type === 'multi_leg'  ? '' : 'none';
+      // Aggiorna testo save btn
+      saveBtn.textContent = type === 'one_way' ? 'Salva volo' : 'Salva prenotazione';
+      updateSaveBtn(form, saveBtn);
+    };
+
+    pills.forEach(p => {
+      pillEls[p.value].addEventListener('click', () => switchFlightType(p.value));
+    });
+
+    // ---- REQUIRED INPUTS one_way ----
+    const oneWayRequired = [iFlightNum, iAirline, iDate, iDepTime, iDepCity, iArrCity];
+    oneWayRequired.forEach(inp => {
       inp.addEventListener('input', () => {
         clearFieldError(inp);
         updateSaveBtn(form, saveBtn);
       });
     });
 
-    const getValues = () => {
-      const flightClass = classSelect ? window.CustomSelect.getValue(classSelect) : (form.querySelector('#mbf-class')?.value || '');
+    // ---- REQUIRED INPUTS round_trip ----
+    [...leg1RT.getRequiredInputs(), ...leg2RT.getRequiredInputs()].forEach(inp => {
+      inp.addEventListener('input', () => updateSaveBtn(form, saveBtn));
+    });
 
+    // ---- UTILITY: shared booking fields ----
+    const getSharedBookingValues = () => {
+      const flightClass = classSelect ? window.CustomSelect.getValue(classSelect) : (form.querySelector('#mbf-class')?.value || '');
       return {
-        flightNumber: iFlightNum.value.trim(),
-        airline: iAirline.value.trim(),
-        date: iDate.value,
-        departureTime: iDepTime.value,
-        arrivalTime: iArrTime.value || undefined,
-        departure: {
-          city: iDepCity.value.trim(),
-          code: iDepCode.value.trim().toUpperCase() || undefined,
-          terminal: iDepTerminal.value.trim() || undefined,
-        },
-        arrival: {
-          city: iArrCity.value.trim(),
-          code: iArrCode.value.trim().toUpperCase() || undefined,
-          terminal: iArrTerminal.value.trim() || undefined,
-        },
         class: flightClass || undefined,
         seat: iSeat.value.trim() || undefined,
         baggage: iBaggage.value.trim() || undefined,
@@ -747,23 +989,105 @@ window.manualBookingForm = (() => {
       };
     };
 
+    // ---- getValues ----
+    const getValues = () => {
+      if (currentFlightType === 'one_way') {
+        const flightClass = classSelect ? window.CustomSelect.getValue(classSelect) : (form.querySelector('#mbf-class')?.value || '');
+        return {
+          flightType: 'one_way',
+          flightNumber: iFlightNum.value.trim(),
+          airline: iAirline.value.trim(),
+          date: iDate.value,
+          departureTime: iDepTime.value,
+          arrivalTime: iArrTime.value || undefined,
+          departure: {
+            city: iDepCity.value.trim(),
+            code: iDepCode.value.trim().toUpperCase() || undefined,
+            terminal: iDepTerminal.value.trim() || undefined,
+          },
+          arrival: {
+            city: iArrCity.value.trim(),
+            code: iArrCode.value.trim().toUpperCase() || undefined,
+            terminal: iArrTerminal.value.trim() || undefined,
+          },
+          class: flightClass || undefined,
+          seat: iSeat.value.trim() || undefined,
+          baggage: iBaggage.value.trim() || undefined,
+          bookingReference: iPnr.value.trim() || undefined,
+          price: iPrice.value ? parseFloat(iPrice.value) : undefined,
+          currency: getFlightCurrency(),
+          notes: flightNoteTextarea.value.trim() || undefined,
+        };
+      }
+
+      if (currentFlightType === 'round_trip') {
+        return {
+          flightType: 'round_trip',
+          legs: [leg1RT.getValues(), leg2RT.getValues()],
+          ...getSharedBookingValues(),
+        };
+      }
+
+      // multi_leg
+      return {
+        flightType: 'multi_leg',
+        legs: multiLegs.map(l => l.getValues()),
+        ...getSharedBookingValues(),
+      };
+    };
+
+    // ---- validate ----
     const validate = () => {
       let valid = true;
-      const checks = [
-        { input: iFlightNum, msg: 'Inserisci il codice volo' },
-        { input: iAirline,   msg: 'Inserisci la compagnia aerea' },
-        { input: iDate,      msg: 'Inserisci la data del volo' },
-        { input: iDepTime,   msg: 'Inserisci l\'orario di partenza' },
-        { input: iDepCity,   msg: 'Inserisci la città/aeroporto di partenza' },
-        { input: iArrCity,   msg: 'Inserisci la città/aeroporto di arrivo' },
-      ];
-      checks.forEach(({ input, msg }) => {
-        if (!input.value || input.value.trim() === '') {
-          showFieldError(input, msg);
-          valid = false;
-        } else {
-          clearFieldError(input);
-        }
+
+      if (currentFlightType === 'one_way') {
+        const checks = [
+          { input: iFlightNum, msg: 'Inserisci il codice volo' },
+          { input: iAirline,   msg: 'Inserisci la compagnia aerea' },
+          { input: iDate,      msg: 'Inserisci la data del volo' },
+          { input: iDepTime,   msg: 'Inserisci l\'orario di partenza' },
+          { input: iDepCity,   msg: 'Inserisci la città/aeroporto di partenza' },
+          { input: iArrCity,   msg: 'Inserisci la città/aeroporto di arrivo' },
+        ];
+        checks.forEach(({ input, msg }) => {
+          if (!input.value || input.value.trim() === '') {
+            showFieldError(input, msg);
+            valid = false;
+          } else {
+            clearFieldError(input);
+          }
+        });
+        return valid;
+      }
+
+      if (currentFlightType === 'round_trip') {
+        const legs = [leg1RT, leg2RT];
+        const labels = ['andata', 'ritorno'];
+        legs.forEach((leg, i) => {
+          leg.getRequiredInputs().forEach((inp, j) => {
+            if (!inp.value || inp.value.trim() === '') {
+              const msgs = ['Inserisci la data', 'Inserisci la città di partenza', 'Inserisci la città di arrivo'];
+              showFieldError(inp, `Tratta ${labels[i]}: ${msgs[j]}`);
+              valid = false;
+            } else {
+              clearFieldError(inp);
+            }
+          });
+        });
+        return valid;
+      }
+
+      // multi_leg
+      multiLegs.forEach((leg, i) => {
+        leg.getRequiredInputs().forEach((inp, j) => {
+          if (!inp.value || inp.value.trim() === '') {
+            const msgs = ['Inserisci la data', 'Inserisci la città di partenza', 'Inserisci la città di arrivo'];
+            showFieldError(inp, `Tratta ${i + 1}: ${msgs[j]}`);
+            valid = false;
+          } else {
+            clearFieldError(inp);
+          }
+        });
       });
       return valid;
     };
@@ -2108,13 +2432,34 @@ window.manualBookingForm = (() => {
       try {
         const manualData = getValues();
         const docFile = getFile ? getFile() : null;
-        await saveManualBooking(tripId, type, manualData, docFile, prefillDocStoragePath);
 
-        // Se è un ferry con viaggio di ritorno compilato, salva anche il secondo booking
-        if (typeof getReturnValues === 'function') {
-          const returnData = getReturnValues();
-          if (returnData) {
-            await saveManualBooking(tripId, type, returnData, null, null);
+        // Voli multi-tratta (round_trip / multi_leg): salva ogni leg come voce separata
+        // con groupId comune e legIndex per tracciare l'appartenenza alla stessa prenotazione.
+        if (type === 'flight' && manualData.flightType && manualData.flightType !== 'one_way' && Array.isArray(manualData.legs)) {
+          const groupId = (typeof crypto !== 'undefined' && crypto.randomUUID)
+            ? crypto.randomUUID()
+            : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+          const { legs, flightType, ...sharedFields } = manualData;
+          for (let i = 0; i < legs.length; i++) {
+            const legData = {
+              ...sharedFields,
+              ...legs[i],
+              flightType,
+              groupId,
+              legIndex: i,
+            };
+            await saveManualBooking(tripId, type, legData, i === 0 ? docFile : null, i === 0 ? prefillDocStoragePath : null);
+          }
+        } else {
+          await saveManualBooking(tripId, type, manualData, docFile, prefillDocStoragePath);
+
+          // Se è un ferry con viaggio di ritorno compilato, salva anche il secondo booking
+          if (typeof getReturnValues === 'function') {
+            const returnData = getReturnValues();
+            if (returnData) {
+              await saveManualBooking(tripId, type, returnData, null, null);
+            }
           }
         }
 
