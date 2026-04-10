@@ -111,17 +111,26 @@ const draftsPage = (function() {
 
     const createdAt = formatCreatedAt(trip.created_at, lang);
     const bookingCount = countBookings(trip);
+    const activityCount = trip.data?.activities?.length || 0;
+
     const bookingLabel = bookingCount === 1
       ? (lang === 'it' ? '1 prenotazione' : '1 booking')
       : (lang === 'it' ? `${bookingCount} prenotazioni` : `${bookingCount} bookings`);
+    const activityLabel = activityCount === 1
+      ? (lang === 'it' ? '1 attività' : '1 activity')
+      : (lang === 'it' ? `${activityCount} attività` : `${activityCount} activities`);
+
+    const metaParts = [createdAt];
+    if (bookingCount > 0) metaParts.push(bookingLabel);
+    if (activityCount > 0) metaParts.push(activityLabel);
+    const metaStr = metaParts.join(' · ');
 
     return `
       <div class="draft-list-item" data-draft-id="${esc(trip.id)}">
         <a href="/trip.html?id=${esc(trip.id)}" class="draft-list-item__link" aria-label="${esc(title)}">
           <span class="draft-list-item__title">${esc(title)}</span>
-          <span class="draft-list-item__meta">${createdAt}${bookingCount > 0 ? ' · ' + bookingLabel : ''}</span>
+          <span class="draft-list-item__meta">${metaStr}</span>
         </a>
-        <span class="draft-list-item__badge">${t('draft.badge', 'Bozza')}</span>
         <button
           class="draft-list-item__delete"
           data-draft-id="${esc(trip.id)}"
@@ -170,17 +179,13 @@ const draftsPage = (function() {
     }
 
     const sectionTitle = t('draft.pageTitle', 'In preparazione');
-    const countLabel = drafts.length === 1
-      ? (lang === 'it' ? '1 bozza' : '1 draft')
-      : (lang === 'it' ? `${drafts.length} bozze` : `${drafts.length} drafts`);
 
     const itemsHtml = drafts.map(trip => renderDraftItem(trip, lang)).join('');
 
     container.innerHTML = `
       <section class="home-section">
         <div class="home-section-header">
-          <h2 class="home-section-title">${sectionTitle}</h2>
-          <span class="home-section-count">${countLabel}</span>
+          <h2 class="home-section-title">${sectionTitle} <span class="draft-count-inline">(${drafts.length})</span></h2>
         </div>
         <div class="draft-list" id="drafts-list">
           ${itemsHtml}

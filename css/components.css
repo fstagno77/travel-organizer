@@ -10939,7 +10939,7 @@ body:has(#modal-page-slider.at-activity) .trip-fab {
   background: none;
   border: none;
   cursor: pointer;
-  color: var(--color-text-muted);
+  color: var(--color-error, #ef4444);
   padding: 4px;
   border-radius: 4px;
   display: flex;
@@ -10949,8 +10949,13 @@ body:has(#modal-page-slider.at-activity) .trip-fab {
 }
 
 .draft-list-item__delete:hover {
-  color: var(--color-danger, #e53e3e);
-  background: rgba(229, 62, 62, 0.08);
+  color: #dc2626;
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.draft-count-inline {
+  font-weight: inherit;
+  color: inherit;
 }
 
 .draft-list-item__delete:disabled {
