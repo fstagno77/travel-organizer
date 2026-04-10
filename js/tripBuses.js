@@ -295,7 +295,7 @@
 
   function collectBusUpdates(formView) {
     const updates = {};
-    formView.querySelectorAll('input[data-field]').forEach(input => {
+    formView.querySelectorAll('input[data-field], textarea[data-field]').forEach(input => {
       const field = input.dataset.field;
       const val = input.value.trim();
       if (field.startsWith('departure.')) {
@@ -304,11 +304,227 @@
       } else if (field.startsWith('arrival.')) {
         if (!updates.arrival) updates.arrival = {};
         updates.arrival[field.split('.')[1]] = val;
+      } else if (field.startsWith('price.')) {
+        if (!updates.price) updates.price = {};
+        const sub = field.split('.')[1];
+        const numVal = parseFloat(val);
+        updates.price[sub] = isNaN(numVal) ? val : numVal;
       } else {
         updates[field] = val;
       }
     });
+
+    // Raccolta passeggeri dinamici
+    const passengerRows = formView.querySelectorAll('.bus-passenger-row');
+    if (passengerRows.length > 0) {
+      const passengers = [];
+      passengerRows.forEach(row => {
+        const firstName = row.querySelector('[data-pax-field="firstName"]')?.value?.trim() || '';
+        const lastName = row.querySelector('[data-pax-field="lastName"]')?.value?.trim() || '';
+        const seat = row.querySelector('[data-pax-field="seat"]')?.value?.trim() || '';
+        if (firstName || lastName) {
+          const p = { name: [firstName, lastName].filter(Boolean).join(' ') };
+          if (seat) p.seat = seat;
+          passengers.push(p);
+        }
+      });
+      if (passengers.length > 0) updates.passengers = passengers;
+    }
+
     return updates;
+  }
+
+  /**
+   * Build structured form sections for bus — used by parsePreview and full edit panel.
+   * @param {Object} bus  — existing bus data object (may be partial from parser)
+   * @param {boolean} full — if true, renders all fields including cancellation policy
+   * @returns {string} HTML string
+   */
+  function buildBusFormSections(bus, full) {
+    bus = bus || {};
+
+    // Normalize passengers list
+    let passengers = [];
+    if (Array.isArray(bus.passengers) && bus.passengers.length) {
+      passengers = bus.passengers;
+    } else if (bus.passenger?.name) {
+      passengers = [{ name: bus.passenger.name, seat: bus.seat || '' }];
+    }
+
+    // Build passenger rows HTML
+    const passengerRowsHtml = passengers.map((p, i) => buildBusPassengerRow(p, i)).join('');
+
+    const priceVal = bus.price?.value != null ? bus.price.value : '';
+    const priceCur = bus.price?.currency || 'EUR';
+
+    return `
+      <!-- Sezione 1: Tratta -->
+      <div class="edit-booking-section">
+        <div class="edit-booking-section-title">Tratta</div>
+        <div class="edit-booking-grid">
+          <div class="edit-booking-field">
+            <label>Operatore</label>
+            <input type="text" data-field="operator" value="${escAttr(bus.operator)}" placeholder="es. FlixBus">
+          </div>
+          <div class="edit-booking-field">
+            <label>Linea / Numero corsa</label>
+            <input type="text" data-field="routeNumber" value="${escAttr(bus.routeNumber)}" placeholder="es. 001">
+          </div>
+        </div>
+        <div class="edit-booking-grid" style="margin-top:10px">
+          <div class="edit-booking-field">
+            <label>Città partenza</label>
+            <input type="text" data-field="departure.city" value="${escAttr(bus.departure?.city)}" placeholder="es. Roma">
+          </div>
+          <div class="edit-booking-field">
+            <label>Fermata / Stazione partenza</label>
+            <input type="text" data-field="departure.station" value="${escAttr(bus.departure?.station)}" placeholder="es. Tiburtina">
+          </div>
+          <div class="edit-booking-field">
+            <label>Città arrivo</label>
+            <input type="text" data-field="arrival.city" value="${escAttr(bus.arrival?.city)}" placeholder="es. Napoli">
+          </div>
+          <div class="edit-booking-field">
+            <label>Fermata / Stazione arrivo</label>
+            <input type="text" data-field="arrival.station" value="${escAttr(bus.arrival?.station)}" placeholder="es. Metropark">
+          </div>
+        </div>
+      </div>
+
+      <!-- Sezione 2: Orario -->
+      <div class="edit-booking-section">
+        <div class="edit-booking-section-title">Orario</div>
+        <div class="edit-booking-grid">
+          <div class="edit-booking-field">
+            <label>Data</label>
+            <input type="date" data-field="date" value="${escAttr(bus.date)}" required>
+          </div>
+          <div class="edit-booking-field">
+            <label>Ora partenza</label>
+            <input type="time" data-field="departure.time" value="${escAttr(bus.departure?.time)}">
+          </div>
+          <div class="edit-booking-field">
+            <label>Ora arrivo</label>
+            <input type="time" data-field="arrival.time" value="${escAttr(bus.arrival?.time)}">
+          </div>
+        </div>
+      </div>
+
+      <!-- Sezione 3: Prenotazione -->
+      <div class="edit-booking-section">
+        <div class="edit-booking-section-title">Prenotazione</div>
+        <div class="edit-booking-grid">
+          <div class="edit-booking-field">
+            <label>N. prenotazione / PNR</label>
+            <input type="text" data-field="bookingReference" value="${escAttr(bus.bookingReference)}">
+          </div>
+          <div class="edit-booking-field">
+            <label>Stato</label>
+            <input type="text" data-field="status" value="${escAttr(bus.status)}" placeholder="es. Confermato">
+          </div>
+          ${full ? `
+          <div class="edit-booking-field full-width">
+            <label>Note</label>
+            <textarea data-field="notes" rows="2" placeholder="Aggiungi note...">${escAttr(bus.notes)}</textarea>
+          </div>
+          ` : ''}
+        </div>
+      </div>
+
+      <!-- Sezione 4: Passeggeri -->
+      <div class="edit-booking-section">
+        <div class="edit-booking-section-title" style="display:flex;justify-content:space-between;align-items:center">
+          <span>Passeggeri</span>
+          <button type="button" class="bus-add-passenger-btn" style="font-size:12px;color:var(--primary);background:none;border:none;cursor:pointer;padding:0">+ Aggiungi passeggero</button>
+        </div>
+        <div class="bus-passengers-list">
+          ${passengerRowsHtml || buildBusPassengerRow({ name: '', seat: '' }, 0)}
+        </div>
+      </div>
+
+      <!-- Sezione 5: Prezzo -->
+      <div class="edit-booking-section">
+        <div class="edit-booking-section-title">Prezzo</div>
+        <div class="edit-booking-grid">
+          <div class="edit-booking-field">
+            <label>Totale</label>
+            <input type="number" data-field="price.value" value="${priceVal}" min="0" step="0.01" placeholder="0.00">
+          </div>
+          <div class="edit-booking-field">
+            <label>Valuta</label>
+            <input type="text" data-field="price.currency" value="${escAttr(priceCur)}" placeholder="EUR" maxlength="3" style="text-transform:uppercase">
+          </div>
+          ${full ? `
+          <div class="edit-booking-field full-width">
+            <label>Policy cancellazione</label>
+            <input type="text" data-field="cancellationPolicy" value="${escAttr(bus.cancellationPolicy)}" placeholder="es. Non rimborsabile">
+          </div>
+          ` : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  function buildBusPassengerRow(pax, index) {
+    pax = pax || {};
+    const parts = (pax.name || '').trim().split(/\s+/);
+    const firstName = parts[0] || '';
+    const lastName = parts.slice(1).join(' ') || '';
+    return `
+      <div class="bus-passenger-row edit-booking-grid" style="margin-top:8px;position:relative">
+        <div class="edit-booking-field">
+          <label>Nome</label>
+          <input type="text" data-pax-field="firstName" value="${escAttr(firstName)}" placeholder="Nome">
+        </div>
+        <div class="edit-booking-field">
+          <label>Cognome</label>
+          <input type="text" data-pax-field="lastName" value="${escAttr(lastName)}" placeholder="Cognome">
+        </div>
+        <div class="edit-booking-field">
+          <label>Posto</label>
+          <input type="text" data-pax-field="seat" value="${escAttr(pax.seat || '')}" placeholder="es. 12A">
+        </div>
+        ${index > 0 ? `<button type="button" class="bus-remove-passenger-btn" style="position:absolute;top:0;right:0;background:none;border:none;cursor:pointer;color:var(--text-secondary);font-size:16px;padding:0 4px" title="Rimuovi">×</button>` : ''}
+      </div>
+    `;
+  }
+
+  /**
+   * Collect updates from bus form sections (used by parsePreview _applyEdits).
+   * @param {HTMLElement} formView
+   * @returns {Object}
+   */
+  function collectBusFormUpdates(formView) {
+    return collectBusUpdates(formView);
+  }
+
+  /**
+   * Attach event listeners for dynamic passenger list in bus form.
+   * @param {HTMLElement} formEl
+   */
+  function attachBusFormListeners(formEl) {
+    const addBtn = formEl.querySelector('.bus-add-passenger-btn');
+    const list = formEl.querySelector('.bus-passengers-list');
+    if (!addBtn || !list) return;
+
+    addBtn.addEventListener('click', () => {
+      const rows = list.querySelectorAll('.bus-passenger-row');
+      const newRow = document.createElement('div');
+      newRow.innerHTML = buildBusPassengerRow({}, rows.length);
+      const rowEl = newRow.firstElementChild;
+      list.appendChild(rowEl);
+
+      // Bind remove button
+      const removeBtn = rowEl.querySelector('.bus-remove-passenger-btn');
+      if (removeBtn) {
+        removeBtn.addEventListener('click', () => rowEl.remove());
+      }
+    });
+
+    // Bind existing remove buttons (index > 0)
+    list.querySelectorAll('.bus-remove-passenger-btn').forEach(btn => {
+      btn.addEventListener('click', () => btn.closest('.bus-passenger-row').remove());
+    });
   }
 
   window.tripBuses = {
@@ -317,6 +533,10 @@
     buildEditForm: buildBusEditForm,
     collectUpdates: collectBusUpdates,
     buildFullEditForm: buildBusEditForm,
-    collectFullUpdates: collectBusUpdates
+    collectFullUpdates: collectBusUpdates,
+    // Exposed for parse preview integration (same pattern as tripHotels)
+    buildFormSections: buildBusFormSections,
+    collectFormUpdates: collectBusFormUpdates,
+    attachFormListeners: attachBusFormListeners
   };
 })();

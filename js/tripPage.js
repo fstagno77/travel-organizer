@@ -1370,6 +1370,64 @@
    * @param {string} tripId
    */
   /**
+   * Build parse preview modal header HTML: icon + label based on detected booking types.
+   * @param {Array} results - parsedResults array
+   * @returns {{ iconHtml: string, label: string }}
+   */
+  function _getPreviewHeaderContent(results) {
+    const has = (key) => results.some(pr => pr.result?.[key]?.length);
+    const hasFlights  = has('flights');
+    const hasHotels   = has('hotels');
+    const hasTrains   = has('trains');
+    const hasBuses    = has('buses');
+    const hasFerries  = has('ferries');
+    const hasRentals  = has('rentals');
+
+    // Count distinct types
+    const types = [hasFlights, hasHotels, hasTrains, hasBuses, hasFerries, hasRentals].filter(Boolean).length;
+    const mixed = types > 1;
+
+    let label = 'Aggiungi prenotazione';
+    let iconHtml = '';
+
+    const ICONS = {
+      flight:  `<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5Z"/></svg>`,
+      hotel:   `<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 13c1.66 0 3-1.34 3-3S8.66 7 7 7s-3 1.34-3 3 1.34 3 3 3zm12-6h-8v7H3V5H1v15h2v-3h18v3h2v-9c0-2.21-1.79-4-4-4z"/></svg>`,
+      train:   `<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c-4 0-8 .5-8 4v9.5C4 17.43 5.57 19 7.5 19L6 20.5v.5h12v-.5L16.5 19c1.93 0 3.5-1.57 3.5-3.5V6c0-3.5-3.58-4-8-4zM7.5 17c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm3.5-7H6V6h5v4zm5.5 7c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM18 10h-5V6h5v4z"/></svg>`,
+      bus:     `<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4 16c0 .88.39 1.67 1 2.22V20c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h8v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10m3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17m9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5M18 11H6V6h12v5Z"/></svg>`,
+      ferry:   `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 21c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2s2.5 2 5 2c1.3 0 1.9-.5 2.5-1"/><path d="M19.38 20A11.6 11.6 0 0 0 21 14l-9-4-9 4c0 2.9.94 5.34 2.81 7.76"/><path d="M19 13V7a1 1 0 0 0-1-1H6a1 1 0 0 0-1 1v6"/><path d="M12 10v4"/><path d="M12 3v4"/></svg>`,
+      rental:  `<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>`,
+    };
+
+    if (mixed) {
+      label = 'Aggiungi prenotazione';
+      iconHtml = ''; // nessuna icona per mix di tipi
+    } else if (hasFlights)  { label = 'Volo';     iconHtml = ICONS.flight;  }
+    else if (hasHotels)     { label = 'Hotel';    iconHtml = ICONS.hotel;   }
+    else if (hasTrains)     { label = 'Treno';    iconHtml = ICONS.train;   }
+    else if (hasBuses)      { label = 'Bus';      iconHtml = ICONS.bus;     }
+    else if (hasFerries)    { label = 'Traghetto'; iconHtml = ICONS.ferry;  }
+    else if (hasRentals)    { label = 'Noleggio'; iconHtml = ICONS.rental;  }
+
+    return { iconHtml, label };
+  }
+
+  /**
+   * Apply parse preview header: icon + label into modal header h2.
+   * @param {HTMLElement} headerEl - the h2 element
+   * @param {Array} results - parsedResults array
+   */
+  function _applyPreviewHeader(headerEl, results) {
+    if (!headerEl) return;
+    const { iconHtml, label } = _getPreviewHeaderContent(results);
+    if (iconHtml) {
+      headerEl.innerHTML = `<span class="modal-header-icon" style="display:inline-flex;align-items:center;margin-right:8px;vertical-align:middle;color:var(--text-primary)">${iconHtml}</span>${label}`;
+    } else {
+      headerEl.textContent = label;
+    }
+  }
+
+  /**
    * Show modal to add booking
    * @param {string} tripId
    * @param {string} [type] - 'flight' or 'hotel' to customize title
@@ -1512,9 +1570,21 @@
         const pdfs = await pdfUpload.uploadFiles(files);
         _uploadedPdfs = pdfs;
 
+        const parsePdfPayload = { pdfs };
+        // Se l'utente ha selezionato una card tipo prima dell'upload, passa l'hint al parser
+        if (_selectedBookingType) {
+          // Mappa tipo card → docType smartParser
+          const TYPE_TO_DOC = {
+            flight: 'flight', hotel: 'hotel', train: 'train',
+            bus: 'bus', ferry: 'ferry', rental: 'car_rental'
+          };
+          const hint = TYPE_TO_DOC[_selectedBookingType];
+          if (hint) parsePdfPayload.bookingTypeHint = hint;
+        }
+
         const response = await utils.authFetch('/.netlify/functions/parse-pdf', {
           method: 'POST',
-          body: JSON.stringify({ pdfs })
+          body: JSON.stringify(parsePdfPayload)
         });
 
         let result;
@@ -1594,15 +1664,7 @@
           }, currentTripData);
         } else {
           // ── Nessun aggiornamento: preview normale ──
-          if (modalHeader) {
-            const hasFlights = _parsedResults.some(pr => pr.result?.flights?.length);
-            const hasHotels = _parsedResults.some(pr => pr.result?.hotels?.length);
-            let previewTitle = 'Aggiungi prenotazione';
-            if (hasFlights && hasHotels) previewTitle = 'Voli e Hotel';
-            else if (hasFlights) previewTitle = 'Voli';
-            else if (hasHotels) previewTitle = 'Hotel';
-            modalHeader.textContent = previewTitle;
-          }
+          _applyPreviewHeader(modalHeader, _parsedResults);
 
           window.parsePreview.render(modalBody, _parsedResults, {
             onConfirm: async (feedback, updatedResults, editedFields) => {
@@ -4638,14 +4700,7 @@
         }, currentTripData);
       } else {
         // ── Nessun aggiornamento: preview normale ──
-        if (modalHeader) {
-          const hasFlights = parsedResults.some(pr => pr.result?.flights?.length);
-          const hasHotels = parsedResults.some(pr => pr.result?.hotels?.length);
-          let title = i18n.t('trip.addBookingTitle') || 'Aggiungi prenotazione';
-          if (hasFlights && !hasHotels) title = i18n.t('trip.addFlightTitle') || 'Aggiungi Voli';
-          else if (hasHotels && !hasFlights) title = i18n.t('trip.addHotelTitle') || 'Aggiungi Hotel';
-          modalHeader.textContent = title;
-        }
+        _applyPreviewHeader(modalHeader, parsedResults);
 
         window.parsePreview.render(modalBody, parsedResults, {
           onConfirm: async (feedback, updatedResults, editedFields) => {

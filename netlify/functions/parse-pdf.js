@@ -21,10 +21,18 @@ exports.handler = async (event, context) => {
   if (!authResult) return unauthorizedResponse();
 
   try {
-    const { pdfs } = JSON.parse(event.body);
+    const { pdfs, bookingTypeHint } = JSON.parse(event.body);
 
     if (!pdfs || pdfs.length === 0) {
       return { statusCode: 400, headers, body: JSON.stringify({ success: false, error: 'No PDF files provided' }) };
+    }
+
+    // bookingTypeHint: se presente, usarlo come docType invece di 'auto'
+    // Valori validi: 'flight', 'hotel', 'train', 'bus', 'car_rental', 'ferry'
+    const VALID_HINTS = ['flight', 'hotel', 'train', 'bus', 'car_rental', 'ferry'];
+    const docTypeHint = VALID_HINTS.includes(bookingTypeHint) ? bookingTypeHint : 'auto';
+    if (bookingTypeHint && docTypeHint !== 'auto') {
+      console.log(`[parse-pdf] bookingTypeHint received: ${bookingTypeHint} → docType: ${docTypeHint}`);
     }
 
     const parsedResults = [];
@@ -45,8 +53,8 @@ exports.handler = async (event, context) => {
           continue;
         }
 
-        // Call SmartParse
-        const sp = await parseDocumentSmart(base64, 'auto');
+        // Call SmartParse — usa docTypeHint se disponibile, altrimenti auto-detect
+        const sp = await parseDocumentSmart(base64, docTypeHint);
 
         // Enrich: passenger from filename fallback
         if (sp.result?.flights) {

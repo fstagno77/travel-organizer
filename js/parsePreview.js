@@ -259,40 +259,14 @@ const parsePreview = {
 
     allBuses.forEach((b, i) => {
       const segIdx = allFlights.length + allHotels.length + allTrains.length + i;
-      const depStation = b.departure?.station || b.departure?.city || '?';
-      const arrStation = b.arrival?.station || b.arrival?.city || '?';
-      const depTime = b.departure?.time || '';
-      const arrTime = b.arrival?.time || '';
+      // Use the new structured form sections (same as manual booking and edit panel)
+      const formSectionsHtml = (window.tripBuses && window.tripBuses.buildFormSections)
+        ? window.tripBuses.buildFormSections(b, true)
+        : ''; // fallback: empty — tripBuses must be loaded first
 
       html += `<div class="parse-panel${segIdx === 0 ? ' active' : ''}" data-panel="${segIdx}">`;
-      html += `<div class="parse-bus-card" data-type="bus" data-index="${i}">`;
-      html += `<div class="parse-transport-route">
-        <div class="parse-transport-endpoint">
-          <span class="parse-transport-station">${this._esc(depStation)}</span>
-          ${depTime ? `<span class="parse-transport-time">${this._esc(depTime)}</span>` : ''}
-        </div>
-        <div class="parse-transport-arrow">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-        </div>
-        <div class="parse-transport-endpoint">
-          <span class="parse-transport-station">${this._esc(arrStation)}</span>
-          ${arrTime ? `<span class="parse-transport-time">${this._esc(arrTime)}</span>` : ''}
-        </div>
-      </div>`;
-
-      html += `<div class="parse-detail-grid">`;
-      html += this._field('Operatore', b.operator, 'operator');
-      html += this._field('Linea', b.routeNumber, 'routeNumber');
-      html += this._field('Data', this._fmtDate(b.date), 'date', 'date', b.date);
-      html += this._field('Passeggero', typeof b.passenger === 'object' ? b.passenger?.name : (b.passenger || null), 'passenger.name');
-      html += this._field('PNR', b.bookingReference, 'bookingReference');
-      html += this._field('Posto', b.seat, 'seat');
-      html += this._field('Prezzo', this._resolvePrice(b.price), 'price');
-      html += `</div>`;
-      // Add-field trigger (visible only in edit mode)
-      html += `<div class="parse-add-field-section" data-card-type="bus" data-card-index="${i}" style="display:none">`;
-      html += `<button type="button" class="parse-add-field-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Aggiungi campo</button>`;
-      html += `</div>`;
+      html += `<div class="parse-bus-card parse-bus-card--form" data-type="bus" data-index="${i}">`;
+      html += `<div class="edit-booking-form parse-bus-form-sections">${formSectionsHtml}</div>`;
       html += `</div>`;
       html += `</div>`;
     });
@@ -493,6 +467,13 @@ const parsePreview = {
     if (window.tripHotels && window.tripHotels.attachFormListeners) {
       container.querySelectorAll('.parse-hotel-card--form').forEach(card => {
         window.tripHotels.attachFormListeners(card);
+      });
+    }
+
+    // ── Bus form sections: attach dynamic listeners (passengers add/remove) ──
+    if (window.tripBuses && window.tripBuses.attachFormListeners) {
+      container.querySelectorAll('.parse-bus-card--form').forEach(card => {
+        window.tripBuses.attachFormListeners(card);
       });
     }
 
@@ -1032,7 +1013,20 @@ const parsePreview = {
       if (pr.result.buses) {
         for (const bus of pr.result.buses) {
           const card = container.querySelector(`.parse-bus-card[data-index="${busIdx}"]`);
-          if (card) this._applyCardEdits(card, bus, `bus[${busIdx}]`);
+          if (card) {
+            // Use the unified collector from tripBuses (form sections)
+            if (window.tripBuses && window.tripBuses.collectFormUpdates) {
+              const updates = window.tripBuses.collectFormUpdates(card);
+              Object.assign(bus, updates);
+              // Track edited fields
+              Object.keys(updates).forEach(key => {
+                this._editedFields.push(`bus[${busIdx}].${key}`);
+              });
+            } else {
+              // Fallback: legacy flat collector
+              this._applyCardEdits(card, bus, `bus[${busIdx}]`);
+            }
+          }
           busIdx++;
         }
       }
