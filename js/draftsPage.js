@@ -198,35 +198,53 @@ const draftsPage = (function() {
   }
 
   /**
-   * Bind eventi su ogni riga (link click + delete)
+   * Attacca il listener di eliminazione (con conferma inline) a un singolo bottone cestino.
+   * Estratto come funzione separata per poter essere richiamato dopo il ripristino della riga.
+   *
+   * @param {HTMLElement} btn        - Il bottone `.draft-list-item__delete`
+   * @param {string}      tripId     - ID della bozza
+   * @param {HTMLElement} container  - Container radice della pagina bozze
+   * @param {Array}       drafts     - Array corrente delle bozze
+   * @param {string}      lang       - Lingua attiva ('it' | 'en')
+   * @param {Function}    t          - Helper traduzione
    */
-  function bindDraftEvents(container, drafts, lang) {
-    const t = (k, fb) => (window.i18n?.t(k)) || fb;
+  function bindDeleteButton(btn, tripId, container, drafts, lang, t) {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const row = container.querySelector(`.draft-list-item[data-draft-id="${tripId}"]`);
+      if (!row || row.classList.contains('is-confirming')) return;
 
-    // Link navigazione — ogni riga è cliccabile (click su area non-button)
-    container.querySelectorAll('.draft-list-item__link').forEach(link => {
-      link.addEventListener('click', (e) => {
-        // Navigazione standard href
+      // Salva il contenuto originale per poterlo ripristinare
+      const originalContent = row.innerHTML;
+
+      // Mostra pannello di conferma inline
+      row.classList.add('is-confirming');
+      row.innerHTML = `
+        <div class="draft-delete-confirm">
+          <span>${t('draft.deleteConfirm', 'Eliminare questa bozza?')}</span>
+          <button class="draft-delete-confirm__yes">Elimina</button>
+          <button class="draft-delete-confirm__no">Annulla</button>
+        </div>
+      `;
+
+      // Annulla — ripristina riga originale e riattacca listener
+      row.querySelector('.draft-delete-confirm__no').addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        row.classList.remove('is-confirming');
+        row.innerHTML = originalContent;
+        const newBtn = row.querySelector('.draft-list-item__delete');
+        if (newBtn) bindDeleteButton(newBtn, tripId, container, drafts, lang, t);
       });
-    });
 
-    // Bottoni elimina
-    container.querySelectorAll('.draft-list-item__delete').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        const tripId = btn.dataset.draftId;
-        const title = btn.dataset.draftTitle;
-        const confirmMsg = t('draft.deleteConfirm', 'Eliminare questa bozza?');
-
-        if (!window.confirm(`${confirmMsg}\n"${title}"`)) return;
-
-        btn.disabled = true;
+      // Conferma — procede con la cancellazione
+      row.querySelector('.draft-delete-confirm__yes').addEventListener('click', async (ev) => {
+        ev.stopPropagation();
+        const yesBtn = row.querySelector('.draft-delete-confirm__yes');
+        if (yesBtn) yesBtn.disabled = true;
 
         const ok = await deleteDraft(tripId);
         if (ok) {
-          // Rimuovi riga dal DOM
-          const row = container.querySelector(`.draft-list-item[data-draft-id="${tripId}"]`);
-          if (row) row.remove();
+          row.remove();
 
           // Se non ci sono più bozze, ri-render empty state
           const remaining = container.querySelectorAll('.draft-list-item');
@@ -244,12 +262,37 @@ const draftsPage = (function() {
             window.utils.showToast(lang === 'it' ? 'Bozza eliminata' : 'Draft deleted', 'success');
           }
         } else {
-          btn.disabled = false;
+          // Ripristina riga in caso di errore e riattacca listener
+          row.classList.remove('is-confirming');
+          row.innerHTML = originalContent;
+          const newBtn = row.querySelector('.draft-list-item__delete');
+          if (newBtn) bindDeleteButton(newBtn, tripId, container, drafts, lang, t);
+
           if (window.utils?.showToast) {
             window.utils.showToast(window.i18n?.t('common.error') || 'Errore', 'error');
           }
         }
       });
+    });
+  }
+
+  /**
+   * Bind eventi su ogni riga (link click + delete)
+   */
+  function bindDraftEvents(container, drafts, lang) {
+    const t = (k, fb) => (window.i18n?.t(k)) || fb;
+
+    // Link navigazione — ogni riga è cliccabile (click su area non-button)
+    container.querySelectorAll('.draft-list-item__link').forEach(link => {
+      link.addEventListener('click', (e) => {
+        // Navigazione standard href
+      });
+    });
+
+    // Bottoni elimina — conferma inline (niente window.confirm)
+    container.querySelectorAll('.draft-list-item__delete').forEach(btn => {
+      const tripId = btn.dataset.draftId;
+      bindDeleteButton(btn, tripId, container, drafts, lang, t);
     });
   }
 
