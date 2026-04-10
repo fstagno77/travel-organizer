@@ -10,6 +10,7 @@
 ### Miglioramenti
 - Pill selector tipo volo con icone freccia direzionale (→ per solo andata, ⇄ per A/R, →→ per multitratta)
 - Header modale si aggiorna dinamicamente al cambio di tipo prenotazione e si ripristina tornando indietro
+- Creazione bozza: il link "Crea senza date" è sostituito da un toggle "Salva come bozza" integrato nel form — si attiva automaticamente aprendo il modal dalla pagina "In preparazione"
 
 ## 0.38.1 - 2026-04-03
 
