@@ -715,7 +715,7 @@ async function revokePendingInvitation(sc, { invitationId, type }, adminId) {
 // ============================================
 
 async function listTrips(sc, { search, userId: filterUserId, status, page = 1, pageSize = 20 }) {
-  let query = sc.from('trips').select('id, data, created_at, updated_at, user_id, deleted_at', { count: 'exact' });
+  let query = sc.from('trips').select('id, data, status, created_at, updated_at, user_id, deleted_at', { count: 'exact' });
 
   if (filterUserId) {
     query = query.eq('user_id', filterUserId);
@@ -726,6 +726,11 @@ async function listTrips(sc, { search, userId: filterUserId, status, page = 1, p
     query = query.not('deleted_at', 'is', null);
   } else {
     query = query.is('deleted_at', null);
+  }
+
+  // Filtro per bozze: solo status='draft'
+  if (status === 'draft') {
+    query = query.eq('status', 'draft');
   }
 
   query = query.order('created_at', { ascending: false });
@@ -757,12 +762,13 @@ async function listTrips(sc, { search, userId: filterUserId, status, page = 1, p
       activityCount: (d.activities || []).length,
       username: profileMap[t.user_id] || '-',
       userId: t.user_id,
+      status: t.status || null,
       created_at: t.created_at,
       deleted_at: t.deleted_at || null
     };
   });
 
-  // Filter by status (past/current/future) in memory — 'deleted' è già filtrato in DB
+  // Filter by status (past/current/future) in memory — 'deleted' e 'draft' sono già filtrati in DB
   if (status === 'past') {
     result = result.filter(t => t.endDate && t.endDate < now);
   } else if (status === 'current') {

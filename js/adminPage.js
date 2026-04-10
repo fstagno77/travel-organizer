@@ -700,6 +700,7 @@ const adminPage = {
             <option value="future" ${statusFilter === 'future' ? 'selected' : ''}>Futuri</option>
             <option value="current" ${statusFilter === 'current' ? 'selected' : ''}>In corso</option>
             <option value="past" ${statusFilter === 'past' ? 'selected' : ''}>Passati</option>
+            <option value="draft" ${statusFilter === 'draft' ? 'selected' : ''}>Bozze</option>
             <option value="deleted" ${statusFilter === 'deleted' ? 'selected' : ''}>Eliminati</option>
           </select>
           ${this.pageSizeSelector(pageSize)}
@@ -711,8 +712,8 @@ const adminPage = {
             </thead>
             <tbody>
               ${data.trips.length ? data.trips.map(t => `
-                <tr class="admin-row-clickable trip-row${t.deleted_at ? ' trip-row-deleted' : ''}" data-trip-id="${t.id}" style="cursor:pointer${t.deleted_at ? ';opacity:0.6' : ''}" title="Clicca per dettagli">
-                  <td><strong style="${t.deleted_at ? 'text-decoration:line-through' : ''}">${this.esc(t.title)}</strong>${t.deleted_at ? ` <span style="font-size:11px;color:var(--color-danger);font-weight:500">eliminato ${this.fmtDate(t.deleted_at)}</span>` : ''}</td>
+                <tr class="admin-row-clickable trip-row${t.deleted_at ? ' trip-row-deleted' : ''}${t.status === 'draft' ? ' trip-row-draft' : ''}" data-trip-id="${t.id}" style="cursor:pointer${t.deleted_at ? ';opacity:0.6' : ''}" title="Clicca per dettagli">
+                  <td><strong style="${t.deleted_at ? 'text-decoration:line-through' : ''}">${this.esc(t.title)}</strong>${t.status === 'draft' && !t.deleted_at ? ` <span style="display:inline-block;margin-left:6px;padding:1px 7px;border-radius:4px;font-size:11px;font-weight:600;background:var(--color-warning, #f59e0b);color:#fff">Bozza</span>` : ''}${t.deleted_at ? ` <span style="font-size:11px;color:var(--color-danger);font-weight:500">eliminato ${this.fmtDate(t.deleted_at)}</span>` : ''}</td>
                   <td>${this.esc(t.username)}</td>
                   <td>${this.esc(t.destination)}</td>
                   <td style="white-space:nowrap;font-size:12px">${this.fmtDate(t.created_at)}</td>
