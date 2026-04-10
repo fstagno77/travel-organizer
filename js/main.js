@@ -73,6 +73,10 @@
     if (path.includes('help.html') && !path.includes('help-detail') && typeof helpPage !== 'undefined') {
       helpPage.init();
     }
+
+    if (path.includes('drafts.html') && typeof draftsPage !== 'undefined') {
+      draftsPage.init();
+    }
   }
 
   // Listen for language changes to re-render dynamic content
