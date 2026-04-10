@@ -2052,15 +2052,7 @@
           grid.querySelectorAll('.booking-type-card').forEach(c => c.classList.remove('booking-type-card--selected'));
           card.classList.add('booking-type-card--selected');
           _selectedBookingType = bookingType;
-          // Se era stato selezionato un PDF, resetta la selezione PDF (si usa la card manuale)
-          files = [];
-          const zone = document.getElementById('add-booking-upload-zone');
-          if (zone) {
-            const hintEl = zone.querySelector('.upload-zone-text');
-            if (hintEl) hintEl.setAttribute('data-i18n', 'trip.addBookingUploadHint');
-            if (hintEl && window.i18n) hintEl.textContent = i18n.t('trip.addBookingUploadHint') || 'Drag your booking PDF here';
-            zone.classList.remove('has-file');
-          }
+          // La selezione della card tipo è complementare al PDF — non resetta il file caricato.
           // Abilita bottone Continua
           const continueBtn = document.getElementById('add-booking-continue');
           if (continueBtn) continueBtn.disabled = false;

@@ -10724,6 +10724,12 @@ body:has(#modal-page-slider.at-activity) .trip-fab {
   box-shadow: var(--shadow-sm);
 }
 
+.booking-type-card--selected {
+  border-color: var(--booking-card-color, var(--color-primary));
+  background: var(--booking-card-hover-bg, var(--color-primary-light));
+  box-shadow: var(--shadow-sm);
+}
+
 .booking-type-card__icon {
   width: 36px;
   height: 36px;
