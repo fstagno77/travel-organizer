@@ -10863,7 +10863,7 @@ body:has(#modal-page-slider.at-activity) .trip-fab {
 
 /* Badge conteggio bozze in sidebar */
 .sidebar-draft-badge {
-  display: inline-flex;
+  display: none;
   align-items: center;
   justify-content: center;
   min-width: 18px;
