@@ -166,7 +166,7 @@
     "nameRequired": "Trip name is required",
     "startDateRequired": "Start date is required",
     "endDateRequired": "End date is required",
-    "manualCities": "Cities (optional)",
+    "manualCities": "Cities",
     "citySearchPlaceholder": "Search a city...",
     "orUploadPdf": "or add a booking document",
     "endDateError": "End date must be after start date",

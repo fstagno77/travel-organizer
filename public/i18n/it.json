@@ -166,7 +166,7 @@
     "nameRequired": "Il nome del viaggio è obbligatorio",
     "startDateRequired": "La data di inizio è obbligatoria",
     "endDateRequired": "La data di fine è obbligatoria",
-    "manualCities": "Città (opzionale)",
+    "manualCities": "Città",
     "citySearchPlaceholder": "Cerca una città...",
     "orUploadPdf": "oppure aggiungi un documento di prenotazione",
     "endDateError": "La data di fine deve essere dopo la data di inizio",
