@@ -115,6 +115,8 @@
       console.error('OTP send error:', error);
       otpSendBtn.disabled = false;
       otpSendBtn.querySelector('span').textContent = i18n.t('auth.sendCode') || 'Invia codice';
+      otpError.textContent = error?.message || 'Errore nell\'invio del codice. Riprova.';
+      otpError.style.display = 'block';
     }
   });
 
