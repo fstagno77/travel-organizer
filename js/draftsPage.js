@@ -23,13 +23,14 @@ const draftsPage = (function() {
    * @returns {number}
    */
   function countBookings(trip) {
+    const d = trip.data || {};
     return (
-      (trip.flights?.length || 0) +
-      (trip.hotels?.length || 0) +
-      (trip.trains?.length || 0) +
-      (trip.buses?.length || 0) +
-      (trip.ferries?.length || 0) +
-      (trip.rentals?.length || 0)
+      (d.flights?.length || 0) +
+      (d.hotels?.length || 0) +
+      (d.trains?.length || 0) +
+      (d.buses?.length || 0) +
+      (d.ferries?.length || 0) +
+      (d.rentals?.length || 0)
     );
   }
 
@@ -103,7 +104,7 @@ const draftsPage = (function() {
     const t = (k, fb) => (window.i18n?.t(k)) || fb;
     const esc = (v) => (window.utils?.escapeHtml(v)) || String(v || '');
 
-    const title = (trip.title && (trip.title[lang] || trip.title.it || trip.title.en))
+    const title = (trip.data?.title && (trip.data.title[lang] || trip.data.title.it || trip.data.title.en))
       || (lang === 'it' ? 'Nuovo viaggio' : 'New trip');
 
     const createdAt = formatCreatedAt(trip.created_at, lang);
