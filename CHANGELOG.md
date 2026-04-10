@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.39.0 - 2026-04-10
+
+### Novità
+- **Viaggi in preparazione (bozze)**: è ora possibile creare un viaggio senza date né destinazione — un contenitore da riempire in un secondo momento. Le bozze hanno una sezione dedicata "In preparazione" nella sidebar, con badge conteggio sempre visibile. Dalla pagina del viaggio bozza, la CTA "Completa viaggio" permette di aggiungere destinazione e date e convertire la bozza in viaggio attivo
+- **Tipi di volo**: nel form di creazione volo manuale è ora possibile scegliere tra Solo andata, Andata e ritorno e Multitratta. A/R mostra due sezioni distinte (andata in blu, ritorno in verde); Multitratta supporta fino a 6 tratte con aggiunta e rimozione dinamica
+- **Icone colorate nelle modali prenotazione**: il titolo della modale di creazione mostra l'icona del tipo di prenotazione (volo, hotel, treno, bus, traghetto, noleggio) con il colore specifico del tipo — sia nel flusso manuale che tramite SmartParse
+
+### Miglioramenti
+- Pill selector tipo volo con icone freccia direzionale (→ per solo andata, ⇄ per A/R, →→ per multitratta)
+- Header modale si aggiorna dinamicamente al cambio di tipo prenotazione e si ripristina tornando indietro
+
 ## 0.38.1 - 2026-04-03
 
 ### Fix
