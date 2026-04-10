@@ -452,6 +452,7 @@
   // ─── CustomSelect upgrade helpers ────────────────────────────────────────────
 
   function upgradeHotelCustomSelects(container) {
+    if (!window.CustomSelect || typeof window.CustomSelect.create !== 'function') return;
     container.querySelectorAll('[data-cs-room-type]').forEach(ph => {
       const cs = window.CustomSelect.create({
         options: ROOM_TYPE_OPTIONS,
@@ -931,6 +932,9 @@
     collectUpdates: collectHotelUpdates,
     buildFullEditForm: buildFullHotelEditForm,
     collectFullUpdates: collectFullHotelUpdates,
-    attachFormListeners: attachHotelFormListeners
+    attachFormListeners: attachHotelFormListeners,
+    // Exposed for parse preview integration
+    buildFormSections: buildHotelFormSections,
+    collectFormUpdates: collectHotelFormUpdates
   };
 })();

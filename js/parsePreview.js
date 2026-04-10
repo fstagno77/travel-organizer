@@ -202,39 +202,14 @@ const parsePreview = {
 
     allHotels.forEach((h, i) => {
       const segIdx = allFlights.length + i;
-      const name = h.name || 'Hotel';
-      const checkIn = this._resolveDate(h.checkIn);
-      const checkOut = this._resolveDate(h.checkOut);
-      const address = this._resolveAddress(h.address);
-      const price = this._resolvePrice(h.price);
-      const roomType = this._resolveRoomType(h.roomTypes || h.roomType);
-      const guests = this._resolveGuests(h.guests);
-      const breakfast = this._resolveBreakfast(h.breakfast);
-      const cancellation = this._resolveCancellation(h.cancellation);
+      // Use the new structured form sections (same as manual booking and edit panel)
+      const formSectionsHtml = (window.tripHotels && window.tripHotels.buildFormSections)
+        ? window.tripHotels.buildFormSections(h, true)
+        : ''; // fallback: empty — tripHotels must be loaded first
 
       html += `<div class="parse-panel${segIdx === 0 ? ' active' : ''}" data-panel="${segIdx}">`;
-      html += `<div class="parse-hotel-card" data-type="hotel" data-index="${i}">`;
-      html += `<div class="parse-hotel-name">${this._esc(name)}</div>`;
-      if (address) html += `<div class="parse-hotel-address">${this._esc(address)}</div>`;
-
-      html += `<div class="parse-detail-grid">`;
-      html += this._field('Check-in', this._fmtDate(checkIn), 'checkIn', 'date', checkIn);
-      html += this._field('Check-out', this._fmtDate(checkOut), 'checkOut', 'date', checkOut);
-      html += this._field('Notti', h.nights, 'nights', 'number');
-      html += this._field('Camera', roomType, 'roomType');
-      html += this._field('Ospiti', guests, 'guests');
-      html += this._field('Nome ospite', h.guestName, 'guestName');
-      html += this._field('Prezzo', price, 'price');
-      html += this._field('Conferma', h.confirmationNumber, 'confirmationNumber');
-      html += this._field('Colazione', breakfast, 'breakfast');
-      html += this._field('Cancellazione', cancellation, 'cancellation');
-      html += this._field('Fonte', h.source, 'source');
-      html += `</div>`;
-      // Add-field trigger (visible only in edit mode)
-      html += `<div class="parse-add-field-section" data-card-type="hotel" data-card-index="${i}" style="display:none">`;
-      html += `<button type="button" class="parse-add-field-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Aggiungi campo</button>`;
-      html += `</div>`;
-
+      html += `<div class="parse-hotel-card parse-hotel-card--form" data-type="hotel" data-index="${i}">`;
+      html += `<div class="edit-booking-form parse-hotel-form-sections">${formSectionsHtml}</div>`;
       html += `</div>`;
       html += `</div>`;
     });
@@ -514,6 +489,13 @@ const parsePreview = {
 
     container.innerHTML = html;
 
+    // ── Hotel form sections: attach dynamic listeners (rooms/guests add/remove) ──
+    if (window.tripHotels && window.tripHotels.attachFormListeners) {
+      container.querySelectorAll('.parse-hotel-card--form').forEach(card => {
+        window.tripHotels.attachFormListeners(card);
+      });
+    }
+
     // ── Event listeners ──
     container.querySelector('.parse-confirm-btn').addEventListener('click', () => {
       if (this._editing) {
@@ -597,28 +579,6 @@ const parsePreview = {
         }
         el.replaceWith(input);
       });
-      // Make hotel name editable
-      container.querySelectorAll('.parse-hotel-name').forEach(el => {
-        const currentText = el.textContent;
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.className = 'parse-field-input parse-hotel-name-input';
-        input.value = currentText;
-        input.dataset.field = 'name';
-        input.dataset.original = currentText;
-        el.replaceWith(input);
-      });
-      // Make hotel address editable
-      container.querySelectorAll('.parse-hotel-address').forEach(el => {
-        const currentText = el.textContent;
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.className = 'parse-field-input parse-hotel-address-input';
-        input.value = currentText;
-        input.dataset.field = 'address';
-        input.dataset.original = currentText;
-        el.replaceWith(input);
-      });
       // Attach city autocomplete to ferry city fields
       if (window.CityAutocomplete) {
         container.querySelectorAll('.parse-ferry-card').forEach(card => {
@@ -639,35 +599,27 @@ const parsePreview = {
       editBtn.textContent = 'Modifica';
       preview.classList.remove('parse-editing');
       // Convert inputs back to display elements (skip added-field inputs — they stay as field-value)
+      // Also skip inputs inside hotel form sections (parse-hotel-card--form) — they are always form inputs
       container.querySelectorAll('.parse-field-input').forEach(input => {
+        // Skip inputs that live inside the new hotel form sections
+        if (input.closest('.parse-hotel-card--form')) return;
+
         const fieldKey = input.dataset.field || '';
-        if (input.classList.contains('parse-hotel-name-input')) {
-          const div = document.createElement('div');
-          div.className = 'parse-hotel-name';
+        const div = document.createElement('div');
+        div.className = 'parse-field-value';
+        div.dataset.field = fieldKey;
+        // Format date values back to readable display
+        if (input.type === 'date' && input.value) {
+          div.textContent = this._fmtDate(input.value) || input.value;
+          div.dataset.inputType = 'date';
+          div.dataset.raw = input.value;
+        } else if (input.type === 'number') {
           div.textContent = input.value;
-          input.replaceWith(div);
-        } else if (input.classList.contains('parse-hotel-address-input')) {
-          const div = document.createElement('div');
-          div.className = 'parse-hotel-address';
-          div.textContent = input.value;
-          input.replaceWith(div);
+          div.dataset.inputType = 'number';
         } else {
-          const div = document.createElement('div');
-          div.className = 'parse-field-value';
-          div.dataset.field = fieldKey;
-          // Format date values back to readable display
-          if (input.type === 'date' && input.value) {
-            div.textContent = this._fmtDate(input.value) || input.value;
-            div.dataset.inputType = 'date';
-            div.dataset.raw = input.value;
-          } else if (input.type === 'number') {
-            div.textContent = input.value;
-            div.dataset.inputType = 'number';
-          } else {
-            div.textContent = input.value;
-          }
-          input.replaceWith(div);
+          div.textContent = input.value;
         }
+        input.replaceWith(div);
       });
     }
   },
@@ -1052,20 +1004,18 @@ const parsePreview = {
         for (const hotel of pr.result.hotels) {
           const card = container.querySelector(`.parse-hotel-card[data-index="${hotelIdx}"]`);
           if (card) {
-            // Hotel name
-            const nameInput = card.querySelector('.parse-hotel-name-input');
-            if (nameInput && nameInput.value !== nameInput.dataset.original) {
-              hotel.name = nameInput.value;
-              this._editedFields.push(`hotel[${hotelIdx}].name`);
+            // Use the unified collector from tripHotels (form sections)
+            if (window.tripHotels && window.tripHotels.collectFormUpdates) {
+              const updates = window.tripHotels.collectFormUpdates(card);
+              Object.assign(hotel, updates);
+              // Track edited fields (any key in updates counts as a user edit)
+              Object.keys(updates).forEach(key => {
+                this._editedFields.push(`hotel[${hotelIdx}].${key}`);
+              });
+            } else {
+              // Fallback: legacy flat collector
+              this._applyCardEdits(card, hotel, `hotel[${hotelIdx}]`);
             }
-            // Hotel address
-            const addrInput = card.querySelector('.parse-hotel-address-input');
-            if (addrInput && addrInput.value !== addrInput.dataset.original) {
-              if (typeof hotel.address === 'object') hotel.address.fullAddress = addrInput.value;
-              else hotel.address = addrInput.value;
-              this._editedFields.push(`hotel[${hotelIdx}].address`);
-            }
-            this._applyCardEdits(card, hotel, `hotel[${hotelIdx}]`);
           }
           hotelIdx++;
         }
