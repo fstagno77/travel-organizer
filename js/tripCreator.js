@@ -298,6 +298,7 @@ const tripCreator = {
     };
 
     nameInput.addEventListener('input', syncAndUpdate);
+    nameInput.addEventListener('input', () => this._clearFieldError(nameInput));
     startInput.addEventListener('change', syncAndUpdate);
     endInput.addEventListener('change', syncAndUpdate);
 
@@ -378,6 +379,37 @@ const tripCreator = {
       dropdown.querySelectorAll('.split-cta__option').forEach(opt => {
         opt.classList.toggle('split-cta__option--active', opt.dataset.mode === this._createMode);
       });
+    }
+  },
+
+  /**
+   * Mostra un errore inline sotto il campo specificato.
+   * Aggiunge/aggiorna <span class="field-error"> e classe input--error sul campo.
+   * @param {HTMLElement} inputEl
+   * @param {string} message
+   */
+  _showFieldError(inputEl, message) {
+    if (!inputEl) return;
+    inputEl.classList.add('input--error');
+    let errorSpan = inputEl.nextElementSibling;
+    if (!errorSpan || !errorSpan.classList.contains('field-error')) {
+      errorSpan = document.createElement('span');
+      errorSpan.className = 'field-error';
+      inputEl.insertAdjacentElement('afterend', errorSpan);
+    }
+    errorSpan.textContent = message;
+  },
+
+  /**
+   * Rimuove l'errore inline dal campo specificato.
+   * @param {HTMLElement} inputEl
+   */
+  _clearFieldError(inputEl) {
+    if (!inputEl) return;
+    inputEl.classList.remove('input--error');
+    const errorSpan = inputEl.nextElementSibling;
+    if (errorSpan && errorSpan.classList.contains('field-error')) {
+      errorSpan.remove();
     }
   },
 
@@ -661,8 +693,16 @@ const tripCreator = {
    * Step 1: Upload PDFs and parse with SmartParse (no save yet), or create manual trip
    */
   async submit() {
-    // Se la modalità è bozza, delega direttamente a submitDraft
-    if (this._createMode === 'draft') return this.submitDraft();
+    // Se la modalità è bozza, valida il nome e poi delega a submitDraft
+    if (this._createMode === 'draft') {
+      const nameInput = document.getElementById('manual-trip-name');
+      if (!nameInput?.value?.trim()) {
+        this._showFieldError(nameInput, i18n.t('trip.nameRequired') || 'Il nome del viaggio è obbligatorio');
+        nameInput?.focus();
+        return;
+      }
+      return this.submitDraft();
+    }
 
     const hasFiles = this.files.length > 0;
     const m = this.manualData;

@@ -11034,3 +11034,14 @@ body:has(#modal-page-slider.at-activity) .trip-fab {
   font-weight: 600;
   color: var(--color-primary);
 }
+
+/* Field inline errors — trip creator form */
+.field-error {
+  display: block;
+  font-size: 11px;
+  color: var(--color-error, #ef4444);
+  margin-top: 4px;
+}
+.form-input.input--error {
+  border-color: var(--color-error, #ef4444);
+}
