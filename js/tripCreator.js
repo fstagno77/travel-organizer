@@ -19,6 +19,7 @@ const tripCreator = {
   isLoadingMore: false, // Loading more photos flag
   isChangingPhoto: false, // True when changing photo for existing trip
   phraseController: null, // Controller for rotating loading phrases
+  _createMode: 'active', // 'active' | 'draft' — set via split CTA dropdown
 
   /**
    * Initialize trip creator
@@ -49,7 +50,18 @@ const tripCreator = {
           </div>
           <div class="modal-footer" id="modal-footer">
             <button class="btn btn-secondary" id="modal-cancel" data-i18n="modal.cancel">Annulla</button>
-            <button class="btn btn-primary" id="modal-submit" disabled data-i18n="modal.create">Crea Viaggio</button>
+            <div class="split-cta" id="split-cta">
+              <button class="btn btn-primary split-cta__primary" id="modal-submit" type="button" disabled>Crea Viaggio</button>
+              <button class="split-cta__arrow" id="split-cta-arrow" type="button" aria-label="Opzioni">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                  <path d="M6 8L1 3h10L6 8z"/>
+                </svg>
+              </button>
+              <div class="split-cta__dropdown" id="split-cta-dropdown" hidden>
+                <button class="split-cta__option split-cta__option--active" data-mode="active">Crea Viaggio</button>
+                <button class="split-cta__option" data-mode="draft">Salva come bozza</button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -90,16 +102,47 @@ const tripCreator = {
     // Submit
     const submitBtn = document.getElementById('modal-submit');
     submitBtn.addEventListener('click', () => this.submit());
+
+    // Split CTA — arrow toggle dropdown
+    const splitArrow = document.getElementById('split-cta-arrow');
+    const splitDropdown = document.getElementById('split-cta-dropdown');
+    splitArrow.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isHidden = splitDropdown.hasAttribute('hidden');
+      if (isHidden) {
+        splitDropdown.removeAttribute('hidden');
+      } else {
+        splitDropdown.setAttribute('hidden', '');
+      }
+    });
+
+    // Split CTA — option selection
+    splitDropdown.querySelectorAll('.split-cta__option').forEach(opt => {
+      opt.addEventListener('click', () => {
+        const mode = opt.dataset.mode;
+        this._setCreateMode(mode);
+        splitDropdown.setAttribute('hidden', '');
+      });
+    });
+
+    // Close dropdown on outside click
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#split-cta')) {
+        splitDropdown.setAttribute('hidden', '');
+      }
+    });
   },
 
   /**
    * Open modal
    */
   open() {
+    this._createMode = 'active';
     this.reset();
     const modal = document.getElementById('trip-modal');
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
+    this._syncSplitCta();
     i18n.apply(modal);
   },
 
@@ -189,17 +232,6 @@ const tripCreator = {
           </div>
           <div class="cities-list" id="manual-cities-list"></div>
         </div>
-      </div>
-
-      <div class="draft-toggle-row" id="draft-toggle-row" style="display: flex;">
-        <div class="draft-toggle-label">
-          <span class="draft-toggle-text">${esc(t('draft.toggleLabel', 'Salva come bozza'))}</span>
-          <span class="draft-toggle-hint">${esc(t('draft.toggleHint', 'Senza date — potrai completarla in seguito'))}</span>
-        </div>
-        <label class="toggle-switch" for="draft-mode-toggle">
-          <input type="checkbox" id="draft-mode-toggle" class="toggle-input">
-          <span class="toggle-slider"></span>
-        </label>
       </div>
 
       <div class="manual-trip-divider">
@@ -316,62 +348,37 @@ const tripCreator = {
 
     // Pre-load cities database
     this.getCitiesDatabase();
-
-    // Toggle "Salva come bozza"
-    const draftToggle = document.getElementById('draft-mode-toggle');
-    if (draftToggle) {
-      draftToggle.addEventListener('change', () => this._applyDraftToggle());
-    }
   },
 
   /**
-   * Applica la logica del toggle "Salva come bozza":
-   * - ON  → nasconde date/città/upload, rimuove required dalle date, bottone = "Crea bozza"
-   * - OFF → mostra tutto, ripristina required, bottone = "Crea Viaggio"
+   * Imposta la modalità del CTA (active | draft) e aggiorna il testo del bottone e lo stato delle opzioni.
    */
-  _applyDraftToggle() {
-    const toggle = document.getElementById('draft-mode-toggle');
-    const isDraft = toggle?.checked || false;
+  _setCreateMode(mode) {
+    this._createMode = mode;
+    this._syncSplitCta();
+    this.updateSubmitButton();
+  },
+
+  /**
+   * Sincronizza il testo del bottone principale e la classe --active delle opzioni
+   * con il valore corrente di this._createMode.
+   */
+  _syncSplitCta() {
     const t = (k, fb) => i18n.t(k) || fb;
-
-    // Wrapper date (la form-row che contiene start e end)
-    const datesRow = document.getElementById('manual-start-date')?.closest('.form-row');
-    // Wrapper città
-    const cityGroup = document.getElementById('manual-city-input')?.closest('.form-group');
-    // Upload zone + divider
-    const uploadZone = document.getElementById('upload-zone');
-    const fileList = document.getElementById('file-list');
-    const divider = document.querySelector('.manual-trip-divider');
-
-    if (isDraft) {
-      if (datesRow) datesRow.style.display = 'none';
-      if (cityGroup) cityGroup.style.display = 'none';
-      if (uploadZone) uploadZone.style.display = 'none';
-      if (fileList) fileList.style.display = 'none';
-      if (divider) divider.style.display = 'none';
-      // Rimuovi required dai campi data (nessun attributo required nativo,
-      // ma aggiorniamo la validazione in updateSubmitButton tramite flag)
-      const startInput = document.getElementById('manual-start-date');
-      const endInput = document.getElementById('manual-end-date');
-      if (startInput) startInput.removeAttribute('required');
-      if (endInput) endInput.removeAttribute('required');
-    } else {
-      if (datesRow) datesRow.style.display = '';
-      if (cityGroup) cityGroup.style.display = '';
-      if (uploadZone) uploadZone.style.display = '';
-      if (fileList) fileList.style.display = '';
-      if (divider) divider.style.display = '';
-    }
-
-    // Aggiorna testo bottone submit
     const submitBtn = document.getElementById('modal-submit');
+    const dropdown = document.getElementById('split-cta-dropdown');
+
     if (submitBtn) {
-      submitBtn.textContent = isDraft
-        ? t('draft.createBtn', 'Crea bozza')
+      submitBtn.textContent = this._createMode === 'draft'
+        ? t('draft.createBtn', 'Salva come bozza')
         : t('modal.create', 'Crea Viaggio');
     }
 
-    this.updateSubmitButton();
+    if (dropdown) {
+      dropdown.querySelectorAll('.split-cta__option').forEach(opt => {
+        opt.classList.toggle('split-cta__option--active', opt.dataset.mode === this._createMode);
+      });
+    }
   },
 
   /**
@@ -629,11 +636,10 @@ const tripCreator = {
     const btn = document.getElementById('modal-submit');
     const hasFiles = this.files.length > 0;
     const m = this.manualData;
-    const isDraft = document.getElementById('draft-mode-toggle')?.checked || false;
 
     let enabled;
-    if (isDraft) {
-      // In modalità bozza basta il nome (o anche vuoto — verrà usato default)
+    if (this._createMode === 'draft') {
+      // In modalità bozza basta il nome (o anche vuoto — verrà usato il default)
       enabled = true;
     } else {
       const hasManual = m && m.name.trim().length > 0 && m.startDate && m.endDate && m.endDate >= m.startDate;
@@ -655,9 +661,8 @@ const tripCreator = {
    * Step 1: Upload PDFs and parse with SmartParse (no save yet), or create manual trip
    */
   async submit() {
-    // Se il toggle bozza è attivo, delega direttamente a submitDraft
-    const isDraft = document.getElementById('draft-mode-toggle')?.checked || false;
-    if (isDraft) return this.submitDraft();
+    // Se la modalità è bozza, delega direttamente a submitDraft
+    if (this._createMode === 'draft') return this.submitDraft();
 
     const hasFiles = this.files.length > 0;
     const m = this.manualData;
@@ -769,27 +774,23 @@ const tripCreator = {
   },
 
   /**
-   * Apri il modal con il toggle "Salva come bozza" già attivo.
+   * Apri il modal con la modalità "Salva come bozza" già selezionata.
    * Chiamato da draftsPage.js e da openDraft().
    */
   openAsDraft() {
+    this._createMode = 'draft';
     this.reset();
     const modal = document.getElementById('trip-modal');
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
+    this._syncSplitCta();
+    this.updateSubmitButton();
     i18n.apply(modal);
-    // Attiva il toggle subito dopo il render
-    setTimeout(() => {
-      const toggle = document.getElementById('draft-mode-toggle');
-      if (toggle && !toggle.checked) {
-        toggle.checked = true;
-        this._applyDraftToggle();
-      }
-    }, 0);
   },
 
   /**
-   * Crea un viaggio bozza (status='draft') senza date né destinazione obbligatorie.
+   * Crea un viaggio bozza (status='draft'). Le date sono opzionali ma vengono
+   * passate all'API se l'utente le ha compilate.
    * Dopo la creazione, redirect a trip.html?id=<newId>.
    */
   async submitDraft() {
@@ -797,18 +798,22 @@ const tripCreator = {
     this.renderProcessingState();
     this.showFooter(false);
 
-    const t = (k, fb) => i18n.t(k) || fb;
     const nameInput = document.getElementById('manual-trip-name');
     const titleValue = nameInput?.value?.trim() || '';
+    const m = this.manualData;
+
+    const payload = {
+      name: titleValue || (i18n.getLang() === 'it' ? 'Nuovo viaggio' : 'New trip'),
+      status: 'draft',
+      cities: m?.cities?.length > 0 ? m.cities : [],
+    };
+    if (m?.startDate) payload.startDate = m.startDate;
+    if (m?.endDate) payload.endDate = m.endDate;
 
     try {
       const response = await utils.authFetch('/.netlify/functions/create-trip', {
         method: 'POST',
-        body: JSON.stringify({
-          name: titleValue || (i18n.getLang() === 'it' ? 'Nuovo viaggio' : 'New trip'),
-          status: 'draft',
-          cities: [],
-        })
+        body: JSON.stringify(payload)
       });
 
       const result = await response.json();

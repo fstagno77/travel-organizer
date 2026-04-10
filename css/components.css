@@ -10978,28 +10978,59 @@ body:has(#modal-page-slider.at-activity) .trip-fab {
   min-width: 200px;
 }
 
-/* Draft toggle nel form nuovo viaggio */
-.draft-toggle-row {
+/* Split CTA button — Crea Viaggio / Salva come bozza */
+.split-cta {
+  position: relative;
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 0;
-  border-top: 1px solid var(--color-border);
-  margin-top: 8px;
+  align-items: stretch;
 }
-.draft-toggle-label { display: flex; flex-direction: column; gap: 2px; }
-.draft-toggle-text { font-size: var(--font-size-sm); font-weight: 500; color: var(--color-text-primary); }
-.draft-toggle-hint { font-size: 11px; color: var(--color-text-secondary); }
-.toggle-switch { position: relative; display: inline-block; width: 40px; height: 22px; flex-shrink: 0; cursor: pointer; }
-.toggle-input { opacity: 0; width: 0; height: 0; position: absolute; }
-.toggle-slider {
-  position: absolute; inset: 0; background: var(--color-border);
-  border-radius: 22px; cursor: pointer; transition: background 0.2s;
+.split-cta__primary {
+  flex: 1;
+  border-radius: 8px 0 0 8px;
 }
-.toggle-slider::before {
-  content: ''; position: absolute; width: 16px; height: 16px;
-  left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: transform 0.2s;
+.split-cta__arrow {
+  width: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-left: 1px solid rgba(255, 255, 255, 0.3);
+  background: var(--color-primary);
+  color: #fff;
+  cursor: pointer;
+  border-radius: 0 8px 8px 0;
+  border: none;
+  transition: background 0.15s;
 }
-.toggle-input:checked + .toggle-slider { background: var(--color-primary, #3b82f6); }
-.toggle-input:checked + .toggle-slider::before { transform: translateX(18px); }
+.split-cta__arrow:hover {
+  background: var(--color-primary-dark);
+}
+.split-cta__dropdown {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  right: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+  min-width: 160px;
+  z-index: 100;
+}
+.split-cta__option {
+  display: block;
+  width: 100%;
+  padding: 10px 16px;
+  text-align: left;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.split-cta__option:hover {
+  background: var(--color-surface-hover, #f5f5f5);
+}
+.split-cta__option--active {
+  font-weight: 600;
+  color: var(--color-primary);
+}
