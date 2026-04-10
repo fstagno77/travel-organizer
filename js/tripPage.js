@@ -297,7 +297,7 @@
     flights:    { icon: 'travel',          i18nKey: 'trip.flights',    fallback: 'Voli' },
     hotels:     { icon: 'bed',             i18nKey: 'trip.hotels',     fallback: 'Hotel' },
     trains:     { icon: 'train',           i18nKey: 'trip.trains',     fallback: 'Treni', beta: true },
-    buses:      { icon: 'directions_bus',  i18nKey: 'trip.buses',      fallback: 'Bus', beta: true },
+    buses:      { icon: 'directions_bus',  i18nKey: 'trip.buses',      fallback: 'Bus' },
     ferries:    { iconSvg: `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M20 21c-1.39 0-2.78-.47-4-1.32-2.44 1.71-5.56 1.71-8 0C6.78 20.53 5.39 21 4 21H2v2h2c1.39 0 2.78-.47 4-1.32 2.44 1.71 5.56 1.71 8 0 1.22.85 2.61 1.32 4 1.32h2v-2h-2zM3.95 19H4c1.6 0 3.02-.88 4-2 .98 1.12 2.4 2 4 2s3.02-.88 4-2c.98 1.12 2.4 2 4 2h.05l1.89-6.68c.08-.26.06-.54-.06-.78s-.34-.42-.6-.5L19 10.62V6c0-1.1-.9-2-2-2h-3V1H10v3H7c-1.1 0-2 .9-2 2v4.62l-2.29.68c-.26.08-.48.26-.6.5s-.14.52-.06.78L3.95 19zM7 6h10v3.97L12 8 7 9.97V6z"/></svg>`, i18nKey: 'trip.ferries', fallback: 'Traghetti', beta: true },
     rentals:    { iconSvg: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.8L18 11l-2-4H8L6 11l-2.5.2C2.7 11.3 2 12.1 2 13v3c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>`, i18nKey: 'trip.rentals', fallback: 'Auto' },
   };

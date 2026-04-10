@@ -137,7 +137,7 @@
 
     const sectionHeader = `
       <div class="section-header">
-        <h2 class="section-header-title">I miei bus <span class="beta-badge">Beta</span></h2>
+        <h2 class="section-header-title">I miei bus</h2>
         <div class="section-header-actions">
           <button class="section-header-cta btn btn-outline bus-cta-outline" id="buses-manage-booking-btn">
             ${editSvg}
