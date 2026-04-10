@@ -51,7 +51,7 @@ const tripCreator = {
           <div class="modal-footer" id="modal-footer">
             <button class="btn btn-secondary" id="modal-cancel" data-i18n="modal.cancel">Annulla</button>
             <div class="split-cta" id="split-cta">
-              <button class="btn btn-primary split-cta__primary" id="modal-submit" type="button" disabled>Crea Viaggio</button>
+              <button class="btn btn-primary split-cta__primary" id="modal-submit" type="button">Crea Viaggio</button>
               <button class="split-cta__arrow" id="split-cta-arrow" type="button" aria-label="Opzioni">
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
                   <path d="M6 8L1 3h10L6 8z"/>
@@ -300,7 +300,9 @@ const tripCreator = {
     nameInput.addEventListener('input', syncAndUpdate);
     nameInput.addEventListener('input', () => this._clearFieldError(nameInput));
     startInput.addEventListener('change', syncAndUpdate);
+    startInput.addEventListener('change', () => this._clearFieldError(startInput));
     endInput.addEventListener('change', syncAndUpdate);
+    endInput.addEventListener('change', () => this._clearFieldError(endInput));
 
     // City search
     let searchTimeout = null;
@@ -662,22 +664,12 @@ const tripCreator = {
   },
 
   /**
-   * Update submit button state
+   * Update submit button — solo testo, il bottone è sempre abilitato.
+   * La validazione avviene al click in submit().
    */
   updateSubmitButton() {
-    const btn = document.getElementById('modal-submit');
-    const hasFiles = this.files.length > 0;
-    const m = this.manualData;
-
-    let enabled;
-    if (this._createMode === 'draft') {
-      // In modalità bozza basta il nome (o anche vuoto — verrà usato il default)
-      enabled = true;
-    } else {
-      const hasManual = m && m.name.trim().length > 0 && m.startDate && m.endDate && m.endDate >= m.startDate;
-      enabled = hasFiles || hasManual;
-    }
-    btn.disabled = !enabled;
+    // Il bottone è sempre abilitato: nessuna logica disable.
+    // Il testo è gestito da _syncSplitCta(), qui non c'è nulla da fare.
   },
 
   /**
@@ -706,14 +698,36 @@ const tripCreator = {
 
     const hasFiles = this.files.length > 0;
     const m = this.manualData;
-    const hasManual = m && m.name.trim().length > 0 && m.startDate && m.endDate;
 
-    if (!hasFiles && !hasManual) return;
+    // Se non ci sono file PDF, valida i campi del form manuale
+    if (!hasFiles) {
+      const nameInput = document.getElementById('manual-trip-name');
+      const startInput = document.getElementById('manual-start-date');
+      const endInput = document.getElementById('manual-end-date');
 
-    // Manual-only path (no PDF)
-    if (!hasFiles && hasManual) {
+      const errors = [];
+      if (!m?.name?.trim()) {
+        this._showFieldError(nameInput, i18n.t('trip.nameRequired') || 'Il nome del viaggio è obbligatorio');
+        errors.push(nameInput);
+      }
+      if (!m?.startDate) {
+        this._showFieldError(startInput, i18n.t('trip.startDateRequired') || 'La data di inizio è obbligatoria');
+        errors.push(startInput);
+      }
+      if (!m?.endDate) {
+        this._showFieldError(endInput, i18n.t('trip.endDateRequired') || 'La data di fine è obbligatoria');
+        errors.push(endInput);
+      }
+
+      if (errors.length > 0) {
+        errors[0]?.focus();
+        return;
+      }
+
       return this.submitManual();
     }
+
+    // Con file PDF: procedi direttamente al parsing
 
     this.state = 'parsing';
     this.renderProcessingState();
