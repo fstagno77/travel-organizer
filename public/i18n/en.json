@@ -138,9 +138,10 @@
     "noActivities": "No activities",
     "noActivitiesText": "Add a booking to see your activities here",
     "newActivity": "New activity",
-    "viewList": "List view",
+    "viewCalendar": "View calendar",
     "viewCards": "Card view",
     "viewCalendarSoon": "Calendar view (coming soon)",
+    "viewList": "List view",
     "flightTo": "Flight to",
     "flightFromTo": "Flight from",
     "activityDetails": "Details",
@@ -308,8 +309,12 @@
     "totalAmount": "Total",
     "roomPrice": "Room",
     "taxAmount": "Taxes",
+    "bookingReference": "Confirmation number",
+    "includedServices": "Included services",
     "paymentInfo": "Payment",
-    "paymentMethod": "Payment method"
+    "paymentMethod": "Payment method",
+    "totalPrice": "Total price",
+    "voucher": "Voucher"
   },
   "train": {
     "showDetails": "Show details",
@@ -404,14 +409,15 @@
     "backToHome": "Back to Home"
   },
   "common": {
-    "save": "Save",
     "cancel": "Cancel",
-    "loading": "Loading...",
+    "continue": "Continue",
+    "downloadError": "Error downloading PDF",
     "error": "An error occurred",
-    "rateLimitError": "Rate limit reached. Please wait a minute before uploading another file.",
     "from": "from",
-    "until": "until",
-    "downloadError": "Error downloading PDF"
+    "loading": "Loading...",
+    "rateLimitError": "Rate limit reached. Please wait a minute before uploading another file.",
+    "save": "Save",
+    "until": "until"
   },
   "auth": {
     "login": "Login",

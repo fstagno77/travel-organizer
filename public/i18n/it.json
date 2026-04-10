@@ -138,9 +138,10 @@
     "noActivities": "Nessuna attività",
     "noActivitiesText": "Aggiungi una prenotazione per visualizzare le attività",
     "newActivity": "Nuova attività",
-    "viewList": "Vista lista",
+    "viewCalendar": "Vedi calendario",
     "viewCards": "Vista schede",
     "viewCalendarSoon": "Vista calendario (in arrivo)",
+    "viewList": "Vista lista",
     "flightTo": "Volo per",
     "flightFromTo": "Volo da",
     "activityDetails": "Dettagli",
@@ -308,8 +309,12 @@
     "totalAmount": "Totale",
     "roomPrice": "Camera",
     "taxAmount": "Tasse",
+    "bookingReference": "Numero di conferma",
+    "includedServices": "Servizi inclusi",
     "paymentInfo": "Pagamento",
-    "paymentMethod": "Metodo pagamento"
+    "paymentMethod": "Metodo pagamento",
+    "totalPrice": "Prezzo totale",
+    "voucher": "Voucher"
   },
   "train": {
     "showDetails": "Mostra dettagli",
@@ -404,14 +409,15 @@
     "backToHome": "Torna alla Home"
   },
   "common": {
-    "save": "Salva",
     "cancel": "Annulla",
-    "loading": "Caricamento...",
+    "continue": "Continua",
+    "downloadError": "Errore durante il download del PDF",
     "error": "Si è verificato un errore",
-    "rateLimitError": "Limite di richieste raggiunto. Attendi un minuto prima di caricare un altro file.",
     "from": "dalle",
-    "until": "fino alle",
-    "downloadError": "Errore durante il download del PDF"
+    "loading": "Caricamento...",
+    "rateLimitError": "Limite di richieste raggiunto. Attendi un minuto prima di caricare un altro file.",
+    "save": "Salva",
+    "until": "fino alle"
   },
   "auth": {
     "login": "Accedi",

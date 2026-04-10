@@ -347,7 +347,8 @@
     { value: 'singolo', label: 'Singolo' },
     { value: 'matrimoniale', label: 'Matrimoniale' },
     { value: 'doppio', label: 'Doppio (2 letti singoli)' },
-    { value: 'twin', label: 'Twin' },
+    { value: 'queen', label: 'Queen' },
+    { value: '2queen', label: '2 Queen' },
     { value: 'king', label: 'King' },
     { value: 'altro', label: 'Altro' },
   ];
