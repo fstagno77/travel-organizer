@@ -10963,11 +10963,20 @@ body:has(#modal-page-slider.at-activity) .trip-fab {
   cursor: not-allowed;
 }
 
-/* Conferma eliminazione inline — sostituisce temporaneamente il contenuto della riga */
-.draft-delete-confirm { display: flex; align-items: center; gap: 8px; padding: 0 16px; height: 100%; }
-.draft-delete-confirm span { font-size: var(--font-size-sm); color: var(--color-text-secondary); flex: 1; }
-.draft-delete-confirm__yes { padding: 4px 12px; border-radius: 6px; background: var(--color-error, #ef4444); color: #fff; font-size: var(--font-size-sm); font-weight: 500; border: none; cursor: pointer; }
-.draft-delete-confirm__no { padding: 4px 12px; border-radius: 6px; background: transparent; color: var(--color-text-secondary); font-size: var(--font-size-sm); border: 1px solid var(--color-border); cursor: pointer; }
+/* Modale conferma eliminazione bozza */
+.draft-confirm-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1000;
+  display: flex; align-items: center; justify-content: center;
+}
+.draft-confirm-modal {
+  background: var(--color-surface); border-radius: 12px; padding: 24px;
+  max-width: 360px; width: calc(100% - 32px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+}
+.draft-confirm-modal__title { font-size: var(--font-size-base); font-weight: 600; color: var(--color-text-primary); margin-bottom: 20px; }
+.draft-confirm-modal__actions { display: flex; gap: 8px; justify-content: flex-end; }
+.draft-confirm-modal__confirm { padding: 8px 16px; border-radius: 8px; background: var(--color-error, #ef4444); color: #fff; font-weight: 500; font-size: var(--font-size-sm); border: none; cursor: pointer; }
+.draft-confirm-modal__cancel { padding: 8px 16px; border-radius: 8px; background: transparent; color: var(--color-text-secondary); font-size: var(--font-size-sm); border: 1px solid var(--color-border); cursor: pointer; }
 
 /* Banner bozza in trip.html */
 .draft-banner {
