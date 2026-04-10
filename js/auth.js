@@ -270,8 +270,30 @@ const auth = {
 
   /**
    * Verify OTP code
+   * In development, the code "111111" bypasses SMTP via a server-side magic link.
    */
   async verifyOtp(email, token) {
+    // DEV ONLY — bypass OTP con codice 111111 su localhost
+    if (token === '111111' && window.location.hostname === 'localhost') {
+      console.log('[auth] DEV bypass OTP attivato per:', email);
+      const res = await fetch('/.netlify/functions/dev-auth-bypass', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const result = await res.json();
+      if (!result.success) {
+        throw new Error(result.error || 'Dev bypass fallito');
+      }
+      // Usa il token hashed per creare la sessione senza email reale
+      const { data, error } = await this.supabase.auth.verifyOtp({
+        token_hash: result.hashed_token,
+        type: 'magiclink'
+      });
+      if (error) throw error;
+      return data;
+    }
+
     const { data, error } = await this.supabase.auth.verifyOtp({
       email,
       token,
