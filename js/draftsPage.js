@@ -120,10 +120,7 @@ const draftsPage = (function() {
       ? (lang === 'it' ? '1 attività' : '1 activity')
       : (lang === 'it' ? `${activityCount} attività` : `${activityCount} activities`);
 
-    const metaParts = [createdAt];
-    if (bookingCount > 0) metaParts.push(bookingLabel);
-    if (activityCount > 0) metaParts.push(activityLabel);
-    const metaStr = metaParts.join(' · ');
+    const metaStr = [createdAt, bookingLabel, activityLabel].join(' · ');
 
     return `
       <div class="draft-list-item" data-draft-id="${esc(trip.id)}">
