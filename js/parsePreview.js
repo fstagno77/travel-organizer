@@ -449,32 +449,34 @@ const parsePreview = {
 
       // Veicoli a bordo
       const ferryVehicles = f.vehicles?.length > 0 ? f.vehicles : [];
-      html += `<div class="parse-section-header parse-ferry-veh-header" style="margin-top:24px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center"><span>Veicoli a bordo (${ferryVehicles.length})</span><button type="button" class="parse-add-veh-btn" style="display:none;font-size:12px;color:var(--primary);background:none;border:none;cursor:pointer;padding:0">+ Aggiungi veicolo</button></div>`;
-      html += `<div class="parse-ferry-vehicles" data-ferry-index="${i}">`;
-      html += `<table class="parse-ferry-veh-table" style="width:100%;border-collapse:collapse;margin-top:4px">`;
-      html += `<thead><tr>
-        <th style="text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);padding:3px 0;border-bottom:1px solid var(--border-color)">Tipo</th>
-        <th style="text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);padding:3px 0;border-bottom:1px solid var(--border-color)">Targa</th>
-        <th class="parse-ferry-edit-col" style="display:none;width:28px"></th>
-      </tr></thead><tbody>`;
-      for (let vi = 0; vi < ferryVehicles.length; vi++) {
-        const v = ferryVehicles[vi];
-        html += `<tr data-veh-index="${vi}">
-          <td style="padding:8px 0;font-size:13px">
-            <span class="parse-veh-type-display">${this._esc(v.type || '—')}</span>
-            <div class="parse-veh-type-cs-placeholder" data-veh-type="${this._esc(v.type || 'auto')}" data-field="vehicles[${vi}].type" data-original="${this._esc(v.type || '')}" style="display:none"></div>
-          </td>
-          <td style="padding:8px 0;font-size:12px;color:var(--text-secondary)">
-            <span class="parse-veh-plate-display">${this._esc(v.plate || '—')}</span>
-            <input class="parse-veh-plate-input parse-field-input" data-field="vehicles[${vi}].plate" data-original="${this._esc(v.plate || '')}" value="${this._esc(v.plate || '')}" style="display:none;width:100%;box-sizing:border-box">
-          </td>
-          <td class="parse-ferry-edit-col" style="display:none;text-align:center">
-            <button type="button" class="parse-veh-remove-btn" data-veh-index="${vi}" title="Rimuovi" style="background:none;border:none;cursor:pointer;color:var(--text-secondary);font-size:14px;padding:0 4px">×</button>
-          </td>
-        </tr>`;
+      if (ferryVehicles.length > 0) {
+        html += `<div class="parse-section-header parse-ferry-veh-header" style="margin-top:24px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center"><span>Veicoli a bordo (${ferryVehicles.length})</span><button type="button" class="parse-add-veh-btn" style="display:none;font-size:12px;color:var(--primary);background:none;border:none;cursor:pointer;padding:0">+ Aggiungi veicolo</button></div>`;
+        html += `<div class="parse-ferry-vehicles" data-ferry-index="${i}">`;
+        html += `<table class="parse-ferry-veh-table" style="width:100%;border-collapse:collapse;margin-top:4px">`;
+        html += `<thead><tr>
+          <th style="text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);padding:3px 0;border-bottom:1px solid var(--border-color)">Tipo</th>
+          <th style="text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);padding:3px 0;border-bottom:1px solid var(--border-color)">Targa</th>
+          <th class="parse-ferry-edit-col" style="display:none;width:28px"></th>
+        </tr></thead><tbody>`;
+        for (let vi = 0; vi < ferryVehicles.length; vi++) {
+          const v = ferryVehicles[vi];
+          html += `<tr data-veh-index="${vi}">
+            <td style="padding:8px 0;font-size:13px">
+              <span class="parse-veh-type-display">${this._esc(v.type || '—')}</span>
+              <div class="parse-veh-type-cs-placeholder" data-veh-type="${this._esc(v.type || 'auto')}" data-field="vehicles[${vi}].type" data-original="${this._esc(v.type || '')}" style="display:none"></div>
+            </td>
+            <td style="padding:8px 0;font-size:12px;color:var(--text-secondary)">
+              <span class="parse-veh-plate-display">${this._esc(v.plate || '—')}</span>
+              <input class="parse-veh-plate-input parse-field-input" data-field="vehicles[${vi}].plate" data-original="${this._esc(v.plate || '')}" value="${this._esc(v.plate || '')}" style="display:none;width:100%;box-sizing:border-box">
+            </td>
+            <td class="parse-ferry-edit-col" style="display:none;text-align:center">
+              <button type="button" class="parse-veh-remove-btn" data-veh-index="${vi}" title="Rimuovi" style="background:none;border:none;cursor:pointer;color:var(--text-secondary);font-size:14px;padding:0 4px">×</button>
+            </td>
+          </tr>`;
+        }
+        html += `</tbody></table>`;
+        html += `</div>`;
       }
-      html += `</tbody></table>`;
-      html += `</div>`;
 
       // Add-field trigger (visible only in edit mode via CSS)
       html += `<div class="parse-add-field-section" data-card-type="ferry" data-card-index="${i}" style="display:none">`;
