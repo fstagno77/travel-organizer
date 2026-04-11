@@ -1215,16 +1215,18 @@ const tripCreator = {
     const uploadInput = document.getElementById('custom-photo-input');
 
     if (uploadBtn && uploadInput) {
-      // Nascondi il bottone "Carica foto" se richiesto (es. aperto da modale Impostazioni)
-      if (this._hideUploadBtn) {
-        uploadBtn.style.display = 'none';
-      }
       uploadBtn.onclick = () => uploadInput.click();
       uploadInput.onchange = (e) => {
         if (e.target.files && e.target.files[0]) {
           this.uploadCustomPhoto(e.target.files[0]);
         }
       };
+    }
+
+    // Nascondi il bottone "Carica foto" e l'input se richiesto (es. aperto da modale Impostazioni)
+    if (this._hideUploadBtn) {
+      if (uploadBtn) uploadBtn.style.display = 'none';
+      if (uploadInput) uploadInput.style.display = 'none';
     }
 
     // Load more photos

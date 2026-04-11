@@ -1386,7 +1386,7 @@
         } else if (action === 'leave-trip') {
           leaveTrip(tripId);
         }
-      });
+      }, { signal: menuSignal });
     });
 
     document.addEventListener('click', () => {
