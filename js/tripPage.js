@@ -2753,13 +2753,7 @@
 
             <!-- Nome -->
             <div class="form-group">
-              <div class="form-group-header">
-                <label class="form-label" data-i18n="trip.manualName">${t('trip.manualName', 'Nome del viaggio')}</label>
-                <div class="char-counter" id="settings-char-counter">
-                  <span class="char-limit-msg" id="settings-limit-msg">Raggiunto il limite di caratteri consentito</span>
-                  <span><span id="settings-char-count">${currentTitle.length}</span>/50</span>
-                </div>
-              </div>
+              <label class="form-label" data-i18n="trip.manualName">${t('trip.manualName', 'Nome del viaggio')}</label>
               <input type="text" class="form-input" id="settings-name-input" maxlength="50" value="${esc(currentTitle)}">
               <div class="field-error" id="settings-name-error"></div>
             </div>
@@ -2847,18 +2841,13 @@
 
     const modal = document.getElementById('settings-modal');
     const nameInput = document.getElementById('settings-name-input');
-    const charCount = document.getElementById('settings-char-count');
-    const charCounter = document.getElementById('settings-char-counter');
     const cityField = document.getElementById('settings-city-field');
     let cityInput = document.getElementById('settings-city-input');
     let cityDropdown = document.getElementById('settings-city-dropdown');
 
-    // Char counter nome
+    // Validazione lunghezza nome
     nameInput.addEventListener('input', () => {
-      const len = nameInput.value.length;
-      charCount.textContent = len;
-      charCounter.classList.toggle('over-limit', len > 50);
-      nameInput.classList.toggle('input-error', len > 50);
+      nameInput.classList.toggle('input-error', nameInput.value.length > 50);
     });
 
     const closeModal = () => {
