@@ -277,8 +277,28 @@
     if (tripData.startDate && tripData.endDate) {
       const start = utils.formatDate(tripData.startDate, lang, { month: 'short', day: 'numeric' });
       const end = utils.formatDate(tripData.endDate, lang, { month: 'short', day: 'numeric', year: 'numeric' });
-      document.getElementById('trip-dates').textContent = `${start} - ${end}`;
+      const datesEl = document.getElementById('trip-dates');
+      if (datesEl) datesEl.textContent = `${start} - ${end}`;
     }
+
+    // Bottone edit date (solo proprietario)
+    const datesWrapper = document.getElementById('trip-dates-wrapper');
+    if (datesWrapper && currentUserRole === 'proprietario') {
+      // Rimuovi bottone precedente se esiste
+      const oldBtn = datesWrapper.querySelector('.trip-edit-dates-btn');
+      if (oldBtn) oldBtn.remove();
+
+      const editBtn = document.createElement('button');
+      editBtn.className = 'trip-edit-dates-btn';
+      editBtn.id = 'trip-edit-dates-btn';
+      editBtn.title = 'Modifica date';
+      editBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+      datesWrapper.appendChild(editBtn);
+      editBtn.addEventListener('click', () => openEditDatesModal(tripData));
+    }
+
+    // Bottone "Sposta in bozza" (solo proprietario, solo se viaggio active)
+    renderMoveToDraftBtn(tripData);
 
     // Set hero background image from cover photo
     const hero = document.getElementById('trip-hero');
@@ -428,17 +448,17 @@
       submitBtn.disabled = true;
 
       try {
-        const { error } = await window.supabase
-          .from('trips')
-          .update({
-            destination: destination,
-            start_date: startDate,
-            end_date: endDate,
-            status: 'active',
+        const res = await utils.authFetch('/.netlify/functions/update-trip-meta', {
+          method: 'PATCH',
+          body: JSON.stringify({
+            tripId: tripData.id,
+            startDate,
+            endDate: endDate || null,
+            status: 'active'
           })
-          .eq('id', tripData.id);
-
-        if (error) throw error;
+        });
+        const result = await res.json();
+        if (!res.ok || !result.success) throw new Error(result.error || 'Failed');
 
         closeModal();
         utils.showToast(t('draft.confirmed', 'Viaggio confermato!'), 'success');
@@ -451,6 +471,205 @@
         await loadTripFromUrl();
       } catch (err) {
         console.error('[tripPage] completeTrip error:', err);
+        utils.showToast(i18n.t('common.error') || 'Errore', 'error');
+        submitBtn.disabled = false;
+      }
+    });
+  }
+
+  /**
+   * Apre modale per modificare le date del viaggio (startDate / endDate)
+   * @param {Object} tripData
+   */
+  function openEditDatesModal(tripData) {
+    const t = (k, fb) => i18n.t(k) || fb;
+
+    const existing = document.getElementById('edit-dates-modal');
+    if (existing) existing.remove();
+
+    const modalHtml = `
+      <div class="modal-overlay active" id="edit-dates-modal">
+        <div class="modal">
+          <div class="modal-header">
+            <h2>${t('trip.editDates', 'Modifica date')}</h2>
+            <button class="modal-close" id="edit-dates-close">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div class="form-row">
+              <div class="form-group form-group-half">
+                <label class="form-label">${t('trip.manualStartDate', 'Data inizio')} *</label>
+                <input type="date" class="form-input" id="edit-dates-start"
+                       value="${tripData.startDate || ''}" required>
+              </div>
+              <div class="form-group form-group-half">
+                <label class="form-label">${t('trip.manualEndDate', 'Data fine')}</label>
+                <input type="date" class="form-input" id="edit-dates-end"
+                       value="${tripData.endDate || ''}">
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" id="edit-dates-cancel">${t('modal.cancel', 'Annulla')}</button>
+            <button class="btn btn-primary" id="edit-dates-submit">${t('common.save', 'Salva')}</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    document.body.style.overflow = 'hidden';
+
+    const closeModal = () => {
+      const modal = document.getElementById('edit-dates-modal');
+      if (modal) modal.remove();
+      document.body.style.overflow = '';
+    };
+
+    document.getElementById('edit-dates-close').addEventListener('click', closeModal);
+    document.getElementById('edit-dates-cancel').addEventListener('click', closeModal);
+    document.getElementById('edit-dates-modal').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('edit-dates-modal')) closeModal();
+    });
+
+    document.getElementById('edit-dates-submit').addEventListener('click', async () => {
+      const startInput = document.getElementById('edit-dates-start');
+      const endInput = document.getElementById('edit-dates-end');
+      const newStart = startInput.value;
+      const newEnd = endInput.value || null;
+
+      if (!newStart) {
+        startInput.focus();
+        return;
+      }
+
+      const submitBtn = document.getElementById('edit-dates-submit');
+      submitBtn.disabled = true;
+
+      try {
+        const res = await utils.authFetch('/.netlify/functions/update-trip-meta', {
+          method: 'PATCH',
+          body: JSON.stringify({
+            tripId: tripData.id,
+            startDate: newStart,
+            endDate: newEnd
+          })
+        });
+        const result = await res.json();
+        if (!res.ok || !result.success) throw new Error(result.error || 'Failed');
+
+        closeModal();
+        utils.showToast(t('trip.datesSaved', 'Date aggiornate'), 'success');
+        await loadTripFromUrl();
+      } catch (err) {
+        console.error('[tripPage] editDates error:', err);
+        utils.showToast(i18n.t('common.error') || 'Errore', 'error');
+        submitBtn.disabled = false;
+      }
+    });
+  }
+
+  /**
+   * Renderizza il bottone "Sposta in bozza" se il viaggio è active e l'utente è proprietario.
+   * Rimuove il bottone se il viaggio è draft.
+   * @param {Object} tripData
+   */
+  function renderMoveToDraftBtn(tripData) {
+    // Rimuovi eventuale bottone precedente
+    const existing = document.getElementById('move-to-draft-btn');
+    if (existing) existing.remove();
+
+    if (tripData.status !== 'active' || currentUserRole !== 'proprietario') return;
+
+    const t = (k, fb) => i18n.t(k) || fb;
+
+    const btn = document.createElement('button');
+    btn.className = 'trip-move-to-draft-btn';
+    btn.id = 'move-to-draft-btn';
+    btn.textContent = t('trip.moveToDraft', 'Sposta in bozza');
+    btn.addEventListener('click', () => openMoveToDraftModal(tripData));
+
+    // Inserisce in fondo al trip-content
+    const tripContent = document.getElementById('trip-content');
+    if (tripContent) {
+      tripContent.insertAdjacentElement('afterend', btn);
+    }
+  }
+
+  /**
+   * Modale di conferma prima di spostare il viaggio in bozza
+   * @param {Object} tripData
+   */
+  function openMoveToDraftModal(tripData) {
+    const t = (k, fb) => i18n.t(k) || fb;
+
+    const existing = document.getElementById('move-to-draft-modal');
+    if (existing) existing.remove();
+
+    const modalHtml = `
+      <div class="modal-overlay active" id="move-to-draft-modal">
+        <div class="modal">
+          <div class="modal-header">
+            <h2>${t('trip.moveToDraftTitle', 'Spostare in bozza?')}</h2>
+            <button class="modal-close" id="move-to-draft-close">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <p class="modal-description">
+              ${t('trip.moveToDraftDesc', 'Il viaggio resterà visibile in "In preparazione". Potrai completarlo in seguito.')}
+            </p>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" id="move-to-draft-cancel">${t('modal.cancel', 'Annulla')}</button>
+            <button class="btn btn-primary" id="move-to-draft-submit">${t('trip.moveToDraft', 'Sposta in bozza')}</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    document.body.style.overflow = 'hidden';
+
+    const closeModal = () => {
+      const modal = document.getElementById('move-to-draft-modal');
+      if (modal) modal.remove();
+      document.body.style.overflow = '';
+    };
+
+    document.getElementById('move-to-draft-close').addEventListener('click', closeModal);
+    document.getElementById('move-to-draft-cancel').addEventListener('click', closeModal);
+    document.getElementById('move-to-draft-modal').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('move-to-draft-modal')) closeModal();
+    });
+
+    document.getElementById('move-to-draft-submit').addEventListener('click', async () => {
+      const submitBtn = document.getElementById('move-to-draft-submit');
+      submitBtn.disabled = true;
+
+      try {
+        const res = await utils.authFetch('/.netlify/functions/update-trip-meta', {
+          method: 'PATCH',
+          body: JSON.stringify({
+            tripId: tripData.id,
+            status: 'draft'
+          })
+        });
+        const result = await res.json();
+        if (!res.ok || !result.success) throw new Error(result.error || 'Failed');
+
+        closeModal();
+        utils.showToast(t('trip.movedToDraft', 'Viaggio spostato in bozza'), 'success');
+        await loadTripFromUrl();
+      } catch (err) {
+        console.error('[tripPage] moveToDraft error:', err);
         utils.showToast(i18n.t('common.error') || 'Errore', 'error');
         submitBtn.disabled = false;
       }

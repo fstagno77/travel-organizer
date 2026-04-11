@@ -11066,3 +11066,35 @@ body:has(#modal-page-slider.at-activity) .trip-fab {
 .form-input.input--error {
   border-color: var(--color-error, #ef4444);
 }
+
+/* Trip header — edit date e toggle status */
+.trip-dates-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.trip-edit-dates-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  opacity: 0.6;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+}
+.trip-edit-dates-btn:hover {
+  opacity: 1;
+  color: var(--color-primary);
+}
+.trip-move-to-draft-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  text-decoration: underline;
+  padding: 0;
+  margin-top: 16px;
+  display: block;
+}
