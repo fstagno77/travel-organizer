@@ -2778,7 +2778,10 @@
 
             <!-- Città (chip input) -->
             <div class="form-group">
-              <label class="form-label" data-i18n="trip.departureCity">${t('trip.departureCity', 'Città')}</label>
+              <div class="form-group-header">
+                <label class="form-label" data-i18n="trip.departureCity">${t('trip.departureCity', 'Città')}</label>
+                <span class="char-counter-inline" id="settings-city-counter">${draftCities.length > 0 ? draftCities.length + ' ' + t('trip.cityCountPlural', 'città') : '0 ' + t('trip.cityCountPlural', 'città')}</span>
+              </div>
               <div class="settings-city-chips-field" id="settings-city-field">
                 <input type="text" class="city-chip-input" id="settings-city-input" placeholder="${t('trip.citySearchPlaceholder', 'Aggiungi città...')}" autocomplete="off" maxlength="100">
                 <div class="city-autocomplete-dropdown" id="settings-city-dropdown"></div>
@@ -2869,6 +2872,13 @@
       // Svuota il wrapper mantenendo solo input e dropdown
       const existingChips = cityField.querySelectorAll('.city-chip');
       existingChips.forEach(el => el.remove());
+
+      // Aggiorna il counter città
+      const cityCounter = document.getElementById('settings-city-counter');
+      if (cityCounter) {
+        const count = draftCities.length;
+        cityCounter.textContent = count + ' ' + (count === 1 ? t('trip.cityCountSingular', 'città') : t('trip.cityCountPlural', 'città'));
+      }
 
       // Re-inserisci i chip prima dell'input
       draftCities.forEach(cityObj => {

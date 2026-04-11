@@ -11117,6 +11117,19 @@ body:has(#modal-page-slider.at-activity) .trip-fab {
 .modal--settings .form-row .form-group {
   flex: 1;
 }
+.form-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+.form-group-header .form-label {
+  margin-bottom: 0;
+}
+.char-counter-inline {
+  font-size: 12px;
+  color: var(--color-gray-500, var(--text-secondary));
+}
 .settings-city-chips-field {
   display: flex;
   flex-wrap: wrap;
@@ -11124,14 +11137,14 @@ body:has(#modal-page-slider.at-activity) .trip-fab {
   gap: 4px;
   min-height: 42px;
   padding: 4px 10px;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius);
-  background: var(--bg-input, var(--bg-secondary));
+  border: 1px solid var(--color-gray-300, #d1d5db);
+  border-radius: var(--radius-md, var(--radius));
+  background: var(--color-white, var(--bg-input, var(--bg-secondary)));
   cursor: text;
   position: relative;
 }
 .settings-city-chips-field:focus-within {
-  border-color: var(--primary);
+  border-color: var(--color-primary, var(--primary));
   outline: none;
 }
 .city-chip {
