@@ -2753,12 +2753,14 @@
 
             <!-- Nome -->
             <div class="form-group">
-              <label class="form-label" data-i18n="trip.manualName">${t('trip.manualName', 'Nome del viaggio')}</label>
-              <input type="text" class="form-input" id="settings-name-input" maxlength="50" value="${esc(currentTitle)}">
-              <div class="char-counter" id="settings-char-counter">
-                <span class="char-limit-msg" id="settings-limit-msg">Raggiunto il limite di caratteri consentito</span>
-                <span><span id="settings-char-count">${currentTitle.length}</span>/50</span>
+              <div class="form-group-header">
+                <label class="form-label" data-i18n="trip.manualName">${t('trip.manualName', 'Nome del viaggio')}</label>
+                <div class="char-counter" id="settings-char-counter">
+                  <span class="char-limit-msg" id="settings-limit-msg">Raggiunto il limite di caratteri consentito</span>
+                  <span><span id="settings-char-count">${currentTitle.length}</span>/50</span>
+                </div>
               </div>
+              <input type="text" class="form-input" id="settings-name-input" maxlength="50" value="${esc(currentTitle)}">
               <div class="field-error" id="settings-name-error"></div>
             </div>
 
