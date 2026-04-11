@@ -11101,13 +11101,29 @@ body:has(#modal-page-slider.at-activity) .trip-fab {
 
 /* Settings modal */
 .modal--settings { max-width: 480px; }
+.modal--settings .modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 24px;
+}
+.modal--settings .modal-body .form-group {
+  margin-bottom: 0;
+}
+.modal--settings .form-row {
+  display: flex;
+  gap: 12px;
+}
+.modal--settings .form-row .form-group {
+  flex: 1;
+}
 .settings-city-chips-field {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   min-height: 42px;
-  padding: 6px 10px;
+  padding: 4px 10px;
   border: 1px solid var(--border-color);
   border-radius: var(--radius);
   background: var(--bg-input, var(--bg-secondary));
@@ -11145,11 +11161,19 @@ body:has(#modal-page-slider.at-activity) .trip-fab {
   border: none;
   outline: none;
   background: transparent;
-  flex: 1;
-  min-width: 120px;
+  flex: 1 1 80px;
+  min-width: 80px;
   font-size: 14px;
-  padding: 0;
+  padding: 2px 0;
   color: var(--text-primary);
+  line-height: 1.4;
+}
+.settings-city-chips-field .city-autocomplete-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  width: 100%;
+  z-index: 200;
 }
 .settings-photo-row {
   display: flex;
@@ -11159,8 +11183,10 @@ body:has(#modal-page-slider.at-activity) .trip-fab {
 }
 .settings-photo-actions {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  flex-direction: row;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
 }
 .settings-photo-thumb {
   width: 64px;

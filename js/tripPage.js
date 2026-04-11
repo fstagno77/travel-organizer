@@ -2762,18 +2762,18 @@
               <div class="field-error" id="settings-name-error"></div>
             </div>
 
-            <!-- Data inizio -->
-            <div class="form-group">
-              <label class="form-label" data-i18n="trip.manualStartDate">${t('trip.manualStartDate', 'Data inizio')}</label>
-              <input type="date" class="form-input" id="settings-start-date" value="${esc(currentStartDate)}">
-              <div class="field-error" id="settings-start-error"></div>
-            </div>
-
-            <!-- Data fine -->
-            <div class="form-group">
-              <label class="form-label" data-i18n="trip.manualEndDate">${t('trip.manualEndDate', 'Data fine')}</label>
-              <input type="date" class="form-input" id="settings-end-date" value="${esc(currentEndDate)}">
-              <div class="field-error" id="settings-end-error"></div>
+            <!-- Date inizio / fine -->
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" data-i18n="trip.manualStartDate">${t('trip.manualStartDate', 'Data inizio')}</label>
+                <input type="date" class="form-input" id="settings-start-date" value="${esc(currentStartDate)}">
+                <div class="field-error" id="settings-start-error"></div>
+              </div>
+              <div class="form-group">
+                <label class="form-label" data-i18n="trip.manualEndDate">${t('trip.manualEndDate', 'Data fine')}</label>
+                <input type="date" class="form-input" id="settings-end-date" value="${esc(currentEndDate)}">
+                <div class="field-error" id="settings-end-error"></div>
+              </div>
             </div>
 
             <!-- Città (chip input) -->
