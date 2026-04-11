@@ -84,18 +84,20 @@ const draftsPage = (function() {
    * @returns {Promise<boolean>}
    */
   async function deleteDraft(tripId) {
-    const supabaseClient = window.auth?.supabase;
-    if (!supabaseClient) return false;
-    const { error } = await supabaseClient
-      .from('trips')
-      .update({ deleted_at: new Date().toISOString() })
-      .eq('id', tripId);
-
-    if (error) {
-      console.error('[draftsPage] deleteDraft error:', error);
+    try {
+      const res = await window.utils.authFetch(`/.netlify/functions/delete-trip?id=${encodeURIComponent(tripId)}`, {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        console.error('[draftsPage] deleteDraft error:', data.error);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.error('[draftsPage] deleteDraft error:', err);
       return false;
     }
-    return true;
   }
 
   /**
