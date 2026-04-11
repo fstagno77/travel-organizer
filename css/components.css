@@ -11101,11 +11101,66 @@ body:has(#modal-page-slider.at-activity) .trip-fab {
 
 /* Settings modal */
 .modal--settings { max-width: 480px; }
+.settings-city-chips-field {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-height: 42px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  background: var(--bg-input, var(--bg-secondary));
+  cursor: text;
+  position: relative;
+}
+.settings-city-chips-field:focus-within {
+  border-color: var(--primary);
+  outline: none;
+}
+.city-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: var(--primary-light, rgba(59,130,246,0.12));
+  color: var(--primary);
+  border-radius: 100px;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.city-chip__remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  font-size: 15px;
+  color: var(--primary);
+  opacity: 0.7;
+}
+.city-chip__remove:hover { opacity: 1; }
+.city-chip-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  flex: 1;
+  min-width: 120px;
+  font-size: 14px;
+  padding: 0;
+  color: var(--text-primary);
+}
 .settings-photo-row {
   display: flex;
   align-items: center;
   gap: 12px;
   margin-top: 4px;
+}
+.settings-photo-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 .settings-photo-thumb {
   width: 64px;

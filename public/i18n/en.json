@@ -219,7 +219,9 @@
     "cancelTrip": "Delete trip",
     "cancelTitle": "Delete trip",
     "cancelConfirm": "Are you sure you want to delete this trip? This action cannot be undone.",
-    "settingsError": "Error saving settings"
+    "settingsError": "Error saving settings",
+    "chooseFromLibrary": "Choose from library",
+    "edit": "Edit"
   },
   "modal": {
     "cancel": "Cancel",

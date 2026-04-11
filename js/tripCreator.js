@@ -1215,6 +1215,10 @@ const tripCreator = {
     const uploadInput = document.getElementById('custom-photo-input');
 
     if (uploadBtn && uploadInput) {
+      // Nascondi il bottone "Carica foto" se richiesto (es. aperto da modale Impostazioni)
+      if (this._hideUploadBtn) {
+        uploadBtn.style.display = 'none';
+      }
       uploadBtn.onclick = () => uploadInput.click();
       uploadInput.onchange = (e) => {
         if (e.target.files && e.target.files[0]) {
@@ -1471,7 +1475,7 @@ const tripCreator = {
    * @param {string} destination
    * @param {Object} tripData
    */
-  openPhotoSelection(tripId, destination, tripData) {
+  openPhotoSelection(tripId, destination, tripData, hideUpload = false) {
     this.state = 'photoSelection';
     this.pendingTripData = tripData;
     this.pendingDestination = destination;
@@ -1479,6 +1483,7 @@ const tripCreator = {
     this.currentPage = 1;
     this.hasMorePhotos = true;
     this.isChangingPhoto = true;
+    this._hideUploadBtn = hideUpload;
 
     const modal = document.getElementById('trip-modal');
     modal.classList.add('active');

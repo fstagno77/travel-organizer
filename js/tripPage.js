@@ -1305,10 +1305,10 @@
           ${canEdit ? `
           <button class="section-dropdown-item" data-action="settings">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="3"></circle>
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
             </svg>
-            <span data-i18n="trip.settings">Impostazioni</span>
+            <span data-i18n="trip.edit">Modifica</span>
           </button>
           ` : ''}
           <button class="section-dropdown-item" data-action="share">
@@ -2762,38 +2762,6 @@
               <div class="field-error" id="settings-name-error"></div>
             </div>
 
-            <!-- Foto di copertina -->
-            <div class="form-group">
-              <label class="form-label" data-i18n="trip.coverPhoto">${t('trip.coverPhoto', 'Foto di copertina')}</label>
-              <div class="settings-photo-row">
-                <div class="settings-photo-thumb" id="settings-photo-thumb">
-                  ${thumbHtml}
-                </div>
-                <button type="button" class="btn btn-secondary btn-sm" id="settings-change-photo-btn" data-i18n="trip.changePhotoBtn">${t('trip.changePhotoBtn', 'Cambia foto')}</button>
-              </div>
-              <div class="field-error" id="settings-photo-error"></div>
-            </div>
-
-            <!-- Città -->
-            <div class="form-group">
-              <label class="form-label" data-i18n="trip.departureCity">${t('trip.departureCity', 'Città')}</label>
-              <div class="city-input-wrapper">
-                <input type="text" class="form-input" id="settings-city-input" placeholder="${t('trip.citySearchPlaceholder', 'Cerca una città...')}" maxlength="100" autocomplete="off">
-                <div class="city-autocomplete-dropdown" id="settings-city-dropdown"></div>
-              </div>
-              <button class="city-autofill-btn" id="settings-city-autofill">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="23 4 23 10 17 10"></polyline>
-                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-                </svg>
-                Compila da voli e hotel
-              </button>
-              <div class="cities-list" id="settings-cities-list">
-                ${renderCitiesList(draftCities)}
-              </div>
-              <div class="field-error" id="settings-city-error"></div>
-            </div>
-
             <!-- Data inizio -->
             <div class="form-group">
               <label class="form-label" data-i18n="trip.manualStartDate">${t('trip.manualStartDate', 'Data inizio')}</label>
@@ -2806,6 +2774,43 @@
               <label class="form-label" data-i18n="trip.manualEndDate">${t('trip.manualEndDate', 'Data fine')}</label>
               <input type="date" class="form-input" id="settings-end-date" value="${esc(currentEndDate)}">
               <div class="field-error" id="settings-end-error"></div>
+            </div>
+
+            <!-- Città (chip input) -->
+            <div class="form-group">
+              <label class="form-label" data-i18n="trip.departureCity">${t('trip.departureCity', 'Città')}</label>
+              <div class="settings-city-chips-field" id="settings-city-field">
+                <input type="text" class="city-chip-input" id="settings-city-input" placeholder="${t('trip.citySearchPlaceholder', 'Aggiungi città...')}" autocomplete="off" maxlength="100">
+                <div class="city-autocomplete-dropdown" id="settings-city-dropdown"></div>
+              </div>
+              <button class="city-autofill-btn" id="settings-city-autofill">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="23 4 23 10 17 10"></polyline>
+                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                </svg>
+                Compila da voli e hotel
+              </button>
+              <div class="field-error" id="settings-city-error"></div>
+            </div>
+
+            <!-- Foto di copertina -->
+            <div class="form-group">
+              <label class="form-label" data-i18n="trip.coverPhoto">${t('trip.coverPhoto', 'Foto di copertina')}</label>
+              <div class="settings-photo-row">
+                <div class="settings-photo-thumb" id="settings-photo-thumb">
+                  ${thumbHtml}
+                </div>
+                <div class="settings-photo-actions">
+                  <input type="file" id="settings-photo-input" accept="image/jpeg,image/png,image/webp" hidden>
+                  <button type="button" class="btn btn-secondary btn-sm" id="settings-upload-photo-btn">
+                    <span data-i18n="trip.uploadCustomPhoto">${t('trip.uploadCustomPhoto', 'Carica foto')}</span>
+                  </button>
+                  <button type="button" class="btn btn-secondary btn-sm" id="settings-choose-library-btn">
+                    <span data-i18n="trip.chooseFromLibrary">${t('trip.chooseFromLibrary', 'Scegli da libreria')}</span>
+                  </button>
+                </div>
+              </div>
+              <div class="field-error" id="settings-photo-error"></div>
             </div>
 
             <!-- Stato -->
@@ -2839,8 +2844,9 @@
     const nameInput = document.getElementById('settings-name-input');
     const charCount = document.getElementById('settings-char-count');
     const charCounter = document.getElementById('settings-char-counter');
-    const cityInput = document.getElementById('settings-city-input');
-    const cityDropdown = document.getElementById('settings-city-dropdown');
+    const cityField = document.getElementById('settings-city-field');
+    let cityInput = document.getElementById('settings-city-input');
+    let cityDropdown = document.getElementById('settings-city-dropdown');
 
     // Char counter nome
     nameInput.addEventListener('input', () => {
@@ -2855,20 +2861,64 @@
       document.body.style.overflow = '';
     };
 
-    // ---- Autocomplete città (stessa logica di showCitiesModal) ----
+    // ---- Chip input città ----
     let settingsActiveIndex = -1;
     getCitiesDatabase();
 
+    const renderChips = () => {
+      // Svuota il wrapper mantenendo solo input e dropdown
+      const existingChips = cityField.querySelectorAll('.city-chip');
+      existingChips.forEach(el => el.remove());
+
+      // Re-inserisci i chip prima dell'input
+      draftCities.forEach(cityObj => {
+        const name = typeof cityObj === 'string' ? cityObj : cityObj.name;
+        const chip = document.createElement('span');
+        chip.className = 'city-chip';
+        chip.dataset.cityName = name;
+        chip.innerHTML = `${esc(name)} <button class="city-chip__remove" aria-label="Rimuovi" type="button">×</button>`;
+        chip.querySelector('.city-chip__remove').addEventListener('click', (e) => {
+          e.stopPropagation();
+          const index = draftCities.findIndex(c => {
+            const n = typeof c === 'string' ? c : c.name;
+            return n.toLowerCase() === name.toLowerCase();
+          });
+          if (index !== -1) {
+            draftCities.splice(index, 1);
+            renderChips();
+          }
+        });
+        cityField.insertBefore(chip, cityInput);
+      });
+    };
+
+    // Render iniziale chip con le città esistenti
+    renderChips();
+
+    // Click sul wrapper → focus input
+    cityField.addEventListener('click', (e) => {
+      if (!e.target.closest('.city-chip__remove')) {
+        cityInput = document.getElementById('settings-city-input');
+        if (cityInput) cityInput.focus();
+      }
+    });
+
     const hideSettingsDropdown = () => {
-      cityDropdown.innerHTML = '';
-      cityDropdown.classList.remove('active');
+      cityDropdown = document.getElementById('settings-city-dropdown');
+      if (cityDropdown) {
+        cityDropdown.innerHTML = '';
+        cityDropdown.classList.remove('active');
+      }
       settingsActiveIndex = -1;
     };
 
     const addSettingsCityObj = (cityObj) => {
       const errEl = document.getElementById('settings-city-error');
       if (errEl) errEl.textContent = '';
-      const duplicate = draftCities.some(c => c.name.toLowerCase() === cityObj.name.toLowerCase());
+      const duplicate = draftCities.some(c => {
+        const n = typeof c === 'string' ? c : c.name;
+        return n.toLowerCase() === cityObj.name.toLowerCase();
+      });
       if (duplicate) {
         if (errEl) {
           errEl.textContent = t('trip.cityAlreadyAdded', 'Città già presente');
@@ -2877,13 +2927,17 @@
         return;
       }
       draftCities.push(cityObj);
-      cityInput.value = '';
+      cityInput = document.getElementById('settings-city-input');
+      if (cityInput) cityInput.value = '';
       hideSettingsDropdown();
-      refreshSettingsCitiesList();
-      cityInput.focus();
+      renderChips();
+      cityInput = document.getElementById('settings-city-input');
+      if (cityInput) cityInput.focus();
     };
 
     const showSettingsDropdown = (items) => {
+      cityDropdown = document.getElementById('settings-city-dropdown');
+      if (!cityDropdown) return;
       if (items.length === 0) { hideSettingsDropdown(); return; }
       settingsActiveIndex = -1;
       cityDropdown.innerHTML = items.map((item, i) => `
@@ -2901,6 +2955,8 @@
     };
 
     const setSettingsActiveItem = (index) => {
+      cityDropdown = document.getElementById('settings-city-dropdown');
+      if (!cityDropdown) return;
       cityDropdown.querySelectorAll('.city-autocomplete-item').forEach((el, i) => {
         el.classList.toggle('active', i === index);
       });
@@ -2931,16 +2987,20 @@
       showSettingsDropdown(results);
     };
 
-    cityInput.addEventListener('input', () => {
-      searchSettingsCities(cityInput.value.trim());
+    cityField.addEventListener('input', (e) => {
+      if (e.target.id === 'settings-city-input') {
+        searchSettingsCities(e.target.value.trim());
+      }
     });
 
-    cityInput.addEventListener('keydown', (e) => {
-      const items = cityDropdown.querySelectorAll('.city-autocomplete-item');
+    cityField.addEventListener('keydown', (e) => {
+      if (e.target.id !== 'settings-city-input') return;
+      cityDropdown = document.getElementById('settings-city-dropdown');
+      const items = cityDropdown ? cityDropdown.querySelectorAll('.city-autocomplete-item') : [];
       if (!items.length) {
         if (e.key === 'Enter') {
           e.preventDefault();
-          const cityName = cityInput.value.trim();
+          const cityName = e.target.value.trim();
           if (cityName) addSettingsCityObj({ name: cityName });
         }
         return;
@@ -2956,7 +3016,7 @@
         if (settingsActiveIndex >= 0) {
           items[settingsActiveIndex].click();
         } else {
-          const cityName = cityInput.value.trim();
+          const cityName = e.target.value.trim();
           if (cityName) addSettingsCityObj({ name: cityName });
         }
       } else if (e.key === 'Escape') {
@@ -2964,36 +3024,10 @@
       }
     });
 
-    const refreshSettingsCitiesList = () => {
-      const listEl = document.getElementById('settings-cities-list');
-      if (listEl) listEl.innerHTML = renderCitiesList(draftCities);
-      bindSettingsCityRemoveButtons();
-    };
-
-    const bindSettingsCityRemoveButtons = () => {
-      const listEl = document.getElementById('settings-cities-list');
-      if (!listEl) return;
-      listEl.querySelectorAll('.city-remove-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const cityName = btn.dataset.city;
-          const index = draftCities.findIndex(c => {
-            const n = typeof c === 'string' ? c : c.name;
-            return n.toLowerCase() === cityName.toLowerCase();
-          });
-          if (index !== -1) {
-            draftCities.splice(index, 1);
-            refreshSettingsCitiesList();
-          }
-        });
-      });
-    };
-
-    bindSettingsCityRemoveButtons();
-
-    // Click fuori dalla city-input-wrapper chiude il dropdown
+    // Click fuori dal chip field chiude il dropdown
     modal.addEventListener('click', (e) => {
       if (e.target === modal) { closeModal(); return; }
-      if (!e.target.closest('.city-input-wrapper')) hideSettingsDropdown();
+      if (!e.target.closest('#settings-city-field')) hideSettingsDropdown();
     });
 
     // Autofill da voli e hotel
@@ -3028,21 +3062,43 @@
           document.getElementById('settings-city-autofill-warning').remove();
           draftCities.length = 0;
           draftCities.push(...extracted);
-          refreshSettingsCitiesList();
+          renderChips();
         });
         return;
       }
 
       draftCities.push(...extracted);
-      refreshSettingsCitiesList();
+      renderChips();
     };
 
     document.getElementById('settings-city-autofill').addEventListener('click', autofillSettingsCities);
 
-    // "Cambia foto" — chiude modale e apre pannello foto
-    document.getElementById('settings-change-photo-btn').addEventListener('click', () => {
+    // "Carica foto" — file input nascosto
+    const settingsPhotoInput = document.getElementById('settings-photo-input');
+    document.getElementById('settings-upload-photo-btn').addEventListener('click', () => {
+      settingsPhotoInput.click();
+    });
+    settingsPhotoInput.addEventListener('change', async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file || !window.tripCreator) return;
+      // Assicura che tripCreator abbia i dati del trip correnti
+      window.tripCreator.pendingTripData = currentTripData;
+      await window.tripCreator.uploadCustomPhoto(file);
+      // Dopo l'upload, ricarica il trip e aggiorna il thumbnail nella modale
+      await loadTripFromUrl();
+      const thumbEl = document.getElementById('settings-photo-thumb');
+      if (thumbEl && currentTripData?.coverPhoto?.url) {
+        thumbEl.innerHTML = `<img src="${esc(currentTripData.coverPhoto.url)}" alt="">`;
+      }
+      // Reset input per permettere ricaricamento dello stesso file
+      settingsPhotoInput.value = '';
+    });
+
+    // "Scegli da libreria" — chiude modale e apre photo library senza bottone "Carica foto"
+    document.getElementById('settings-choose-library-btn').addEventListener('click', () => {
       closeModal();
-      changePhoto(tripId);
+      if (!currentTripData?.destination || !window.tripCreator) return;
+      window.tripCreator.openPhotoSelection(tripId, currentTripData.destination, currentTripData, true);
     });
 
     // Chiudi con X e Annulla

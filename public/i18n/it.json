@@ -219,7 +219,9 @@
     "cancelTrip": "Cancella viaggio",
     "cancelTitle": "Cancella viaggio",
     "cancelConfirm": "Sei sicuro di voler cancellare questo viaggio? Questa azione non può essere annullata.",
-    "settingsError": "Errore nel salvataggio delle impostazioni"
+    "settingsError": "Errore nel salvataggio delle impostazioni",
+    "chooseFromLibrary": "Scegli da libreria",
+    "edit": "Modifica"
   },
   "modal": {
     "cancel": "Annulla",
