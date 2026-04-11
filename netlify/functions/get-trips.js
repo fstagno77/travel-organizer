@@ -131,7 +131,8 @@ exports.handler = async (event, context) => {
         color: '#0066cc',
         coverPhoto: row.data.coverPhoto || null,
         cities,
-        role: collabMap.get(row.id) || 'proprietario'
+        role: collabMap.get(row.id) || 'proprietario',
+        status: row.status || 'active'
       };
     });
 

@@ -93,7 +93,7 @@ exports.handler = async (event, context) => {
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ success: true, tripData: data.data, role, owner })
+      body: JSON.stringify({ success: true, tripData: { ...data.data, status: data.status }, role, owner })
     };
 
   } catch (error) {
