@@ -204,7 +204,22 @@
     "datesSaved": "Date aggiornate",
     "moveToDraft": "Sposta in bozza",
     "moveToDraftConfirm": "Vuoi spostare questo viaggio nelle bozze? Potrai completarlo in seguito.",
-    "moveToDraftSuccess": "Viaggio spostato nelle bozze"
+    "moveToDraftSuccess": "Viaggio spostato nelle bozze",
+    "settings": "Impostazioni",
+    "settingsTitle": "Impostazioni viaggio",
+    "coverPhoto": "Foto di copertina",
+    "changePhotoBtn": "Cambia foto",
+    "departureCity": "Città",
+    "status": "Stato",
+    "statusDraft": "Bozza",
+    "statusActive": "Viaggio",
+    "settingsSaved": "Impostazioni salvate",
+    "photoRequired": "Aggiungi una foto di copertina per attivare il viaggio",
+    "cityRequired": "Inserisci almeno una città per attivare il viaggio",
+    "cancelTrip": "Cancella viaggio",
+    "cancelTitle": "Cancella viaggio",
+    "cancelConfirm": "Sei sicuro di voler cancellare questo viaggio? Questa azione non può essere annullata.",
+    "settingsError": "Errore nel salvataggio delle impostazioni"
   },
   "modal": {
     "cancel": "Annulla",
@@ -419,6 +434,7 @@
   },
   "common": {
     "cancel": "Annulla",
+    "confirm": "Conferma",
     "continue": "Continua",
     "downloadError": "Errore durante il download del PDF",
     "error": "Si è verificato un errore",

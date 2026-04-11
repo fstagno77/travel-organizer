@@ -204,7 +204,22 @@
     "datesSaved": "Dates updated",
     "moveToDraft": "Move to drafts",
     "moveToDraftConfirm": "Do you want to move this trip to drafts? You can complete it later.",
-    "moveToDraftSuccess": "Trip moved to drafts"
+    "moveToDraftSuccess": "Trip moved to drafts",
+    "settings": "Settings",
+    "settingsTitle": "Trip settings",
+    "coverPhoto": "Cover photo",
+    "changePhotoBtn": "Change photo",
+    "departureCity": "Cities",
+    "status": "Status",
+    "statusDraft": "Draft",
+    "statusActive": "Trip",
+    "settingsSaved": "Settings saved",
+    "photoRequired": "Add a cover photo to activate the trip",
+    "cityRequired": "Add at least one city to activate the trip",
+    "cancelTrip": "Delete trip",
+    "cancelTitle": "Delete trip",
+    "cancelConfirm": "Are you sure you want to delete this trip? This action cannot be undone.",
+    "settingsError": "Error saving settings"
   },
   "modal": {
     "cancel": "Cancel",
@@ -419,6 +434,7 @@
   },
   "common": {
     "cancel": "Cancel",
+    "confirm": "Confirm",
     "continue": "Continue",
     "downloadError": "Error downloading PDF",
     "error": "An error occurred",

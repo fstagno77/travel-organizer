@@ -281,24 +281,7 @@
       if (datesEl) datesEl.textContent = `${start} - ${end}`;
     }
 
-    // Bottone edit date (solo proprietario)
-    const datesWrapper = document.getElementById('trip-dates-wrapper');
-    if (datesWrapper && currentUserRole === 'proprietario') {
-      // Rimuovi bottone precedente se esiste
-      const oldBtn = datesWrapper.querySelector('.trip-edit-dates-btn');
-      if (oldBtn) oldBtn.remove();
-
-      const editBtn = document.createElement('button');
-      editBtn.className = 'trip-edit-dates-btn';
-      editBtn.id = 'trip-edit-dates-btn';
-      editBtn.title = 'Modifica date';
-      editBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
-      datesWrapper.appendChild(editBtn);
-      editBtn.addEventListener('click', () => openEditDatesModal(tripData));
-    }
-
-    // Bottone "Sposta in bozza" (solo proprietario, solo se viaggio active)
-    renderMoveToDraftBtn(tripData);
+    // Le date sono ora gestite dalla modale Impostazioni
 
     // Set hero background image from cover photo
     const hero = document.getElementById('trip-hero');
@@ -338,8 +321,8 @@
           ${t('draft.banner', 'Questo viaggio è in bozza — aggiungi destinazione e date per confermarlo')}
         </span>
         ${isOwner ? `
-          <button class="btn btn-primary btn-sm" id="draft-complete-btn" data-i18n="draft.complete">
-            ${t('draft.complete', 'Completa viaggio')}
+          <button class="btn btn-primary btn-sm" id="draft-complete-btn" data-i18n="trip.settings">
+            ${t('trip.settings', 'Impostazioni')}
           </button>
         ` : ''}
       </div>
@@ -351,329 +334,13 @@
       tripContent.insertAdjacentHTML('beforebegin', bannerHtml);
     }
 
-    // Bind CTA "Completa viaggio" (solo proprietario)
+    // Bind CTA "Impostazioni" banner bozza (solo proprietario)
     if (isOwner) {
       const completeBtn = document.getElementById('draft-complete-btn');
       if (completeBtn) {
-        completeBtn.addEventListener('click', () => openCompleteModal(tripData));
+        completeBtn.addEventListener('click', () => showSettingsModal(tripData.id));
       }
     }
-  }
-
-  /**
-   * Apre mini-form inline per completare la bozza (destinazione + date)
-   * @param {Object} tripData
-   */
-  function openCompleteModal(tripData) {
-    const t = (k, fb) => i18n.t(k) || fb;
-    const lang = i18n.getLang();
-
-    // Rimuovi modal precedente se esiste
-    const existing = document.getElementById('draft-complete-modal');
-    if (existing) existing.remove();
-
-    const modalHtml = `
-      <div class="modal-overlay active" id="draft-complete-modal">
-        <div class="modal">
-          <div class="modal-header">
-            <h2>${t('draft.complete', 'Completa viaggio')}</h2>
-            <button class="modal-close" id="draft-complete-close">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
-          </div>
-          <div class="modal-body">
-            <div class="form-group">
-              <label class="form-label">${t('trip.manualCities', 'Destinazione')} *</label>
-              <input type="text" class="form-input" id="draft-destination-input"
-                     placeholder="${lang === 'it' ? 'Es. Parigi, Tokyo...' : 'e.g. Paris, Tokyo...'}"
-                     autocomplete="off" required>
-            </div>
-            <div class="form-row">
-              <div class="form-group form-group-half">
-                <label class="form-label">${t('trip.manualStartDate', 'Data inizio')} *</label>
-                <input type="date" class="form-input" id="draft-start-date-input" required>
-              </div>
-              <div class="form-group form-group-half">
-                <label class="form-label">${t('trip.manualEndDate', 'Data fine')}</label>
-                <input type="date" class="form-input" id="draft-end-date-input">
-              </div>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button class="btn btn-secondary" id="draft-complete-cancel">${t('modal.cancel', 'Annulla')}</button>
-            <button class="btn btn-primary" id="draft-complete-submit">${t('common.confirm', 'Conferma')}</button>
-          </div>
-        </div>
-      </div>
-    `;
-
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
-    document.body.style.overflow = 'hidden';
-    i18n.apply(document.getElementById('draft-complete-modal'));
-
-    const closeModal = () => {
-      const modal = document.getElementById('draft-complete-modal');
-      if (modal) modal.remove();
-      document.body.style.overflow = '';
-    };
-
-    document.getElementById('draft-complete-close').addEventListener('click', closeModal);
-    document.getElementById('draft-complete-cancel').addEventListener('click', closeModal);
-    document.getElementById('draft-complete-modal').addEventListener('click', (e) => {
-      if (e.target === document.getElementById('draft-complete-modal')) closeModal();
-    });
-
-    document.getElementById('draft-complete-submit').addEventListener('click', async () => {
-      const destinationInput = document.getElementById('draft-destination-input');
-      const startDateInput = document.getElementById('draft-start-date-input');
-      const endDateInput = document.getElementById('draft-end-date-input');
-
-      const destination = destinationInput.value.trim();
-      const startDate = startDateInput.value;
-      const endDate = endDateInput.value || null;
-
-      if (!destination) {
-        destinationInput.focus();
-        return;
-      }
-      if (!startDate) {
-        startDateInput.focus();
-        return;
-      }
-
-      const submitBtn = document.getElementById('draft-complete-submit');
-      submitBtn.disabled = true;
-
-      try {
-        const res = await utils.authFetch('/.netlify/functions/update-trip-meta', {
-          method: 'PATCH',
-          body: JSON.stringify({
-            tripId: tripData.id,
-            startDate,
-            endDate: endDate || null,
-            status: 'active'
-          })
-        });
-        const result = await res.json();
-        if (!res.ok || !result.success) throw new Error(result.error || 'Failed');
-
-        closeModal();
-        utils.showToast(t('draft.confirmed', 'Viaggio confermato!'), 'success');
-
-        // Rimuovi banner
-        const banner = document.getElementById('draft-banner');
-        if (banner) banner.remove();
-
-        // Aggiorna dati in memoria e ricarica
-        await loadTripFromUrl();
-      } catch (err) {
-        console.error('[tripPage] completeTrip error:', err);
-        utils.showToast(i18n.t('common.error') || 'Errore', 'error');
-        submitBtn.disabled = false;
-      }
-    });
-  }
-
-  /**
-   * Apre modale per modificare le date del viaggio (startDate / endDate)
-   * @param {Object} tripData
-   */
-  function openEditDatesModal(tripData) {
-    const t = (k, fb) => i18n.t(k) || fb;
-
-    const existing = document.getElementById('edit-dates-modal');
-    if (existing) existing.remove();
-
-    const modalHtml = `
-      <div class="modal-overlay active" id="edit-dates-modal">
-        <div class="modal">
-          <div class="modal-header">
-            <h2>${t('trip.editDates', 'Modifica date')}</h2>
-            <button class="modal-close" id="edit-dates-close">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
-          </div>
-          <div class="modal-body">
-            <div class="form-row">
-              <div class="form-group form-group-half">
-                <label class="form-label">${t('trip.manualStartDate', 'Data inizio')} *</label>
-                <input type="date" class="form-input" id="edit-dates-start"
-                       value="${tripData.startDate || ''}" required>
-              </div>
-              <div class="form-group form-group-half">
-                <label class="form-label">${t('trip.manualEndDate', 'Data fine')}</label>
-                <input type="date" class="form-input" id="edit-dates-end"
-                       value="${tripData.endDate || ''}">
-              </div>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button class="btn btn-secondary" id="edit-dates-cancel">${t('modal.cancel', 'Annulla')}</button>
-            <button class="btn btn-primary" id="edit-dates-submit">${t('common.save', 'Salva')}</button>
-          </div>
-        </div>
-      </div>
-    `;
-
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
-    document.body.style.overflow = 'hidden';
-
-    const closeModal = () => {
-      const modal = document.getElementById('edit-dates-modal');
-      if (modal) modal.remove();
-      document.body.style.overflow = '';
-    };
-
-    document.getElementById('edit-dates-close').addEventListener('click', closeModal);
-    document.getElementById('edit-dates-cancel').addEventListener('click', closeModal);
-    document.getElementById('edit-dates-modal').addEventListener('click', (e) => {
-      if (e.target === document.getElementById('edit-dates-modal')) closeModal();
-    });
-
-    document.getElementById('edit-dates-submit').addEventListener('click', async () => {
-      const startInput = document.getElementById('edit-dates-start');
-      const endInput = document.getElementById('edit-dates-end');
-      const newStart = startInput.value;
-      const newEnd = endInput.value || null;
-
-      if (!newStart) {
-        startInput.focus();
-        return;
-      }
-
-      const submitBtn = document.getElementById('edit-dates-submit');
-      submitBtn.disabled = true;
-
-      try {
-        const res = await utils.authFetch('/.netlify/functions/update-trip-meta', {
-          method: 'PATCH',
-          body: JSON.stringify({
-            tripId: tripData.id,
-            startDate: newStart,
-            endDate: newEnd
-          })
-        });
-        const result = await res.json();
-        if (!res.ok || !result.success) throw new Error(result.error || 'Failed');
-
-        closeModal();
-        utils.showToast(t('trip.datesSaved', 'Date aggiornate'), 'success');
-        await loadTripFromUrl();
-      } catch (err) {
-        console.error('[tripPage] editDates error:', err);
-        utils.showToast(i18n.t('common.error') || 'Errore', 'error');
-        submitBtn.disabled = false;
-      }
-    });
-  }
-
-  /**
-   * Renderizza il bottone "Sposta in bozza" se il viaggio è active e l'utente è proprietario.
-   * Rimuove il bottone se il viaggio è draft.
-   * @param {Object} tripData
-   */
-  function renderMoveToDraftBtn(tripData) {
-    // Rimuovi eventuale bottone precedente
-    const existing = document.getElementById('move-to-draft-btn');
-    if (existing) existing.remove();
-
-    if (tripData.status !== 'active' || currentUserRole !== 'proprietario') return;
-
-    const t = (k, fb) => i18n.t(k) || fb;
-
-    const btn = document.createElement('button');
-    btn.className = 'trip-move-to-draft-btn';
-    btn.id = 'move-to-draft-btn';
-    btn.textContent = t('trip.moveToDraft', 'Sposta in bozza');
-    btn.addEventListener('click', () => openMoveToDraftModal(tripData));
-
-    // Inserisce in fondo al trip-content
-    const tripContent = document.getElementById('trip-content');
-    if (tripContent) {
-      tripContent.insertAdjacentElement('afterend', btn);
-    }
-  }
-
-  /**
-   * Modale di conferma prima di spostare il viaggio in bozza
-   * @param {Object} tripData
-   */
-  function openMoveToDraftModal(tripData) {
-    const t = (k, fb) => i18n.t(k) || fb;
-
-    const existing = document.getElementById('move-to-draft-modal');
-    if (existing) existing.remove();
-
-    const modalHtml = `
-      <div class="modal-overlay active" id="move-to-draft-modal">
-        <div class="modal">
-          <div class="modal-header">
-            <h2>${t('trip.moveToDraftTitle', 'Spostare in bozza?')}</h2>
-            <button class="modal-close" id="move-to-draft-close">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
-          </div>
-          <div class="modal-body">
-            <p class="modal-description">
-              ${t('trip.moveToDraftDesc', 'Il viaggio resterà visibile in "In preparazione". Potrai completarlo in seguito.')}
-            </p>
-          </div>
-          <div class="modal-footer">
-            <button class="btn btn-secondary" id="move-to-draft-cancel">${t('modal.cancel', 'Annulla')}</button>
-            <button class="btn btn-primary" id="move-to-draft-submit">${t('trip.moveToDraft', 'Sposta in bozza')}</button>
-          </div>
-        </div>
-      </div>
-    `;
-
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
-    document.body.style.overflow = 'hidden';
-
-    const closeModal = () => {
-      const modal = document.getElementById('move-to-draft-modal');
-      if (modal) modal.remove();
-      document.body.style.overflow = '';
-    };
-
-    document.getElementById('move-to-draft-close').addEventListener('click', closeModal);
-    document.getElementById('move-to-draft-cancel').addEventListener('click', closeModal);
-    document.getElementById('move-to-draft-modal').addEventListener('click', (e) => {
-      if (e.target === document.getElementById('move-to-draft-modal')) closeModal();
-    });
-
-    document.getElementById('move-to-draft-submit').addEventListener('click', async () => {
-      const submitBtn = document.getElementById('move-to-draft-submit');
-      submitBtn.disabled = true;
-
-      try {
-        const res = await utils.authFetch('/.netlify/functions/update-trip-meta', {
-          method: 'PATCH',
-          body: JSON.stringify({
-            tripId: tripData.id,
-            status: 'draft'
-          })
-        });
-        const result = await res.json();
-        if (!res.ok || !result.success) throw new Error(result.error || 'Failed');
-
-        closeModal();
-        utils.showToast(t('trip.movedToDraft', 'Viaggio spostato in bozza'), 'success');
-        await loadTripFromUrl();
-      } catch (err) {
-        console.error('[tripPage] moveToDraft error:', err);
-        utils.showToast(i18n.t('common.error') || 'Errore', 'error');
-        submitBtn.disabled = false;
-      }
-    });
   }
 
   // Configurazione icone e label per ciascun tab
@@ -1636,27 +1303,12 @@
         </button>
         <div class="section-dropdown" id="content-dropdown">
           ${canEdit ? `
-          <button class="section-dropdown-item" data-action="rename">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-            </svg>
-            <span data-i18n="trip.rename">Rinomina</span>
-          </button>
-          <button class="section-dropdown-item" data-action="change-photo">
+          <button class="section-dropdown-item" data-action="settings">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-              <circle cx="8.5" cy="8.5" r="1.5"></circle>
-              <polyline points="21 15 16 10 5 21"></polyline>
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
             </svg>
-            <span data-i18n="trip.changePhoto">Cambia foto</span>
-          </button>
-          <button class="section-dropdown-item" data-action="cities">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-              <circle cx="12" cy="10" r="3"></circle>
-            </svg>
-            <span data-i18n="trip.cities">Città</span>
+            <span data-i18n="trip.settings">Impostazioni</span>
           </button>
           ` : ''}
           <button class="section-dropdown-item" data-action="share">
@@ -1667,7 +1319,7 @@
               <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
               <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
             </svg>
-            <span data-i18n="trip.share">Share</span>
+            <span data-i18n="trip.share">Condividi</span>
           </button>
           ${canDelete ? `
           <div class="section-dropdown-divider"></div>
@@ -1678,7 +1330,7 @@
               <line x1="10" y1="11" x2="10" y2="17"></line>
               <line x1="14" y1="11" x2="14" y2="17"></line>
             </svg>
-            <span data-i18n="trip.deleteTrip">Delete trip</span>
+            <span data-i18n="trip.cancelTrip">Cancella viaggio</span>
           </button>
           ` : ''}
           ${currentUserRole !== 'proprietario' ? `
@@ -1723,18 +1375,14 @@
         const action = item.dataset.action;
         dropdown?.classList.remove('active');
 
-        if (action === 'rename') {
-          showRenameModal(tripId);
+        if (action === 'settings') {
+          showSettingsModal(tripId);
         } else if (action === 'delete') {
           deleteTrip(tripId);
         } else if (action === 'share') {
           const lang = i18n.getLang();
           const tripName = currentTripData?.title?.[lang] || currentTripData?.title?.en || currentTripData?.title?.it || '';
           shareModal.show(tripId, currentUserRole, tripName);
-        } else if (action === 'change-photo') {
-          changePhoto(tripId);
-        } else if (action === 'cities') {
-          showCitiesModal(tripId);
         } else if (action === 'leave-trip') {
           leaveTrip(tripId);
         }
@@ -2544,7 +2192,7 @@
       <div class="modal-overlay" id="delete-modal">
         <div class="modal">
           <div class="modal-header">
-            <h2 data-i18n="trip.deleteTitle">Delete trip</h2>
+            <h2 data-i18n="trip.cancelTitle">Cancella viaggio</h2>
             <button class="modal-close" id="delete-close">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -2553,12 +2201,13 @@
             </button>
           </div>
           <div class="modal-body">
-            <p data-i18n="trip.deleteConfirm">Are you sure you want to delete this trip?</p>
+            <p data-i18n="trip.cancelConfirm">Sei sicuro di voler cancellare questo viaggio? Questa azione non può essere annullata.</p>
             <p class="text-muted mt-2"><strong>${esc(tripTitle)}</strong></p>
           </div>
-          <div class="modal-footer" style="justify-content: space-between;">
+          <div class="modal-footer" style="justify-content: space-between; flex-wrap: wrap; gap: 8px;">
             <button class="btn btn-secondary" id="delete-cancel" data-i18n="modal.cancel">Cancel</button>
-            <button class="btn btn-danger" id="delete-confirm" data-i18n="trip.delete">Delete</button>
+            <div class="field-error" id="delete-error" style="width:100%; order:3;"></div>
+            <button class="btn btn-danger" id="delete-confirm" data-i18n="trip.cancelTrip">Cancella viaggio</button>
           </div>
         </div>
       </div>
@@ -2594,9 +2243,10 @@
         window.location.href = './';
       } catch (error) {
         console.error('Error deleting trip:', error);
-        alert(i18n.t('trip.deleteError') || 'Error deleting trip');
+        const deleteErrEl = document.getElementById('delete-error');
+        if (deleteErrEl) deleteErrEl.textContent = i18n.t('trip.deleteError') || 'Error deleting trip';
         confirmBtn.disabled = false;
-        confirmBtn.textContent = i18n.t('trip.delete') || 'Delete';
+        confirmBtn.textContent = i18n.t('trip.cancelTrip') || 'Cancella viaggio';
       }
     };
 
@@ -2973,8 +2623,9 @@
             <input type="text" class="form-input" id="rename-input" value="${esc(currentTitle)}">
             <div class="char-counter" id="rename-char-counter"><span class="char-limit-msg" id="rename-limit-msg">Raggiunto il limite di caratteri consentito</span><span><span id="rename-char-count">${currentTitle.length}</span>/50</span></div>
           </div>
-          <div class="modal-footer" style="justify-content: space-between;">
+          <div class="modal-footer" style="justify-content: space-between; flex-wrap: wrap; gap: 8px;">
             <button class="btn btn-secondary" id="rename-cancel" data-i18n="modal.cancel">Annulla</button>
+            <div class="field-error" id="rename-error" style="width:100%; order:3;"></div>
             <button class="btn btn-primary" id="rename-submit">Conferma</button>
           </div>
         </div>
@@ -3030,7 +2681,8 @@
         if (activeTab) switchToTab(activeTab);
       } catch (error) {
         console.error('Error renaming trip:', error);
-        alert(i18n.t('trip.renameError') || 'Error renaming trip');
+        const renameErrEl = document.getElementById('rename-error');
+        if (renameErrEl) renameErrEl.textContent = i18n.t('trip.renameError') || 'Error renaming trip';
         submitBtn.disabled = false;
         submitBtn.textContent = i18n.t('modal.save') || 'Save';
       }
@@ -3050,6 +2702,449 @@
     document.body.style.overflow = 'hidden';
     input.focus();
     input.select();
+    i18n.apply(modal);
+  }
+
+  // ===========================
+  // Settings modal
+  // ===========================
+
+  /**
+   * Show settings modal — unifica nome, foto, città, date e stato del viaggio.
+   * @param {string} tripId
+   */
+  function showSettingsModal(tripId) {
+    const existingModal = document.getElementById('settings-modal');
+    if (existingModal) existingModal.remove();
+
+    const t = (k, fb) => i18n.t(k) || fb;
+    const lang = i18n.getLang();
+
+    // Stato corrente
+    const currentTitle = currentTripData?.title?.[lang] || currentTripData?.title?.it || currentTripData?.title?.en || '';
+    const currentStatus = currentTripData?.status || 'active';
+    const coverPhotoUrl = currentTripData?.coverPhoto?.url || null;
+    const currentStartDate = currentTripData?.startDate || '';
+    const currentEndDate = currentTripData?.endDate || '';
+
+    // Draft locale delle città
+    const rawCities = currentTripData?.cities || [];
+    let draftCities = rawCities.map(c =>
+      typeof c === 'string' ? { name: c } : { ...c }
+    );
+
+    const thumbHtml = coverPhotoUrl
+      ? `<img src="${esc(coverPhotoUrl)}" alt="">`
+      : '';
+
+    const modalHtml = `
+      <div class="modal-overlay" id="settings-modal">
+        <div class="modal modal--settings">
+          <div class="modal-header">
+            <h2 data-i18n="trip.settingsTitle">${t('trip.settingsTitle', 'Impostazioni viaggio')}</h2>
+            <button class="modal-close" id="settings-close">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <div class="modal-body">
+
+            <!-- Nome -->
+            <div class="form-group">
+              <label class="form-label" data-i18n="trip.manualName">${t('trip.manualName', 'Nome del viaggio')}</label>
+              <input type="text" class="form-input" id="settings-name-input" maxlength="50" value="${esc(currentTitle)}">
+              <div class="char-counter" id="settings-char-counter">
+                <span class="char-limit-msg" id="settings-limit-msg">Raggiunto il limite di caratteri consentito</span>
+                <span><span id="settings-char-count">${currentTitle.length}</span>/50</span>
+              </div>
+              <div class="field-error" id="settings-name-error"></div>
+            </div>
+
+            <!-- Foto di copertina -->
+            <div class="form-group">
+              <label class="form-label" data-i18n="trip.coverPhoto">${t('trip.coverPhoto', 'Foto di copertina')}</label>
+              <div class="settings-photo-row">
+                <div class="settings-photo-thumb" id="settings-photo-thumb">
+                  ${thumbHtml}
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" id="settings-change-photo-btn" data-i18n="trip.changePhotoBtn">${t('trip.changePhotoBtn', 'Cambia foto')}</button>
+              </div>
+              <div class="field-error" id="settings-photo-error"></div>
+            </div>
+
+            <!-- Città -->
+            <div class="form-group">
+              <label class="form-label" data-i18n="trip.departureCity">${t('trip.departureCity', 'Città')}</label>
+              <div class="city-input-wrapper">
+                <input type="text" class="form-input" id="settings-city-input" placeholder="${t('trip.citySearchPlaceholder', 'Cerca una città...')}" maxlength="100" autocomplete="off">
+                <div class="city-autocomplete-dropdown" id="settings-city-dropdown"></div>
+              </div>
+              <button class="city-autofill-btn" id="settings-city-autofill">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="23 4 23 10 17 10"></polyline>
+                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                </svg>
+                Compila da voli e hotel
+              </button>
+              <div class="cities-list" id="settings-cities-list">
+                ${renderCitiesList(draftCities)}
+              </div>
+              <div class="field-error" id="settings-city-error"></div>
+            </div>
+
+            <!-- Data inizio -->
+            <div class="form-group">
+              <label class="form-label" data-i18n="trip.manualStartDate">${t('trip.manualStartDate', 'Data inizio')}</label>
+              <input type="date" class="form-input" id="settings-start-date" value="${esc(currentStartDate)}">
+              <div class="field-error" id="settings-start-error"></div>
+            </div>
+
+            <!-- Data fine -->
+            <div class="form-group">
+              <label class="form-label" data-i18n="trip.manualEndDate">${t('trip.manualEndDate', 'Data fine')}</label>
+              <input type="date" class="form-input" id="settings-end-date" value="${esc(currentEndDate)}">
+              <div class="field-error" id="settings-end-error"></div>
+            </div>
+
+            <!-- Stato -->
+            <div class="form-group">
+              <label class="form-label" data-i18n="trip.status">${t('trip.status', 'Stato')}</label>
+              <div class="settings-status-row">
+                <label class="settings-status-option">
+                  <input type="radio" name="settings-status" value="draft" id="settings-status-draft" ${currentStatus === 'draft' ? 'checked' : ''}>
+                  <span data-i18n="trip.statusDraft">${t('trip.statusDraft', 'Bozza')}</span>
+                </label>
+                <label class="settings-status-option">
+                  <input type="radio" name="settings-status" value="active" id="settings-status-active" ${currentStatus !== 'draft' ? 'checked' : ''}>
+                  <span data-i18n="trip.statusActive">${t('trip.statusActive', 'Viaggio')}</span>
+                </label>
+              </div>
+              <div class="field-error" id="settings-status-error"></div>
+            </div>
+
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" id="settings-cancel" data-i18n="modal.cancel">${t('modal.cancel', 'Annulla')}</button>
+            <button class="btn btn-primary" id="settings-save" data-i18n="common.save">${t('common.save', 'Salva')}</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    const modal = document.getElementById('settings-modal');
+    const nameInput = document.getElementById('settings-name-input');
+    const charCount = document.getElementById('settings-char-count');
+    const charCounter = document.getElementById('settings-char-counter');
+    const cityInput = document.getElementById('settings-city-input');
+    const cityDropdown = document.getElementById('settings-city-dropdown');
+
+    // Char counter nome
+    nameInput.addEventListener('input', () => {
+      const len = nameInput.value.length;
+      charCount.textContent = len;
+      charCounter.classList.toggle('over-limit', len > 50);
+      nameInput.classList.toggle('input-error', len > 50);
+    });
+
+    const closeModal = () => {
+      modal.remove();
+      document.body.style.overflow = '';
+    };
+
+    // ---- Autocomplete città (stessa logica di showCitiesModal) ----
+    let settingsActiveIndex = -1;
+    getCitiesDatabase();
+
+    const hideSettingsDropdown = () => {
+      cityDropdown.innerHTML = '';
+      cityDropdown.classList.remove('active');
+      settingsActiveIndex = -1;
+    };
+
+    const addSettingsCityObj = (cityObj) => {
+      const errEl = document.getElementById('settings-city-error');
+      if (errEl) errEl.textContent = '';
+      const duplicate = draftCities.some(c => c.name.toLowerCase() === cityObj.name.toLowerCase());
+      if (duplicate) {
+        if (errEl) {
+          errEl.textContent = t('trip.cityAlreadyAdded', 'Città già presente');
+          setTimeout(() => { if (errEl) errEl.textContent = ''; }, 3000);
+        }
+        return;
+      }
+      draftCities.push(cityObj);
+      cityInput.value = '';
+      hideSettingsDropdown();
+      refreshSettingsCitiesList();
+      cityInput.focus();
+    };
+
+    const showSettingsDropdown = (items) => {
+      if (items.length === 0) { hideSettingsDropdown(); return; }
+      settingsActiveIndex = -1;
+      cityDropdown.innerHTML = items.map((item, i) => `
+        <div class="city-autocomplete-item" data-index="${i}">
+          <span class="city-autocomplete-name">${esc(item.name)}</span>
+          <span class="city-autocomplete-country">${esc(item.country || '')}</span>
+        </div>
+      `).join('');
+      cityDropdown.classList.add('active');
+
+      cityDropdown.querySelectorAll('.city-autocomplete-item').forEach((el, i) => {
+        el.addEventListener('click', () => addSettingsCityObj(items[i]));
+        el.addEventListener('mouseenter', () => setSettingsActiveItem(i));
+      });
+    };
+
+    const setSettingsActiveItem = (index) => {
+      cityDropdown.querySelectorAll('.city-autocomplete-item').forEach((el, i) => {
+        el.classList.toggle('active', i === index);
+      });
+      settingsActiveIndex = index;
+    };
+
+    const searchSettingsCities = async (query) => {
+      if (query.length < 2) { hideSettingsDropdown(); return; }
+      const q = query.toLowerCase();
+      const citiesDb = await getCitiesDatabase();
+      if (!citiesDb.length) { hideSettingsDropdown(); return; }
+
+      const results = [];
+      for (const c of citiesDb) {
+        if (c.n.toLowerCase().startsWith(q)) {
+          results.push({ name: c.n, country: c.c, lat: c.lat, lng: c.lng });
+          if (results.length >= 8) break;
+        }
+      }
+      if (results.length < 8) {
+        for (const c of citiesDb) {
+          if (!c.n.toLowerCase().startsWith(q) && c.n.toLowerCase().includes(q)) {
+            results.push({ name: c.n, country: c.c, lat: c.lat, lng: c.lng });
+            if (results.length >= 8) break;
+          }
+        }
+      }
+      showSettingsDropdown(results);
+    };
+
+    cityInput.addEventListener('input', () => {
+      searchSettingsCities(cityInput.value.trim());
+    });
+
+    cityInput.addEventListener('keydown', (e) => {
+      const items = cityDropdown.querySelectorAll('.city-autocomplete-item');
+      if (!items.length) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const cityName = cityInput.value.trim();
+          if (cityName) addSettingsCityObj({ name: cityName });
+        }
+        return;
+      }
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSettingsActiveItem(Math.min(settingsActiveIndex + 1, items.length - 1));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSettingsActiveItem(Math.max(settingsActiveIndex - 1, 0));
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (settingsActiveIndex >= 0) {
+          items[settingsActiveIndex].click();
+        } else {
+          const cityName = cityInput.value.trim();
+          if (cityName) addSettingsCityObj({ name: cityName });
+        }
+      } else if (e.key === 'Escape') {
+        hideSettingsDropdown();
+      }
+    });
+
+    const refreshSettingsCitiesList = () => {
+      const listEl = document.getElementById('settings-cities-list');
+      if (listEl) listEl.innerHTML = renderCitiesList(draftCities);
+      bindSettingsCityRemoveButtons();
+    };
+
+    const bindSettingsCityRemoveButtons = () => {
+      const listEl = document.getElementById('settings-cities-list');
+      if (!listEl) return;
+      listEl.querySelectorAll('.city-remove-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const cityName = btn.dataset.city;
+          const index = draftCities.findIndex(c => {
+            const n = typeof c === 'string' ? c : c.name;
+            return n.toLowerCase() === cityName.toLowerCase();
+          });
+          if (index !== -1) {
+            draftCities.splice(index, 1);
+            refreshSettingsCitiesList();
+          }
+        });
+      });
+    };
+
+    bindSettingsCityRemoveButtons();
+
+    // Click fuori dalla city-input-wrapper chiude il dropdown
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) { closeModal(); return; }
+      if (!e.target.closest('.city-input-wrapper')) hideSettingsDropdown();
+    });
+
+    // Autofill da voli e hotel
+    const autofillSettingsCities = async () => {
+      const errEl = document.getElementById('settings-city-error');
+      const extracted = await extractCitiesFromTrip(currentTripData);
+      if (extracted.length === 0) {
+        if (errEl) {
+          errEl.textContent = 'Nessuna città trovata nei voli e hotel';
+          setTimeout(() => { if (errEl) errEl.textContent = ''; }, 3000);
+        }
+        return;
+      }
+
+      if (draftCities.length > 0) {
+        const autofillBtn = document.getElementById('settings-city-autofill');
+        const existingWarning = document.getElementById('settings-city-autofill-warning');
+        if (existingWarning) return;
+
+        const warningHTML = `<div class="city-autofill-warning" id="settings-city-autofill-warning">
+          <span>Le città attuali verranno sostituite. Continuare?</span>
+          <div class="city-autofill-warning-actions">
+            <button class="btn btn-secondary" id="settings-autofill-no">No, annulla</button>
+            <button class="btn btn-primary" id="settings-autofill-yes">Sì, continua</button>
+          </div>
+        </div>`;
+        autofillBtn.insertAdjacentHTML('afterend', warningHTML);
+        document.getElementById('settings-autofill-no').addEventListener('click', () => {
+          document.getElementById('settings-city-autofill-warning').remove();
+        });
+        document.getElementById('settings-autofill-yes').addEventListener('click', () => {
+          document.getElementById('settings-city-autofill-warning').remove();
+          draftCities.length = 0;
+          draftCities.push(...extracted);
+          refreshSettingsCitiesList();
+        });
+        return;
+      }
+
+      draftCities.push(...extracted);
+      refreshSettingsCitiesList();
+    };
+
+    document.getElementById('settings-city-autofill').addEventListener('click', autofillSettingsCities);
+
+    // "Cambia foto" — chiude modale e apre pannello foto
+    document.getElementById('settings-change-photo-btn').addEventListener('click', () => {
+      closeModal();
+      changePhoto(tripId);
+    });
+
+    // Chiudi con X e Annulla
+    document.getElementById('settings-close').addEventListener('click', closeModal);
+    document.getElementById('settings-cancel').addEventListener('click', closeModal);
+
+    // Salvataggio
+    document.getElementById('settings-save').addEventListener('click', async () => {
+      const saveBtn = document.getElementById('settings-save');
+      const nameVal = nameInput.value.trim();
+      const startVal = document.getElementById('settings-start-date').value;
+      const endVal = document.getElementById('settings-end-date').value || null;
+      const statusVal = document.querySelector('input[name="settings-status"]:checked')?.value || currentStatus;
+
+      // Resetta tutti gli errori inline
+      ['settings-name-error', 'settings-city-error', 'settings-start-error', 'settings-end-error', 'settings-photo-error', 'settings-status-error'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = '';
+      });
+
+      const previousStatus = currentTripData?.status || 'active';
+      const isActivating = previousStatus === 'draft' && statusVal === 'active';
+
+      // Validazione solo se si attiva da bozza
+      let hasErrors = false;
+      if (isActivating) {
+        if (!nameVal) {
+          const el = document.getElementById('settings-name-error');
+          if (el) el.textContent = t('trip.nameRequired', 'Il nome del viaggio è obbligatorio');
+          hasErrors = true;
+        }
+        if (draftCities.length === 0) {
+          const el = document.getElementById('settings-city-error');
+          if (el) el.textContent = t('trip.cityRequired', 'Inserisci almeno una città per attivare il viaggio');
+          hasErrors = true;
+        }
+        if (!startVal) {
+          const el = document.getElementById('settings-start-error');
+          if (el) el.textContent = t('trip.startDateRequired', 'La data di inizio è obbligatoria');
+          hasErrors = true;
+        }
+        if (!endVal) {
+          const el = document.getElementById('settings-end-error');
+          if (el) el.textContent = t('trip.endDateRequired', 'La data di fine è obbligatoria');
+          hasErrors = true;
+        }
+        if (!currentTripData?.coverPhoto?.url) {
+          const el = document.getElementById('settings-photo-error');
+          if (el) el.textContent = t('trip.photoRequired', 'Aggiungi una foto di copertina per attivare il viaggio');
+          hasErrors = true;
+        }
+      }
+
+      if (hasErrors) return;
+
+      // Validazione generica nome (se compilato)
+      if (nameVal && nameVal.length > 50) {
+        const el = document.getElementById('settings-name-error');
+        if (el) el.textContent = 'Il nome è troppo lungo (max 50 caratteri)';
+        return;
+      }
+
+      saveBtn.disabled = true;
+      saveBtn.innerHTML = '<span class="spinner spinner-sm"></span>';
+
+      try {
+        const payload = { tripId };
+        if (nameVal) payload.name = nameVal;
+        payload.cities = draftCities;
+        if (startVal) payload.startDate = startVal;
+        if (endVal) payload.endDate = endVal;
+        payload.status = statusVal;
+
+        const res = await utils.authFetch('/.netlify/functions/update-trip-meta', {
+          method: 'PATCH',
+          body: JSON.stringify(payload)
+        });
+        const result = await res.json();
+        if (!res.ok || !result.success) throw new Error(result.error || 'Failed');
+
+        closeModal();
+        utils.showToast(t('trip.settingsSaved', 'Impostazioni salvate'), 'success');
+        await loadTripFromUrl();
+      } catch (err) {
+        console.error('[tripPage] saveSettings error:', err);
+        // Errore inline nel footer
+        const footer = modal.querySelector('.modal-footer');
+        let errDiv = footer?.querySelector('.settings-save-error');
+        if (!errDiv && footer) {
+          errDiv = document.createElement('div');
+          errDiv.className = 'settings-save-error';
+          footer.appendChild(errDiv);
+        }
+        if (errDiv) errDiv.textContent = t('trip.settingsError', 'Errore nel salvataggio delle impostazioni');
+        saveBtn.disabled = false;
+        saveBtn.textContent = t('common.save', 'Salva');
+      }
+    });
+
+    modal.offsetHeight;
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
     i18n.apply(modal);
   }
 

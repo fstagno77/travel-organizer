@@ -1,6 +1,6 @@
 /**
  * Netlify Function: Update Trip Meta
- * Aggiorna date (startDate/endDate nel JSONB data) e/o status di un viaggio.
+ * Aggiorna date (startDate/endDate nel JSONB data), status, nome e città di un viaggio.
  * Solo il proprietario del viaggio può modificare questi campi.
  */
 
@@ -41,7 +41,7 @@ exports.handler = async (event, context) => {
       };
     }
 
-    const { tripId, startDate, endDate, status } = body;
+    const { tripId, startDate, endDate, status, name, cities } = body;
 
     if (!tripId) {
       return {
@@ -52,11 +52,29 @@ exports.handler = async (event, context) => {
     }
 
     // Verifica che almeno un campo sia presente
-    if (startDate === undefined && endDate === undefined && status === undefined) {
+    if (startDate === undefined && endDate === undefined && status === undefined && name === undefined && cities === undefined) {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ success: false, error: 'At least one field (startDate, endDate, status) is required' })
+        body: JSON.stringify({ success: false, error: 'At least one field (startDate, endDate, status, name, cities) is required' })
+      };
+    }
+
+    // Validazione name
+    if (name !== undefined && (typeof name !== 'string' || name.trim().length === 0 || name.trim().length > 50)) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ success: false, error: 'name must be a non-empty string of max 50 characters' })
+      };
+    }
+
+    // Validazione cities
+    if (cities !== undefined && !Array.isArray(cities)) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ success: false, error: 'cities must be an array' })
       };
     }
 
@@ -101,6 +119,8 @@ exports.handler = async (event, context) => {
     const updatedData = { ...(row.data || {}) };
     if (startDate !== undefined) updatedData.startDate = startDate;
     if (endDate !== undefined) updatedData.endDate = endDate;
+    if (name !== undefined) updatedData.title = { it: name.trim(), en: name.trim() };
+    if (cities !== undefined) updatedData.cities = cities;
 
     const updatePayload = {
       data: updatedData,

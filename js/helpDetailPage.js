@@ -62,17 +62,21 @@ const helpDetailPage = {
           },
           {
             id: 'rinominare-eliminare-viaggio',
-            title: 'Rinominare o eliminare un viaggio',
-            intro: 'Mantieni i tuoi viaggi organizzati rinominandoli o rimuovi quelli che non ti servono più.',
+            title: 'Impostazioni viaggio — nome, città, date, stato',
+            intro: 'Dalla modale Impostazioni puoi modificare in un solo posto il nome, la foto di copertina, le città, le date e lo stato del viaggio (Bozza o Viaggio).',
             steps: [
               { text: 'Apri il viaggio e clicca sull\'icona ⋮ nel menu del viaggio.' },
-              { text: 'Per rinominare: seleziona "Rinomina viaggio", digita il nuovo nome e conferma.' },
-              { text: 'Per eliminare: seleziona "Elimina viaggio". Viene richiesta una conferma esplicita — l\'operazione è irreversibile.' },
+              { text: 'Seleziona "Impostazioni": si apre la modale con tutti i campi pre-compilati con i dati attuali.' },
+              { text: 'Modifica i campi che vuoi aggiornare: nome, foto (tasto "Cambia foto"), città, date, stato.' },
+              { text: 'Per attivare un viaggio in bozza imposta lo stato su "Viaggio" — il sistema verifica che nome, città, date e foto di copertina siano presenti.' },
+              { text: 'Premi "Salva": tutte le modifiche vengono salvate in un\'unica operazione.' },
+              { text: 'Per cancellare il viaggio: seleziona "Cancella viaggio" dal menu ⋮. Viene richiesta una conferma esplicita — l\'operazione è irreversibile.' },
             ],
             tips: [
-              { type: 'warn', text: 'Solo il Proprietario del viaggio può eliminarlo. Viaggiatori e Ospiti non vedono questa opzione.' },
+              { type: 'warn', text: 'Solo il Proprietario del viaggio può accedere alle impostazioni e cancellare il viaggio. Viaggiatori e Ospiti non vedono queste opzioni.' },
+              { type: 'tip', text: 'Il pulsante "Compila da voli e hotel" nella sezione Città estrae automaticamente le destinazioni dalle prenotazioni già inserite.' },
             ],
-            result: 'Il viaggio viene rinominato immediatamente o eliminato con tutti i dati associati (prenotazioni, attività, collaboratori).',
+            result: 'Tutte le modifiche vengono applicate immediatamente. Il viaggio viene rimosso definitivamente se cancellato, con tutti i dati associati (prenotazioni, attività, collaboratori).',
           },
           {
             id: 'inoltro-email',
