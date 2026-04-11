@@ -84,7 +84,9 @@ const draftsPage = (function() {
    * @returns {Promise<boolean>}
    */
   async function deleteDraft(tripId) {
-    const { error } = await window.supabase
+    const supabaseClient = window.auth?.supabase;
+    if (!supabaseClient) return false;
+    const { error } = await supabaseClient
       .from('trips')
       .update({ deleted_at: new Date().toISOString() })
       .eq('id', tripId);
