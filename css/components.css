@@ -10973,7 +10973,8 @@ body:has(#modal-page-slider.at-activity) .trip-fab {
   max-width: 360px; width: calc(100% - 32px);
   box-shadow: 0 8px 32px rgba(0,0,0,0.18);
 }
-.draft-confirm-modal__title { font-size: var(--font-size-base); font-weight: 600; color: var(--color-text-primary); margin-bottom: 20px; }
+.draft-confirm-modal__title { font-size: var(--font-size-base); font-weight: 600; color: var(--color-text-primary); margin-bottom: 8px; }
+.draft-confirm-modal__body { font-size: var(--font-size-sm); color: var(--color-text-secondary); margin-bottom: 20px; }
 .draft-confirm-modal__actions { display: flex; gap: 8px; justify-content: flex-end; }
 .draft-confirm-modal__confirm { padding: 8px 16px; border-radius: 8px; background: var(--color-error, #ef4444); color: #fff; font-weight: 500; font-size: var(--font-size-sm); border: none; cursor: pointer; }
 .draft-confirm-modal__cancel { padding: 8px 16px; border-radius: 8px; background: transparent; color: var(--color-text-secondary); font-size: var(--font-size-sm); border: 1px solid var(--color-border); cursor: pointer; }

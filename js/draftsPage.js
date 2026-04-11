@@ -198,53 +198,72 @@ const draftsPage = (function() {
   }
 
   /**
-   * Attacca il listener di eliminazione (con conferma inline) a un singolo bottone cestino.
-   * Estratto come funzione separata per poter essere richiamato dopo il ripristino della riga.
+   * Mostra una piccola modale custom di conferma eliminazione.
+   *
+   * @param {string}   title      - Nome della bozza da mostrare nel testo
+   * @param {Function} onConfirm  - Callback asincrona chiamata se l'utente conferma
+   */
+  function showDeleteModal(title, onConfirm) {
+    const overlay = document.createElement('div');
+    overlay.className = 'draft-confirm-overlay';
+    overlay.innerHTML = `
+      <div class="draft-confirm-modal" role="dialog" aria-modal="true">
+        <p class="draft-confirm-modal__title">Eliminare \u00ab${title}\u00bb?</p>
+        <p class="draft-confirm-modal__body">La bozza verrà eliminata definitivamente. Questa azione non può essere annullata.</p>
+        <div class="draft-confirm-modal__actions">
+          <button class="draft-confirm-modal__cancel">Annulla</button>
+          <button class="draft-confirm-modal__confirm">Elimina</button>
+        </div>
+      </div>
+    `;
+
+    function close() {
+      overlay.remove();
+      document.removeEventListener('keydown', onKeyDown);
+    }
+
+    function onKeyDown(e) {
+      if (e.key === 'Escape') close();
+    }
+
+    // Click sull'overlay (fuori dalla modale) = Annulla
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) close();
+    });
+
+    overlay.querySelector('.draft-confirm-modal__cancel').addEventListener('click', close);
+
+    overlay.querySelector('.draft-confirm-modal__confirm').addEventListener('click', async () => {
+      const confirmBtn = overlay.querySelector('.draft-confirm-modal__confirm');
+      if (confirmBtn) confirmBtn.disabled = true;
+      await onConfirm();
+      close();
+    });
+
+    document.addEventListener('keydown', onKeyDown);
+    document.body.appendChild(overlay);
+  }
+
+  /**
+   * Attacca il listener di eliminazione (tramite modale custom) al bottone cestino.
    *
    * @param {HTMLElement} btn        - Il bottone `.draft-list-item__delete`
    * @param {string}      tripId     - ID della bozza
+   * @param {string}      draftTitle - Titolo della bozza
    * @param {HTMLElement} container  - Container radice della pagina bozze
    * @param {Array}       drafts     - Array corrente delle bozze
    * @param {string}      lang       - Lingua attiva ('it' | 'en')
-   * @param {Function}    t          - Helper traduzione
    */
-  function bindDeleteButton(btn, tripId, container, drafts, lang, t) {
+  function bindDeleteButton(btn, tripId, draftTitle, container, drafts, lang) {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      const row = container.querySelector(`.draft-list-item[data-draft-id="${tripId}"]`);
-      if (!row || row.classList.contains('is-confirming')) return;
 
-      // Salva il contenuto originale per poterlo ripristinare
-      const originalContent = row.innerHTML;
-
-      // Mostra pannello di conferma inline
-      row.classList.add('is-confirming');
-      row.innerHTML = `
-        <div class="draft-delete-confirm">
-          <span>${t('draft.deleteConfirm', 'Eliminare questa bozza?')}</span>
-          <button class="draft-delete-confirm__yes">Elimina</button>
-          <button class="draft-delete-confirm__no">Annulla</button>
-        </div>
-      `;
-
-      // Annulla — ripristina riga originale e riattacca listener
-      row.querySelector('.draft-delete-confirm__no').addEventListener('click', (ev) => {
-        ev.stopPropagation();
-        row.classList.remove('is-confirming');
-        row.innerHTML = originalContent;
-        const newBtn = row.querySelector('.draft-list-item__delete');
-        if (newBtn) bindDeleteButton(newBtn, tripId, container, drafts, lang, t);
-      });
-
-      // Conferma — procede con la cancellazione
-      row.querySelector('.draft-delete-confirm__yes').addEventListener('click', async (ev) => {
-        ev.stopPropagation();
-        const yesBtn = row.querySelector('.draft-delete-confirm__yes');
-        if (yesBtn) yesBtn.disabled = true;
+      showDeleteModal(draftTitle, async () => {
+        const row = container.querySelector(`.draft-list-item[data-draft-id="${tripId}"]`);
 
         const ok = await deleteDraft(tripId);
         if (ok) {
-          row.remove();
+          if (row) row.remove();
 
           // Se non ci sono più bozze, ri-render empty state
           const remaining = container.querySelectorAll('.draft-list-item');
@@ -262,12 +281,6 @@ const draftsPage = (function() {
             window.utils.showToast(lang === 'it' ? 'Bozza eliminata' : 'Draft deleted', 'success');
           }
         } else {
-          // Ripristina riga in caso di errore e riattacca listener
-          row.classList.remove('is-confirming');
-          row.innerHTML = originalContent;
-          const newBtn = row.querySelector('.draft-list-item__delete');
-          if (newBtn) bindDeleteButton(newBtn, tripId, container, drafts, lang, t);
-
           if (window.utils?.showToast) {
             window.utils.showToast(window.i18n?.t('common.error') || 'Errore', 'error');
           }
@@ -292,7 +305,8 @@ const draftsPage = (function() {
     // Bottoni elimina — conferma inline (niente window.confirm)
     container.querySelectorAll('.draft-list-item__delete').forEach(btn => {
       const tripId = btn.dataset.draftId;
-      bindDeleteButton(btn, tripId, container, drafts, lang, t);
+      const draftTitle = btn.dataset.draftTitle || '';
+      bindDeleteButton(btn, tripId, draftTitle, container, drafts, lang);
     });
   }
 
