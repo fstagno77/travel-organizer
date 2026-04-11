@@ -45,7 +45,7 @@ exports.handler = async (event, context) => {
     // RLS will automatically filter to user's trips + shared trips
     const { data, error } = await supabase
       .from('trips')
-      .select('data, user_id')
+      .select('data, user_id, status')
       .eq('id', tripId)
       .single();
 

@@ -199,7 +199,12 @@
     "noRentalsText": "Add a booking to see your car rentals here",
     "trainTo": "Train to",
     "busTo": "Bus to",
-    "rentalAt": "Rental at"
+    "rentalAt": "Rental at",
+    "editDates": "Edit dates",
+    "datesSaved": "Dates updated",
+    "moveToDraft": "Move to drafts",
+    "moveToDraftConfirm": "Do you want to move this trip to drafts? You can complete it later.",
+    "moveToDraftSuccess": "Trip moved to drafts"
   },
   "modal": {
     "cancel": "Cancel",

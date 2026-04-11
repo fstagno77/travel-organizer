@@ -199,7 +199,12 @@
     "noRentalsText": "Aggiungi una prenotazione per visualizzare i tuoi noleggi",
     "trainTo": "Treno per",
     "busTo": "Bus per",
-    "rentalAt": "Noleggio a"
+    "rentalAt": "Noleggio a",
+    "editDates": "Modifica date",
+    "datesSaved": "Date aggiornate",
+    "moveToDraft": "Sposta in bozza",
+    "moveToDraftConfirm": "Vuoi spostare questo viaggio nelle bozze? Potrai completarlo in seguito.",
+    "moveToDraftSuccess": "Viaggio spostato nelle bozze"
   },
   "modal": {
     "cancel": "Annulla",
