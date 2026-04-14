@@ -152,7 +152,8 @@ const ALLOWED_FLIGHT_FIELDS = [
   'bookingReference', 'ticketNumber', 'seat', 'class', 'cabin', 'baggage', 'status',
   'airline', 'operatedBy', 'duration', 'arrivalNextDay',
   'departureAirport', 'arrivalAirport', 'departureDate',
-  'departure', 'arrival', 'passenger', 'passengers'
+  'departure', 'arrival', 'passenger', 'passengers',
+  'pdfPath', 'price', 'currency'
 ];
 
 const ALLOWED_HOTEL_FIELDS = [
@@ -223,7 +224,7 @@ function applyUpdates(item, updates, type) {
 
   if (type === 'flight') {
     // Simple fields
-    const simpleFields = ['date', 'flightNumber', 'departureTime', 'arrivalTime', 'bookingReference', 'ticketNumber', 'seat', 'class', 'airline', 'operatedBy', 'duration', 'arrivalNextDay', 'baggage', 'status'];
+    const simpleFields = ['date', 'flightNumber', 'departureTime', 'arrivalTime', 'bookingReference', 'ticketNumber', 'seat', 'class', 'airline', 'operatedBy', 'duration', 'arrivalNextDay', 'baggage', 'status', 'price', 'currency'];
     for (const field of simpleFields) {
       if (updates[field] !== undefined) {
         item[field] = updates[field];
@@ -242,17 +243,19 @@ function applyUpdates(item, updates, type) {
       Object.assign(item.arrival, updates.arrival);
     }
 
-    // Passengers array
+    // Passengers array: replace entirely (same pattern as ferry)
     if (updates.passengers && Array.isArray(updates.passengers)) {
-      if (item.passengers && Array.isArray(item.passengers)) {
-        for (let i = 0; i < updates.passengers.length && i < item.passengers.length; i++) {
-          Object.assign(item.passengers[i], updates.passengers[i]);
-        }
-      }
-      // Also update singular passenger if it exists
-      if (item.passenger && updates.passengers[0]) {
+      item.passengers = updates.passengers;
+      // Keep legacy singular passenger in sync with first entry
+      if (updates.passengers.length > 0) {
+        if (!item.passenger) item.passenger = {};
         Object.assign(item.passenger, updates.passengers[0]);
       }
+    }
+
+    // Document: update or remove (null = explicit removal)
+    if ('pdfPath' in updates) {
+      item.pdfPath = updates.pdfPath === null ? null : updates.pdfPath;
     }
   } else if (type === 'hotel') {
     // Simple fields

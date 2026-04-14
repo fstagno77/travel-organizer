@@ -383,18 +383,20 @@
               </div>`;
               })()}
             </div>
-            ${flight.pdfPath ? `
-            <button class="btn-download-pdf" data-pdf-path="${flight.pdfPath}">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="7 10 12 15 17 10"></polyline>
-                <line x1="12" y1="15" x2="12" y2="3"></line>
-              </svg>
-              <span data-i18n="flight.booking">Prenotazione</span>
-            </button>
-            ` : ''}
             `}
-            <div class="flight-detail-actions">
+            ${(() => {
+              const singlePdfPath = flight.pdfPath || flight.passengers?.[0]?.pdfPath;
+              return `<div class="flight-detail-actions${singlePdfPath ? ' flight-detail-actions--3' : ''}">
+              ${singlePdfPath ? `
+              <button class="btn-download-pdf flight-detail-pdf-btn" data-pdf-path="${singlePdfPath}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                <span data-i18n="flight.booking">Prenotazione</span>
+              </button>
+              ` : ''}
               <button class="btn-edit-item" data-type="flight" data-id="${flight.id}">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
@@ -409,7 +411,8 @@
                 </svg>
                 <span data-i18n="flight.delete">Elimina volo</span>
               </button>
-            </div>
+            </div>`;
+            })()}
     `;
   }
 
@@ -524,36 +527,292 @@
     i18n.apply(modal);
   }
 
-  /**
-   * Build flight edit form HTML
-   */
-  function buildFlightEditForm(flight) {
-    const isMultiPax = flight.passengers && flight.passengers.length > 1;
+  // ── Shared HTML helpers ───────────────────────────────────────────────────
 
-    let passengersHTML = '';
-    if (isMultiPax) {
-      passengersHTML = flight.passengers.map((p, i) => `
-        <div class="edit-booking-passenger">
+  const FLIGHT_CLASS_OPTIONS = [
+    { value: '', label: '— Seleziona classe —' },
+    { value: 'economy', label: 'Economy' },
+    { value: 'premium_economy', label: 'Premium Economy' },
+    { value: 'business', label: 'Business' },
+    { value: 'first', label: 'First' },
+  ];
+
+  const FLIGHT_PAX_TYPES = [
+    { value: 'ADT', label: 'Adulto' },
+    { value: 'CHD', label: 'Bambino' },
+    { value: 'INF', label: 'Infante' },
+  ];
+
+  const FLIGHT_CURRENCIES = [
+    { value: 'EUR', label: 'EUR €' },
+    { value: 'USD', label: 'USD $' },
+    { value: 'GBP', label: 'GBP £' },
+    { value: 'CHF', label: 'CHF Fr' },
+  ];
+
+  function buildBookingSectionHTML(flight, opts = {}) {
+    const classOptHTML = FLIGHT_CLASS_OPTIONS.map(o =>
+      `<option value="${o.value}"${(flight.class || '') === o.value ? ' selected' : ''}>${o.label}</option>`
+    ).join('');
+    const currOptHTML = FLIGHT_CURRENCIES.map(o =>
+      `<option value="${o.value}"${(flight.currency || 'EUR') === o.value ? ' selected' : ''}>${o.label}</option>`
+    ).join('');
+    const priceVal = flight.price != null ? String(flight.price) : '';
+    return `
+      <div class="edit-booking-section">
+        <div class="edit-booking-section-title">Prenotazione</div>
+        <div class="edit-booking-grid">
+          <div class="edit-booking-field">
+            <label>Riferimento / PNR</label>
+            <input type="text" data-field="bookingReference" value="${escAttr(flight.bookingReference)}" placeholder="es. ABC123">
+          </div>
+          <div class="edit-booking-field">
+            <label>Classe</label>
+            <select data-field="class">${classOptHTML}</select>
+          </div>
+          <div class="edit-booking-field">
+            <label>Bagaglio</label>
+            <input type="text" data-field="baggage" value="${escAttr(flight.baggage)}" placeholder="es. 23kg">
+          </div>
+          <div class="edit-booking-field">
+            <label>Prezzo</label>
+            <div style="display:flex;gap:8px">
+              <input type="number" data-field="price" value="${escAttr(priceVal)}" placeholder="0.00" min="0" step="0.01" style="flex:1;min-width:0">
+              <select data-field="currency" style="width:90px">${currOptHTML}</select>
+            </div>
+          </div>
+          ${opts.includeStatus ? `
+          <div class="edit-booking-field">
+            <label>Stato</label>
+            <input type="text" data-field="status" value="${escAttr(flight.status)}" placeholder="es. OK">
+          </div>
+          ` : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  function buildPaxRowHTML(p = {}) {
+    const typeOptHTML = FLIGHT_PAX_TYPES.map(o =>
+      `<option value="${o.value}"${(p.type || 'ADT') === o.value ? ' selected' : ''}>${o.label}</option>`
+    ).join('');
+    const removeIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+    return `
+      <div class="edit-booking-passenger-row" style="flex-direction:column;align-items:stretch;gap:4px">
+        <div style="display:flex;align-items:flex-end;gap:8px">
+          <div class="edit-booking-field" style="flex:1">
+            <label>Nome</label>
+            <input type="text" data-pax-field="name" value="${escAttr(p.name)}">
+          </div>
+          <button type="button" class="edit-booking-remove-row" data-remove-pax title="Rimuovi" style="margin-bottom:4px;flex-shrink:0">${removeIcon}</button>
+        </div>
+        <div class="edit-booking-field">
+          <label>Tipo</label>
+          <select data-pax-field="type">${typeOptHTML}</select>
+        </div>
+      </div>
+    `;
+  }
+
+  function buildPassengersSectionHTML(passengers) {
+    const plusIcon = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
+    const rowsHTML = passengers.map(p => buildPaxRowHTML(p)).join('');
+    return `
+      <div class="edit-booking-section" data-pax-section>
+        <div class="edit-booking-section-title" style="display:flex;justify-content:space-between;align-items:center">
+          <span>Passeggeri</span>
+          <button type="button" class="edit-booking-add-row" data-add-pax style="margin:0">
+            ${plusIcon} Aggiungi passeggero
+          </button>
+        </div>
+        <div class="edit-booking-passengers-list" data-pax-list>
+          ${rowsHTML}
+        </div>
+      </div>
+    `;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Build shared booking-level section HTML (used once for multi-leg edit)
+   */
+  function buildFlightSharedSectionHTML(flight) {
+    const passengers = (flight.passengers && flight.passengers.length > 0)
+      ? flight.passengers
+      : [{ name: '', type: 'ADT' }];
+    return `
+      <div class="manage-booking-shared edit-booking-form" data-booking-shared>
+        ${buildBookingSectionHTML(flight, { includeStatus: true })}
+        ${buildPassengersSectionHTML(passengers)}
+        ${buildFlightDocSectionHTML(flight)}
+      </div>
+    `;
+  }
+
+  /**
+   * Build leg-only edit form (Volo + Partenza + Arrivo, no booking/pax fields)
+   */
+  function buildFlightLegOnlyForm(flight) {
+    return `
+      <div class="edit-booking-form">
+        <div class="edit-booking-section">
+          <div class="edit-booking-section-title">${i18n.t('flight.flightInfo') || 'Volo'}</div>
           <div class="edit-booking-grid">
             <div class="edit-booking-field">
-              <label>${i18n.t('flight.passengerName') || 'Nome'}</label>
-              <input type="text" data-field="passengers.${i}.name" value="${escAttr(p.name)}">
+              <label>${i18n.t('flight.date') || 'Data'}</label>
+              <input type="date" data-field="date" value="${escAttr(flight.date)}" required>
             </div>
             <div class="edit-booking-field">
-              <label>${i18n.t('flight.passengerType') || 'Tipo'}</label>
-              <input type="text" data-field="passengers.${i}.type" value="${escAttr(p.type)}">
+              <label>${i18n.t('flight.flightNumber') || 'Numero volo'}</label>
+              <input type="text" data-field="flightNumber" value="${escAttr(flight.flightNumber)}" pattern="[A-Za-z0-9]{2,8}" placeholder="es. AZ1154">
             </div>
             <div class="edit-booking-field">
-              <label>${i18n.t('flight.ticketNumber') || 'Biglietto'}</label>
-              <input type="text" data-field="passengers.${i}.ticketNumber" value="${escAttr(p.ticketNumber)}">
+              <label>${i18n.t('flight.airline') || 'Compagnia'}</label>
+              <input type="text" data-field="airline" value="${escAttr(flight.airline)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.operatedBy') || 'Operato da'}</label>
+              <input type="text" data-field="operatedBy" value="${escAttr(flight.operatedBy)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.departureTime') || 'Ora partenza'}</label>
+              <input type="time" data-field="departureTime" value="${escAttr(flight.departureTime)}" required>
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.arrivalTime') || 'Ora arrivo'}</label>
+              <input type="time" data-field="arrivalTime" value="${escAttr(flight.arrivalTime)}" required>
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.duration') || 'Durata'}</label>
+              <input type="text" data-field="duration" value="${escAttr(flight.duration)}" placeholder="es. 09:30">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.seat') || 'Posto'}</label>
+              <input type="text" data-field="seat" value="${escAttr(flight.seat)}" placeholder="es. 12A">
+            </div>
+            <div class="edit-booking-field edit-booking-field--checkbox">
+              <label>
+                <input type="checkbox" data-field="arrivalNextDay" ${flight.arrivalNextDay ? 'checked' : ''}>
+                ${i18n.t('flight.arrivalNextDay') || 'Arrivo giorno dopo (+1)'}
+              </label>
             </div>
           </div>
         </div>
-      `).join('');
-    }
+        <div class="edit-booking-section">
+          <div class="edit-booking-section-title">${i18n.t('flight.departureInfo') || 'Partenza'}</div>
+          <div class="edit-booking-grid">
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.iataCode') || 'IATA'}</label>
+              <input type="text" data-field="departure.code" value="${escAttr(flight.departure?.code)}" maxlength="3" pattern="[A-Za-z]{3}" style="text-transform:uppercase" placeholder="es. FCO">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.city') || 'Città'}</label>
+              <input type="text" data-field="departure.city" value="${escAttr(flight.departure?.city)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.airport') || 'Aeroporto'}</label>
+              <input type="text" data-field="departure.airport" value="${escAttr(flight.departure?.airport)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.terminal') || 'Terminal'}</label>
+              <input type="text" data-field="departure.terminal" value="${escAttr(flight.departure?.terminal)}">
+            </div>
+          </div>
+        </div>
+        <div class="edit-booking-section">
+          <div class="edit-booking-section-title">${i18n.t('flight.arrivalInfo') || 'Arrivo'}</div>
+          <div class="edit-booking-grid">
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.iataCode') || 'IATA'}</label>
+              <input type="text" data-field="arrival.code" value="${escAttr(flight.arrival?.code)}" maxlength="3" pattern="[A-Za-z]{3}" style="text-transform:uppercase" placeholder="es. NRT">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.city') || 'Città'}</label>
+              <input type="text" data-field="arrival.city" value="${escAttr(flight.arrival?.city)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.airport') || 'Aeroporto'}</label>
+              <input type="text" data-field="arrival.airport" value="${escAttr(flight.arrival?.airport)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.terminal') || 'Terminal'}</label>
+              <input type="text" data-field="arrival.terminal" value="${escAttr(flight.arrival?.terminal)}">
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Build multi-leg edit form: shared booking fields once, then per-leg Volo/Partenza/Arrivo
+   */
+  function buildMultiLegEditForm(flights) {
+    const firstFlight = flights[0];
+    const sharedHTML = buildFlightSharedSectionHTML(firstFlight);
+    const legsHTML = flights.map(f => {
+      const header = `${esc(f.flightNumber || '')} ${esc(f.departure?.code || '')} → ${esc(f.arrival?.code || '')}`.trim();
+      return `
+        <div class="manage-edit-item" data-item-id="${escAttr(f.id)}">
+          <div class="manage-edit-item-header">${header}</div>
+          ${buildFlightLegOnlyForm(f)}
+        </div>
+      `;
+    }).join('');
+    return sharedHTML + legsHTML;
+  }
+
+  /**
+   * Build document section HTML for flight edit forms
+   */
+  function buildFlightDocSectionHTML(flight) {
+    const existingPath = flight.pdfPath || flight.passengers?.[0]?.pdfPath || '';
+    const fileName = existingPath ? (existingPath.split('/').pop().replace(/\.[^.]+$/, '') || 'documento.pdf') : '';
+    return `
+      <div class="edit-booking-section" data-doc-section>
+        <div class="edit-booking-section-title">Ricevuta</div>
+        ${existingPath ? `
+          <div class="ferry-doc-existing" data-existing-doc>
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--color-gray-200);border-radius:8px;background:var(--color-gray-50,#f9fafb)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" stroke-width="1.5" style="flex-shrink:0"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+              <span style="font-size:var(--font-size-sm);color:var(--color-gray-700);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escAttr(fileName)}</span>
+              <a href="${escAttr(existingPath)}" target="_blank" rel="noopener" title="Apri" class="ferry-doc-action-btn" style="display:flex;align-items:center;color:var(--color-primary);flex-shrink:0;padding:4px;border-radius:4px;transition:background .15s">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              </a>
+              <button type="button" class="ferry-doc-remove-btn ferry-doc-action-btn" title="Rimuovi" style="display:flex;align-items:center;background:none;border:none;cursor:pointer;color:var(--color-danger,#e53e3e);padding:4px;border-radius:4px;flex-shrink:0;transition:background .15s">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+              </button>
+            </div>
+          </div>
+        ` : ''}
+        <div class="ferry-doc-upload" data-doc-upload ${existingPath ? 'style="display:none"' : ''}>
+          <label class="file-upload-zone" data-doc-drop-zone style="cursor:pointer">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+            <span class="file-upload-zone-text">Carica PDF</span>
+            <span class="file-upload-zone-hint">PDF — max 10 MB</span>
+            <input type="file" accept="application/pdf" data-doc-input style="display:none">
+          </label>
+          <div class="ferry-doc-selected" data-doc-selected style="display:none"></div>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Build flight edit form HTML
+   */
+  function buildFlightEditForm(flight, opts = {}) {
+    const showDoc = opts.showDoc !== false;
+    const passengers = (flight.passengers && flight.passengers.length > 0)
+      ? flight.passengers
+      : [{ name: '', type: 'ADT' }];
 
     return `
       <div class="edit-booking-form">
+        ${buildBookingSectionHTML(flight)}
+        ${buildPassengersSectionHTML(passengers)}
+
         <div class="edit-booking-section">
           <div class="edit-booking-section-title">
             ${i18n.t('flight.flightInfo') || 'Volo'}
@@ -568,12 +827,20 @@
               <input type="text" data-field="flightNumber" value="${escAttr(flight.flightNumber)}" pattern="[A-Za-z0-9]{2,8}" placeholder="es. AZ1154">
             </div>
             <div class="edit-booking-field">
-              <label>${i18n.t('flight.departureTime') || 'Partenza'}</label>
+              <label>${i18n.t('flight.airline') || 'Compagnia'}</label>
+              <input type="text" data-field="airline" value="${escAttr(flight.airline)}">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.departureTime') || 'Ora partenza'}</label>
               <input type="time" data-field="departureTime" value="${escAttr(flight.departureTime)}" required>
             </div>
             <div class="edit-booking-field">
-              <label>${i18n.t('flight.arrivalTime') || 'Arrivo'}</label>
+              <label>${i18n.t('flight.arrivalTime') || 'Ora arrivo'}</label>
               <input type="time" data-field="arrivalTime" value="${escAttr(flight.arrivalTime)}" required>
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.seat') || 'Posto'}</label>
+              <input type="text" data-field="seat" value="${escAttr(flight.seat)}" placeholder="es. 12A">
             </div>
           </div>
         </div>
@@ -618,65 +885,193 @@
           </div>
         </div>
 
-        <div class="edit-booking-section">
-          <div class="edit-booking-section-title">
-            ${i18n.t('flight.bookingInfo') || 'Prenotazione'}
-          </div>
-          <div class="edit-booking-grid">
-            <div class="edit-booking-field">
-              <label>${i18n.t('flight.bookingRef') || 'Riferimento'}</label>
-              <input type="text" data-field="bookingReference" value="${escAttr(flight.bookingReference)}">
-            </div>
-            <div class="edit-booking-field">
-              <label>${i18n.t('flight.class') || 'Classe'}</label>
-              <input type="text" data-field="class" value="${escAttr(flight.class)}">
-            </div>
-            ${!isMultiPax ? `
-            <div class="edit-booking-field">
-              <label>${i18n.t('flight.seat') || 'Posto'}</label>
-              <input type="text" data-field="seat" value="${escAttr(flight.seat)}" placeholder="es. 12A">
-            </div>
-            <div class="edit-booking-field">
-              <label>${i18n.t('flight.ticketNumber') || 'Biglietto'}</label>
-              <input type="text" data-field="ticketNumber" value="${escAttr(flight.ticketNumber)}">
-            </div>
-            ` : ''}
-          </div>
-          ${passengersHTML}
-        </div>
+        ${showDoc ? buildFlightDocSectionHTML(flight) : ''}
       </div>
     `;
   }
 
   /**
+   * Attach doc section interactive events (remove / file select / drag-drop)
+   */
+  function _upgradeSelectToCS(parentEl, selector, options, dataAttrs) {
+    if (!window.CustomSelect) return;
+    parentEl.querySelectorAll(selector).forEach(sel => {
+      const cs = window.CustomSelect.create({
+        options,
+        selected: sel.value,
+        dataAttrs
+      });
+      sel.replaceWith(cs);
+    });
+  }
+
+  function attachFlightFormListeners(formEl) {
+    // Upgrade native selects to CustomSelect (no OS dialog)
+    if (window.CustomSelect) {
+      _upgradeSelectToCS(formEl, 'select[data-field="class"]', FLIGHT_CLASS_OPTIONS, { field: 'class' });
+      _upgradeSelectToCS(formEl, 'select[data-field="currency"]', FLIGHT_CURRENCIES, { field: 'currency' });
+      // Apply fixed width to currency CS wrappers (native select had width:90px)
+      formEl.querySelectorAll('.cs-wrapper[data-field="currency"]').forEach(w => {
+        w.style.width = '100px';
+        w.style.flexShrink = '0';
+      });
+      _upgradeSelectToCS(formEl, 'select[data-pax-field="type"]', FLIGHT_PAX_TYPES, { paxField: 'type' });
+    }
+
+    // Passenger add / remove
+    const paxList = formEl.querySelector('[data-pax-list]');
+    const addPaxBtn = formEl.querySelector('[data-add-pax]');
+    if (paxList && addPaxBtn) {
+      const bindRemove = (row) => {
+        row.querySelector('[data-remove-pax]')?.addEventListener('click', () => row.remove());
+      };
+      paxList.querySelectorAll('.edit-booking-passenger-row').forEach(bindRemove);
+      addPaxBtn.addEventListener('click', () => {
+        const div = document.createElement('div');
+        div.innerHTML = buildPaxRowHTML({ name: '', type: 'ADT' }).trim();
+        const row = div.firstElementChild;
+        // Upgrade type select on new row
+        if (window.CustomSelect) {
+          _upgradeSelectToCS(row, 'select[data-pax-field="type"]', FLIGHT_PAX_TYPES, { paxField: 'type' });
+        }
+        paxList.appendChild(row);
+        bindRemove(row);
+        row.querySelector('[data-pax-field="name"]')?.focus();
+      });
+    }
+
+    const docSection = formEl.querySelector('[data-doc-section]');
+    if (!docSection) return;
+
+    const existingDocEl = docSection.querySelector('[data-existing-doc]');
+    const uploadArea = docSection.querySelector('[data-doc-upload]');
+    const docInput = docSection.querySelector('[data-doc-input]');
+    const docSelected = docSection.querySelector('[data-doc-selected]');
+    const dropZone = docSection.querySelector('[data-doc-drop-zone]');
+
+    const showSelectedFile = (file) => {
+      if (!file || !docSelected) return;
+      docSelected.innerHTML = `
+        <div class="file-preview-item" style="justify-content:space-between;margin-top:8px">
+          <span style="font-size:var(--font-size-sm);color:var(--color-gray-700)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+            ${utils.escapeHtml(file.name)}
+          </span>
+          <button type="button" class="ferry-doc-deselect-btn" style="font-size:var(--font-size-sm);color:var(--color-danger,#e53e3e);background:none;border:none;cursor:pointer;padding:0">✕</button>
+        </div>`;
+      docSelected.style.display = '';
+      docSelected.querySelector('.ferry-doc-deselect-btn').addEventListener('click', () => {
+        if (docInput) docInput.value = '';
+        docSelected.innerHTML = '';
+        docSelected.style.display = 'none';
+      });
+    };
+
+    if (docInput) {
+      docInput.addEventListener('change', () => {
+        if (docInput.files[0]) {
+          const sentinel = formEl.querySelector('[data-doc-remove]');
+          if (sentinel) sentinel.dataset.docRemove = '0';
+          showSelectedFile(docInput.files[0]);
+        }
+      });
+    }
+
+    if (dropZone) {
+      dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+      dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+      dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        const file = e.dataTransfer.files[0];
+        if (file && file.type === 'application/pdf') {
+          if (docInput) {
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            docInput.files = dt.files;
+          }
+          showSelectedFile(file);
+        }
+      });
+    }
+
+    const removeBtn = existingDocEl ? existingDocEl.querySelector('.ferry-doc-remove-btn') : null;
+    if (removeBtn) {
+      removeBtn.addEventListener('click', () => {
+        const sentinel = formEl.querySelector('[data-doc-remove]') || (() => {
+          const inp = document.createElement('input');
+          inp.type = 'hidden';
+          inp.dataset.docRemove = '1';
+          formEl.appendChild(inp);
+          return inp;
+        })();
+        sentinel.dataset.docRemove = '1';
+        if (existingDocEl) existingDocEl.style.display = 'none';
+        if (uploadArea) uploadArea.style.display = '';
+      });
+    }
+  }
+
+  /**
    * Collect flight form values into an updates object
    */
+  function _setField(updates, field, val) {
+    if (field === 'price') {
+      if (val !== '') { const n = parseFloat(val); if (!isNaN(n)) updates.price = n; }
+    } else if (field.startsWith('departure.')) {
+      const prop = field.split('.')[1];
+      if (!updates.departure) updates.departure = {};
+      updates.departure[prop] = val;
+    } else if (field.startsWith('arrival.')) {
+      const prop = field.split('.')[1];
+      if (!updates.arrival) updates.arrival = {};
+      updates.arrival[prop] = val;
+    } else {
+      updates[field] = val;
+    }
+  }
+
+  function _collectFlightFields(formView, updates, checkboxes = false) {
+    // Native inputs + selects (not replaced by CustomSelect)
+    formView.querySelectorAll('input[data-field], select[data-field]').forEach(el => {
+      const field = el.dataset.field;
+      if (field.startsWith('passengers.')) return;
+      let val;
+      if (el.type === 'checkbox') val = checkboxes ? el.checked : undefined;
+      else val = el.value.trim();
+      if (val === undefined) return;
+      _setField(updates, field, val);
+    });
+
+    // CustomSelect wrappers (replace native selects after upgrade)
+    formView.querySelectorAll('.cs-wrapper[data-field]').forEach(cs => {
+      const field = cs.dataset.field;
+      if (!field || field.startsWith('passengers.')) return;
+      _setField(updates, field, cs.dataset.value || '');
+    });
+
+    // Passengers: collect positionally from rows
+    const paxRows = formView.querySelectorAll('.edit-booking-passenger-row');
+    if (paxRows.length > 0) {
+      updates.passengers = Array.from(paxRows).map(row => ({
+        name: (row.querySelector('[data-pax-field="name"]')?.value || '').trim(),
+        // type: from CustomSelect wrapper or native select fallback
+        type: row.querySelector('.cs-wrapper[data-pax-field="type"]')?.dataset.value
+          || row.querySelector('select[data-pax-field="type"]')?.value
+          || 'ADT',
+      })).filter(p => p.name);
+    }
+
+    // Remove sentinel
+    const removeSentinel = formView.querySelector('[data-doc-remove]');
+    if (removeSentinel && removeSentinel.dataset.docRemove === '1') {
+      updates.pdfPath = null;
+    }
+  }
+
   function collectFlightUpdates(formView) {
     const updates = {};
-    formView.querySelectorAll('input[data-field]').forEach(input => {
-      const field = input.dataset.field;
-      const val = input.value.trim();
-
-      if (field.startsWith('passengers.')) {
-        // passengers.0.name → { passengers: [{ name: val }] }
-        const parts = field.split('.');
-        const idx = parseInt(parts[1], 10);
-        const prop = parts[2];
-        if (!updates.passengers) updates.passengers = [];
-        while (updates.passengers.length <= idx) updates.passengers.push({});
-        updates.passengers[idx][prop] = val;
-      } else if (field.startsWith('departure.')) {
-        const prop = field.split('.')[1];
-        if (!updates.departure) updates.departure = {};
-        updates.departure[prop] = val;
-      } else if (field.startsWith('arrival.')) {
-        const prop = field.split('.')[1];
-        if (!updates.arrival) updates.arrival = {};
-        updates.arrival[prop] = val;
-      } else {
-        updates[field] = val;
-      }
-    });
+    _collectFlightFields(formView, updates, false);
     return updates;
   }
 
@@ -684,32 +1079,15 @@
    * Build full edit form with ALL flight fields (for manage booking panel)
    */
   function buildFullFlightEditForm(flight) {
-    const isMultiPax = flight.passengers && flight.passengers.length > 1;
-
-    let passengersHTML = '';
-    if (isMultiPax) {
-      passengersHTML = flight.passengers.map((p, i) => `
-        <div class="edit-booking-passenger">
-          <div class="edit-booking-grid">
-            <div class="edit-booking-field">
-              <label>${i18n.t('flight.passengerName') || 'Nome'}</label>
-              <input type="text" data-field="passengers.${i}.name" value="${escAttr(p.name)}">
-            </div>
-            <div class="edit-booking-field">
-              <label>${i18n.t('flight.passengerType') || 'Tipo'}</label>
-              <input type="text" data-field="passengers.${i}.type" value="${escAttr(p.type)}">
-            </div>
-            <div class="edit-booking-field">
-              <label>${i18n.t('flight.ticketNumber') || 'Biglietto'}</label>
-              <input type="text" data-field="passengers.${i}.ticketNumber" value="${escAttr(p.ticketNumber)}">
-            </div>
-          </div>
-        </div>
-      `).join('');
-    }
+    const passengers = (flight.passengers && flight.passengers.length > 0)
+      ? flight.passengers
+      : [{ name: '', type: 'ADT' }];
 
     return `
       <div class="edit-booking-form">
+        ${buildBookingSectionHTML(flight, { includeStatus: true })}
+        ${buildPassengersSectionHTML(passengers)}
+
         <div class="edit-booking-section">
           <div class="edit-booking-section-title">
             ${i18n.t('flight.flightInfo') || 'Volo'}
@@ -732,16 +1110,20 @@
               <input type="text" data-field="operatedBy" value="${escAttr(flight.operatedBy)}">
             </div>
             <div class="edit-booking-field">
-              <label>${i18n.t('flight.departureTime') || 'Partenza'}</label>
+              <label>${i18n.t('flight.departureTime') || 'Ora partenza'}</label>
               <input type="time" data-field="departureTime" value="${escAttr(flight.departureTime)}" required>
             </div>
             <div class="edit-booking-field">
-              <label>${i18n.t('flight.arrivalTime') || 'Arrivo'}</label>
+              <label>${i18n.t('flight.arrivalTime') || 'Ora arrivo'}</label>
               <input type="time" data-field="arrivalTime" value="${escAttr(flight.arrivalTime)}" required>
             </div>
             <div class="edit-booking-field">
               <label>${i18n.t('flight.duration') || 'Durata'}</label>
               <input type="text" data-field="duration" value="${escAttr(flight.duration)}" placeholder="es. 09:30">
+            </div>
+            <div class="edit-booking-field">
+              <label>${i18n.t('flight.seat') || 'Posto'}</label>
+              <input type="text" data-field="seat" value="${escAttr(flight.seat)}" placeholder="es. 12A">
             </div>
             <div class="edit-booking-field edit-booking-field--checkbox">
               <label>
@@ -800,40 +1182,7 @@
           </div>
         </div>
 
-        <div class="edit-booking-section">
-          <div class="edit-booking-section-title">
-            ${i18n.t('flight.bookingInfo') || 'Prenotazione'}
-          </div>
-          <div class="edit-booking-grid">
-            <div class="edit-booking-field">
-              <label>${i18n.t('flight.bookingRef') || 'Riferimento'}</label>
-              <input type="text" data-field="bookingReference" value="${escAttr(flight.bookingReference)}">
-            </div>
-            <div class="edit-booking-field">
-              <label>${i18n.t('flight.class') || 'Classe'}</label>
-              <input type="text" data-field="class" value="${escAttr(flight.class)}">
-            </div>
-            <div class="edit-booking-field">
-              <label>${i18n.t('flight.baggage') || 'Bagaglio'}</label>
-              <input type="text" data-field="baggage" value="${escAttr(flight.baggage)}" placeholder="es. 1PC">
-            </div>
-            <div class="edit-booking-field">
-              <label>${i18n.t('flight.status') || 'Stato'}</label>
-              <input type="text" data-field="status" value="${escAttr(flight.status)}" placeholder="es. OK">
-            </div>
-            ${!isMultiPax ? `
-            <div class="edit-booking-field">
-              <label>${i18n.t('flight.seat') || 'Posto'}</label>
-              <input type="text" data-field="seat" value="${escAttr(flight.seat)}" placeholder="es. 12A">
-            </div>
-            <div class="edit-booking-field">
-              <label>${i18n.t('flight.ticketNumber') || 'Biglietto'}</label>
-              <input type="text" data-field="ticketNumber" value="${escAttr(flight.ticketNumber)}">
-            </div>
-            ` : ''}
-          </div>
-          ${passengersHTML}
-        </div>
+        ${buildFlightDocSectionHTML(flight)}
       </div>
     `;
   }
@@ -843,29 +1192,7 @@
    */
   function collectFullFlightUpdates(formView) {
     const updates = {};
-    formView.querySelectorAll('input[data-field]').forEach(input => {
-      const field = input.dataset.field;
-      const val = input.type === 'checkbox' ? input.checked : input.value.trim();
-
-      if (field.startsWith('passengers.')) {
-        const parts = field.split('.');
-        const idx = parseInt(parts[1], 10);
-        const prop = parts[2];
-        if (!updates.passengers) updates.passengers = [];
-        while (updates.passengers.length <= idx) updates.passengers.push({});
-        updates.passengers[idx][prop] = val;
-      } else if (field.startsWith('departure.')) {
-        const prop = field.split('.')[1];
-        if (!updates.departure) updates.departure = {};
-        updates.departure[prop] = val;
-      } else if (field.startsWith('arrival.')) {
-        const prop = field.split('.')[1];
-        if (!updates.arrival) updates.arrival = {};
-        updates.arrival[prop] = val;
-      } else {
-        updates[field] = val;
-      }
-    });
+    _collectFlightFields(formView, updates, true); // true = collect checkboxes
     return updates;
   }
 
@@ -876,6 +1203,8 @@
     buildEditForm: buildFlightEditForm,
     collectUpdates: collectFlightUpdates,
     buildFullEditForm: buildFullFlightEditForm,
-    collectFullUpdates: collectFullFlightUpdates
+    buildMultiLegEditForm: buildMultiLegEditForm,
+    collectFullUpdates: collectFullFlightUpdates,
+    attachFormListeners: attachFlightFormListeners
   };
 })();

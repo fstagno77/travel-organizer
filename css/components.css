@@ -1015,9 +1015,19 @@
   margin-top: var(--spacing-3);
 }
 
+.flight-detail-actions--3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+
 .flight-detail-actions .btn-edit-item,
 .flight-detail-actions .btn-delete-item {
   flex: 1;
+  margin-top: 0;
+  width: auto;
+}
+
+.flight-detail-actions .flight-detail-pdf-btn {
   margin-top: 0;
   width: auto;
 }
@@ -10842,19 +10852,28 @@ body:has(#modal-page-slider.at-activity) .trip-fab {
 }
 .add-leg-btn {
   width: 100%;
-  padding: 10px;
-  border: 1.5px dashed var(--color-border);
-  border-radius: 8px;
+  padding: var(--spacing-3);
+  border: 1.5px solid var(--color-primary);
+  border-radius: var(--radius-md);
   background: transparent;
-  color: var(--color-text-secondary);
+  color: var(--color-primary);
   font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
   cursor: pointer;
-  margin-top: 12px;
-  transition: all 0.15s;
+  margin-top: var(--spacing-4);
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-2);
 }
 .add-leg-btn:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-white);
+}
+.add-leg-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 /* =============================================

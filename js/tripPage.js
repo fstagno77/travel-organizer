@@ -3904,20 +3904,20 @@
           </div>
         `;
       } else {
-        formHTML = selectedItems.map((item, idx) => {
-          const itemLabel = selectedType === 'flight'
-            ? `${item.flightNumber || ''} ${item.departure?.code || ''} → ${item.arrival?.code || ''}`
-            : (item.name || 'Hotel');
-          const form = selectedType === 'flight'
-            ? window.tripFlights.buildFullEditForm(item)
-            : window.tripHotels.buildFullEditForm(item);
-          return `
-            <div class="manage-edit-item" data-item-id="${item.id}">
-              <div class="manage-edit-item-header">${esc(itemLabel)}</div>
-              ${form}
-            </div>
-          `;
-        }).join('');
+        if (selectedType === 'flight' && window.tripFlights.buildMultiLegEditForm) {
+          formHTML = window.tripFlights.buildMultiLegEditForm(selectedItems);
+        } else {
+          formHTML = selectedItems.map((item) => {
+            const itemLabel = item.name || 'Item';
+            const form = ({ hotel: window.tripHotels }[selectedType] || window.tripFlights).buildFullEditForm(item);
+            return `
+              <div class="manage-edit-item" data-item-id="${item.id}">
+                <div class="manage-edit-item-header">${esc(itemLabel)}</div>
+                ${form}
+              </div>
+            `;
+          }).join('');
+        }
       }
 
       panelBody.innerHTML = formHTML;
@@ -3941,6 +3941,9 @@
             window.AirportAutocomplete.init(panelBody);
           }
         });
+        if (window.tripFlights && window.tripFlights.attachFormListeners) {
+          window.tripFlights.attachFormListeners(panelBody);
+        }
       }
 
       // Ferry form listeners (custom selects, return toggle, doc handlers)
@@ -4013,9 +4016,37 @@
           } else {
             // Multiple items: collect updates per item
             const itemSections = panelBody.querySelectorAll('.manage-edit-item');
+
+            // For multi-leg flights: shared booking fields sit in [data-booking-shared]
+            let sharedUpdates = {};
+            if (selectedType === 'flight') {
+              const sharedSection = panelBody.querySelector('[data-booking-shared]');
+              if (sharedSection) {
+                sharedUpdates = window.tripFlights.collectFullUpdates(sharedSection);
+                // Doc upload from shared section
+                if (sharedUpdates.pdfPath === undefined) {
+                  const docInput = sharedSection.querySelector('[data-doc-input]');
+                  if (docInput && docInput.files && docInput.files[0]) {
+                    try {
+                      const base64 = await new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve(reader.result);
+                        reader.onerror = reject;
+                        reader.readAsDataURL(docInput.files[0]);
+                      });
+                      sharedUpdates.pdfPath = base64;
+                    } catch { /* non critico */ }
+                  }
+                }
+              }
+            }
+
             for (const section of itemSections) {
               const itemId = section.dataset.itemId;
-              const updates = ({ flight: window.tripFlights, hotel: window.tripHotels, train: window.tripTrains, bus: window.tripBuses, rental: window.tripRentals, ferry: window.tripFerries }[selectedType] || window.tripFlights).collectFullUpdates(section);
+              const legUpdates = ({ flight: window.tripFlights, hotel: window.tripHotels, train: window.tripTrains, bus: window.tripBuses, rental: window.tripRentals, ferry: window.tripFerries }[selectedType] || window.tripFlights).collectFullUpdates(section);
+              const updates = selectedType === 'flight'
+                ? { ...legUpdates, ...sharedUpdates }
+                : legUpdates;
 
               const response = await utils.authFetch('/.netlify/functions/edit-booking', {
                 method: 'POST',
@@ -4206,7 +4237,17 @@
     }
 
     const formBuilders = {
-      flight: window.tripFlights.buildEditForm,
+      flight: (f) => {
+        // Show doc section only on the first leg of a booking (or when solo)
+        const allFlights = currentTripData?.flights || [];
+        const siblings = allFlights.filter(fl =>
+          fl.id !== f.id && fl.bookingReference && fl.bookingReference === f.bookingReference
+        );
+        const isFirstLeg = siblings.length === 0 ||
+          allFlights.findIndex(fl => fl.bookingReference === f.bookingReference) ===
+          allFlights.findIndex(fl => fl.id === f.id);
+        return window.tripFlights.buildEditForm(f, { showDoc: isFirstLeg });
+      },
       hotel: window.tripHotels.buildEditForm,
       train: window.tripTrains.buildEditForm,
       bus: window.tripBuses.buildEditForm,
@@ -4257,6 +4298,9 @@
           window.AirportAutocomplete.init(panelBody);
         }
       });
+      if (window.tripFlights && window.tripFlights.attachFormListeners) {
+        window.tripFlights.attachFormListeners(panelBody);
+      }
     }
 
     if (type === 'ferry') {
@@ -4418,6 +4462,25 @@
           }
         }
 
+        // Flight document upload: if a new PDF was selected, encode as base64 and include
+        if (type === 'flight' && updates.pdfPath === undefined) {
+          const docInput = panelBody.querySelector('[data-doc-input]');
+          if (docInput && docInput.files && docInput.files[0]) {
+            const file = docInput.files[0];
+            try {
+              const base64 = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+              });
+              updates.pdfPath = base64;
+            } catch {
+              // Non critico — continua senza documento
+            }
+          }
+        }
+
         const response = await utils.authFetch('/.netlify/functions/edit-booking', {
           method: 'POST',
           body: JSON.stringify({ tripId, type, itemId: item.id, updates })
@@ -4498,6 +4561,26 @@
                 const errBody = await returnRes.json().catch(() => ({}));
                 utils.showToast(errBody.error || 'Errore salvataggio ritorno', 'error');
               }
+            }
+          }
+        }
+
+        // Flight: propagate booking-level fields to sibling flights (same bookingReference)
+        if (type === 'flight' && item.bookingReference) {
+          const bookingLevelFields = ['passengers', 'bookingReference', 'class', 'baggage', 'price', 'currency', 'pdfPath', 'status'];
+          const siblingUpdates = {};
+          for (const field of bookingLevelFields) {
+            if (updates[field] !== undefined) siblingUpdates[field] = updates[field];
+          }
+          if (Object.keys(siblingUpdates).length > 0) {
+            const siblings = (currentTripData?.flights || []).filter(f =>
+              f.id !== item.id && f.bookingReference === item.bookingReference
+            );
+            for (const sibling of siblings) {
+              await utils.authFetch('/.netlify/functions/edit-booking', {
+                method: 'POST',
+                body: JSON.stringify({ tripId, type: 'flight', itemId: sibling.id, updates: siblingUpdates })
+              });
             }
           }
         }
