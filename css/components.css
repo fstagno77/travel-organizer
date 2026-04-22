@@ -861,6 +861,12 @@
   border-top: 1px solid var(--color-gray-200);
 }
 
+@media (max-width: 600px) {
+  .flight-passenger-details {
+    grid-template-columns: 1fr;
+  }
+}
+
 .flight-passenger-detail {
   display: flex;
   flex-direction: column;
