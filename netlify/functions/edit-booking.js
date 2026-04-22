@@ -6,6 +6,7 @@
 const { authenticateRequest, unauthorizedResponse, getCorsHeaders, handleOptions } = require('./utils/auth');
 const { updateTripDates } = require('./utils/tripDates');
 const { notifyCollaborators } = require('./utils/notificationHelper');
+const { moveTmpPdfToTrip } = require('./utils/storage');
 
 exports.handler = async (event, context) => {
   const headers = getCorsHeaders();
@@ -93,6 +94,19 @@ exports.handler = async (event, context) => {
 
     // Apply updates with deep merge for nested objects
     applyUpdates(item, updates, type);
+
+    // Move PDF from tmp/ to trips/ if a new PDF was uploaded via signed URL.
+    // The client sends storagePath = tmp/{userId}/{file}.pdf — we move it to
+    // trips/{tripId}/{itemId}.pdf so get-pdf-url validation passes.
+    if (item.pdfPath && item.pdfPath.startsWith('tmp/')) {
+      try {
+        item.pdfPath = await moveTmpPdfToTrip(item.pdfPath, tripId, item.id);
+      } catch (moveErr) {
+        console.error('Error moving tmp PDF to trip folder:', moveErr);
+        // Non-fatal: keep the tmp path — download will fail validation,
+        // but we don't want to block the entire save operation.
+      }
+    }
 
     // Recalculate nights for hotels if dates changed
     if (type === 'hotel' && (updates.checkIn || updates.checkOut)) {

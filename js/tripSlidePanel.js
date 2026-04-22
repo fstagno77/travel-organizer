@@ -848,6 +848,14 @@
         const filePath = item.dataset.path;
         if (!filePath) return;
 
+        // iOS Safari blocca window.open() in contesti async — apriamo la finestra
+        // in modo sincrono prima dell'await e poi la redirezionamo al risultato
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        let newWindow = null;
+        if (isIOS) {
+          newWindow = window.open('about:blank', '_blank');
+        }
+
         try {
           const response = await utils.authFetch('/.netlify/functions/manage-activity', {
             method: 'POST',
@@ -855,10 +863,17 @@
           });
           const result = await response.json();
           if (result.success && result.url) {
-            window.open(result.url, '_blank');
+            if (newWindow) {
+              newWindow.location.href = result.url;
+            } else {
+              window.open(result.url, '_blank');
+            }
+          } else {
+            if (newWindow) newWindow.close();
           }
         } catch (error) {
           console.error('Error getting file URL:', error);
+          if (newWindow) newWindow.close();
           utils.showToast(i18n.t('common.downloadError') || 'Error downloading file', 'error');
         }
       });

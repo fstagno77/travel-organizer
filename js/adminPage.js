@@ -772,6 +772,22 @@ const adminPage = {
     this.bindPagination(() => (p, ps) => this.renderTrips(p, document.getElementById('trips-search')?.value || '', document.getElementById('trips-status-filter')?.value || '', ps || pageSize));
   },
 
+  async _handleAdminPdfDownload(pdfPath) {
+    if (!pdfPath) return;
+    try {
+      const response = await window.utils.authFetch(`/.netlify/functions/get-pdf-url?path=${encodeURIComponent(pdfPath)}`);
+      const result = await response.json();
+      if (result.success && result.url) {
+        window.open(result.url, '_blank');
+      } else {
+        throw new Error(result.error || 'URL non disponibile');
+      }
+    } catch (err) {
+      console.error('[admin] PDF download error:', err);
+      alert('Errore nel download del PDF');
+    }
+  },
+
   async toggleTripDetail(tripId) {
     const detailRow = document.getElementById(`trip-detail-${tripId}`);
     if (!detailRow) return;
@@ -786,6 +802,8 @@ const adminPage = {
     // If already loaded, don't reload
     if (detailRow.dataset.loaded) return;
 
+    const pdfIconBtn = (pdfPath, label = 'Scarica PDF') => pdfPath ? `<button data-admin-pdf-path="${this.esc(pdfPath)}" title="${this.esc(label)}" style="background:none;border:none;cursor:pointer;padding:2px;display:inline-flex;align-items:center;color:var(--color-primary)"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg></button>` : '';
+
     try {
       const [data, collabData] = await Promise.all([
         this.api('get-trip', { tripId }),
@@ -796,6 +814,10 @@ const adminPage = {
       const flights = d.flights || [];
       const hotels = d.hotels || [];
       const activities = d.activities || [];
+      const trains = d.trains || [];
+      const ferries = d.ferries || [];
+      const buses = d.buses || [];
+      const rentals = d.rentals || [];
       const collabSection = collabData ? this._renderCollaboratorsSection(collabData) : '';
 
       detailRow.querySelector('td').innerHTML = `
@@ -811,16 +833,25 @@ const adminPage = {
             <div class="pdf-log-extracted">
               <div class="pdf-log-extracted-title">Voli (${flights.length})</div>
               <div class="admin-trip-cards">
-                ${flights.map(f => `
-                  <div class="admin-trip-card">
-                    <div class="admin-trip-card-title">${this.esc(this.i18n(f.flightNumber) || 'Volo')}</div>
+                ${flights.map(f => {
+                  // Raccoglie tutti i PDF: livello volo + per passeggero
+                  const flightPdfs = [];
+                  if (f.pdfPath) flightPdfs.push({ path: f.pdfPath, label: 'Scarica PDF' });
+                  (f.passengers || []).forEach(p => {
+                    if (p.pdfPath) flightPdfs.push({ path: p.pdfPath, label: p.name ? `PDF ${p.name}` : 'Scarica PDF' });
+                  });
+                  return `<div class="admin-trip-card">
+                    <div class="admin-trip-card-title" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                      ${this.esc(this.i18n(f.flightNumber) || 'Volo')}
+                      ${flightPdfs.map(pdf => pdfIconBtn(pdf.path, pdf.label)).join('')}
+                    </div>
                     <div class="admin-trip-card-detail">
                       ${this.esc(this.i18n(f.departure?.code) || '')} → ${this.esc(this.i18n(f.arrival?.code) || '')}<br>
                       ${this.i18n(f.date) || ''} ${this.i18n(f.departureTime) || ''}<br>
                       ${this.esc(this.i18n(f.airline) || '')} ${f.passenger?.name ? '- ' + this.esc(this.i18n(f.passenger.name)) : ''}
                     </div>
-                  </div>
-                `).join('')}
+                  </div>`;
+                }).join('')}
               </div>
             </div>
           ` : ''}
@@ -831,7 +862,10 @@ const adminPage = {
               <div class="admin-trip-cards">
                 ${hotels.map(h => `
                   <div class="admin-trip-card">
-                    <div class="admin-trip-card-title">${this.esc(this.i18n(h.name) || 'Hotel')}</div>
+                    <div class="admin-trip-card-title" style="display:flex;align-items:center;gap:6px">
+                      ${this.esc(this.i18n(h.name) || 'Hotel')}
+                      ${pdfIconBtn(h.pdfPath)}
+                    </div>
                     <div class="admin-trip-card-detail">
                       ${this.i18n(h.checkIn) || ''} - ${this.i18n(h.checkOut) || ''}<br>
                       ${this.esc(this.i18n(h.address) || '')}
@@ -858,10 +892,107 @@ const adminPage = {
             </div>
           ` : ''}
 
+          ${trains.length ? `
+            <div class="pdf-log-extracted">
+              <div class="pdf-log-extracted-title">Treni (${trains.length})</div>
+              <div class="admin-trip-cards">
+                ${trains.map(tr => {
+                  const dep = tr.departure?.station || tr.departure?.city || '';
+                  const arr = tr.arrival?.station || tr.arrival?.city || '';
+                  const pdfPath = tr.pdfPath || '';
+                  return `<div class="admin-trip-card">
+                    <div class="admin-trip-card-title" style="display:flex;align-items:center;gap:6px">
+                      ${this.esc(tr.trainNumber || 'Treno')}
+                      ${pdfIconBtn(pdfPath)}
+                    </div>
+                    <div class="admin-trip-card-detail">
+                      ${dep ? this.esc(dep) + ' → ' : ''}${arr ? this.esc(arr) : ''}<br>
+                      ${tr.date || ''} ${tr.departure?.time || ''}
+                    </div>
+                  </div>`;
+                }).join('')}
+              </div>
+            </div>
+          ` : ''}
+
+          ${ferries.length ? `
+            <div class="pdf-log-extracted">
+              <div class="pdf-log-extracted-title">Traghetti (${ferries.length})</div>
+              <div class="admin-trip-cards">
+                ${ferries.map(fe => {
+                  const dep = fe.departure?.port || fe.departure?.city || '';
+                  const arr = fe.arrival?.port || fe.arrival?.city || '';
+                  const pdfPath = fe.pdfPath || fe.documentUrl || '';
+                  return `<div class="admin-trip-card">
+                    <div class="admin-trip-card-title" style="display:flex;align-items:center;gap:6px">
+                      ${this.esc(fe.operator || 'Traghetto')}
+                      ${pdfIconBtn(pdfPath)}
+                    </div>
+                    <div class="admin-trip-card-detail">
+                      ${dep ? this.esc(dep) + ' → ' : ''}${arr ? this.esc(arr) : ''}<br>
+                      ${fe.date || ''} ${fe.ferryName ? '· ' + this.esc(fe.ferryName) : ''}
+                    </div>
+                  </div>`;
+                }).join('')}
+              </div>
+            </div>
+          ` : ''}
+
+          ${buses.length ? `
+            <div class="pdf-log-extracted">
+              <div class="pdf-log-extracted-title">Bus (${buses.length})</div>
+              <div class="admin-trip-cards">
+                ${buses.map(b => {
+                  const dep = b.departure?.station || b.departure?.city || '';
+                  const arr = b.arrival?.station || b.arrival?.city || '';
+                  const pdfPath = b.pdfPath || '';
+                  return `<div class="admin-trip-card">
+                    <div class="admin-trip-card-title" style="display:flex;align-items:center;gap:6px">
+                      ${this.esc(b.operator || b.routeNumber || 'Bus')}
+                      ${pdfIconBtn(pdfPath)}
+                    </div>
+                    <div class="admin-trip-card-detail">
+                      ${dep ? this.esc(dep) + ' → ' : ''}${arr ? this.esc(arr) : ''}<br>
+                      ${b.date || ''}
+                    </div>
+                  </div>`;
+                }).join('')}
+              </div>
+            </div>
+          ` : ''}
+
+          ${rentals.length ? `
+            <div class="pdf-log-extracted">
+              <div class="pdf-log-extracted-title">Noleggi (${rentals.length})</div>
+              <div class="admin-trip-cards">
+                ${rentals.map(r => {
+                  const vehicleTitle = [r.vehicle?.make, r.vehicle?.model].filter(Boolean).join(' ') || r.vehicle?.category || 'Noleggio';
+                  const pdfPath = r.pdfPath || '';
+                  return `<div class="admin-trip-card">
+                    <div class="admin-trip-card-title" style="display:flex;align-items:center;gap:6px">
+                      ${this.esc(vehicleTitle)}
+                      ${pdfIconBtn(pdfPath)}
+                    </div>
+                    <div class="admin-trip-card-detail">
+                      ${r.pickupDate || ''} → ${r.dropoffDate || ''}<br>
+                      ${r.pickupLocation ? this.esc(r.pickupLocation) : ''}${r.company ? ' · ' + this.esc(r.company) : ''}
+                    </div>
+                  </div>`;
+                }).join('')}
+              </div>
+            </div>
+          ` : ''}
+
           ${collabSection}
         </div>
       `;
       detailRow.dataset.loaded = '1';
+      detailRow.querySelectorAll('[data-admin-pdf-path]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this._handleAdminPdfDownload(btn.dataset.adminPdfPath);
+        });
+      });
     } catch (err) {
       detailRow.querySelector('td').innerHTML = `
         <div class="pdf-log-detail-panel">

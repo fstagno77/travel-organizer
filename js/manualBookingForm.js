@@ -586,11 +586,16 @@ window.manualBookingForm = (() => {
       id: `${idPrefix}-arr-time`, label: 'Orario arrivo', type: 'time',
       value: prefill.arrivalTime || ''
     });
+    const { wrapper: wLegSeat, input: iLegSeat } = buildEditField({
+      id: `${idPrefix}-seat`, label: 'Posto',
+      placeholder: 'es. 12A', value: prefill.seat || ''
+    });
     gVolo.appendChild(wFlightNum);
     gVolo.appendChild(wAirline);
     gVolo.appendChild(wDate);
     gVolo.appendChild(wDepTime);
     gVolo.appendChild(wArrTime);
+    gVolo.appendChild(wLegSeat);
     container.appendChild(sVolo);
 
     // Sezione Partenza
@@ -637,6 +642,7 @@ window.manualBookingForm = (() => {
       date: iDate.value || undefined,
       departureTime: iDepTime.value || undefined,
       arrivalTime: iArrTime.value || undefined,
+      seat: iLegSeat.value.trim() || undefined,
       departure: {
         city: iDepCity.value.trim(),
         code: iDepCode.value.trim().toUpperCase() || undefined,
@@ -689,8 +695,6 @@ window.manualBookingForm = (() => {
       pillEls[p.value] = btn;
       pillSelector.appendChild(btn);
     });
-    scroll.appendChild(pillSelector);
-
     // ---- AREA: one_way ----
     const oneWayArea = document.createElement('div');
 
@@ -715,11 +719,15 @@ window.manualBookingForm = (() => {
       id: 'mbf-arrival-time', label: 'Orario arrivo', type: 'time',
       value: prefill.arrivalTime || ''
     });
+    const { wrapper: wOneWaySeat, input: iOneWaySeat } = buildEditField({
+      id: 'mbf-seat', label: 'Posto', placeholder: 'es. 12A', value: prefill.seat || ''
+    });
     gVolo.appendChild(wFlightNum);
     gVolo.appendChild(wAirline);
     gVolo.appendChild(wDate);
     gVolo.appendChild(wDepTime);
     gVolo.appendChild(wArrTime);
+    gVolo.appendChild(wOneWaySeat);
     oneWayArea.appendChild(sVolo);
 
     const { section: sDep, grid: gDep } = buildSection('Partenza');
@@ -757,7 +765,6 @@ window.manualBookingForm = (() => {
     gArr.appendChild(wArrCode);
     gArr.appendChild(wArrTerminal);
     oneWayArea.appendChild(sArr);
-    scroll.appendChild(oneWayArea);
 
     // ---- AREA: round_trip ----
     const roundTripArea = document.createElement('div');
@@ -779,7 +786,6 @@ window.manualBookingForm = (() => {
     roundTripArea.appendChild(rtHeader2);
     const leg2RT = buildFlightLeg('mbf-rt-leg2', {});
     roundTripArea.appendChild(leg2RT.container);
-    scroll.appendChild(roundTripArea);
 
     // ---- AREA: multi_leg ----
     const multiLegArea = document.createElement('div');
@@ -864,7 +870,17 @@ window.manualBookingForm = (() => {
       if (multiLegs.length >= 6) addLegBtn.disabled = true;
     });
     multiLegArea.appendChild(addLegBtn);
-    scroll.appendChild(multiLegArea);
+
+    // ---- SEZIONE CONDIVISA: Passeggeri ----
+    const FLIGHT_PAX_OPTIONS = [
+      { value: 'ADT', label: 'Adulto' },
+      { value: 'CHD', label: 'Bambino' },
+      { value: 'INF', label: 'Infante' },
+    ];
+    const initialFlightPassengers = Array.isArray(prefill.passengers)
+      ? prefill.passengers.map(p => typeof p === 'string' ? { name: p, type: 'ADT' } : { name: p.name || '', type: p.type || 'ADT' })
+      : [{ name: '', type: 'ADT' }]; // 1 passeggero di default
+    const { section: sPax, getPassengers: getFlightPassengers } = buildPassengersSection(initialFlightPassengers, FLIGHT_PAX_OPTIONS);
 
     // ---- SEZIONE CONDIVISA: Prenotazione ----
     const { section: sBook, grid: gBook } = buildSection('Prenotazione');
@@ -896,9 +912,6 @@ window.manualBookingForm = (() => {
       wClass.appendChild(inp);
     }
 
-    const { wrapper: wSeat, input: iSeat } = buildEditField({
-      id: 'mbf-seat', label: 'Posto', placeholder: 'es. 12A', value: prefill.seat || ''
-    });
     const { wrapper: wBaggage, input: iBaggage } = buildEditField({
       id: 'mbf-baggage', label: 'Bagaglio', placeholder: 'es. 23kg', value: prefill.baggage || ''
     });
@@ -907,11 +920,8 @@ window.manualBookingForm = (() => {
     });
     gBook.appendChild(wPnr);
     gBook.appendChild(wClass);
-    gBook.appendChild(wSeat);
     gBook.appendChild(wBaggage);
     gBook.appendChild(wPrice);
-    scroll.appendChild(sBook);
-
     // ---- SEZIONE CONDIVISA: Note ----
     const { section: sNote } = buildSection('Note');
     const flightNoteWrapper = document.createElement('div');
@@ -923,7 +933,6 @@ window.manualBookingForm = (() => {
     flightNoteTextarea.value = prefill.notes || '';
     flightNoteWrapper.appendChild(flightNoteTextarea);
     sNote.appendChild(flightNoteWrapper);
-    scroll.appendChild(sNote);
 
     // Upload documento
     const docSection = document.createElement('div');
@@ -931,6 +940,24 @@ window.manualBookingForm = (() => {
     docSection.style.marginTop = '16px';
     const { wrapper: wDoc, getFile } = buildDocumentUpload();
     docSection.appendChild(wDoc);
+
+    // ---- ORDINE SEZIONI NEL FORM ----
+    // 1. Prenotazione (PNR, classe, bagaglio, prezzo)
+    scroll.appendChild(sBook);
+    // 2. Passeggeri (subito sotto Prenotazione)
+    // Rimuove border-bottom: il pill selector che segue non deve avere una linea sopra
+    sPax.style.borderBottom = 'none';
+    scroll.appendChild(sPax);
+    // 3. Tipo di volo (pill selector) — separato da sPax senza linea divisoria
+    pillSelector.style.marginTop = 'var(--spacing-4)';
+    scroll.appendChild(pillSelector);
+    // 4. Tratte volo (type-specific)
+    scroll.appendChild(oneWayArea);
+    scroll.appendChild(roundTripArea);
+    scroll.appendChild(multiLegArea);
+    // 5. Note
+    scroll.appendChild(sNote);
+    // 6. Documento
     scroll.appendChild(docSection);
 
     form.appendChild(scroll);
@@ -978,9 +1005,10 @@ window.manualBookingForm = (() => {
     // ---- UTILITY: shared booking fields ----
     const getSharedBookingValues = () => {
       const flightClass = classSelect ? window.CustomSelect.getValue(classSelect) : (form.querySelector('#mbf-class')?.value || '');
+      const paxList = getFlightPassengers();
       return {
+        passengers: paxList.length > 0 ? paxList : undefined,
         class: flightClass || undefined,
-        seat: iSeat.value.trim() || undefined,
         baggage: iBaggage.value.trim() || undefined,
         bookingReference: iPnr.value.trim() || undefined,
         price: iPrice.value ? parseFloat(iPrice.value) : undefined,
@@ -993,6 +1021,7 @@ window.manualBookingForm = (() => {
     const getValues = () => {
       if (currentFlightType === 'one_way') {
         const flightClass = classSelect ? window.CustomSelect.getValue(classSelect) : (form.querySelector('#mbf-class')?.value || '');
+        const paxList = getFlightPassengers();
         return {
           flightType: 'one_way',
           flightNumber: iFlightNum.value.trim(),
@@ -1000,6 +1029,7 @@ window.manualBookingForm = (() => {
           date: iDate.value,
           departureTime: iDepTime.value,
           arrivalTime: iArrTime.value || undefined,
+          seat: iOneWaySeat.value.trim() || undefined,
           departure: {
             city: iDepCity.value.trim(),
             code: iDepCode.value.trim().toUpperCase() || undefined,
@@ -1010,8 +1040,8 @@ window.manualBookingForm = (() => {
             code: iArrCode.value.trim().toUpperCase() || undefined,
             terminal: iArrTerminal.value.trim() || undefined,
           },
+          passengers: paxList.length > 0 ? paxList : undefined,
           class: flightClass || undefined,
-          seat: iSeat.value.trim() || undefined,
           baggage: iBaggage.value.trim() || undefined,
           bookingReference: iPnr.value.trim() || undefined,
           price: iPrice.value ? parseFloat(iPrice.value) : undefined,

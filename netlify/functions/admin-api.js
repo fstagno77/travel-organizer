@@ -734,8 +734,16 @@ async function listTrips(sc, { search, userId: filterUserId, status, page = 1, p
   }
 
   query = query.order('created_at', { ascending: false });
-  const from = (page - 1) * pageSize;
-  query = query.range(from, from + pageSize - 1);
+
+  // Se c'è un search, non usiamo .range() sul DB: recuperiamo fino a 500 righe e
+  // applichiamo tutti i filtri in-memory, poi paginiamo manualmente sul risultato filtrato.
+  // Senza search, il range viene applicato direttamente in DB per efficienza.
+  if (!search) {
+    const from = (page - 1) * pageSize;
+    query = query.range(from, from + pageSize - 1);
+  } else {
+    query = query.limit(500);
+  }
 
   const { data: trips, count, error } = await query;
   if (error) throw error;
@@ -785,6 +793,13 @@ async function listTrips(sc, { search, userId: filterUserId, status, page = 1, p
       (t.destination || '').toLowerCase().includes(s) ||
       (t.username || '').toLowerCase().includes(s)
     );
+  }
+
+  // Paginazione e total: con search li calcoliamo sul risultato filtrato; senza, usiamo il count DB
+  if (search) {
+    const total = result.length;
+    const from = (page - 1) * pageSize;
+    return { trips: result.slice(from, from + pageSize), total, page, pageSize };
   }
 
   return { trips: result, total: count || 0, page, pageSize };

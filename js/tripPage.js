@@ -4401,6 +4401,12 @@
 
     backdrop.addEventListener('click', () => requestClose());
 
+    // PDF download delegation per il pannello edit (signed URL, workaround iOS incluso)
+    panelBody.addEventListener('click', (e) => {
+      const pdfBtn = e.target.closest('.btn-download-pdf');
+      if (pdfBtn) { e.stopPropagation(); handlePdfDownload(pdfBtn.dataset.pdfPath, pdfBtn); }
+    });
+
     const performSave = async () => {
       // Validate required fields and patterns
       const invalidInput = panelBody.querySelector('input:invalid');
@@ -4443,38 +4449,28 @@
         };
         const updates = (updateCollectors[type] || updateCollectors.flight)(panelBody);
 
-        // Ferry document upload: if a new PDF was selected, encode as base64 and include
+        // Ferry document upload: if a new PDF was selected, upload to storage and store path
         if (type === 'ferry' && updates.documentUrl === undefined) {
           const docInput = panelBody.querySelector('[data-doc-input]');
           if (docInput && docInput.files && docInput.files[0]) {
             const file = docInput.files[0];
             try {
-              const base64 = await new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = reject;
-                reader.readAsDataURL(file);
-              });
-              updates.documentUrl = base64;
+              const { storagePath } = await window.pdfUpload.uploadFile(file);
+              updates.pdfPath = storagePath;
             } catch {
               // Non critico — continua senza documento
             }
           }
         }
 
-        // Flight document upload: if a new PDF was selected, encode as base64 and include
+        // Flight document upload: if a new PDF was selected, upload to storage and store path
         if (type === 'flight' && updates.pdfPath === undefined) {
           const docInput = panelBody.querySelector('[data-doc-input]');
           if (docInput && docInput.files && docInput.files[0]) {
             const file = docInput.files[0];
             try {
-              const base64 = await new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = reject;
-                reader.readAsDataURL(file);
-              });
-              updates.pdfPath = base64;
+              const { storagePath } = await window.pdfUpload.uploadFile(file);
+              updates.pdfPath = storagePath;
             } catch {
               // Non critico — continua senza documento
             }
