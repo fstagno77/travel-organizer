@@ -137,6 +137,8 @@
 
 /* Flight Card */
 .flight-card {
+  display: block;
+  width: 100%;
   background-color: var(--color-white);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
@@ -3123,6 +3125,8 @@ input[type="time"].form-input {
 
 /* ===== HOTEL CARD - Emerald Theme ===== */
 .hotel-card {
+  display: block;
+  width: 100%;
   background-color: var(--color-white);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-md);
@@ -3530,6 +3534,8 @@ input[type="time"].form-input {
 
 /* ===== TRAIN CARD - Orange Theme ===== */
 .train-card {
+  display: block;
+  width: 100%;
   background-color: var(--color-white);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-md);
@@ -3885,6 +3891,8 @@ input[type="time"].form-input {
 
 /* ===== BUS CARD - Violet Theme ===== */
 .bus-card {
+  display: block;
+  width: 100%;
   background-color: var(--color-white);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-md);
@@ -4226,6 +4234,8 @@ input[type="time"].form-input {
 
 /* ===== FERRY CARD - Blue Theme ===== */
 .ferry-card {
+  display: block;
+  width: 100%;
   background-color: var(--color-white);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-md);
@@ -4590,6 +4600,8 @@ input[type="time"].form-input {
 
 /* ===== RENTAL CARD - Teal Theme ===== */
 .rental-card {
+  display: block;
+  width: 100%;
   background-color: var(--color-white);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-md);
