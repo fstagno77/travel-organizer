@@ -437,7 +437,13 @@
   gap: var(--spacing-3);
 }
 
-@media (min-width: 576px) {
+@media (max-width: 600px) {
+  .flight-details-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 601px) {
   .flight-details-grid {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -3510,7 +3516,7 @@ input[type="time"].form-input {
   color: var(--color-white);
 }
 
-@media (max-width: 575px) {
+@media (max-width: 600px) {
   .hotel-card-body {
     padding: var(--spacing-4);
   }
@@ -3866,7 +3872,7 @@ input[type="time"].form-input {
   color: var(--color-white);
 }
 
-@media (max-width: 575px) {
+@media (max-width: 600px) {
   .train-card-body {
     padding: var(--spacing-4);
   }
@@ -4209,7 +4215,7 @@ input[type="time"].form-input {
   color: var(--color-white);
 }
 
-@media (max-width: 575px) {
+@media (max-width: 600px) {
   .bus-card-body {
     padding: var(--spacing-4);
   }
@@ -4575,7 +4581,7 @@ input[type="time"].form-input {
   color: var(--color-white);
 }
 
-@media (max-width: 575px) {
+@media (max-width: 600px) {
   .ferry-card-body {
     padding: var(--spacing-4);
   }
@@ -4904,7 +4910,7 @@ input[type="time"].form-input {
   color: var(--color-white);
 }
 
-@media (max-width: 575px) {
+@media (max-width: 600px) {
   .rental-card-body {
     padding: var(--spacing-4);
   }
